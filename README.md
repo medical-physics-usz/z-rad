@@ -10,12 +10,12 @@ z-rad is OS dependent and compatible with Python 2.7. only.
 With the [deprecation of Python 2.7.](https://pythonclock.org/) beginning of Jan 2020, z-rad is planning to move to Python 3.6. 
 
 ### Installation of Python 2.7.
-Easiest to install Python 2.7. is via [Anaconda distribution](https://www.anaconda.com/distribution/). **Important**: Please donwload the 64-bit version
+Easiest to install Python 2.7. is via [Anaconda distribution](https://www.anaconda.com/distribution/). **Important**: Please donwload the 64-bit version otherwise you will get troubles when calculating bigger structures. 
 
 ### Required packages
 Required packages for z-rad are the following
 
-| **Package** | **Version**  | **Description**      |
+| **Package**      | **Version**  | **Description**      |
 | ---------------- | ------------ | -------------------- |
 | numpy            | 1.14.0.      | numpy arrays         |
 | scipy            | 1.0.0.       | scientific package   |
@@ -37,7 +37,8 @@ Due to access right restrictions from USZ site, installation is possible either 
 and then redirect to the folder where the wheel was downloaded. Use the following command to install
 `pip install <name of the wheel.whl>`
 
-2. pip adjustment
+2. **Functional Python environment without admin privileges nor IT department**:
+Put the attached ‘pip.ini’ file in %APPDATA%\pip\pip.ini. You’ll probably have to create the pip directory. This configuration file routes the network traffic related to ‘pip’. Change ‘username’ and ‘password’. Apparently tunneling the “python traffic” through proxy is ok for IT department.
 
 ## Documentation
 
@@ -49,7 +50,9 @@ Tested functionality for Windows 7 only.
 
 ## Known issues
 
-List of the known issues with the software
+List of the known issues related to the software or hardware:
+- Python environment without admin rights or IT with conda: 
+It used to work, but somehow now it does not anymore ;)
 
 
 ## Contact

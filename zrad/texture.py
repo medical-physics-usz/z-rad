@@ -2252,7 +2252,7 @@ class Texture(object):
             fig = py.figure(20, figsize = (20,20))
             fig.text(0.5, 0.95, ImName+' '+name)
             for j in arange(0, 24):
-                axes = fig.add_subplot(5, 5, j+1, axisbg='#FFFF99')
+                axes = fig.add_subplot(5, 5, j+1, facecolor='#FFFF99')
                 axes.set_title(24*n+j)
                 try:
                     im = axes.imshow(matrix[24*n+j], cmap=py.cm.Greys_r, vmin = 0, vmax = self.n_bits)

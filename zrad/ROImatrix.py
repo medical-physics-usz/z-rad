@@ -10,7 +10,7 @@ import logging
 class Matrix(object):
     def __init__(self, imap, rs_type, structure, map_name, XcontourPoints, YcontourPoints, Xcontour_WPoints,
                  Ycontour_WPoints, Xcontour_Rec, Ycontour_Rec, columns, rows, HUmin, HUmax, binSize, bits,
-                 outlier_correction, HUmask, cropStructure=False):
+                 outlier_correction, HUmask, cropStructure={"crop": False}):
         """fill the contour matrix with values from the image - including discretization
 
         matrix : matrix with discretized entries
@@ -91,7 +91,7 @@ class Matrix(object):
                     v.pop(ind[-j])
 
                 # no parameter for outlier correction!
-                if (HUmin != 'none' and rs_type != 0) or (cropStructure and rs_type != 0):
+                if (HUmin != 'none' and rs_type != 0) or (cropStructure["crop"] and rs_type != 0):
                     print("***** outlier correction for CT ********")
                     ind = np.where(np.array(v) < HUmin)[0]
                     for j in np.arange(1, len(ind)+1):
@@ -234,7 +234,7 @@ class Matrix(object):
                     print("rs_type", rs_type, " matrix_true", matrix_true.shape)
                     if rs_type == 2:
                         self.HUmask = [ind_min, ind_max]
-                    elif rs_type == 1 and cropStructure:
+                    elif rs_type == 1 and cropStructure["crop"]:
                         self.HUmask = [ind_min, ind_max]
                     else:
                         self.HUmask = []
@@ -249,7 +249,7 @@ class Matrix(object):
                     matrix_rec[HUmask[1]] = np.nan
                     self.HUmask = HUmask
             else:
-                if cropStructure and HUmin != 'none':
+                if cropStructure["crop"] and HUmin != 'none':
                     matrix_true[HUmask[0]] = np.nan
                     matrix_true[HUmask[1]] = np.nan
                     matrix[HUmask[0]] = np.nan

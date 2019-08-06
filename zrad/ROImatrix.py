@@ -92,7 +92,7 @@ class Matrix(object):
 
                 # no parameter for outlier correction!
                 if (HUmin != 'none' and rs_type != 0) or (cropStructure and rs_type != 0):
-                    print "***** outlier correction for CT ********"
+                    print("***** outlier correction for CT ********")
                     ind = np.where(np.array(v) < HUmin)[0]
                     for j in np.arange(1, len(ind)+1):
                         v.pop(ind[-j])
@@ -231,7 +231,7 @@ class Matrix(object):
                     matrix_full[ind_max] = np.nan
                     matrix_rec[ind_min] = np.nan
                     matrix_rec[ind_max] = np.nan
-                    print "rs_type", rs_type, " matrix_true", matrix_true.shape
+                    print("rs_type", rs_type, " matrix_true", matrix_true.shape)
                     if rs_type == 2:
                         self.HUmask = [ind_min, ind_max]
                     elif rs_type == 1 and cropStructure:

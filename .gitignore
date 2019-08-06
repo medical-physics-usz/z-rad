@@ -83,3 +83,6 @@ $RECYCLE.BIN/
 
 # Z-Rad
 zrad/config.txt
+
+# Sourcetree
+.idea/

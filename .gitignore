@@ -86,3 +86,6 @@ zrad/config.txt
 
 # Sourcetree
 .idea/
+
+# Spyder
+.spyderworkspace

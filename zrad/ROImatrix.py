@@ -79,10 +79,14 @@ class Matrix(object):
                 ymax = np.max(lymax) + 2
                 xmin = np.min(lxmin) - 2
                 xmax = np.max(lxmax) + 2
-                if xmin < 0: xmin = 0
-                if xmax >= rows: xmax = rows
-                if ymin < 0: ymin = 0
-                if ymax >= columns: ymax = columns
+                if xmin < 0:
+                    xmin = 0
+                if xmax >= columns:
+                    xmax = columns
+                if ymin < 0:
+                    ymin = 0
+                if ymax >= rows:
+                    ymax = rows
                 del lymin
                 del lymax
                 del lxmin

@@ -48,8 +48,6 @@ class Shape(object):
         del ind_f
         del path_set
 
-        np.set_printoptions(threshold='nan')
-
         #calculate parameters of all GTVs
         if exists(path_results):
             remove(path_results)

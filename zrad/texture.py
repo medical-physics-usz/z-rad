@@ -2080,7 +2080,7 @@ class Texture(object):
         return e
 
     def NGLDM(self, matrix):  # Oncoray 4.2
-        '''neighborhood gray-level dependence matrix'''
+        """Calculate neighborhood gray-level dependence matrix"""
         s = []
         for i in arange(0, self.n_bits):
             s.append([0])
@@ -2126,7 +2126,7 @@ class Texture(object):
                             for gray in arange(0, len(s)):
                                 for app in arange(maxSize, size):
                                     s[gray].append(0)
-                            maxSize = size      # actualize maxSize
+                            maxSize = size  # update maxSize
                         s[int(v)][size] += 1
                        
 

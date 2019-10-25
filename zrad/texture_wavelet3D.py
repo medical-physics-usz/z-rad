@@ -23,14 +23,14 @@ class Wavelet(object):
         if len(self.map)!=1:
             HHH, HHL, HLH, HLL, LHH, LHL, LLH, LLL = self.threeD(self.map) #xyz
 
-            self.HHH = HHH/(2*sqrt(2))
-            self.HHL = HHL/(2*sqrt(2))
-            self.HLH = HLH/(2*sqrt(2))
-            self.HLL = HLL/(2*sqrt(2))
-            self.LHH = LHH/(2*sqrt(2))
-            self.LHL = LHL/(2*sqrt(2))
-            self.LLH = LLH/(2*sqrt(2))
-            self.LLL = LLL/(2*sqrt(2))
+            self.HHH = HHH/(2.*sqrt(2))
+            self.HHL = HHL/(2.*sqrt(2))
+            self.HLH = HLH/(2.*sqrt(2))
+            self.HLL = HLL/(2.*sqrt(2))
+            self.LHH = LHH/(2.*sqrt(2))
+            self.LHL = LHL/(2.*sqrt(2))
+            self.LLH = LLH/(2.*sqrt(2))
+            self.LLL = LLL/(2.*sqrt(2))
             k=1
             try:
                 makedirs(path+'\\wavelet\\'+name+'\\')

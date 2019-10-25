@@ -27,15 +27,15 @@ class InterpolateROI(object):
         self.logger = logging.getLogger(__name__)
         self.logger.info("Start: Interpolation Structures")
         '''find the contour points for a given ROI, calls the getPoints methods with returns a M - 3D matrix with -1 outside, 0 on the border and 1 inside'''
-        print rs
-        print "new coordinates for structures", x_ct, y_ct
+        print(rs)
+        print("new coordinates for structures", x_ct, y_ct)
         
         rs = dc.read_file(rs) #read RS file
         list_organs =[] #list of organs defined in the RS file
-        print 'structures in RS file:'
+        print('structures in RS file:')
         for j in arange(0, len(rs.StructureSetROISequence)):
             list_organs.append([rs.StructureSetROISequence[j].ROIName, rs.StructureSetROISequence[j].ROINumber])
-            print rs.StructureSetROISequence[j].ROIName
+            print(rs.StructureSetROISequence[j].ROIName)
 
         organs = [structure] #define the structure you're intersed in
 
@@ -60,22 +60,22 @@ class InterpolateROI(object):
                                 lista = self.multiContour(lista) #subcontrous in the slice
                                 for m in arange(0, len(lista)):
                                     index.append(lista[m][0])
-                                print 'z positions contour'
-                                print index
-                                print 'z positions image'
-                                print slices
+                                print('z positions contour')
+                                print(index)
+                                print('z positions image')
+                                print(slices)
                                 if len(index) != 1: #if more than one slice
                                     diffI = round(index[1]-index[0], 3) #double check if the orientation is ok
                                     diffS = round(slices[1]-slices[0],3)
-                                    print 'resolution image, ROI'
-                                    print diffI, diffS
+                                    print('resolution image, ROI')
+                                    print(diffI, diffS)
                                     if np.sign(diffI) != np.sign(diffS): #if different orientation then reverse the contour points
                                         index.reverse()
                                         lista.reverse()
                                     #check for slices withut contour in between other contour slices
                                     diff = abs(np.array(index[1:])-np.array(index[:-1]))/diffS
-                                    print 'difference in z position between slices normalized to slice spacing'''
-                                    print diff
+                                    print('difference in z position between slices normalized to slice spacing''')
+                                    print(diff)
                                     dk = 0
                                     for d in arange(0, len(diff)):
                                         for di in arange(1, int(round(abs(diff[d]),0))): #if no empt slice in between then abs(int(round(diff[d],0))) = 1
@@ -88,8 +88,8 @@ class InterpolateROI(object):
                                     
                                     indB = np.where(np.array(slices) == sliceB)[0][0]
                                     indE = np.where(np.array(slices) == sliceE)[0][0]
-                                    print indE
-                                    print indB
+                                    print(indE)
+                                    print(indB)
                                     if indE!=0:
                                         for m in arange(0, abs(indE-0)):
                                             lista.insert(0,[[],[[],[]]])
@@ -101,8 +101,8 @@ class InterpolateROI(object):
                                     contours.append(lista) #list of contours for all user definded strctures
                                 else: #if only one slice of contour
                                     ind = np.where(np.array(slices) == index[0])[0][0]
-                                    print 'contour only in slice'
-                                    print ind
+                                    print('contour only in slice')
+                                    print(ind)
                                     if ind!=0:
                                         for m in arange(0, abs(ind-0)):
                                             lista.insert(0,[[],[[],[]]])
@@ -114,7 +114,7 @@ class InterpolateROI(object):
                                     contours.append(lista)
                                 break
                             except AttributeError:
-                                print 'no contours for: '+ organs[i]
+                                print('no contours for: '+ organs[i])
 
         #recalculating for pixels the points into pixels
         contours = np.array(contours)
@@ -151,11 +151,11 @@ class InterpolateROI(object):
         y_min = np.min(y_c_min)
         y_max = np.max(y_c_max)+1
         
-        print 'xmin, xmax, ymin, ymax'
-        print x_min
-        print x_max
-        print y_min
-        print y_max
+        print('xmin, xmax, ymin, ymax')
+        print(x_min)
+        print(x_max)
+        print(y_min)
+        print(y_max)
 
         #finding points inside the contour, M - 3D matrix with -1 outside, 0 on the border and 1 inside
         M = self.getPoints(contours[0], x_min, x_max, y_min, y_max, l_IM)

@@ -5,4 +5,4 @@ class MyInfo(Exception):
         self.info = info
         self.box()
     def box(self):
-        wx.MessageBox(self.info, u'Info', wx.OK)
+        wx.MessageBox(self.info, 'Info', wx.OK)

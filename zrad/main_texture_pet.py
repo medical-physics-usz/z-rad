@@ -90,7 +90,7 @@ class main_texture_pet(object):
                         else:
                             weight = np.nan
                         self.logger.info('weight' + str(weight))
-                        print activity/weight
+                        print(activity/weight)
                     except AttributeError:
                         stop_calc = 'attribute to calc SUV missing'
                         activity= np.nan
@@ -164,7 +164,7 @@ class main_texture_pet(object):
                     CT_matrix = np.array(CT_matrix)
                     cropStructure["data"] = [CT_matrix]
                     cropStructure["readCT"] = read_crop_CT
-                if cropStructure["crop"]: print "shape of matrices of PET and CT", IM_matrix.shape, CT_matrix.shape
+                if cropStructure["crop"]: print("shape of matrices of PET and CT", IM_matrix.shape, CT_matrix.shape)
 
             except WindowsError: #error if there is not directory
                 continue

@@ -67,7 +67,7 @@ class ResizeTexture(object):
         error = []
         for name in self.list_dir:
             try:
-                print 'patient ', name
+                print('patient ', name)
                 mypath_file = self.mypath_load +name + '\\' #go to subfolder for given patient
                 mypath_save = self.mypath_s + name+'\\' #create subfolder for given patient
                 try:
@@ -101,7 +101,7 @@ class ResizeTexture(object):
                         onlyfiles[i] = onlyfiles[i][1]
 
                     #data needed to decode images
-                    print onlyfiles[0]
+                    print(onlyfiles[0])
                     CT = dc.read_file(mypath_file+onlyfiles[0]) #example image
                     position = CT.PatientPosition # HFS or FFS
                     xCTspace=float(CT.PixelSpacing[1]) #XY resolution
@@ -137,9 +137,9 @@ class ResizeTexture(object):
                         old_gridY = np.arange(round(yct, 10), round(yct + yCTspace*rows, 10), yCTspace) #original grid of Y
 
 
-                    print "length of rows and columns in dicom", rows, columns
-                    print "shape of old gridX", old_gridX.shape
-                    print "shape of old gridY", old_gridY.shape
+                    print("length of rows and columns in dicom", rows, columns)
+                    print("shape of old gridX", old_gridX.shape)
+                    print("shape of old gridY", old_gridY.shape)
                     if len(old_gridX) > columns: # due to rounding
                         old_gridX = old_gridX[:columns]
                     if len(old_gridY) > rows: # due to rounding
@@ -203,11 +203,11 @@ class ResizeTexture(object):
                     else:
                         new_gridZ = np.arange(slices[0], slices[-1]+sliceThick, self.resolution)
                         old_gridZ = np.arange(slices[0], slices[-1]+sliceThick, sliceThick)
-                    print 'new grid Z ', len(new_gridZ)
-                    print new_gridZ
-                    print 'old grid Z '
-                    print old_gridZ
-                    print "new rows and cols", new_rows, new_columns
+                    print('new grid Z ', len(new_gridZ))
+                    print(new_gridZ)
+                    print('old grid Z ')
+                    print(old_gridZ)
+                    print("new rows and cols", new_rows, new_columns)
                     new_image = np.zeros((len(new_gridZ), new_rows, new_columns)) #matrix with zeros for the new image
                     #interpolate in z direction
                     try:
@@ -221,7 +221,6 @@ class ResizeTexture(object):
                             slices_r.reverse()
                             old_gridZ = np.array(slices_r)
                         else:
-                            print 'tu'
                             old_gridZ = np.array(slices)
                         for x in arange(0, new_columns):
                             for y in arange(0, new_rows):
@@ -230,7 +229,7 @@ class ResizeTexture(object):
                     #check if all dicom tags are valid
                     CT = dc.read_file(mypath_file+onlyfiles[0])
                     invalid_tags = []
-                    key = CT.keys()
+                    key = list(CT.keys())
                     for ki in key:
                         try:
                             CT[ki].VR
@@ -513,10 +512,10 @@ class ResizeTexture(object):
                         else:
                             new_gridZ = np.arange(slices[0], slices[-1]+sliceThick, self.resolution)
                             old_gridZ = np.arange(slices[0], slices[-1]+sliceThick, sliceThick)
-                        print 'new grid Z '
-                        print new_gridZ
-                        print 'old grid Z '
-                        print old_gridZ
+                        print('new grid Z ')
+                        print(new_gridZ)
+                        print('old grid Z ')
+                        print(old_gridZ)
 
                         new_image = np.zeros((len(new_gridZ), new_rows, new_columns))  #matrix with zeros for the new image
                         #interpolate in z direction
@@ -531,7 +530,7 @@ class ResizeTexture(object):
                                 slices_r.reverse()
                                 old_gridZ = np.array(slices_r)
                             else:
-                                print 'tu'
+                                print('tu')
                                 old_gridZ = np.array(slices)
                             for x in arange(0, new_columns):
                                 for y in arange(0, new_rows):
@@ -603,7 +602,7 @@ class ResizeTexture(object):
 
                     structure_nr_to_save = []
                     for s in arange(0, len(change_struct)):
-                        print 'structure: ', change_struct[s]
+                        print('structure: ', change_struct[s])
                         try:
                             #read a contour points for given structure
                             #M - 3D matrix filled with 1 insdie contour and 0 outside
@@ -661,7 +660,7 @@ class ResizeTexture(object):
                                         if rs.ROIContourSequence[k].ReferencedROINumber == list_organs[j][1]:
                                             st_nr = k
                                             break
-                            print 'number: ', st_nr
+                            print('number: ', st_nr)
                             structure_nr_to_save.append(rs.ROIContourSequence[st_nr].ReferencedROINumber)
 
                             rs.StructureSetROISequence[st_nr].ROIName = change_struct[s]
@@ -683,9 +682,9 @@ class ResizeTexture(object):
                             for j in arange(len(contour), len(rs.ROIContourSequence[st_nr].ContourSequence)):
                                 del rs.ROIContourSequence[st_nr].ContourSequence[-1]
 
-                            print 'length of new contour: ', len(contour)
-                            print 'length of new contour sequence: ', len(rs.ROIContourSequence[st_nr].ContourSequence)
-                            print 'the numbers above should be the same'
+                            print('length of new contour: ', len(contour))
+                            print('length of new contour sequence: ', len(rs.ROIContourSequence[st_nr].ContourSequence))
+                            print('the numbers above should be the same')
                         except IndexError:
                             emptyROI.append(name + '    '+ change_struct[s])
                             pass

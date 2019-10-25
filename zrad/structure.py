@@ -151,7 +151,7 @@ class Structures(object):
             self.Xcontour_W = 'one slice'
             self.Ycontour_W = 'one slice'
         else: #continue, recalculate contour points from mm to pixels
-            print self.x_ct, self.xCTspace
+            print(self.x_ct, self.xCTspace)
             for i in arange(0, len(self.contours)): #controus
                 for j in arange(0, len(self.contours[i])): #slice
                     for n in arange(0, len(self.contours[i][j])): #number of contours per slice
@@ -299,7 +299,7 @@ class Structures(object):
                                                 self.contours.append(lista)
                                             break
                                         except AttributeError:
-                                            print 'no contours for: '+ organs[i]
+                                            print('no contours for: '+ organs[i])
                     self.slices_w = self.slices_w[::2] #adjust resoltuion drops down by 2
                     #recalculating for pixels
                     self.cnt=[]

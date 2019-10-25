@@ -1,32 +1,30 @@
-'''read data and save texture parameters in txt file'''
-#import libraries
+"""read data and save texture parameters in txt file"""
+import logging
+from numpy import arange
 import wx
 from wx.adv import AboutBox
 from wx.adv import AboutDialogInfo
-from numpy import arange
+
 import LocalRadiomicsGUI as locRad
-# own classes
-# import class to calculate texture parameters
+from exportExcel import ExportExcel
+from lymph_nodes import LymphNodes
 from main_texture_pet import main_texture_pet
 from main_texture_ct import main_texture_ct
 from main_texture_mr import main_texture_mr
-from panel import MyPanelRadiomics, MyPanelResize
 from main_texture_ctp import main_texture_ctp
 from main_texture_ivim import main_texture_ivim
-from shape import Shape
 from myinfo import MyInfo
-from lymph_nodes import LymphNodes
-import logging
-from exportExcel import ExportExcel
+from panel import MyPanelRadiomics, MyPanelResize
+from shape import Shape
 
 
 class Radiomics(wx.Frame):
-    '''Main GUI class plus method OnCalculate to start radiomics calculation
-        Parent of class Panel'''
+    """Main GUI class plus method OnCalculate to start radiomics calculation
+        Parent of class Panel"""
     def __init__(self, *a, **b):
-        super(Radiomics, self).__init__(size = (1100, 900),title = 'Z-Rad', *a, **b)
-        self.SetMinSize((1000,800))
-        logging.basicConfig(format= '%(name)s - %(levelname)s:   %(message)s', level=logging.INFO)
+        super(Radiomics, self).__init__(size=(1100, 900), title='Z-Rad', *a, **b)
+        self.SetMinSize((1000, 800))
+        logging.basicConfig(format='%(name)s - %(levelname)s:   %(message)s', level=logging.INFO)
         # filename = "zRad.log",
             
         self.logger = logging.getLogger("Main")
@@ -41,23 +39,23 @@ class Radiomics(wx.Frame):
 
         self.panelHeight=18 # height of boxes in GUI, 20 for PC and 40 for lenovo laptop
 
-        self.p = wx.Panel(self, size = (1100,900))
-        self.nb = wx.Notebook(self.p, size = (1100,900))
+        self.p = wx.Panel(self, size=(1100,900))
+        self.nb = wx.Notebook(self.p, size=(1100,900))
 
         self.nb.panelHeight = self.panelHeight
         self.nb.OnCalculate = self.OnCalculate
 
-        self.panel = MyPanelRadiomics(self.nb) # radiomics panel
-        self.panelResize = MyPanelResize(self.nb) # resize panel
+        self.panel = MyPanelRadiomics(self.nb)  # radiomics panel
+        self.panelResize = MyPanelResize(self.nb)  # resize panel
 
         self.nb.AddPage(self.panelResize, "Image and structure resize")
-        self.nb.AddPage(self.panel, "Radiomics", select = True) # select True - first one
+        self.nb.AddPage(self.panel, "Radiomics", select=True) # select True - first one
         
         menubar = wx.MenuBar() # create menu bar
         plikMenu = wx.Menu()
-        no = wx.MenuItem(plikMenu, wx.ID_NEW, '&New\tCtrl+N') # new calcualtion
+        no = wx.MenuItem(plikMenu, wx.ID_NEW, '&New\tCtrl+N') # new calculation
         plikMenu.Append(no)
-        sv = wx.MenuItem(plikMenu, wx.ID_SAVE, '&Save\tCtrl+S') # save settings
+        sv = wx.MenuItem(plikMenu, wx.ID_SAVE, '&Save\tCtrl+S')  # save settings
         plikMenu.Append(sv)
         za = wx.MenuItem(plikMenu, wx.ID_ANY, '&Quit\tCtrl+Q')
         plikMenu.Append(za)
@@ -137,23 +135,10 @@ class Radiomics(wx.Frame):
         else:
             Dim = '3D'
 
-        # wavelet
-        wv = False
-
-        # only for PET
-        # recalculate to SUV?
-        SUV = False
-
-        # only for CTP and CT, remove values outisde 3 sigma
-        outlier_corr = False
-
         if n_pref != '':
             l_ImName = [n_pref + '_' + str(i) for i in arange(start, stop)]  # subfolders that you want to analyze
         else:
             l_ImName = [str(i) for i in arange(start, stop)]  # subfolders that you want to analyze
-
-        # to be adapted
-        exportList = []
 
         # modality
         if self.panel.FindWindowById(120).GetValue():  # CT
@@ -171,7 +156,7 @@ class Radiomics(wx.Frame):
                                  outlier_corr, False)
 
     def OnLocalRadAbout(self, evt):
-        '''info'''
+        """info"""
         description = """"""
 
         licence = """"""
@@ -187,7 +172,7 @@ class Radiomics(wx.Frame):
         AboutBox(info)
 
     def OnCalculate(self, evt):
-        '''initialize radiomics calculaiton'''
+        """initialize radiomics calculaiton"""
 
         path_save, save_as, structure, pixNr, binSize, path_image, n_pref, start, stop = self.panel.read()
         self.logger.info("Start: Calculate Radiomics")
@@ -226,25 +211,18 @@ class Radiomics(wx.Frame):
             wv = True
         else:
             wv = False
-
-        # only for PET
-        # recalculate to SUV?
-        SUV = False
-
-        # only for CTP and CT, remove values outisde 3 sigma
-        outlier_corr = False
         
         if n_pref != '':
-            l_ImName = [n_pref+'_'+str(i) for i in arange(start, stop)] # subfolders that you want to analyze
+            l_ImName = [n_pref+'_'+str(i) for i in arange(start, stop)]  # subfolders that you want to analyze
         else:
-            l_ImName = [str(i) for i in arange(start, stop)] # subfolders that you want to analyze
+            l_ImName = [str(i) for i in arange(start, stop)]  # subfolders that you want to analyze
             
         # to be adapted 
         exportList = []
         cropStructure = {"crop": False, "ct_path": ""}
 
         # modality
-        if self.panel.FindWindowById(120).GetValue(): # CT
+        if self.panel.FindWindowById(120).GetValue():  # CT
             outlier_corr = self.panel.FindWindowById(127).GetValue()
             try:
                 hu_min = int(self.panel.FindWindowById(125).GetValue())
@@ -256,10 +234,9 @@ class Radiomics(wx.Frame):
                 self.panel.FindWindowById(126).SetValue('none')
             main_texture_ct(self.GetStatusBar(),path_image, path_save, structure, pixNr, binSize, l_ImName, save_as, Dim, hu_min, hu_max, outlier_corr,wv, self.local, cropStructure, exportList)
         
-        elif self.panel.FindWindowById(130).GetValue(): # PET
+        elif self.panel.FindWindowById(130).GetValue():  # PET
             SUV = self.panel.FindWindowById(131).GetValue()
-            cropArg = False
-            cropArg = bool(self.panel.FindWindowById(133).GetValue()) # if crop
+            cropArg = bool(self.panel.FindWindowById(133).GetValue())  # if crop
             ct_hu_min = 'none'
             ct_hu_max = 'none'
             ct_path = ""
@@ -272,7 +249,7 @@ class Radiomics(wx.Frame):
                 except ValueError: # the input has t be a number
                     ct_hu_min = 'none'
                     ct_hu_max = 'none'
-                ct_path = self.panel.FindWindowById(137).GetValue() #  CT path
+                ct_path = self.panel.FindWindowById(137).GetValue()  # CT path
                 if ct_path == "":
                     print("Error: No CT Path provided!")
                     raise
@@ -318,14 +295,14 @@ class Radiomics(wx.Frame):
         lr = self.panelResize.save()
         size = self.panel.GetSize()
         self.nb.Destroy()
-        self.nb = wx.Notebook(self.p, size = (1100,900))
+        self.nb = wx.Notebook(self.p, size=(1100, 900))
 
         self.nb.panelHeight = self.panelHeight
         self.nb.OnCalculate = self.OnCalculate
         
-        self.panel = MyPanelRadiomics(self.nb, size = size)
+        self.panel = MyPanelRadiomics(self.nb, size=size)
         self.panel.fill(l)
-        self.panelResize = MyPanelResize(self.nb, size = size)
+        self.panelResize = MyPanelResize(self.nb, size=size)
         self.panelResize.fill(lr)
         self.nb.AddPage(self.panelResize, "Image and structure resize")
         self.nb.AddPage(self.panel, "Radiomics", select = True)
@@ -361,7 +338,7 @@ class Radiomics(wx.Frame):
         config.close()
 
     def OnOProgramie(self, evt):
-        '''info'''
+        """info"""
         description = """"""
 
         licence = """"""
@@ -369,12 +346,13 @@ class Radiomics(wx.Frame):
         info = AboutDialogInfo()
 
         info.SetName('Z-Rad')
-        info.SetVersion('6.2')
+        info.SetVersion('7.0')
         info.SetDescription(description)
-        info.SetCopyright('(C) 2017 Marta Bogowicz')
+        info.SetCopyright('(C) 2017-2019 USZ Radiomics Team')
         info.SetLicence(licence)
 
         AboutBox(info)
+
 
 # run the app
 app = wx.App()

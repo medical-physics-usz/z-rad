@@ -47,9 +47,9 @@ class LymphNodes(object):
         final=[] # list with results
         for ImName in arange(start, stop+1):
             ImName = str(ImName)
-            print 'patient', ImName
+            print('patient', ImName)
             tumorMass, ptVol, ptPoints = self.FindMassCenter(name_sh, path_files_shape, ImName) #calculates the tumor center of the mass
-            print 'PT', ptVol
+            print('PT', ptVol)
             if tumorMass == "": #no such a file or directory
                 final.append((ImName, "", "", "", "", "", "", "", "", ""))
                 continue  
@@ -74,14 +74,14 @@ class LymphNodes(object):
         '''calculates the tumor center of the mass'''
         try:
             files = [f for f in listdir(path_files_shape+name_sh+'\\'+ImName) if isfile(join(path_files_shape+name_sh+'\\'+ImName,f))]
-            print path_files_shape+name_sh+'\\'+ImName
+            print(path_files_shape+name_sh+'\\'+ImName)
 
             #what slices are in the files
             l_slices = []
             for z in files:
                 l_slices.append(int(z[6:])) #files are called slice_X where X is a slice number, so l_slice is a list containing slice numbers.
             width = 1000 # everythng is resized to 1mm so tzpically 700 voxels would be enough
-            print max(l_slices)
+            print(max(l_slices))
             pic3d = np.zeros([max(l_slices)+10,width,width],dtype=np.uint8)
             #fill the 3d-array with ones inside the contour
             for z in range(min(l_slices),max(l_slices)+1):
@@ -108,9 +108,9 @@ class LymphNodes(object):
                     pass
             #calcuate center of the mass 
             ind = list(np.where(pic3d==1)) # voxel size 1mm
-            print ind[0]
-            print ind[1]
-            print ind[2]
+            print(ind[0])
+            print(ind[1])
+            print(ind[2])
             MassCenter = np.array([np.sum(ind[0]), np.sum(ind[1]), np.sum(ind[2])])
             MassCenter = MassCenter / float(len(ind[0]))
             
@@ -248,7 +248,7 @@ class LymphNodes(object):
                     if pj > pi:
                         dist = np.sqrt(float(np.sum((p1-p2)**2)))
                         distMatrix[pi][pj] = dist
-            print distMatrix
+            print(distMatrix)
             
             if len(points)==4:
                 #saving only two the smallest
@@ -271,7 +271,7 @@ class LymphNodes(object):
             meanDist = 0
         
         #save histrogram
-        print 'dist ', distanceDistribution
+        print('dist ', distanceDistribution)
         matplotlib.rcParams.update({'font.size': 12})
         try:
             fig = py.figure(200, figsize = (15,15))

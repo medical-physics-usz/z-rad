@@ -2,8 +2,8 @@ import numpy as np
 from ast import literal_eval
 import matplotlib
 import matplotlib.pyplot as plt
-import Tkinter as tk
-from Tkinter import LEFT, RIGHT, CENTER, BOTTOM, TOP
+import tkinter as tk
+from tkinter import LEFT, RIGHT, CENTER, BOTTOM, TOP
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from LocRadTexture import Texture
 from Optimizer import NanOptimizer
@@ -113,9 +113,9 @@ class Content(tk.Frame):
         self.nan_sum_value = self.optimizer.get_nan_sum(self.grid_position)
         self.grid_position = np.asarray(copy.deepcopy(NanOptimizer.dic_grid_full[literal_eval(val.split('|')[0])]))
         coverage_total = self.optimizer.calculate_tumor_coverage_total(self.grid_position)
-        print "-----------------------------------RATIO--------------------------------------------"
-        print coverage_total / self.nan_sum_value
-        print "------------------------------------------------------------------------------------"
+        print("-----------------------------------RATIO--------------------------------------------")
+        print(coverage_total / self.nan_sum_value)
+        print("------------------------------------------------------------------------------------")
         self.slice_coverage_total.set("Total tumor coverage: %.2f %%" % coverage_total)
 
         self.cnv3.draw()
@@ -149,7 +149,7 @@ class Content(tk.Frame):
                 max_limit = np.max(pd_roi[ind])
                 self.image_right.set_clim(vmin=min_limit, vmax=max_limit)
                 if True in ind_rec:
-                    print "RECURRENCE"
+                    print("RECURRENCE")
                     self.fig2.hold()
                     self.image_rec.set_data(pd_roi_rec)
                     min_limit = np.min(pd_roi_rec[ind_rec])
@@ -170,7 +170,7 @@ class Content(tk.Frame):
             roi_slice = int(val)-self.roi_offset
             grid_points = self.grid_position[np.where(self.grid_position[:,0] == roi_slice)]
             self.current_slice.set("Current ROI- slice = " + str(roi_slice))
-            print grid_points
+            print(grid_points)
             temp = copy.deepcopy(pd_roi)
             rec_temp = np.zeros(shape=(self.base_shape[0], self.base_shape[1]))
             rec_temp.fill(np.nan)
@@ -231,10 +231,10 @@ class Content(tk.Frame):
             ind += 1
 
         self.base_shape = shape
-        print "SHAPE PTV:"
-        print shape
-        print "_----------------------------------------------------------------------------------------_"
-        print "ROI OFFSET: " + str(self.roi_offset)
+        print("SHAPE PTV:")
+        print(shape)
+        print("_----------------------------------------------------------------------------------------_")
+        print("ROI OFFSET: " + str(self.roi_offset))
         self.nof_roi_slices.set("Number of roi-slices: " + str(slices))
 
         for pxd in self.textures[1].slice_data:#Texture.slices:
@@ -245,8 +245,8 @@ class Content(tk.Frame):
                     self.roi_offset_rec = ind_rec
             ind_rec += 1
 
-        print len(self.pixel_data_roi)
-        print len(self.pixel_data_roi_rec)
+        print(len(self.pixel_data_roi))
+        print(len(self.pixel_data_roi_rec))
 
         self.ax1 = self.fig.add_subplot(111)
         self.image_left = self.ax1.imshow(self.pixel_data[0], cmap='gray')
@@ -279,7 +279,7 @@ class Content(tk.Frame):
 
         for roidat in self.pixel_data_roi:
             if len(roidat):
-                print roidat[0]
+                print(roidat[0])
                 temp[slice] = roidat[0]
                 slice += 1
 
@@ -289,7 +289,7 @@ class Content(tk.Frame):
 
         for roidat in self.pixel_data_roi_rec:
             if len(roidat):
-                print roidat[0]
+                print(roidat[0])
                 temp_rec[slice] = roidat[0]
                 slice += 1
 
@@ -302,8 +302,8 @@ class Content(tk.Frame):
             comboChoices = []
 
             for i in range(len(NanOptimizer.nan_sums)):
-                key = NanOptimizer.nan_sums.keys()[i]
-                value = NanOptimizer.nan_sums.values()[i]
+                key = list(NanOptimizer.nan_sums.keys())[i]
+                value = list(NanOptimizer.nan_sums.values())[i]
                 cov = np.round(NanOptimizer.dic_tot_tumcov[key])
                 comboChoices.append(str(key) + "|" + str(value) + "|" + str(cov))
 
@@ -355,9 +355,9 @@ class Content(tk.Frame):
             self.nan_sum_value = self.optimizer.get_nan_sum(self.grid_position)
             self.grid_position = np.asarray(NanOptimizer.dic_grid_full)
             coverage_total = self.optimizer.calculate_tumor_coverage_total(self.grid_position)
-            print "-----------------------------------RATIO--------------------------------------------"
-            print coverage_total / self.nan_sum_value
-            print "------------------------------------------------------------------------------------"
+            print("-----------------------------------RATIO--------------------------------------------")
+            print(coverage_total / self.nan_sum_value)
+            print("------------------------------------------------------------------------------------")
             self.slice_coverage_total.set("Total tumor coverage: %.2f %%" % coverage_total)
 
     def create_controls(self):
@@ -411,7 +411,7 @@ class Content(tk.Frame):
 
 
     def SetConfigData(self, cfg):
-        print cfg
+        print(cfg)
         self.default_folder = str(cfg[0][0])
         self.ROIs = str(cfg[0][1])
         self.HUmin = str(cfg[0][2])
@@ -424,12 +424,12 @@ class Content(tk.Frame):
 def CreateGUI(path_image, path_save, structure, pixNr, binSize, l_ImName, HUmin, HUmax, outlier_corr,wv):
     textures = []
     for struct in structure:
-        print "struct: " + struct
+        print("struct: " + struct)
         temp=[]
         temp.append(struct)
         textures.append(Texture(path_image, path_save, temp, pixNr, binSize, l_ImName, HUmin, HUmax, outlier_corr, wv))
     # Texture(path_image, path_save, structure, pixNr, binSize, l_ImName, HUmin, HUmax, outlier_corr, wv)
-    print len(textures)
+    print(len(textures))
     config_data=[]
     config_data.append(path_image)
     config_data.append(structure)
@@ -446,5 +446,5 @@ def main(*args):
     app.mainloop()
 
 if __name__ == "__main__":
-    print "Please start main_texture.py first"
+    print("Please start main_texture.py first")
     pass

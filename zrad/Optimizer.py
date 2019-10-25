@@ -26,7 +26,7 @@ class NanOptimizer:
     def __init__(self, image_matrix=[], VOI_matrix=[], REC_matrix=[], VOI_path='', max_tumor_coverage=0, dynamic_grid=0):
         self.max_tumor_coverage = max_tumor_coverage
         self.dynamic_grid = dynamic_grid
-        print self.max_tumor_coverage
+        print(self.max_tumor_coverage)
         if len(image_matrix):
             NanOptimizer.raw_img = copy.deepcopy(image_matrix)
             NanOptimizer.raw_shape = NanOptimizer.raw_img.shape
@@ -35,17 +35,17 @@ class NanOptimizer:
             NanOptimizer.raw_shape = NanOptimizer.raw_voi_data.shape
             print("RAW IMAGE MATRIX")
             for slice in VOI_matrix:
-                print slice
+                print(slice)
                 nof_tt = len(np.argwhere(~np.isnan(slice)))
                 NanOptimizer.slc_nof_tt.append(nof_tt)
-                print nof_tt
+                print(nof_tt)
             print("END")
-            print NanOptimizer.slc_nof_tt
+            print(NanOptimizer.slc_nof_tt)
         if len(REC_matrix):
             NanOptimizer.raw_rec_data = copy.deepcopy(REC_matrix)
             print("RAW RECURRENCE MATRIX")
             for slice in REC_matrix:
-                print slice
+                print(slice)
             print("END")
         if len(VOI_path):
             self.read_VOI_file(VOI_path)
@@ -75,7 +75,7 @@ class NanOptimizer:
 
         NanOptimizer.voi_raw_data.append(copy.deepcopy(NanOptimizer.raw_img))
 
-        print np.asarray(NanOptimizer.voi_raw_data)
+        print(np.asarray(NanOptimizer.voi_raw_data))
 
     # Get the raw image via file
     def read_file(self, file_path):
@@ -106,7 +106,7 @@ class NanOptimizer:
             self.plot()
             self.get_nan_img_2D()
             optimal_index = self.gridding_2D()
-            print optimal_index
+            print(optimal_index)
         else:
             self.get_img_indices_3D()
             #self.plot()
@@ -115,14 +115,14 @@ class NanOptimizer:
                 self.gridding_3D_dynamic()
             else:
                 optimal_index = self.gridding_3D_static()
-                print optimal_index
+                print(optimal_index)
 
     def plot(self, img=[]):
         # Plotting
         if not len(img):
             img = NanOptimizer.raw_img
         plt.subplot(111)
-        print img
+        print(img)
         plt.imshow(img, cmap='gray')
         plt.show()
 
@@ -158,17 +158,17 @@ class NanOptimizer:
         else:
             and_op = image_masks[0]*image_masks[1]*image_masks[2]
 
-        print and_op
+        print(and_op)
 
     def get_img_indices_2D(self):
         NanOptimizer.img_indices = np.argwhere(~np.isnan(NanOptimizer.raw_img))
 
     def get_img_indices_3D(self):
         NanOptimizer.img_indices = np.argwhere(~np.isnan(NanOptimizer.raw_voi_data))
-        print "NANOPT IMG_INDICES"
+        print("NANOPT IMG_INDICES")
         for arr in NanOptimizer.img_indices:
-            print arr
-        print "END"
+            print(arr)
+        print("END")
 
     def get_nan_img_2D(self):
         """
@@ -216,7 +216,7 @@ class NanOptimizer:
         NanOptimizer.nan_img = nh_nan_img[np.argwhere(~np.isnan(nh_nan_img))[:, 0],
                                   np.argwhere(~np.isnan(nh_nan_img))[:,1]].reshape(len(NanOptimizer.raw_img[:, 0]),
                                                                                    len(NanOptimizer.raw_img[0]))
-        print NanOptimizer.nan_img
+        print(NanOptimizer.nan_img)
 
     def get_nan_img_3D(self):
         """
@@ -251,8 +251,8 @@ class NanOptimizer:
                     temp[z + 1, y + 1, x + 1] = NanOptimizer.raw_voi_data[z, y, x]
                     img_indices.append([z + 1, x + 1, y + 1])
 
-        print "IMG INDICES"
-        print img_indices
+        print("IMG INDICES")
+        print(img_indices)
         # Calculate the number of NANs in the neighborhood for the original pixels of the raw image
         for z, x, y in img_indices:
             sub_voxel = temp[z - 1: z + 2, y - 1: y + 2, x - 1: x + 2]
@@ -263,26 +263,26 @@ class NanOptimizer:
             nh_tt_img[z, y, x] = 27 - number_of_nans
             nh_tt_img_2D[z, y, x] = 9 - len(np.argwhere(np.isnan(sub_area)))
 
-        print "------------------------------- DIMENSIONS ---------------------------------------------"
-        print nh_nan_img.shape
+        print("------------------------------- DIMENSIONS ---------------------------------------------")
+        print(nh_nan_img.shape)
         NanOptimizer.nan_img = nh_nan_img[1:z_dim+1, 1:y_dim+1, 1:x_dim+1]
         NanOptimizer.tt_img = nh_tt_img[1:z_dim+1, 1:y_dim+1, 1:x_dim+1]
         NanOptimizer.tt_img_2D = nh_tt_img_2D[1:z_dim+1, 1:y_dim+1, 1:x_dim+1]
-        print NanOptimizer.nan_img.shape
-        print NanOptimizer.raw_shape
-        print "-----------------------------------------END---------------------------------------------"
+        print(NanOptimizer.nan_img.shape)
+        print(NanOptimizer.raw_shape)
+        print("-----------------------------------------END---------------------------------------------")
         # for sl in NanOptimizer.nan_img[:]:
         #     print sl
 
         print ("TUMOR TISSUE 3D")
         for sl in NanOptimizer.tt_img[:]:
-            print sl
-        print "END TT"
+            print(sl)
+        print("END TT")
 
         print ("TUMOR TISSUE 2D")
         for sl in NanOptimizer.tt_img_2D[:]:
-            print sl
-        print "END TT"
+            print(sl)
+        print("END TT")
 
 
     def gridding_3D_static(self):
@@ -313,10 +313,10 @@ class NanOptimizer:
                     tt_sum = 0
                     lst_grid = []
                     # print ("Start: " + str(Optimize2D.nan_img[x, y]))
-                    print "START"
-                    print np.arange(z, z_dim, 3)
-                    print np.arange(y, y_dim, 3)
-                    print np.arange(x, x_dim, 3)
+                    print("START")
+                    print(np.arange(z, z_dim, 3))
+                    print(np.arange(y, y_dim, 3))
+                    print(np.arange(x, x_dim, 3))
                     for slc in np.arange(z, z_dim, 3):
                         for col in np.arange(x, x_dim, 3):
                             for row in np.arange(y, y_dim, 3):
@@ -330,27 +330,27 @@ class NanOptimizer:
                     NanOptimizer.dic_grid[(z, x, y)] = copy.deepcopy(lst_grid)
                     NanOptimizer.nan_sums[(z, x, y)] = nan_sum
                     percentage += (100/24)
-                    print str(percentage) + "%"
+                    print(str(percentage) + "%")
 
         # plt.show()
-        print "NAN_SUMS"
-        print NanOptimizer.nan_sums
-        print len(NanOptimizer.nan_sums)
+        print("NAN_SUMS")
+        print(NanOptimizer.nan_sums)
+        print(len(NanOptimizer.nan_sums))
         return_value = 0
 
         min_val = min(NanOptimizer.nan_sums.values())
-        print "MINVAL"
-        print min_val
-        for key, val in NanOptimizer.nan_sums.iteritems():
+        print("MINVAL")
+        print(min_val)
+        for key, val in NanOptimizer.nan_sums.items():
             if val == min_val:
                 return_value = key
 
         # Optimal start pixel returned
         x, y, z = return_value
 
-        print "DIC GRID"
-        print NanOptimizer.dic_grid[return_value]
-        print return_value
+        print("DIC GRID")
+        print(NanOptimizer.dic_grid[return_value])
+        print(return_value)
 
         # fig = plt.figure()
         # ax = Axes3D(fig)
@@ -424,16 +424,16 @@ class NanOptimizer:
                             NanOptimizer.tt_sums[(slc, x, y)] = tt_sum
 
                 if len(NanOptimizer.nan_sums):
-                    print NanOptimizer.dic_grid
-                    print NanOptimizer.nan_sums
-                    print NanOptimizer.tt_sums
+                    print(NanOptimizer.dic_grid)
+                    print(NanOptimizer.nan_sums)
+                    print(NanOptimizer.tt_sums)
 
                     if self.max_tumor_coverage == 0:
                         # Find lowest number of NANs in this slice
                         opt_val = min(NanOptimizer.nan_sums.values())
-                        print "MINVAL"
-                        print opt_val
-                        for key, val in NanOptimizer.nan_sums.iteritems():
+                        print("MINVAL")
+                        print(opt_val)
+                        for key, val in NanOptimizer.nan_sums.items():
                             if val == opt_val:
                                 dic_opt[z].append(NanOptimizer.dic_grid[key])
                                 # print "Slice min: "
@@ -442,9 +442,9 @@ class NanOptimizer:
                                 break
                     else:
                         opt_val = max(NanOptimizer.tt_sums.values())
-                        print "MAXVAL"
-                        print opt_val
-                        for key, val in NanOptimizer.tt_sums.iteritems():
+                        print("MAXVAL")
+                        print(opt_val)
+                        for key, val in NanOptimizer.tt_sums.items():
                             if val == opt_val:
                                 dic_opt[z].append(NanOptimizer.dic_grid[key])
                                 # print "Slice min: "
@@ -458,31 +458,31 @@ class NanOptimizer:
                     dic_slc_sum[z] += opt_val
 
             percentage += (100 / 3)
-            print str(percentage) + "%"
+            print(str(percentage) + "%")
 
-        print "OPT DIC"
-        print dic_opt
-        print "DIC_SLC_SUM"
-        print dic_slc_sum
+        print("OPT DIC")
+        print(dic_opt)
+        print("DIC_SLC_SUM")
+        print(dic_slc_sum)
 
-        print "ARR"
+        print("ARR")
         NanOptimizer.dic_grid = []
         if self.max_tumor_coverage == 0:
             # Find lowest number of NANs
-            print min(dic_slc_sum, key=dic_slc_sum.get)
+            print(min(dic_slc_sum, key=dic_slc_sum.get))
             for slc in dic_opt[min(dic_slc_sum, key=dic_slc_sum.get)]:
                 for arr in slc:
-                    print arr
+                    print(arr)
                     NanOptimizer.dic_grid.append(arr)
         else:
-            print max(dic_slc_sum, key=dic_slc_sum.get)
+            print(max(dic_slc_sum, key=dic_slc_sum.get))
             for slc in dic_opt[max(dic_slc_sum, key=dic_slc_sum.get)]:
                 for arr in slc:
-                    print arr
+                    print(arr)
                     NanOptimizer.dic_grid.append(arr)
 
 
-        print NanOptimizer.dic_grid
+        print(NanOptimizer.dic_grid)
         self.create_full_grid(dynamic=True)
         self.get_grid_points_recurrence(dynamic=True)
         # NanOptimizer.dic_grid = dic_opt[min(dic_slc_nan)]
@@ -517,7 +517,7 @@ class NanOptimizer:
                 #print ("Start: " + str(Optimize2D.nan_img[x, y]))
                 for col in np.arange(y, len(NanOptimizer.raw_img[0]), 3):
                     for row in np.arange(x, len(NanOptimizer.raw_img[:, 0]), 3):
-                        for arr in NanOptimizer.img_indices[range(len(NanOptimizer.img_indices))]:
+                        for arr in NanOptimizer.img_indices[list(range(len(NanOptimizer.img_indices)))]:
                             el = np.asarray([row, col])
                             if (el == arr).all():
                                 #print Optimize2D.nan_img[row, col]
@@ -536,15 +536,15 @@ class NanOptimizer:
                 plt.imshow(temp_arr[offset-1], cmap='gray')
                 plt.title("# of NANs: " + str(nan_sum))
 
-                print str(percentage) + "%"
+                print(str(percentage) + "%")
         plt.show()
-        print NanOptimizer.nan_sums
+        print(NanOptimizer.nan_sums)
 
         return_value = 0
 
         # Find lowest number of NANs
         min_val = min(NanOptimizer.nan_sums.values())
-        for key, val in NanOptimizer.nan_sums.iteritems():
+        for key, val in NanOptimizer.nan_sums.items():
             if val == min_val:
                 return_value = key
 
@@ -569,27 +569,27 @@ class NanOptimizer:
         #
         # self.plot(img = temp)
 
-        print NanOptimizer.dic_grid[return_value]
+        print(NanOptimizer.dic_grid[return_value])
         return return_value
 
     def calculate_tumor_coverage_slc(self, grid_points):
-        print "CALC TUMOR COVERAGE PER SLICE"
+        print("CALC TUMOR COVERAGE PER SLICE")
         tt_sum = 0
         tt_total = NanOptimizer.slc_nof_tt[grid_points[0][0]]
-        print "TOTAL:"
-        print tt_total
+        print("TOTAL:")
+        print(tt_total)
 
         for gp in grid_points:
             tt_sum += NanOptimizer.tt_img_2D[gp[0]][gp[1], gp[2]]
 
         coverage = (tt_sum/tt_total)*100
 
-        print "COV = %.2f %%" % coverage
-        print "END"
+        print("COV = %.2f %%" % coverage)
+        print("END")
         return coverage
 
     def calculate_tumor_coverage_total(self, grid_points):
-        print "CALC TUMOR COVERAGE TOTAL"
+        print("CALC TUMOR COVERAGE TOTAL")
         cov_percentage_slices = []
 
         slices = np.unique(grid_points[:,0])
@@ -611,25 +611,25 @@ class NanOptimizer:
 
             cov_percentage_slices.append(cov_percentage)
 
-        print "Coverage per slice percentages:"
-        print cov_percentage_slices
+        print("Coverage per slice percentages:")
+        print(cov_percentage_slices)
 
-        print len(slices)
+        print(len(slices))
         cov_percentage = sum(cov_percentage_slices) / len(slices)
 
-        print "TOTAL TUMOR COVERAGE = %.2f %%" % cov_percentage
-        print "END"
+        print("TOTAL TUMOR COVERAGE = %.2f %%" % cov_percentage)
+        print("END")
         return cov_percentage
 
     def get_nan_sum(self, grid_points):
-        print "CALC NAN_SUM"
+        print("CALC NAN_SUM")
         nan_sum_value = 0
 
         for gp in grid_points:
             nan_sum_value += NanOptimizer.nan_img[gp[0]][gp[1], gp[2]]
 
-        print nan_sum_value
-        print "END"
+        print(nan_sum_value)
+        print("END")
 
         return nan_sum_value
 
@@ -650,7 +650,7 @@ class NanOptimizer:
             NanOptimizer.dic_grid_full = copy.deepcopy(temp)
             NanOptimizer.dic_tot_tumcov["1"] = self.calculate_tumor_coverage_total(np.asarray(temp))
         else:
-            for key in NanOptimizer.dic_grid.keys():
+            for key in list(NanOptimizer.dic_grid.keys()):
                 temp = []
                 grid_positions = NanOptimizer.dic_grid[key]
                 for i in np.arange(0, len(grid_positions)):
@@ -666,13 +666,13 @@ class NanOptimizer:
                 NanOptimizer.dic_grid_full[key] = copy.deepcopy(temp)
                 NanOptimizer.dic_tot_tumcov[key] = self.calculate_tumor_coverage_total(np.asarray(temp))
 
-        print NanOptimizer.dic_tot_tumcov
+        print(NanOptimizer.dic_tot_tumcov)
 
 
     def get_grid_points_recurrence(self, dynamic=False):
 
         if dynamic == True:
-            print "----------------------------- RECURRENCE COORDS ------------------------------------------"
+            print("----------------------------- RECURRENCE COORDS ------------------------------------------")
             grid_positions = NanOptimizer.dic_grid_full
             temp = []
             for gp in grid_positions:
@@ -680,8 +680,8 @@ class NanOptimizer:
                     temp.append(gp)
             NanOptimizer.rec_grid = copy.deepcopy(temp)
         else:
-            print "----------------------------- RECURRENCE COORDS ------------------------------------------"
-            for key in NanOptimizer.dic_grid_full.keys():
+            print("----------------------------- RECURRENCE COORDS ------------------------------------------")
+            for key in list(NanOptimizer.dic_grid_full.keys()):
                 grid_positions = NanOptimizer.dic_grid_full[key]
                 temp = []
                 for gp in grid_positions:
@@ -689,7 +689,7 @@ class NanOptimizer:
                         temp.append(gp)
                 NanOptimizer.rec_grid[key] = copy.deepcopy(temp)
 
-        print "END"
-        print NanOptimizer.rec_grid
+        print("END")
+        print(NanOptimizer.rec_grid)
 
 

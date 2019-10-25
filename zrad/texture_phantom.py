@@ -2,14 +2,10 @@
 '''calculated the co matirxin 3D in all possible directions and average the results'''
 import numpy as np
 from numpy import arange,floor
-#import matplotlib
 import pylab as py
 import dicom as dc
 import matplotlib
-#from scipy.fftpack import fft2, fftn, fftfreq
-#from mpl_toolkits.mplot3d import Axes3D
 import scipy.optimize as optimization
-#import scipy.stats as st
 import cv2
 from os import makedirs, tmpnam
 from os.path import isdir
@@ -18,10 +14,6 @@ from datetime import datetime
 from texture_wavelet3D import Wavelet
 from texture_wavelet3D_ctp import WaveletCTP
 from structure import Structures
-##from texture_rs import Read_rs
-
-##from margin4 import Margin
-##from edge import Edge
 
 class Texture(object):
     def __init__(self, sb, IM,structure, x_ct,y_ct, columns, rows, xCTspace, patientPos, rs, slices, voxel_size, path, ImName, pixNr, binSize, prefix, wv, *cont):#Xc, **Yc, **XcW, **YcW ):
@@ -198,7 +190,7 @@ class Texture(object):
         self.points = []
         self.frac_dim = []
         self.cms = []
-        print pixNr
+        print(pixNr)
         try:
             self.bits = int(pixNr)
         except ValueError:
@@ -375,11 +367,11 @@ class Texture(object):
                                 correlation = np.mean(correlation_t)
                                 homogenity = np.mean(homogenity_t)
                                 homogenity_n = np.mean(homogenity_n_t)
-                                print homogenity_n_t
-                                print 'nhomo', homogenity_n
+                                print(homogenity_n_t)
+                                print('nhomo', homogenity_n)
                                 idiff = np.mean(idiff_t)
                                 idiff_n = np.mean(idiff_n_t)
-                                print 'idiff', idiff, idiff_n
+                                print('idiff', idiff, idiff_n)
                                 variance = np.mean(variance_t)
                                 sum_average = np.mean(average_t)
                                 sum_entropy = np.mean(sum_entropy_t)
@@ -449,7 +441,7 @@ class Texture(object):
                                 busyness = self.fun_busyness(neighMatrix, neighMatrixNorm, matrix)
                                 complexity = self.fun_complexity(neighMatrix, neighMatrixNorm, matrix)
                                 strength = self.fun_strength(neighMatrix, neighMatrixNorm, matrix)
-                                print 'neigh ', coarseness, neighContrast, busyness, complexity, strength
+                                print('neigh ', coarseness, neighContrast, busyness, complexity, strength)
                                 del neighMatrix
                                 del neighMatrixNorm
                                 try:
@@ -567,17 +559,17 @@ class Texture(object):
                                 self.lsv.append(round(lsv, 3))
                                 self.size_entropy.append(round(size_entropy, 3))
                                 del GLSZM
-                                print intensity 
-                                print 'size', size
-                                print sse
-                                print lse
-                                print lgse
-                                print hgse 
-                                print sslge
-                                print sshge 
-                                print lslge
-                                print lshge 
-                                print rpc
+                                print(intensity) 
+                                print('size', size)
+                                print(sse)
+                                print(lse)
+                                print(lgse)
+                                print(hgse) 
+                                print(sslge)
+                                print(sshge) 
+                                print(lslge)
+                                print(lshge) 
+                                print(rpc)
                                 #GLDZM
                                 intensity, intensity_n = self.intensityVariability(GLDZM, norm_GLDZM)
                                 self.GLDZM_intensity.append(intensity)
@@ -602,7 +594,7 @@ class Texture(object):
                                 NGLDM, norm_NGLDM = self.NGLDM(matrix)
                                 intensity, intensity_n = self.intensityVariability(NGLDM, norm_NGLDM)
                                 self.NGLDM_intensity.append(intensity)
-                                print 'NGLDM ', intensity
+                                print('NGLDM ', intensity)
                                 self.NGLDM_intensity_n.append(intensity_n)
                                 size, size_n = self.sizeVariability(NGLDM, norm_NGLDM)
                                 self.NGLDM_size.append(size)
@@ -697,11 +689,11 @@ class Texture(object):
                                 del matrix
                             
                         except NameError:
-                            print ValueError
+                            print(ValueError)
                             self.stop_calculation('ValueError', [1])
         except NameError:
             matrix = []
-            print IndexError
+            print(IndexError)
             self.stop_calculation('IndexError', rs_type)
 
     def stop_calculation(self, info, rs_type):
@@ -936,7 +928,7 @@ class Texture(object):
             ind = np.where(np.isnan(np.array(v)))[0]
             for j in arange(1, len(ind)+1):
                 v.pop(ind[-j])
-            print v
+            print(v)
             if self.HUmin != 'none' and rs_type == 1:
                 ind = np.where(np.array(v)<self.HUmin)[0]
                 for j in arange(1, len(ind)+1):
@@ -963,9 +955,9 @@ class Texture(object):
         matrix_true = []
 
         if structure != 'none':
-            print 'Vmin, vmax'
-            print vmin
-            print vmax
+            print('Vmin, vmax')
+            print(vmin)
+            print(vmax)
             for n in arange(0, len(Xcontour)):
                 matrix.append(m.copy())
                 matrix_true.append(m.copy())
@@ -976,7 +968,7 @@ class Texture(object):
             else:
                 interval = (vmax-vmin)/(self.bits-1) #matrix with self.bits channels
                 self.n_bits = self.bits
-            print self.n_bits
+            print(self.n_bits)
             del lymin 
             del lymax 
             del lxmin 
@@ -991,8 +983,8 @@ class Texture(object):
                             pass
                     norm_points.append(len(v)) #how many points are used for calculation
         else:
-            print imap
-            print vmin, vmax
+            print(imap)
+            print(vmin, vmax)
             for n in arange(0, len(imap)):
                 matrix.append(m.copy())
                 matrix_true.append(m.copy())
@@ -1003,7 +995,7 @@ class Texture(object):
             else:
                 interval = (vmax-vmin)/(self.bits-1) #matrix with self.bits channels
                 self.n_bits = self.bits
-            print interval
+            print(interval)
             del lymin 
             del lymax 
             del lxmin 
@@ -1025,10 +1017,10 @@ class Texture(object):
         if self.HUmin != 'none' and rs_type == 1:
             ind_min = np.where(matrix_true<self.HUmin)
             ind_max = np.where(matrix_true>self.HUmax)
-            print matrix_true.dtype
-            print matrix.dtype
-            print ind_min
-            print ind_max
+            print(matrix_true.dtype)
+            print(matrix.dtype)
+            print(ind_min)
+            print(ind_max)
             matrix_true[ind_min] = np.nan
             matrix_true[ind_max] = np.nan
             matrix[ind_min] = np.nan
@@ -1040,7 +1032,7 @@ class Texture(object):
 
     def fun_histogram(self, M, name, ImName, pixNr, path, w):
         ''' calcuate and plot the histogram'''
-        print M
+        print(M)
         M1=[]
         for m in M:
             for i in arange(0, len(m)):
@@ -1049,7 +1041,7 @@ class Texture(object):
                         pass
                     else:
                         M1.append(m[i][j])
-        print M1
+        print(M1)
         matplotlib.rcParams.update({'font.size': 24})
 
         fig = py.figure(300, figsize = (20,20))
@@ -1273,7 +1265,7 @@ class Texture(object):
         homo = 0
         nhomo = 0
         ind = np.where(coM!=0)
-        print 'len', len(coM)
+        print('len', len(coM))
         for j in arange(0, len(ind[0])):
            homo += coM[ind[0][j]][ind[1][j]]/(1+(ind[0][j]-ind[1][j])**2)
            nhomo += coM[ind[0][j]][ind[1][j]]/(1+((ind[0][j]-ind[1][j])/float(len(coM)))**2)
@@ -1483,8 +1475,8 @@ class Texture(object):
         ind = np.where(np.array(Ni)!=0)[0]
         for i in ind:
             f+=s[i]*Ni[i]/np.sum(Ni)
-        f = 1./(0.000000001+f)
-        if f==0:
+        f = 1./(0.000000001+f) 
+        if f==0: 
             f=np.nan
         return f
     def fun_busyness(self, s, Ni, matrix):
@@ -1496,7 +1488,7 @@ class Texture(object):
                 nom += s[i]*Ni[i]/np.sum(Ni)
                 for j in ind:
                     denom += abs(float((i+1)*Ni[i])/(np.sum(Ni)) - float((j+1)*Ni[j])/(np.sum(Ni))) #to adapt i = [1:Ng]
-            if nom/denom ==0:
+            if nom/denom == 0:
                 return np.nan
             else:
                 return nom/denom #no 2 to adapt for the oncoray
@@ -1886,7 +1878,7 @@ class Texture(object):
             for m in arange(0, len(GLSZM)):
                 s+=GLSZM[m][n]
             var+=s**2
-        print float(var)/norm
+        print(float(var)/norm)
         return float(var)/norm, float(var)/norm**2
     
     def intensityVariability(self, GLSZM, norm): #3.4.9 and #3.4.10
@@ -2066,7 +2058,7 @@ class Texture(object):
                 return x*a+b
 
             maxR = np.min([len(m),len(m[0]),len(m[0][0])])
-            print len(m),len(m[0]),len(m[0][0])
+            print(len(m),len(m[0]),len(m[0][0]))
             frac = []
             for r in arange(2, maxR+1): #because log(1) = 0
                 N=0
@@ -2091,7 +2083,7 @@ class Texture(object):
             py.xlabel('ln(r)')
             py.ylabel('ln(N(r))')
             py.legend()
-            print path+'fractals\\'+ImName+'.png'
+            print(path+'fractals\\'+ImName+'.png')
             try:
                 makedirs(path+'fractals\\')
             except OSError:
@@ -2108,7 +2100,7 @@ class Texture(object):
         #calculated on original gray values
         ind = np.where(~np.isnan(matrix))
         ind_r = list(ind)
-        print ind
+        print(ind)
         ind_r[0] = ind_r[0]*voxel_size
         ind_r[1] = ind_r[1]*voxel_size
         ind_r[2] = ind_r[2]*voxel_size

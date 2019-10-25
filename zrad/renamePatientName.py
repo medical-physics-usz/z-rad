@@ -9,7 +9,7 @@ from DicomReader import dcmReader
 from glob import glob
 
 def renamePatientName(dirDicom, newName):
-    print dirDicom + r"\\*dcm"
+    print(dirDicom + r"\\*dcm")
     files = glob(dirDicom + r"\\*dcm")
     
     for iFile in files:

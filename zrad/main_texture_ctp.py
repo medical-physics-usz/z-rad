@@ -42,7 +42,7 @@ class main_texture_ctp(object):
         image_modality = ['BV', 'MTT', 'BF']
         dicomProblem = []
         for ImName in l_ImName:
-            print 'patient', ImName
+            print('patient', ImName)
             try:
                 sb.SetStatusText('Load '+ImName)
                 

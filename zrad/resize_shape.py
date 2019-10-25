@@ -76,7 +76,7 @@ class ResizeShape(object):
         
         for name in self.lista_dir: #iterate through the patients
             try:                   
-                print 'patient ', name
+                print('patient ', name)
                 mypath_file =self.mypath_load +name + '\\' #go to subfolder for given patient
                 mypath_save = self.mypath_s 
     
@@ -96,10 +96,11 @@ class ResizeShape(object):
                     onlyfiles[i] = onlyfiles[i][1]
     
                 CT = dc.read_file(mypath_file+onlyfiles[0]) #example image
-                xCTspace=float(CT.PixelSpacing[1]) #XY resolution
-                yCTspace=float(CT.PixelSpacing[0]) #XY resolution
-                xct = float(CT.ImagePositionPatient[0]) #x position of top left corner
-                yct = float(CT.ImagePositionPatient[1]) #y position of top left corner
+                # position in DICOM: pixel spacing = y,x,z in image position patient x,y,z
+                xCTspace=float(CT.PixelSpacing[1]) # XY resolution
+                yCTspace=float(CT.PixelSpacing[0]) # XY resolution
+                xct = float(CT.ImagePositionPatient[0]) # x position of top left corner
+                yct = float(CT.ImagePositionPatient[1]) # y position of top left corner
                 if self.cropStructure["ct_path"] != "":
                     CTfiles = glob(self.cropStructure["ct_path"] + "\\" + name + "\\*dcm")
                     cropCT = dc.read_file(CTfiles[0]) # take one ct slices to extract image origin
@@ -109,7 +110,7 @@ class ResizeShape(object):
                     yct =  float(cropCT.ImagePositionPatient[1]) #y position of top left corner
                 #define z interpolation grid
                 sliceThick = round(abs(slices[0]-slices[1]),self.round_factor)
-                #check slice sorting,for the interpolation funtcion one need increaing slice position
+                #check slice sorting,for the interpolation funtcion one need increasing slice position
                 if slices[1]-slices[0] < 0:
                     new_gridZ = np.arange(slices[-1], slices[0]+sliceThick, self.resolution)
                     old_gridZ = np.arange(slices[-1], slices[0]+sliceThick, sliceThick)
@@ -165,7 +166,7 @@ class ResizeShape(object):
                                     raise
     
                     for s in arange(0, len(change_struct)):
-                        print 'structure: ', change_struct[s]
+                        print('structure: ', change_struct[s])
                         #read a contour points for given structure
                         #M - 3D matrix filled with 1 insdie contour and 0 outside
                         #xmin - minimum value of x in the contour

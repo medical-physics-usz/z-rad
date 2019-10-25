@@ -45,7 +45,7 @@ class main_texture_ivim(object):
         dicomProblem = []
         slope_list = [10**(-6),10**(-4),10**(-3)] #'dslow', 'dfast', 'F2' ocrresponding slopes to different maps
         for ImName in l_ImName:
-            print 'patient', ImName
+            print('patient', ImName)
             try:
                 sb.SetStatusText('Load '+ImName)
 

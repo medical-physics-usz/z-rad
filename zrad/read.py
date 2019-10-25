@@ -37,7 +37,7 @@ class ReadImageStructure(object):
         self.ReadStucture(mypath_image, stucture, wv, local)
 
     def ReadImages(self, UID, mypath_image):
-        print '''reads and sorts images'''
+        print('''reads and sorts images''')
         #self.logger.info("Reading Images")
         onlyfiles = []
         self.listDicomProblem = [] #cannot open as dicom

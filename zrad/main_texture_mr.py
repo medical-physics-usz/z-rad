@@ -51,14 +51,14 @@ class main_texture_mr(object):
         final_file, wave_names, par_names = Export().Preset(exportList, wv,local, path_save, save_as, image_modality, path_image)
 
         for ImName in l_ImName:
-            print 'patient', ImName
+            print('patient', ImName)
             try:
                 mypath_image = path_image+ImName+'\\'
                 MR_UID = ['1.2.840.10008.5.1.4.1.1.4'] #MR
 
                 read = ReadImageStructure(MR_UID, mypath_image, structure, wv, local)
                 
-                print 'before ', len(read.slices)
+                print('before ', len(read.slices))
 
                 dicomProblem.append([ImName, read.listDicomProblem])
 
@@ -73,7 +73,7 @@ class main_texture_mr(object):
                 elif sign ==0:
                     bitsRead = 'uint'+bitsRead
                     
-                print 'after ', len(read.slices), read.rows, read.columns
+                print('after ', len(read.slices), read.rows, read.columns)
 
                 IM_matrix = [] #list containing the images matrix
                 for f in read.onlyfiles:

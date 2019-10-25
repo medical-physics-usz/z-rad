@@ -7,4 +7,4 @@ class MyException(Exception):
         self.info = info
         self.box()
     def box(self):
-        wx.MessageBox(self.info, u'Error', wx.OK|wx.ICON_EXCLAMATION)
+        wx.MessageBox(self.info, 'Error', wx.OK|wx.ICON_EXCLAMATION)

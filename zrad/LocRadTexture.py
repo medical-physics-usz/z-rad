@@ -85,7 +85,7 @@ class Texture():
 
         dicomProblem = []
         for ImName in l_ImName:
-            print 'patient', ImName
+            print('patient', ImName)
             try:
                 mypath_image = path_image + ImName + '\\'
                 CT_UID = ['1.2.840.10008.5.1.4.1.1.2', '1.2.840.10008.5.1.4.1.1.2.1']  # CT and contarst-enhanced CT
@@ -111,7 +111,7 @@ class Texture():
                     IM_matrix.append(np.array(a))
                     # Texture.slices.append(Slice(dc.read_file(mypath_image + f).SliceLocation, np.array(a)))
                     self.slice_data.append(Slice(dc.read_file(mypath_image + f).SliceLocation, np.array(a)))
-                    print f
+                    print(f)
                 IM_matrix = np.array(IM_matrix)
 
             except WindowsError:  # error if there is not directory
@@ -134,7 +134,7 @@ class Texture():
             for i in arange(0, len(IM_matrix)):
                 rs_type = [1]
                 wave_list = [IM_matrix[i]]
-                print i
+                print(i)
                 for w in arange(0, len(wave_list)):
                     self.matrix, self.interval, self.norm_points, self.matrix_v = \
                           self.Matrix(wave_list[w], rs_type[w], structure, image_modality[0])
@@ -210,10 +210,10 @@ class Texture():
             # ymax = np.max(lymax)
             # xmin = np.min(lxmin)
             # xmax = np.max(lxmax)
-            print "YMIN = " + str(ymin)
-            print "YMAX = " + str(ymax)
-            print "XMIN = " + str(xmin)
-            print "XMAX = " + str(xmax)
+            print("YMIN = " + str(ymin))
+            print("YMAX = " + str(ymax))
+            print("XMIN = " + str(xmin))
+            print("XMAX = " + str(xmax))
             del lymin
             del lymax
             del lxmin
@@ -255,9 +255,9 @@ class Texture():
         matrix_true = []  # matrix with real image values
 
         if structure != 'none':  # if the structure to be anylsed was defined
-            print 'Vmin, vmax'
-            print vmin
-            print vmax
+            print('Vmin, vmax')
+            print(vmin)
+            print(vmax)
             for n in arange(0, len(Xcontour)):
                 matrix.append(m.copy())
                 matrix_true.append(m.copy())
@@ -271,7 +271,7 @@ class Texture():
             else:  # fixed number of bin defined
                 interval = (vmax - vmin) / (self.bits - 1)
                 self.n_bits = self.bits
-            print 'n bins, interval', (self.n_bits, interval)
+            print('n bins, interval', (self.n_bits, interval))
 
             for i in arange(0, len(Xcontour)):  # slices
                 for j in arange(0, len(Xcontour[i])):  # sub-structres in the slice
@@ -288,8 +288,8 @@ class Texture():
                             pass
                     norm_points.append(len(v))  # how many points are used for calculation
         else:  # no sturcture defined
-            print 'Vmin, vmax'
-            print vmin, vmax
+            print('Vmin, vmax')
+            print(vmin, vmax)
             for n in arange(0, len(imap)):
                 matrix.append(m.copy())
                 matrix_true.append(m.copy())
@@ -303,7 +303,7 @@ class Texture():
             else:  # fixed number of bin defined
                 interval = (vmax - vmin) / (self.bits - 1)
                 self.n_bits = self.bits
-            print 'n bins, interval', (self.n_bits, interval)
+            print('n bins, interval', (self.n_bits, interval))
 
             for i in arange(0, len(imap)):  # slices
                 for j in arange(0, len(imap[i])):  # rows
@@ -340,8 +340,8 @@ class Texture():
 
         matrix = matrix[zmin:zmax + 1]
 
-        print ("ZMIN = " + str(zmin))
-        print ("ZMAX = " + str(zmax))
+        print(("ZMIN = " + str(zmin)))
+        print(("ZMAX = " + str(zmax)))
         matrix_true = matrix_true[zmin:zmax + 1]
 
         # correct for outliers

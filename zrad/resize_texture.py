@@ -221,7 +221,6 @@ class ResizeTexture(object):
                             slices_r.reverse()
                             old_gridZ = np.array(slices_r)
                         else:
-                            print('tu')
                             old_gridZ = np.array(slices)
                         for x in arange(0, new_columns):
                             for y in arange(0, new_rows):

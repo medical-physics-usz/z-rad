@@ -78,12 +78,12 @@ class Structures(object):
                                 self.logger.info('z positions image \n' + ", ".join(map(str,self.slices)))
                                 slice_count = True #True is more than one slice
                                 try:
-                                    diffI = round(index[1]-index[0], 2)  # double check if the orientation is ok
+                                    diffI = round(index[1]-index[0], 2) #double check if the orientation is ok
                                 except IndexError:
                                     info = 'only one slice'
                                     slice_count = False
-                                if slice_count:  # if more than one slice
-                                    diffS = round(self.slices[1]-self.slices[0], 2)
+                                if slice_count: #if more than one slice
+                                    diffS = round(self.slices[1]-self.slices[0],2)
                                     self.logger.info("resolution image, ROI " + ", ".join(map(str, (diffI, diffS))))
                                     if np.sign(diffI) != np.sign(diffS): #if different orientation then reverse the contour points
                                         index.reverse()

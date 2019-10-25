@@ -104,7 +104,8 @@ class ResizeTexture(object):
                     print onlyfiles[0]
                     CT = dc.read_file(mypath_file+onlyfiles[0]) #example image
                     position = CT.PatientPosition # HFS or FFS
-                    xCTspace=float(CT.PixelSpacing[0]) #XY resolution
+                    xCTspace=float(CT.PixelSpacing[1]) #XY resolution
+                    yCTspace=float(CT.PixelSpacing[0]) #XY resolution
                     xct = float(CT.ImagePositionPatient[0]) #x position of top left corner
                     yct = float(CT.ImagePositionPatient[1]) #y position of top left corner
 
@@ -114,8 +115,8 @@ class ResizeTexture(object):
                     if self.cropStructure["ct_path"] == "":
                         new_gridX = np.arange(round(xct, 10), round(xct + xCTspace*columns, 10), self.resolution) #new grid of X for interpolation
                         old_gridX = np.arange(round(xct, 10), round(xct + xCTspace*columns, 10), xCTspace) #original grid of X
-                        new_gridY = np.arange(round(yct, 10), round(yct + xCTspace*rows, 10), self.resolution) #new grid of Y for interpolation
-                        old_gridY = np.arange(round(yct, 10), round(yct + xCTspace*rows, 10), xCTspace) #original grid of Y
+                        new_gridY = np.arange(round(yct, 10), round(yct + yCTspace*rows, 10), self.resolution) #new grid of Y for interpolation
+                        old_gridY = np.arange(round(yct, 10), round(yct + yCTspace*rows, 10), yCTspace) #original grid of Y
 
                     elif self.cropStructure["ct_path"] != "":
 
@@ -132,8 +133,8 @@ class ResizeTexture(object):
                         self.logger.info("y_ct_new" + str(crop_corner_y))
                         new_gridX = np.arange(round(crop_corner_x, 10), round(crop_corner_x + xCTspace*columns, 10), self.resolution) #new grid of X for interpolation
                         old_gridX = np.arange(round(xct, 10), round(xct + xCTspace*columns, 10), xCTspace) #original grid of X
-                        new_gridY = np.arange(round(crop_corner_y, 10), round(crop_corner_y + xCTspace*rows, 10), self.resolution) #new grid of Y for interpolation
-                        old_gridY = np.arange(round(yct, 10), round(yct + xCTspace*rows, 10), xCTspace) #original grid of Y
+                        new_gridY = np.arange(round(crop_corner_y, 10), round(crop_corner_y + yCTspace*rows, 10), self.resolution) #new grid of Y for interpolation
+                        old_gridY = np.arange(round(yct, 10), round(yct + yCTspace*rows, 10), yCTspace) #original grid of Y
 
 
                     print "length of rows and columns in dicom", rows, columns
@@ -451,15 +452,16 @@ class ResizeTexture(object):
 
                         CT = dc.read_file(mypath_ivim+onlyfiles[0])    #example image
                         position = CT.PatientPosition # HFS or FFS
-                        xCTspace=float(CT.PixelSpacing[0]) #XY resolution
+                        xCTspace=float(CT.PixelSpacing[1]) #XY resolution
+                        yCTspace=float(CT.PixelSpacing[0]) #XY resolution
                         xct = float(CT.ImagePositionPatient[0]) #x position of top left corner
                         yct = float(CT.ImagePositionPatient[1]) #y position of top left corner
                         columns = CT.Columns # number of columns
                         rows = CT.Rows #number of rows
                         new_gridX = np.arange(xct, xct+xCTspace*columns, self.resolution) #new grid of X for interpolation
                         old_gridX = np.arange(xct, xct+xCTspace*columns, xCTspace) #original grid of X
-                        new_gridY = np.arange(yct, yct+xCTspace*rows, self.resolution) #new grid of Y for interpolation
-                        old_gridY = np.arange(yct, yct+xCTspace*rows, xCTspace) #original grid of Y
+                        new_gridY = np.arange(yct, yct+yCTspace*rows, self.resolution) #new grid of Y for interpolation
+                        old_gridY = np.arange(yct, yct+yCTspace*rows, yCTspace) #original grid of Y
 
                         if len(old_gridX) > columns: # due to rounding
                             old_gridX = old_gridX[:-1]
@@ -608,7 +610,7 @@ class ResizeTexture(object):
                             #xmin - minimum value of x in the contour
                             #ymin - minimum value of y in the contour
                             #st_nr - number of the ROI of the defined name
-                            M, xmin, ymin, st_nr = InterpolateROI().structures(rs_name, change_struct[s], slices, xct, yct, xCTspace, len(slices), self.round_factor)
+                            M, xmin, ymin, st_nr = InterpolateROI().structures(rs_name, change_struct[s], slices, xct, yct, xCTspace, yCTspace, len(slices), self.round_factor)
 
                             contour=[] #list of contour points
                             insertedZ=[] #list of contour slices alread inserted for the given ROI
@@ -643,7 +645,7 @@ class ResizeTexture(object):
                                                     xct = crop_corner_x
                                                     yct = crop_corner_y
                                                 l[::3] = (X[i][j]+xmin)*xCTspace + xct #convert to the original coordinates in mm
-                                                l[1::3]=(Y[i][j]+ymin)*xCTspace + yct #convert to the original coordinates in mm
+                                                l[1::3]=(Y[i][j]+ymin)*yCTspace + yct #convert to the original coordinates in mm
                                                 l[2::3] = round(zi[i],self.round_factor) #convert to the original coordinates in mm
                                                 l.round(self.round_factor)
                                                 li = [str(round(ci,self.round_factor)) for ci in l] #convert to string

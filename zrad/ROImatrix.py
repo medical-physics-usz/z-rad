@@ -69,7 +69,7 @@ class Matrix(object):
                 ymax = np.max(lymax) + 2
                 xmin = np.min(lxmin) - 2
                 xmax = np.max(lxmax) + 2
-                print ymin,ymax,xmin,xmax
+                print(ymin,ymax,xmin,xmax)
                 if xmin < 0: 
                     xmin = 0
                 if xmax >= columns:
@@ -90,7 +90,7 @@ class Matrix(object):
                     v.pop(ind[-j])
 
                 if (HUmin != 'none' and rs_type != 0) or (cropStructure["crop"] and rs_type != 0): ## no parameter for outlier correction!
-                    print "***** outlier correction for CT ********"
+                    print("***** outlier correction for CT ********")
                     ind = np.where(np.array(v)<HUmin)[0]
                     for j in np.arange(1, len(ind)+1):
                         v.pop(ind[-j])
@@ -136,9 +136,9 @@ class Matrix(object):
                         interval = binSize*10 #as the range of relative MTT is normally much grater than range of BV and BF
                     else:
                         interval = binSize
-                    n_bits = int((vmax-vmin)/interval)+1 #calcuate corresponding number of bins
+                    n_bits = int((vmax-vmin)//interval)+1 #calcuate corresponding number of bins
                 else: #fixed number of bin defined
-                    interval = (vmax-vmin)/(bits-1)
+                    interval = round((vmax-vmin)/(bits-1), 2)
                     n_bits = bits
                 self.logger.info('n bins, interval ' + ", ".join(map(str,(n_bits, interval))))
 
@@ -180,9 +180,9 @@ class Matrix(object):
                         interval = binSize*10 #as the range of relative MTT is normally much grater than range of BV and BF
                     else:
                         interval = binSize
-                    n_bits = int(((vmax-vmin)/interval))+1 #calcuate corresponding number of bins
+                    n_bits = int(((vmax-vmin)//interval))+1 #calcuate corresponding number of bins
                 else: #fixed number of bin defined
-                    interval = (vmax-vmin)/(bits-1)
+                    interval = round((vmax-vmin)/(bits-1),2)
                     n_bits = bits
                 self.logger.info('n bins, interval ' + ", ".join(map(str,(n_bits, interval))))
 
@@ -215,7 +215,7 @@ class Matrix(object):
                     matrix_full[ind_max] = np.nan
                     matrix_rec[ind_min] = np.nan
                     matrix_rec[ind_max] = np.nan
-                    print "rs_type", rs_type, " matrix_true", matrix_true.shape
+                    print("rs_type", rs_type, " matrix_true", matrix_true.shape)
                     if rs_type == 2:
                         self.HUmask = [ind_min, ind_max]
                     elif rs_type == 1 and cropStructure["crop"] == True:
@@ -287,7 +287,7 @@ class Matrix(object):
             self.vmax = vmax
 
         except ValueError:
-            print 'roi value'
+            print('roi value')
             if structure != 'none' and Xcontour == '':
                 self.n_bits = 'too small contour'
             else:
@@ -302,7 +302,7 @@ class Matrix(object):
             self.vmin = 0
             self.vmax = 0
         except IndexError:
-            print 'roi index'
+            print('roi index')
             if HUmask == []:
                 self.n_bits = 'values out of range'
             self.matrix = []

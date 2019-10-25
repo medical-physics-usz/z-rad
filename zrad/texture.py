@@ -267,7 +267,7 @@ class Texture(object):
             self.outlier_correction = False
             
         
-        print stop_calc
+        print(stop_calc)
         if self.Xcontour == 'one slice': #don't calculate, contour onl on one slice
             self.stop_calculation('one slice', rs_type)
         elif stop_calc != '' : #stop calculation if image file contains wrong tags, eg activity = 0 in PET file
@@ -344,7 +344,7 @@ class Texture(object):
                         self.vmax.append(ROImatrix.vmax)
                         HUmask = CT_ROImatrix.HUmask
 
-                    print "------------- end: created HU mask was used for PET structure --------------"
+                    print("------------- end: created HU mask was used for PET structure --------------")
                     del wave_list_ct
                 else:
                     self.logger.info("Normal Mode, no cropping")
@@ -396,7 +396,7 @@ class Texture(object):
                         try:
                             sb.SetStatusText(ImName +' matrix done '+ str(datetime.now().strftime('%H:%M:%S')))
                         except AttributeError:
-                            print 'attributeerrror'
+                            print('attributeerrror')
                             pass
                         if rs_type[w]==1: #save only for the original image
                             self.saveImage(path, modality[i], matrix, ImName, pixNr)
@@ -407,7 +407,7 @@ class Texture(object):
                             histogram = self.fun_histogram(matrix_v, modality[i], ImName, pixNr, path, w)
                         except IndexError:
                             self.stop_calculation('only one voxel', [0])
-                            print 'one voxel'
+                            print('one voxel')
                             more_than_one_pix = False
                         if self.n_bits == 'values out of range':
                             more_than_one_pix = False
@@ -865,7 +865,7 @@ class Texture(object):
                             del matrix
                         
                 except ValueError:
-                    print ValueError
+                    print(ValueError)
                     self.stop_calculation('ValueError', [1])
                     matrix.append([])
                     interval.append([])
@@ -2019,16 +2019,14 @@ class Texture(object):
         sshge = 0
         for i in arange(0, len(GLSZM)):
             for j in arange(0, len(GLSZM[i])):
-                sshge += GLSZM[i][j] * float((i + 1) ** 2) / float(
-                    np.uint(j + 1) ** 2)  # otherwise level 0 is not included
+                sshge += GLSZM[i][j] * float((i + 1) ** 2) / float(np.uint(j + 1) ** 2)  # otherwise level 0 is not included
         return sshge / norm
 
     def LSLGE(self, GLSZM, norm):  # 3.4.7
         lslge = 0
         for i in arange(0, len(GLSZM)):
             for j in arange(0, len(GLSZM[i])):
-                lslge += GLSZM[i][j] * float(np.uint(j + 1) ** 2) / float(
-                    (i + 1) ** 2)  # otherwise level 0 is not included
+                lslge += GLSZM[i][j] * float(np.uint(j + 1) ** 2) / float((i + 1) ** 2)  # otherwise level 0 is not included
         return lslge / norm
 
     def LSHGE(self, GLSZM, norm):  # 3.4.8

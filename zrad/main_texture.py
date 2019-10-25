@@ -342,9 +342,9 @@ class Radiomics(wx.Frame):
         lr = self.panelResize.save()
         l = self.panel.save()
         for i in lr:
-            config.write(i+'\n')
+            config.write('{}\n'.format(i))
         for i in l:
-            config.write(i+'\n')
+            config.write('{}\n'.format(i))
         config.close()
         self.Close()
         
@@ -353,9 +353,9 @@ class Radiomics(wx.Frame):
         lr = self.panelResize.save()
         l = self.panel.save()
         for i in lr:
-            config.write(str(i)+'\n')
+            config.write('{}\n'.format(i))
         for i in l:
-            config.write(str(i)+'\n')
+            config.write('{}\n'.format(i))
         config.close()
 
     def OnOProgramie(self, evt):

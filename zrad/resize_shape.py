@@ -96,7 +96,8 @@ class ResizeShape(object):
                     onlyfiles[i] = onlyfiles[i][1]
     
                 CT = dc.read_file(mypath_file+onlyfiles[0]) #example image
-                xCTspace=float(CT.PixelSpacing[0]) #XY resolution
+                xCTspace=float(CT.PixelSpacing[1]) #XY resolution
+                yCTspace=float(CT.PixelSpacing[0]) #XY resolution
                 xct = float(CT.ImagePositionPatient[0]) #x position of top left corner
                 yct = float(CT.ImagePositionPatient[1]) #y position of top left corner
                 if self.cropStructure["ct_path"] != "":
@@ -170,7 +171,7 @@ class ResizeShape(object):
                         #xmin - minimum value of x in the contour
                         #ymin - minimum value of y in the contour
                         #st_nr - number of the ROI of the defined name
-                        M, xmin, ymin, st_nr = InterpolateROI().structures(rs_name, change_struct[s], slices, xct, yct, self.resolution, len(slices), self.round_factor)
+                        M, xmin, ymin, st_nr = InterpolateROI().structures(rs_name, change_struct[s], slices, xct, yct, self.resolution, self.resolution, len(slices), self.round_factor)
                         
                         insertedZ=[] #list of contour slices alread inserted for the given ROI
     

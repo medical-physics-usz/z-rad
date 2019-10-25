@@ -10,7 +10,7 @@ import matplotlib
 import scipy.optimize as optimization
 #import scipy.stats as st
 import cv2
-from os import makedirs, tmpnam
+from os import makedirs
 from os.path import isdir
 from datetime import datetime
 

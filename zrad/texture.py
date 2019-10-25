@@ -1551,9 +1551,10 @@ class Texture(object):
         ind = np.where(np.array(Ni) != 0)[0]
         for i in ind:
             f += s[i] * Ni[i] / np.sum(Ni)
-        f = 1. / (0.000000001 + f)
         if f == 0:
             f = np.nan
+        else:
+            f = 1. / (0.000000001 + f)
         return f
 
     def fun_busyness(self, s, Ni, matrix): #3.6.3
@@ -2080,7 +2081,7 @@ class Texture(object):
         return e
 
     def NGLDM(self, matrix):  # Oncoray 4.2
-        '''neighborhood gray-level dependece matrix'''
+        """Calculate neighborhood gray-level dependence matrix"""
         s = []
         for i in arange(0, self.n_bits):
             s.append([0])
@@ -2126,9 +2127,9 @@ class Texture(object):
                             for gray in arange(0, len(s)):
                                 for app in arange(maxSize, size):
                                     s[gray].append(0)
-                            s[int(v)][size] += 1
-                        else:
-                            s[int(v)][size] += 1
+                            maxSize = size  # update maxSize
+                        s[int(v)][size] += 1
+                       
 
         s = np.array(s)
         s.astype(np.float)

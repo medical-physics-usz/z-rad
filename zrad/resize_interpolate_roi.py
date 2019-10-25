@@ -23,7 +23,7 @@ import cv2
 import logging
 class InterpolateROI(object):       
     
-    def structures(self,rs, structure, slices, x_ct, y_ct, xCTspace, l_IM, round_factor):
+    def structures(self,rs, structure, slices, x_ct, y_ct, xCTspace, yCTspace, l_IM, round_factor):
         self.logger = logging.getLogger(__name__)
         self.logger.info("Start: Interpolation Structures")
         '''find the contour points for a given ROI, calls the getPoints methods with returns a M - 3D matrix with -1 outside, 0 on the border and 1 inside'''
@@ -125,7 +125,7 @@ class InterpolateROI(object):
                 for n in arange(0, len(contours[i][j])): #number of contours per slice
                     if contours[i][j][n][0]!=[]:
                         contours[i][j][n][0]=np.array(abs(contours[i][j][n][0]-x_ct)/(xCTspace))
-                        contours[i][j][n][1]=np.array(abs(contours[i][j][n][1]-y_ct)/(xCTspace))
+                        contours[i][j][n][1]=np.array(abs(contours[i][j][n][1]-y_ct)/(yCTspace))
                         for k in arange(0, len(contours[i][j][n][0])):
                             contours[i][j][n][0][k] = int(round(contours[i][j][n][0][k],0))
                             contours[i][j][n][1][k] = int(round(contours[i][j][n][1][k],0))

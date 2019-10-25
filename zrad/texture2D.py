@@ -1430,11 +1430,13 @@ class Texture(object):
         f = 0
         ind = np.where(np.array(Ni)!=0)[0]
         for i in ind:
-            f+=s[i]*Ni[i]/np.sum(Ni)
-        f = 1./(0.000000001+f)
-        if f==0:
-            f=np.nan
+            f += s[i]*Ni[i]/np.sum(Ni)
+        if f == 0:
+            f = np.nan
+        else:
+            f = 1. / (0.000000001 + f)
         return f
+
     def fun_busyness(self, s, Ni, matrix):
         try:
             nom = 0

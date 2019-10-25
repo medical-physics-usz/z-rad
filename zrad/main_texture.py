@@ -1,6 +1,8 @@
 '''read data and save texture parameters in txt file'''
 #import libraries
 import wx
+from wx.adv import AboutBox
+from wx.adv import AboutDialogInfo
 from numpy import arange
 import LocalRadiomicsGUI as locRad
 # own classes
@@ -174,7 +176,7 @@ class Radiomics(wx.Frame):
 
         licence = """"""
 
-        info = wx.AboutDialogInfo()
+        info = AboutDialogInfo()
 
         info.SetName('Loc-Rad')
         info.SetVersion('0.1')
@@ -182,7 +184,7 @@ class Radiomics(wx.Frame):
         info.SetCopyright('(C) 2018 Andreas Ambrusch')
         info.SetLicence(licence)
 
-        wx.AboutBox(info)
+        AboutBox(info)
 
     def OnCalculate(self, evt):
         '''initialize radiomics calculaiton'''
@@ -364,7 +366,7 @@ class Radiomics(wx.Frame):
 
         licence = """"""
 
-        info = wx.AboutDialogInfo()
+        info = AboutDialogInfo()
 
         info.SetName('Z-Rad')
         info.SetVersion('6.2')
@@ -372,7 +374,7 @@ class Radiomics(wx.Frame):
         info.SetCopyright('(C) 2017 Marta Bogowicz')
         info.SetLicence(licence)
 
-        wx.AboutBox(info)
+        AboutBox(info)
 
 # run the app
 app = wx.App()

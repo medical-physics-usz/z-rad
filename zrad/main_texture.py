@@ -17,6 +17,7 @@ from lymph_nodes import LymphNodes
 import logging
 from exportExcel import ExportExcel
 
+
 class Radiomics(wx.Frame):
     '''Main GUI class plus method OnCalculate to start radiomics calculation
         Parent of class Panel'''
@@ -53,23 +54,23 @@ class Radiomics(wx.Frame):
         menubar = wx.MenuBar() # create menu bar
         plikMenu = wx.Menu()
         no = wx.MenuItem(plikMenu, wx.ID_NEW, '&New\tCtrl+N') # new calcualtion
-        plikMenu.AppendItem(no)
+        plikMenu.Append(no)
         sv = wx.MenuItem(plikMenu, wx.ID_SAVE, '&Save\tCtrl+S') # save settings
-        plikMenu.AppendItem(sv)
+        plikMenu.Append(sv)
         za = wx.MenuItem(plikMenu, wx.ID_ANY, '&Quit\tCtrl+Q')
-        plikMenu.AppendItem(za)
+        plikMenu.Append(za)
         menubar.Append(plikMenu, 'File')
 
         programMenu = wx.Menu()
         program = wx.MenuItem(programMenu, wx.ID_ANY, 'About')
-        programMenu.AppendItem(program)
+        programMenu.Append(program)
         menubar.Append(programMenu, 'About')
 
         locRadMenu = wx.Menu()
         new = wx.MenuItem(locRadMenu, wx.ID_ANY, 'New')
-        locRadMenu.AppendItem(new)
+        locRadMenu.Append(new)
         ab = wx.MenuItem(locRadMenu, wx.ID_ANY, 'About')
-        locRadMenu.AppendItem(ab)
+        locRadMenu.Append(ab)
         menubar.Append(locRadMenu, 'Local Radiomics')
 
         self.SetMenuBar(menubar)

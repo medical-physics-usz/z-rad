@@ -2225,7 +2225,7 @@ class Texture(object):
         
         # print matrix
         
-        for n in arange(0, len(matrix)/24+1):
+        for n in arange(0, len(matrix)//24+1):
             fig = py.figure(10, figsize = (20,20))
             fig.text(0.5, 0.95, ImName+' '+name)
             for j in arange(0, 24):
@@ -2247,7 +2247,7 @@ class Texture(object):
             py.close()
             
             del fig
-        for n in arange(0, len(matrix)/24+1):
+        for n in arange(0, len(matrix)//24+1):
             fig = py.figure(20, figsize = (20,20))
             fig.text(0.5, 0.95, ImName+' '+name)
             for j in arange(0, 24):

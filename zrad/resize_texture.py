@@ -172,7 +172,7 @@ class ResizeTexture(object):
                         else:
                             data16 = np.array(np.fromstring(data, dtype=bits))  # converting to decimal, for CT no intercept as it is the same per image
                         # recalculating for rows x columns
-                        a = np.reshape(data16, (rows, columns))  # I replaced loop over rows with reshape function
+                        a = np.reshape(data16, (rows, columns))
                         del data
                         del data16
 
@@ -299,7 +299,6 @@ class ResizeTexture(object):
                     del CT
                     del onlyfiles
 
-                # this section isn't adapted for 2D interpolation!!!!!!!
                 elif self.image_type == 'IVIM':
                     maps_list = ['DSlow2', 'DFast2', 'F2']
 
@@ -351,14 +350,11 @@ class ResizeTexture(object):
                             data = CT.PixelData
                             data16 = np.array(np.fromstring(data, dtype=np.int16))  # converting to decimal
                             # recalculating for rows x columns
-                            a = []
-                            for j in np.arange(0, rows):
-                                a.append(data16[j * columns:(j + 1) * columns])
+                            a = np.reshape(data16, (rows, columns))
                             del data
                             del data16
 
                             # interpolate XY
-                            a = np.array(a)
                             b_new = np.zeros((len(old_gridY), len(new_gridX)))
                             for j in np.arange(0, len(a)):
                                 b_new[j] = np.interp(new_gridX, old_gridX, a[j])
@@ -377,7 +373,7 @@ class ResizeTexture(object):
                             # define z interpolation grid
                             IM = np.array(IM)
                             sliceThick = round(abs(slices[0] - slices[1]), self.round_factor)
-                            # check slice sorting,for the interpolation funtcion one need increaing slice position
+                            # check slice sorting,for the interpolation function one need increasing slice position
                             if slices[1] - slices[0] < 0:
                                 new_gridZ = np.arange(slices[-1], slices[0] + sliceThick, self.resolution)
                                 old_gridZ = np.arange(slices[-1], slices[0] + sliceThick, sliceThick)
@@ -455,7 +451,6 @@ class ResizeTexture(object):
                         except InvalidDicomError:  # not a dicom file
                             pass
                     continue  # structure will not be resized
-
 
                 # ------------------------------------------------------------------------------------------------------
                 # resize structure

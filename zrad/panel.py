@@ -72,8 +72,9 @@ class MyPanelResize(scrolled.ScrolledPanel):
 
         # cb_texture = wx.CheckBox(self, id=1008, label='Resize texture')
         cb_texture = wx.StaticText(self, id=1008, label='Resize texture')
-        cb_texture_dim2 = wx.CheckBox(self, id=10082, label='2D')  # only one option can be selected
-        cb_texture_dim3 = wx.CheckBox(self, id=10083, label='3D')
+        cb_texture_none = wx.RadioButton(self, id=10081, label='no texture resizing', style=wx.RB_GROUP)
+        cb_texture_dim2 = wx.RadioButton(self, id=10082, label='2D')  # only one option can be selected
+        cb_texture_dim3 = wx.RadioButton(self, id=10083, label='3D')
 
         cb_shape = wx.CheckBox(self, id=1009, label='Resize shape')
 
@@ -90,6 +91,7 @@ class MyPanelResize(scrolled.ScrolledPanel):
                             st_stop, tc_stop, wx.StaticText(self, label=''), wx.StaticText(self, label=''),
                             cb_texture, cb_texture_dim2, wx.StaticText(self, label=''), wx.StaticText(self, label=''),
                             wx.StaticText(self, label=''), cb_texture_dim3, wx.StaticText(self, label=''), wx.StaticText(self, label=''),
+                            wx.StaticText(self, label=''), cb_texture_none, wx.StaticText(self, label=''), wx.StaticText(self, label=''),
                             cb_shape, wx.StaticText(self, label=''), wx.StaticText(self, label=''),
                             wx.StaticText(self, label=''),
                             cb_cropStructure, wx.StaticText(self, label=''), wx.StaticText(self, label=''),
@@ -217,7 +219,7 @@ class MyPanelResize(scrolled.ScrolledPanel):
     def fill(self, l):
         """method called by parent to fill the text boxes with save settings
         l - list of elements read from a text file"""
-        ids = [1001, 1002, 1003, 1004, 1005, 1006, 1007, 10082, 1009, 1012,
+        ids = [1001, 1002, 1003, 1004, 1005, 1006, 1007, 10081, 10082, 10083, 1009, 1012,
                1013]  # ids of field to fill # if adjust number of ids then also adjust in main_texture in self.panelResize.fill(l[:11])!!!!
 
         for i in range(0, len(l)):
@@ -249,7 +251,7 @@ class MyPanelResize(scrolled.ScrolledPanel):
     def save(self):
         """save the last used settings"""
         l = []
-        ids = [1001, 1002, 1003, 1004, 1005, 1006, 1007, 10082, 1009, 1012, 1013]
+        ids = [1001, 1002, 1003, 1004, 1005, 1006, 1007, 10081, 10082, 10083, 1009, 1012, 1013]
         for i in ids:
             l.append(self.FindWindowById(i).GetValue())
         return l

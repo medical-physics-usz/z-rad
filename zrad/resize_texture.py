@@ -9,6 +9,7 @@ except:
     from pydicom.filereader import InvalidDicomError
 import numpy as np
 from numpy import arange
+from shutil import copyfile
 from os import path, makedirs, listdir, rmdir
 from os.path import isfile, join
 from scipy.ndimage.morphology import distance_transform_edt
@@ -439,19 +440,6 @@ class ResizeTexture(object):
                         del CT
                         del onlyfiles
 
-                # the resize structure is not necessary in 2D interpolation. go on with next patient-folder
-                if self.dim == "2D":
-                    from shutil import copyfile
-                    # copy structure file into new resize folder
-                    RS_UID = ['1.2.840.10008.5.1.4.1.1.481.3', 'RT Structure Set Storage']  # structure set
-                    for f in listdir(mypath_file):
-                        try:
-                            if isfile(join(mypath_file, f)) and dc.read_file(mypath_file + f).SOPClassUID in RS_UID:  # read only dicoms of certain modality
-                                copyfile(join(mypath_file, f), join(mypath_save, f))
-                        except InvalidDicomError:  # not a dicom file
-                            pass
-                    continue  # structure will not be resized
-
                 # ------------------------------------------------------------------------------------------------------
                 # resize structure
                 self.logger.info("Resize structure Set for texture")
@@ -474,6 +462,12 @@ class ResizeTexture(object):
                 if not resize_rs:  # if there is no RS or too many RS files change folder name
                     os.rename(mypath_save[:-1], mypath_save[:-1] + '_noRS')
                 else:
+                    # the resize structure is not necessary in 2D interpolation. go on with next patient-folder
+                    if self.dim == "2D":
+                        # copy structure file into new resize folder
+                        copyfile(join(rs_name), join(mypath_save, rs[0]))
+                        continue  # structure will not be resized
+
                     rs = dc.read_file(rs_name)  # read rs
 
                     list_organs = []  # ROI (name, number)

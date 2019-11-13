@@ -13,7 +13,7 @@ from check import CheckStructures
 
 
 class MyPanel(wx.Notebook):  # scrolled.ScrolledPanel):
-    '''create a notebook'''
+    """create a notebook"""
 
 
 class MyPanelResize(scrolled.ScrolledPanel):
@@ -26,33 +26,33 @@ class MyPanelResize(scrolled.ScrolledPanel):
         self.InitUI()
 
     def InitUI(self):
-        '''initialize the panel
-        the IDs are assigned in a consecutive order and are used later to refer to text boxes etc'''
+        """initialize the panel
+        the IDs are assigned in a consecutive order and are used later to refer to text boxes etc"""
 
         h = self.parent.panelHeight  # height of a text box, 20 for PC, 40 for lenovo laptop
         self.SetBackgroundColour('#8AB9F1')  # background color
 
-        # creatignngoxes conataining elements of the panel, vbox - veritcal box, hbox - horizontal box
+        # creatignngoxes containing elements of the panel, vbox - vertical box, hbox - horizontal box
         self.vbox = wx.BoxSizer(wx.VERTICAL)
         self.vbox.Add((-1, 20))
 
         self.gs_01 = wx.FlexGridSizer(cols=4, vgap=5, hgap=10)  # grid sizes is a box with 3 columns
         # elements I want to put the the grid sizer
-        st_org = wx.StaticText(self, label='Original data')  # statitc text
+        st_org = wx.StaticText(self, label='Original data')  # static text
         tc_org = wx.TextCtrl(self, id=1001, size=(600, h), value="",
                              style=wx.TE_PROCESS_ENTER)  # text box, id is important as I use i later for reading elements from the boxes
         # tc_org- directory with original images
         btn_load_org = wx.Button(self, -1, label='Search')  # button to search
         st_save_resized = wx.StaticText(self, label='Save resized files')
         tc_save_resized = wx.TextCtrl(self, id=1002, size=(600, h), value="",
-                                      style=wx.TE_PROCESS_ENTER)  # directory to ave resized images
+                                      style=wx.TE_PROCESS_ENTER)  # directory to save resized images
         btn_load_resized = wx.Button(self, -1, label='Search')
         st_name = wx.StaticText(self, label='Structure name')
         tc_name = wx.TextCtrl(self, id=1003, size=(600, h), value="",
-                              style=wx.TE_PROCESS_ENTER)  # structures to be resized eparated by coma ','
+                              style=wx.TE_PROCESS_ENTER)  # structures to be resized separated by coma ','
         st_reso = wx.StaticText(self, label='Resolution for texture calculation [mm]')
         tc_reso = wx.TextCtrl(self, id=1004, size=(100, h), value="",
-                              style=wx.TE_PROCESS_ENTER)  # resoltuion for texture calculation
+                              style=wx.TE_PROCESS_ENTER)  # resolution for texture calculation
         st_type = wx.StaticText(self, label='Image type')
         tc_type = wx.ComboBox(self, id=1005, size=(100, h), value="", choices=['CT', 'PET', 'MR', 'IVIM'],
                               style=wx.TE_PROCESS_ENTER)  # modality type
@@ -72,7 +72,7 @@ class MyPanelResize(scrolled.ScrolledPanel):
 
         # cb_texture = wx.CheckBox(self, id=1008, label='Resize texture')
         cb_texture = wx.StaticText(self, id=1008, label='Resize texture')
-        cb_texture_dim2 = wx.CheckBox(self, id=10082, label='2D', style=wx.RB_GROUP)  # only one option can be selected
+        cb_texture_dim2 = wx.CheckBox(self, id=10082, label='2D')  # only one option can be selected
         cb_texture_dim3 = wx.CheckBox(self, id=10083, label='3D')
 
         cb_shape = wx.CheckBox(self, id=1009, label='Resize shape')
@@ -88,7 +88,8 @@ class MyPanelResize(scrolled.ScrolledPanel):
                             st_type, tc_type, wx.StaticText(self, label=''), wx.StaticText(self, label=''),
                             st_start, tc_start, wx.StaticText(self, label=''), wx.StaticText(self, label=''),
                             st_stop, tc_stop, wx.StaticText(self, label=''), wx.StaticText(self, label=''),
-                            cb_texture, cb_texture_dim2, cb_texture_dim3, wx.StaticText(self, label=''),
+                            cb_texture, cb_texture_dim2, wx.StaticText(self, label=''), wx.StaticText(self, label=''),
+                            wx.StaticText(self, label=''), cb_texture_dim3, wx.StaticText(self, label=''), wx.StaticText(self, label=''),
                             cb_shape, wx.StaticText(self, label=''), wx.StaticText(self, label=''),
                             wx.StaticText(self, label=''),
                             cb_cropStructure, wx.StaticText(self, label=''), wx.StaticText(self, label=''),
@@ -128,8 +129,7 @@ class MyPanelResize(scrolled.ScrolledPanel):
         self.vbox.Add((-1, 10))
 
         # connect buttons with methods
-        self.Bind(wx.EVT_BUTTON, self.resize,
-                  btn_resize)  # EVT_BUTTON when button named btn_resize was clicked bind with method self.resize
+        self.Bind(wx.EVT_BUTTON, self.resize, btn_resize)  # EVT_BUTTON when button named btn_resize was clicked bind with method self.resize
         self.Bind(wx.EVT_BUTTON, self.OnCheck, btn_check)
         self.Bind(wx.EVT_BUTTON, self.OnOpenOrg, btn_load_org)
         self.Bind(wx.EVT_BUTTON, self.OnOpenP_crop, btn_cropStructure)
@@ -139,21 +139,21 @@ class MyPanelResize(scrolled.ScrolledPanel):
         self.Layout()
 
     def OnOpenOrg(self, evt):
-        '''dialog box to find path with the original data'''
+        """dialog box to find path with the original data"""
         fop = wx.DirDialog(self, style=wx.DD_DEFAULT_STYLE)
         fop.SetPath(self.FindWindowById(1001).GetValue())
         if fop.ShowModal() == wx.ID_OK:
             self.FindWindowById(1001).SetValue(fop.GetPath() + '\\')
 
     def OnOpenR(self, evt):
-        '''dialog box to find path where to save the data'''
+        """dialog box to find path where to save the data"""
         fop = wx.DirDialog(self, style=wx.DD_DEFAULT_STYLE)
         fop.SetPath(self.FindWindowById(1002).GetValue())
         if fop.ShowModal() == wx.ID_OK:
             self.FindWindowById(1002).SetValue(fop.GetPath() + '\\')
 
     def resize(self, evt):  # need and event as an argument
-        '''main method which calls resize classes'''
+        """main method which calls resize classes"""
         cropArg = False
         ct_path = ""
         inp_resolution = self.FindWindowById(1004).GetValue()  # take the input defined by user
@@ -179,8 +179,7 @@ class MyPanelResize(scrolled.ScrolledPanel):
         for i in range(0, len(list_structure)):
             list_structure[i] = list_structure[i].strip()
 
-        if self.FindWindowById(10082).GetValue() or self.FindWindowById(
-                10083).GetValue():  # if resizing to texture resolution selected
+        if self.FindWindowById(10082).GetValue() or self.FindWindowById(10083).GetValue():  # if resizing to texture resolution selected
             if self.FindWindowById(10082).GetValue():  # if 2D chosen
                 dimension_resize = "2D"
             else:
@@ -194,7 +193,7 @@ class MyPanelResize(scrolled.ScrolledPanel):
             for shape_struct in list_structure:
                 ResizeShape(shape_struct, inp_mypath_load, inp_mypath_save_shape, image_type, begin, stop,
                             inp_resolution,
-                            cropInput)  # resize the structure to the resoltuion of shape, default 1mm unless resolution of texture smaller tham 1mm then 0.1 mm
+                            cropInput)  # resize the structure to the resolution of shape, default 1mm unless resolution of texture smaller than 1mm then 0.1 mm
 
         MyInfo('Resize done')  # show info box
 
@@ -209,15 +208,15 @@ class MyPanelResize(scrolled.ScrolledPanel):
         MyInfo('Check done: file saved in ' + inp_mypath_load)
 
     def OnOpenP_crop(self, evt):  # need and event as an argument
-        '''dialog box to find path with the resized data'''
+        """dialog box to find path with the resized data"""
         fop = wx.DirDialog(self, style=wx.DD_DEFAULT_STYLE)
         fop.SetPath(self.FindWindowById(1013).GetValue())
         if fop.ShowModal() == wx.ID_OK:
             self.FindWindowById(1013).SetValue(fop.GetPath() + '\\')
 
     def fill(self, l):
-        '''method called by parent to fill the text boxes with save settings
-        l - list of elements read from a text file'''
+        """method called by parent to fill the text boxes with save settings
+        l - list of elements read from a text file"""
         ids = [1001, 1002, 1003, 1004, 1005, 1006, 1007, 10082, 1009, 1012,
                1013]  # ids of field to fill # if adjust number of ids then also adjust in main_texture in self.panelResize.fill(l[:11])!!!!
 
@@ -248,7 +247,7 @@ class MyPanelResize(scrolled.ScrolledPanel):
         self.Layout()  # refresh the view
 
     def save(self):
-        '''save the last used settings'''
+        """save the last used settings"""
         l = []
         ids = [1001, 1002, 1003, 1004, 1005, 1006, 1007, 10082, 1009, 1012, 1013]
         for i in ids:
@@ -269,11 +268,11 @@ class MyPanelRadiomics(scrolled.ScrolledPanel):
         self.SetBackgroundColour('#8AB9F1')  # background color
         h = self.parent.panelHeight  # height of a text box, 20 for PC, 40 for lenovo laptop
 
-        # creating boxes containing elements of the panel, vbox - veritcal box, hbox - horizontal box
+        # creating boxes containing elements of the panel, vbox - vertical box, hbox - horizontal box
         self.vbox = wx.BoxSizer(wx.VERTICAL)
         self.vbox.Add((-1, 20))
 
-        st1 = wx.StaticLine(self, -1, (10, 1), (900, 3))  # line to separte sections
+        st1 = wx.StaticLine(self, -1, (10, 1), (900, 3))  # line to separate sections
         st2 = wx.StaticLine(self, -1, (10, 1), (900, 3))
         st3 = wx.StaticLine(self, -1, (10, 1), (900, 3))
         st7 = wx.StaticLine(self, -1, (10, 1), (900, 3))
@@ -338,14 +337,14 @@ class MyPanelRadiomics(scrolled.ScrolledPanel):
         self.gs_2 = wx.FlexGridSizer(cols=3, vgap=5, hgap=10)
 
         st_name = wx.StaticText(self, label='Structure name ')
-        # name of ROI to be analysed, spearate by ',';  take the first structure which can be found in the RS
+        # name of ROI to be analysed, separate by ',';  take the first structure which can be found in the RS
         tc_name = wx.TextCtrl(self, id=104, size=(200, h), value="", style=wx.TE_PROCESS_ENTER)
         st_disc = wx.StaticText(self, label='Discretization')
         st_bin = wx.StaticText(self, label='Bins No')
         st_size = wx.StaticText(self, label='Bin size')
         tc_bin = wx.TextCtrl(self, id=1051, size=(200, h), value="", style=wx.TE_PROCESS_ENTER)  # size of the bin
         tc_size = wx.TextCtrl(self, id=1052, size=(200, h), value="",
-                              style=wx.TE_PROCESS_ENTER)  # number of bins for discetization
+                              style=wx.TE_PROCESS_ENTER)  # number of bins for discretization
         st_dim = wx.StaticText(self, label='Dimension')
         rb_dim2 = wx.RadioButton(self, id=1061, label='2D',
                                  style=wx.RB_GROUP)  # 2D analysis, radiobutton - only one option from the group can be selected
@@ -462,7 +461,7 @@ class MyPanelRadiomics(scrolled.ScrolledPanel):
         self.gs_7 = wx.FlexGridSizer(cols=4, vgap=5, hgap=10)
         rb_ctp = wx.RadioButton(self, id=140, label='CTP')
         st_suv = wx.StaticText(self, label='outliers correction')
-        rb_yes = wx.CheckBox(self, id=141, label='yes')  # outlier correction correciton on
+        rb_yes = wx.CheckBox(self, id=141, label='yes')  # outlier correction correction on
         rb_no = wx.CheckBox(self, id=142, label='no')
 
         self.gs_7.AddMany(
@@ -479,7 +478,7 @@ class MyPanelRadiomics(scrolled.ScrolledPanel):
         rb_mr = wx.RadioButton(self, id=150, label='MR')
         st_stan = wx.StaticText(self, label='ROI for standardization')
         tc_struct1 = wx.TextCtrl(self, id=151, size=(200, h), value='',
-                                 style=wx.TE_PROCESS_ENTER)  # names of sturctures for linaer function fitting to normalize MR
+                                 style=wx.TE_PROCESS_ENTER)  # names of structures for linaer function fitting to normalize MR
         tc_struct2 = wx.TextCtrl(self, id=152, size=(200, h), value='', style=wx.TE_PROCESS_ENTER)
 
         self.gs_8.AddMany(
@@ -526,8 +525,7 @@ class MyPanelRadiomics(scrolled.ScrolledPanel):
         self.vbox.Add(h11box, flag=wx.RIGHT)
         self.vbox.Add((-1, 10))
 
-        self.Bind(wx.EVT_BUTTON, self.parent.OnCalculate,
-                  btn_calculate)  # EVT_BUTTON when button named btn_calculate was clicked bind with method self.parent.OnCalculate
+        self.Bind(wx.EVT_BUTTON, self.parent.OnCalculate, btn_calculate)  # EVT_BUTTON when button named btn_calculate was clicked bind with method self.parent.OnCalculate
         self.Bind(wx.EVT_BUTTON, self.OnOpenP, btn_load_path)
         self.Bind(wx.EVT_BUTTON, self.OnOpenP_crop, crop_btn_load_path)
         self.Bind(wx.EVT_BUTTON, self.OnOpenSR, btn_load_saver)
@@ -536,9 +534,9 @@ class MyPanelRadiomics(scrolled.ScrolledPanel):
         self.Layout()  # show panel
 
     def fill(self, l):
-        '''method called by parent to fill the text boxes with save settings
-        l - list of elements read from a text file'''
-        # ids of the boxees to be filled 
+        """method called by parent to fill the text boxes with save settings
+        l - list of elements read from a text file"""
+        # ids of the boxes to be filled
         ids = [107, 108, 109, 110, 102, 103, 104, 1051, 1052, 1061, 1062, 1071, 1072, 1081, 1082, 1083, 1091, 1092,
                1093, 120, 125, 126, 127, 130, 131, 132, 133, 135, 136, 137, 140, 141, 142, 150, 151, 152, 160]
 
@@ -570,7 +568,7 @@ class MyPanelRadiomics(scrolled.ScrolledPanel):
         self.Layout()  # refresh view
 
     def save(self):
-        '''save the last used settings'''
+        """save the last used settings"""
         l = []
 
         ids = [107, 108, 109, 110, 102, 103, 104, 1051, 1052, 1061, 1062, 1071, 1072, 1081, 1082, 1083, 1091, 1092,
@@ -580,7 +578,7 @@ class MyPanelRadiomics(scrolled.ScrolledPanel):
         return l
 
     def read(self):
-        '''method called by parent class to read some of user defined values'''
+        """method called by parent class to read some of user defined values"""
         l = []
         ids = [102, 103, 104, 1051, 1052, 107, 108, 109, 110]
         for i in ids:
@@ -589,21 +587,21 @@ class MyPanelRadiomics(scrolled.ScrolledPanel):
         return l[0], l[1], l[2], l[3], l[4], l[5], l[6], l[7], l[8]
 
     def OnOpenP(self, evt):  # need and event as an argument
-        '''dialog box to find path with the resized data'''
+        """dialog box to find path with the resized data"""
         fop = wx.DirDialog(self, style=wx.DD_DEFAULT_STYLE)
         fop.SetPath(self.FindWindowById(107).GetValue())
         if fop.ShowModal() == wx.ID_OK:
             self.FindWindowById(107).SetValue(fop.GetPath() + '\\')
 
     def OnOpenP_crop(self, evt):  # need and event as an argument
-        '''dialog box to find path with the resized data'''
+        """dialog box to find path with the resized data"""
         fop = wx.DirDialog(self, style=wx.DD_DEFAULT_STYLE)
         fop.SetPath(self.FindWindowById(138).GetValue())
         if fop.ShowModal() == wx.ID_OK:
             self.FindWindowById(138).SetValue(fop.GetPath() + '\\')
 
     def OnOpenSR(self, evt):  # need and event as an argument
-        '''dialog box to define path to save results'''
+        """dialog box to define path to save results"""
         fop = wx.DirDialog(self, style=wx.DD_DEFAULT_STYLE)
         fop.SetPath(self.FindWindowById(102).GetValue())
         if fop.ShowModal() == wx.ID_OK:

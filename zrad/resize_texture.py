@@ -674,7 +674,7 @@ class ResizeTexture(object):
                                 except IndexError: #if the new contour is a longer sequence
                                     a = dc.dataset.Dataset()
                                     a.add_new((0x3006,0x42), 'CS', 'CLOSED_PLANAR')
-                                    a.add_new((0x3006,0x46), 'IS', str(int(len(contour[j])/3)))
+                                    a.add_new((0x3006,0x46), 'IS', str(len(contour[j])//3))
                                     a.add_new((0x3006,0x48), 'IS', str(j)) #sequence element number
                                     a.add_new((0x3006,0x50), 'DS', contour[j])
                                     rs.ROIContourSequence[st_nr].ContourSequence.append(a)

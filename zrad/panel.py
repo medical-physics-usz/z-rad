@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-s
 import wx
 import wx.lib.scrolledpanel as scrolled
-import numpy as np  # biblioteka do obliczeń numerycznych
+import numpy as np
 import pylab as py
 from pylab import *
 from matplotlib.widgets import Slider

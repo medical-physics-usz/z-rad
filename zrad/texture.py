@@ -14,7 +14,7 @@ from os import makedirs
 from os.path import isdir
 from datetime import datetime
 
-from texture_wavelet3D import Wavelet
+from texture_wavelet import Wavelet
 from texture_wavelet3D_ctp import WaveletCTP
 from ROImatrix import Matrix
 import matplotlib.pylab as plt
@@ -279,7 +279,8 @@ class Texture(object):
                 
                 if wv:
                     if 'BV' not in modality:
-                        wave_list = Wavelet(maps[i], path, modality[i], ImName+'_'+pixNr).Return() #order of trandformed images: original, LLL, HHH, HHL, HLH, HLL, LHH, LHL, LLH
+                        wave_list = Wavelet(maps[i], path, modality[i], ImName+'_'+pixNr, "3D").Return() #order of trandformed images: original, LLL, HHH, HHL, HLH, HLL, LHH, LHL, LLH
+                        # none for dimension
                     else:
                         wave_list = WaveletCTP(maps[i], path, modality[i], ImName+'_'+pixNr).Return()
                     sb.SetStatusText(ImName +' wave done ' +str(datetime.now().strftime('%H:%M:%S')))
@@ -316,7 +317,7 @@ class Texture(object):
                     for i in arange(0, len(cropStructure["data"])): 
                         #wavelet transform
                         if wv:
-                            wave_list_ct = Wavelet(cropStructure["data"][i], path, "CT", ImName+'_'+pixNr).Return() # order of trandformed images: original, LLL, HHH, HHL, HLH, HLL, LHH, LHL, LLH
+                            wave_list_ct = Wavelet(cropStructure["data"][i], path, "CT", ImName+'_'+pixNr, "3D").Return() # order of trandformed images: original, LLL, HHH, HHL, HLH, HLL, LHH, LHL, LLH
                             sb.SetStatusText(ImName +' wave done ' + str(datetime.now().strftime('%H:%M:%S')))
                             rs_type = [1, 2, 0, 0, 0, 0, 0, 0, 0] #structure type, structure resolution
                             iterations_n = len(wave_list_ct)
@@ -390,7 +391,7 @@ class Texture(object):
                     for w in arange(0, iterations_n):
                         matrix = matrix_list[w]
                         matrix_v = matrix_v_list[w]    
-                        self.n_bits = n_bits_list[w]
+                        self.n_bits = int(n_bits_list[w])
                         interval = interval_list[w]
                         
                         try:
@@ -2232,12 +2233,13 @@ class Texture(object):
                 axes = fig.add_subplot(5, 5, j+1)
                 axes.set_title(24*n+j)
                 try:
-                    im = axes.imshow(matrix[24*n+j], cmap=py.cm.jet, vmin = 0, vmax = self.n_bits)
+                    # im = axes.imshow(matrix[24*n+j], cmap=py.cm.jet, vmin = 0, vmax = self.n_bits)
+                    im = axes.imshow(matrix[24 * n + j], cmap=plt.get_cmap('jet'), vmin=0, vmax=self.n_bits)
                 except IndexError:
                     break
                     pass
-            axes = fig.add_subplot(5, 5, 25)
-            fig.colorbar(im)
+                axes = fig.add_subplot(5, 5, 25)
+                fig.colorbar(im)
             try:
                 makedirs(path+ImName+'\\')
             except OSError:
@@ -2254,12 +2256,12 @@ class Texture(object):
                 axes = fig.add_subplot(5, 5, j+1, facecolor='#FFFF99')
                 axes.set_title(24*n+j)
                 try:
-                    im = axes.imshow(matrix[24*n+j], cmap=py.cm.Greys_r, vmin = 0, vmax = self.n_bits)
+                    im = axes.imshow(matrix[24*n+j], cmap=plt.get_cmap('Greys'), vmin = 0, vmax = self.n_bits)
                 except IndexError:
                     break
                     pass
-            axes = fig.add_subplot(5, 5, 25)
-            fig.colorbar(im)
+                axes = fig.add_subplot(5, 5, 25)
+                fig.colorbar(im)
             fig.savefig(path+ImName+'\\black_'+name+'_'+self.structure+'_'+pixNr+'_'+str(n+1)+'.png')
             py.close()
             del fig

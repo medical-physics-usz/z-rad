@@ -39,7 +39,7 @@ class main_texture_ivim(object):
     wv – bool, calculate wavelet  
     exportList – list of matrices/features to be calculated and exported
     '''
-    def __init__(self, sb, path_image, path_save, structure, pixNr, binSize, l_ImName, save_as, Dim, outlier_corr,wv,local, cropStructure, exportList):
+    def __init__(self, sb, path_image, path_save, structure, pixNr, binSize, l_ImName, save_as, dim, outlier_corr,wv,local, cropStructure, exportList):
         final=[] # list with results
         image_modality = ['DSlow2', 'DFast2', 'F2']
         dicomProblem = []
@@ -52,7 +52,7 @@ class main_texture_ivim(object):
                 mypath_image = path_image+ImName+'\\'+prefix[m_name]+"\\"
                 UID = ['IVIM']
                 
-                read = ReadImageStructure(UID, mypath_image, structure, wv, image_modality)
+                read = ReadImageStructure(UID, mypath_image, structure, wv, None, image_modality)  # none for dimension
 
                 dicomProblem.append([ImName, read.listDicomProblem])   
                 

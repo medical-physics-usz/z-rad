@@ -189,7 +189,7 @@ class ResizeTexture(object):
                         IM.append(a_new)
                         del a_new
 
-                    if self.dim == "2D":
+                    if self.dim == "2D" or self.dim == "2D_singleSlice":
                         # skip z interpolation if dim = 2D
                         new_image = np.array(IM)
                     else:
@@ -463,7 +463,7 @@ class ResizeTexture(object):
                     os.rename(mypath_save[:-1], mypath_save[:-1] + '_noRS')
                 else:
                     # the resize structure is not necessary in 2D interpolation. go on with next patient-folder
-                    if self.dim == "2D":
+                    if self.dim == "2D" or self.dim == "2D_singleSlice":
                         # copy structure file into new resize folder
                         copyfile(join(rs_name), join(mypath_save, rs[0]))
                         continue  # structure will not be resized
@@ -552,7 +552,7 @@ class ResizeTexture(object):
                                 try:
                                     rs.ROIContourSequence[st_nr].ContourSequence[j].ContourData = contour[j]
                                     nr = len(contour[j]) / 3  # number of points
-                                    rs.ROIContourSequence[st_nr].ContourSequence[j].NumberOfContourPoints = str(nr)
+                                    rs.ROIContourSequence[st_nr].ContourSequence[j].NumberOfContourPoints = int(nr)#str(nr)
                                 except IndexError:  # if the new contour is a longer sequence
                                     a = dc.dataset.Dataset()
                                     a.add_new((0x3006, 0x42), 'CS', 'CLOSED_PLANAR')

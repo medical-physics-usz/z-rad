@@ -15,7 +15,7 @@ from os import makedirs
 from os.path import isdir
 from datetime import datetime
 
-from texture_wavelet3D import Wavelet
+from texture_wavelet import Wavelet
 ##from texture_rs import Read_rs
 
 ##from margin4 import Margin
@@ -84,7 +84,7 @@ class Texture(object):
                 
             for i in arange(0, len(maps)):
                 #wavelet transform
-                wave_list = Wavelet(maps[i], path, names[i], ImName+'_'+pixNr).Return() #original, HHH, HHL, HLH, HLL, LHH, LHL, LLH, LLL
+                wave_list = Wavelet(maps[i], path, names[i], ImName+'_'+pixNr, "2D").Return() #original, HHH, HHL, HLH, HLL, LHH, LHL, LLH, LLL
                 rs_type = [1, 0, 0, 0, 0, 0, 0, 0, 0]
                 for w in arange(0, len(wave_list)):
                     try:

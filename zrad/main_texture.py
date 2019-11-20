@@ -33,7 +33,6 @@ class Radiomics(wx.Frame):
         self.logger.info("Logger Mode: " + logging.getLevelName(self.logger.getEffectiveLevel()))
         self.InitUI()
         self.Show()
-        self.dim = []
 
     def InitUI(self):
         self.local = False
@@ -132,9 +131,11 @@ class Radiomics(wx.Frame):
 
         # dimensionality
         if self.panel.FindWindowById(1061).GetValue():
-            self.dim = '2D'
+            dim = '2D'
+        elif self.panel.FindWindowById(10611).GetValue():
+            dim = '2D_singleSlice'
         else:
-            self.dim = '3D'
+            dim = '3D'
 
         if n_pref != '':
             l_ImName = [n_pref + '_' + str(i) for i in arange(start, stop)]  # subfolders that you want to analyze
@@ -203,9 +204,11 @@ class Radiomics(wx.Frame):
 
         # dimensionality
         if self.panel.FindWindowById(1061).GetValue():
-            self.dim = '2D'
+            dim = '2D'
+        elif self.panel.FindWindowById(10611).GetValue():
+            dim = '2D_singleSlice'
         else:
-            self.dim = '3D'
+            dim = '3D'
 
         # wavelet
         if self.panel.FindWindowById(1071).GetValue():
@@ -233,7 +236,7 @@ class Radiomics(wx.Frame):
                 hu_max = 'none'
                 self.panel.FindWindowById(125).SetValue('none')
                 self.panel.FindWindowById(126).SetValue('none')
-            main_texture_ct(self.GetStatusBar(),path_image, path_save, structure, pixNr, binSize, l_ImName, save_as, self.dim, hu_min, hu_max, outlier_corr,wv, self.local, cropStructure, exportList)
+            main_texture_ct(self.GetStatusBar(),path_image, path_save, structure, pixNr, binSize, l_ImName, save_as, dim, hu_min, hu_max, outlier_corr,wv, self.local, cropStructure, exportList)
         
         elif self.panel.FindWindowById(130).GetValue():  # PET
             SUV = self.panel.FindWindowById(131).GetValue()
@@ -255,20 +258,20 @@ class Radiomics(wx.Frame):
                     print("Error: No CT Path provided!")
                     raise
             cropStructure = {"crop" : cropArg, "hu_min" : ct_hu_min, "hu_max" : ct_hu_max, "ct_path" : ct_path}
-            main_texture_pet(self.GetStatusBar(),path_image, path_save, structure, pixNr, binSize, l_ImName, save_as, self.dim, SUV, wv, self.local, cropStructure, exportList)
+            main_texture_pet(self.GetStatusBar(),path_image, path_save, structure, pixNr, binSize, l_ImName, save_as, dim, SUV, wv, self.local, cropStructure, exportList)
         
         elif self.panel.FindWindowById(140).GetValue(): # CTP
             outlier_corr = self.panel.FindWindowById(141).GetValue()
-            main_texture_ctp(self.GetStatusBar(),path_image, path_save, structure, pixNr, binSize, l_ImName, save_as, self.dim, outlier_corr, wv,self.local, cropStructure, exportList)
+            main_texture_ctp(self.GetStatusBar(),path_image, path_save, structure, pixNr, binSize, l_ImName, save_as, dim, outlier_corr, wv,self.local, cropStructure, exportList)
         
         elif self.panel.FindWindowById(150).GetValue(): # MR
             struct_norm1 = self.panel.FindWindowById(151).GetValue()
             struct_norm2 = self.panel.FindWindowById(152).GetValue()
-            main_texture_mr(self.GetStatusBar(),path_image, path_save, structure, pixNr, binSize, l_ImName, save_as, self.dim,  struct_norm1, struct_norm2, wv, self.local, cropStructure,exportList)
+            main_texture_mr(self.GetStatusBar(),path_image, path_save, structure, pixNr, binSize, l_ImName, save_as, dim,  struct_norm1, struct_norm2, wv, self.local, cropStructure,exportList)
         
         elif self.panel.FindWindowById(160).GetValue(): # IVIM
-            main_texture_ivim(self.GetStatusBar(),path_image, path_save, structure, pixNr, binSize, l_ImName, save_as, self.dim, wv,self.local, cropStructure, exportList)
-        
+            main_texture_ivim(self.GetStatusBar(),path_image, path_save, structure, pixNr, binSize, l_ImName, save_as, dim, wv,self.local, cropStructure, exportList)
+
         name_shape_pt = ""
         if self.panel.FindWindowById(1081).GetValue(): # calculate shape
             name_shape_pt = self.panel.FindWindowById(1083).GetValue() # name of ROI defined as PT for shape
@@ -287,7 +290,8 @@ class Radiomics(wx.Frame):
             LymphNodes(name_ln, name_shape_pt, path_files_shape, inp_mypath_results,path_save, start, stop)
         
         ifshape = self.panel.FindWindowById(1081).GetValue()
-        ExportExcel(ifshape, path_save, name_shape_pt, start, stop, save_as)
+        if dim == "3D":
+            ExportExcel(ifshape, path_save, name_shape_pt, start, stop, save_as)
 
         MyInfo('Radiomics done')
         

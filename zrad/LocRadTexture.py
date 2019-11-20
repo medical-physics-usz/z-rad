@@ -90,7 +90,7 @@ class Texture():
                 mypath_image = path_image + ImName + '\\'
                 CT_UID = ['1.2.840.10008.5.1.4.1.1.2', '1.2.840.10008.5.1.4.1.1.2.1']  # CT and contarst-enhanced CT
 
-                read = ReadImageStructure(CT_UID, mypath_image, structure, wv)
+                read = ReadImageStructure(CT_UID, mypath_image, structure, wv, None) # none for dim
 
                 dicomProblem.append([ImName, read.listDicomProblem])
 

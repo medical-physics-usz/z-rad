@@ -551,14 +551,14 @@ class ResizeTexture(object):
                             for j in arange(0, len(contour)):
                                 try:
                                     rs.ROIContourSequence[st_nr].ContourSequence[j].ContourData = contour[j]
-                                    nr = len(contour[j]) / 3  # number of points
+                                    nr = len(contour[j]) // 3  #number of points
                                     rs.ROIContourSequence[st_nr].ContourSequence[j].NumberOfContourPoints = str(nr)
                                 except IndexError:  # if the new contour is a longer sequence
                                     a = dc.dataset.Dataset()
-                                    a.add_new((0x3006, 0x42), 'CS', 'CLOSED_PLANAR')
-                                    a.add_new((0x3006, 0x46), 'IS', str(len(contour[j]) / 3))
-                                    a.add_new((0x3006, 0x48), 'IS', str(j))  # sequence element number
-                                    a.add_new((0x3006, 0x50), 'DS', contour[j])
+                                    a.add_new((0x3006,0x42), 'CS', 'CLOSED_PLANAR')
+                                    a.add_new((0x3006,0x46), 'IS', str(len(contour[j])//3))
+                                    a.add_new((0x3006,0x48), 'IS', str(j))  # sequence element number
+                                    a.add_new((0x3006,0x50), 'DS', contour[j])
                                     rs.ROIContourSequence[st_nr].ContourSequence.append(a)
                             # delete the sequence elements if the original sequence was longer than interpolated
                             for j in arange(len(contour), len(rs.ROIContourSequence[st_nr].ContourSequence)):

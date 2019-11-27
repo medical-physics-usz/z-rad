@@ -73,7 +73,7 @@ class ExportExcel(object):
             pat_id.sort()
             
             #combine matricies
-            combine_matrix = np.zeros(((len(pat_id)+1), (len(matrix[0])+len(matrix_shape[0])-1)), dtype = 'U30') # '|S30')
+            combine_matrix = np.zeros(((len(pat_id)+1), (len(matrix[0])+len(matrix_shape[0])-1)), dtype = '|S30')
             combine_matrix[0] = list(matrix[0,0:2])+[matrix[0][4]]+list(matrix_shape[0,1:])+list(matrix[0,2:4])+list(matrix[0,5:])
             
             

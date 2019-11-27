@@ -138,9 +138,9 @@ class Matrix(object):
                         interval = binSize * 10  # as the range of relative MTT is normally much grater than range of BV and BF
                     else:
                         interval = binSize
-                    n_bits = (vmax - vmin) // interval + 1  # calculate corresponding number of bins
-                else:  # fixed number of bin defined
-                    interval = round((vmax - vmin) / (bits - 1), 2)
+                    n_bits = int((vmax-vmin)//interval+1)  # calcuate corresponding number of bins
+                else: #fixed number of bin defined
+                    interval = round((vmax-vmin)/(bits-1), 2)
                     n_bits = bits
                 self.logger.info('n bins, interval ' + ", ".join(map(str, (n_bits, interval))))
 
@@ -182,9 +182,9 @@ class Matrix(object):
                         interval = binSize * 10  # as the range of relative MTT is normally much grater than range of BV and BF
                     else:
                         interval = binSize
-                    n_bits = (vmax - vmin) // interval + 1  # calcuate corresponding number of bins
-                else:  # fixed number of bin defined
-                    interval = round((vmax - vmin) / (bits - 1), 2)
+                    n_bits = int((vmax-vmin)//interval + 1)  # calcuate corresponding number of bins
+                else: #fixed number of bin defined
+                    interval = round((vmax-vmin)/(bits-1),2)
                     n_bits = bits
                 self.logger.info('n bins, interval ' + ", ".join(map(str, (n_bits, interval))))
 

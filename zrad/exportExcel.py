@@ -107,25 +107,25 @@ class ExportExcel(object):
                     combine_matrix[i+1, 3:] = list(matrix[ind_t[0],2:4])+list(matrix[ind_t[0],5:])
 
                 
-        ind_empty = np.where(combine_matrix == '')
+        ind_empty = np.where(combine_matrix == b'')
         combine_matrix[ind_empty] = np.nan
-        ind_empty = np.where(combine_matrix == "''")
+        ind_empty = np.where(combine_matrix == b"''")
         combine_matrix[ind_empty] = np.nan
-        ind_bracket = np.where(combine_matrix == "[")
+        ind_bracket = np.where(combine_matrix == b"[")
         combine_matrix[ind_bracket] = np.nan
-        ind_bracket = np.where(combine_matrix == "]")
+        ind_bracket = np.where(combine_matrix == b"]")
         combine_matrix[ind_bracket] = np.nan
-        ind_nan = np.where(combine_matrix == 'nan')
+        ind_nan = np.where(combine_matrix == b'nan')
         combine_matrix[ind_nan] = np.nan
-        ind_inf = np.where(combine_matrix == 'inf')
+        ind_inf = np.where(combine_matrix == b'inf')
         combine_matrix[ind_inf] = np.nan
-        ind_inf = np.where(combine_matrix == '-inf')
+        ind_inf = np.where(combine_matrix == b'-inf')
         combine_matrix[ind_inf] = np.nan
         
         return combine_matrix
                 
     def select(self, combine_matrix, shape):
-        delete_names = [ 'fractal_dim','center_mass_shift', 'MTV20%', 'MTV30%', 'MTV40%', 'MTV50%', 'MTV60%', 'MTV70%']#'vmin', 'vmax', 'organ', 'voxels',
+        delete_names = [ b'fractal_dim',b'center_mass_shift', b'MTV20%', b'MTV30%', b'MTV40%', b'MTV50%', b'MTV60%', b'MTV70%']#'vmin', 'vmax', 'organ', 'voxels',
         
         ind_delete = []
         for dn in delete_names:
@@ -139,12 +139,12 @@ class ExportExcel(object):
         
         #safe features
         ind_save = []
-        ind_save.append(int(np.where(combine_matrix[0]=='MTV20%')[0][0]))
-        ind_save.append(int(np.where(combine_matrix[0]=='MTV30%')[0][0]))
-        ind_save.append(int(np.where(combine_matrix[0]=='MTV40%')[0][0]))
-        ind_save.append(int(np.where(combine_matrix[0]=='MTV50%')[0][0]))
-        ind_save.append(int(np.where(combine_matrix[0]=='MTV60%')[0][0]))
-        ind_save.append(int(np.where(combine_matrix[0]=='MTV70%')[0][0]))
+        ind_save.append(int(np.where(combine_matrix[0]==b'MTV20%')[0][0]))
+        ind_save.append(int(np.where(combine_matrix[0]==b'MTV30%')[0][0]))
+        ind_save.append(int(np.where(combine_matrix[0]==b'MTV40%')[0][0]))
+        ind_save.append(int(np.where(combine_matrix[0]==b'MTV50%')[0][0]))
+        ind_save.append(int(np.where(combine_matrix[0]==b'MTV60%')[0][0]))
+        ind_save.append(int(np.where(combine_matrix[0]==b'MTV70%')[0][0]))
         
         for inds in ind_save:
             ind_delete.remove(inds)
@@ -152,8 +152,8 @@ class ExportExcel(object):
         
         if shape != '':
             ind_save = []
-            ind_save.append(int(np.where(combine_matrix[0]=='fractal_dim')[0][0]))
-            ind_save.append(int(np.where(combine_matrix[0]=='center_mass_shift')[0][0]))
+            ind_save.append(int(np.where(combine_matrix[0]==b'fractal_dim')[0][0]))
+            ind_save.append(int(np.where(combine_matrix[0]==b'center_mass_shift')[0][0]))
             
             for inds in ind_save:
                 ind_delete.remove(inds)
@@ -162,15 +162,15 @@ class ExportExcel(object):
         
         #reorginize
         if shape != '':
-            ind_copy = int(np.where(combine_matrix[0]=='fractal_dim')[0][0])
-            ind_text = int(np.where(combine_matrix[0]=='vmin')[0][0])
+            ind_copy = int(np.where(combine_matrix[0]==b'fractal_dim')[0][0])
+            ind_text = int(np.where(combine_matrix[0]==b'vmin')[0][0])
             
             temp = combine_matrix[:,ind_copy:ind_copy+8].copy()
             combine_matrix[:,(ind_text+8):(ind_copy+8)] = combine_matrix[:,ind_text:ind_copy]
             combine_matrix[:,ind_text:(ind_text+8)] = temp
         else:
-            ind_copy = int(np.where(combine_matrix[0]=='MTV20%')[0][0])
-            ind_text = int(np.where(combine_matrix[0]=='vmin')[0][0])
+            ind_copy = int(np.where(combine_matrix[0]==b'MTV20%')[0][0])
+            ind_text = int(np.where(combine_matrix[0]==b'vmin')[0][0])
             
             temp = combine_matrix[:,ind_copy:ind_copy+6].copy()
             combine_matrix[:,(ind_text+6):(ind_copy+6)] = combine_matrix[:,ind_text:ind_copy]

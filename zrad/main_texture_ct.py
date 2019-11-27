@@ -1,27 +1,13 @@
 # -*- coding: cp1252 -*-
 
-# import libraries
-try:
-    import pydicom as dc  # dicom library
-except ImportError:
-    import dicom as dc  # dicom library
-import numpy as np  # numerical computation
-from numpy import arange, floor
+#import libraries
+import pydicom as dc # dicom library
+import numpy as np
 import pandas as pd
-import pylab as py  # drawing plots
-from os import listdir, makedirs  # managing files
-from os.path import isfile, join, isdir
-
-from scipy.stats import norm  # statistical analysis
-import scipy.optimize as optimization
-import matplotlib
-from scipy import ndimage
-from time import gmtime
 
 # own classes
 # import class to calculate texture parameters
 from texture import Texture
-from exception import MyException
 from read import ReadImageStructure
 from export import Export
 from features2d import Features2D
@@ -68,7 +54,6 @@ class main_texture_ct(object):
                 CT_UID = ['1.2.840.10008.5.1.4.1.1.2', '1.2.840.10008.5.1.4.1.1.2.1',
                           'CT Image Storage']  # CT and contrast-enhanced CT
                 read = ReadImageStructure(CT_UID, mypath_image, structure, wv, dim, local)
-
                 dicomProblem.append([ImName, read.listDicomProblem])
 
                 # parameters to recalculate intensities HU

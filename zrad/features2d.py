@@ -99,9 +99,12 @@ class Features2D(object):
                 # wavelet transform
                 if wv:
                     if 'BV' not in modality:
-                        wave_list = Wavelet(maps[i], path, modality[i], ImName + '_' + pixNr, dim).Return()  # order of transformed images: original, LLL, HHH, HHL, HLH, HLL, LHH, LHL, LLH or for 2D: original, LL, HH, HL, LH
-                    else:  # !!!!!!!!!!!!! CTP isn't adapted yet for 2D !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-                        wave_list = WaveletCTP(maps[i], path, modality[i], ImName + '_' + pixNr).Return()
+                        ctp = False
+                    else:
+                        ctp = True
+                    wave_list = Wavelet(maps[i], path, modality[i], ImName + '_' + pixNr, dim, ctp).Return()  # order of transformed images: original, LLL, HHH, HHL, HLH, HLL, LHH, LHL, LLH or for 2D: original, LL, HH, HL, LH
+                    # else:  # !!!!!!!!!!!!! CTP isn't adapted yet for 2D !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                    #     wave_list = WaveletCTP(maps[i], path, modality[i], ImName + '_' + pixNr).Return()
                     sb.SetStatusText(ImName + ' wave done ' + str(datetime.now().strftime('%H:%M:%S')))
                     if dim == "2D" or dim == "2D_singleSlice":
                         rs_type = [1, 2, 0, 0, 0]

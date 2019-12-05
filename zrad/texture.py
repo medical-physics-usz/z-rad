@@ -2233,7 +2233,6 @@ class Texture(object):
                 axes = fig.add_subplot(5, 5, j+1)
                 axes.set_title(24*n+j)
                 try:
-                    # im = axes.imshow(matrix[24*n+j], cmap=py.cm.jet, vmin = 0, vmax = self.n_bits)
                     im = axes.imshow(matrix[24 * n + j], cmap=plt.get_cmap('jet'), vmin=0, vmax=self.n_bits)
                 except IndexError:
                     break

@@ -317,7 +317,7 @@ class Texture(object):
                     for i in arange(0, len(cropStructure["data"])): 
                         #wavelet transform
                         if wv:
-                            wave_list_ct = Wavelet(cropStructure["data"][i], path, "CT", ImName+'_'+pixNr, "3D").Return() # order of trandformed images: original, LLL, HHH, HHL, HLH, HLL, LHH, LHL, LLH
+                            wave_list_ct = Wavelet(cropStructure["data"][i], path, "CT", ImName+'_'+pixNr, "3D").Return()  # order of trandformed images: original, LLL, HHH, HHL, HLH, HLL, LHH, LHL, LLH
                             sb.SetStatusText(ImName +' wave done ' + str(datetime.now().strftime('%H:%M:%S')))
                             rs_type = [1, 2, 0, 0, 0, 0, 0, 0, 0] #structure type, structure resolution
                             iterations_n = len(wave_list_ct)

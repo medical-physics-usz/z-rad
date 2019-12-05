@@ -1,0 +1,28 @@
+Matrix aggregation methods (according to the Image biomarker standardisation initiative)
+
+Methods for GLCM, GLRLM:
+2D:
+1) (no prefix) features are computed from each 2D directional matrix and averaged over 2D directions and slices (BTW3).
+	---- by slice, without merging
+2) (mbs) features are computed from a single matrix after merging 2D directional matrices per slice,
+	and then averaged over slices (SUJT). 
+	---- by slice, with merging by slice:
+3) (mbd) features are computed from a single matrix after merging 2D directional matrices per direction, and
+	then averaged over directions (JJUI).
+	---- by slice, with merging by direction
+4) (mf) the feature is computed from a single matrix after merging all 2D directional matrices (IAZD).
+        ---- by slice, with full merging
+-----------------------------------------------------------------
+3D:
+5) (no prefix) features are computed from each 3D directional matrix and averaged over the 3D directions (ITBB).
+6) (m) the feature is computed from a single matrix after merging all 3D directional matrices (IAZD).
+
+
+for GLSZM, GLDZM, NGTDM:
+2D:
+1. (no prefix) Features are computed from 2D matrices and averaged over slices (8QNN).
+2. (m) The feature is computed from a single matrix after merging all 2D matrices (62GR).
+-----------------------------------------------------------------
+3D:
+3. (no prefix) The feature is computed from a 3D matrix (KOBO).
+

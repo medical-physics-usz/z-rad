@@ -1,4 +1,4 @@
-Matrix aggregation methods (according to the Image biomarker standardisation initiative)
+Feature aggregation methods (according to the Image biomarker standardisation initiative)
 
 Methods for GLCM, GLRLM:
 2D:

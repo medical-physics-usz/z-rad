@@ -1,14 +1,6 @@
 import pywt
-try:
-    import pydicom as dc  # dicom library
-except ImportError:
-    import dicom as dc  # dicom library
-from numpy import sqrt, arange, array, fromstring, int16, zeros, float16, isnan, where, nan, concatenate, floor
-from pylab import imshow, figure, show, close, cm, subplot, plot, savefig
-from numpy import min as nmin
-from numpy import max as nmax
-from numpy import float as floatn
-from numpy import int as intn
+from numpy import sqrt, arange, array, zeros,  floor
+import matplotlib.pyplot as plt
 from os import makedirs
 from os.path import isdir
 import logging
@@ -40,29 +32,39 @@ class Wavelet(object):
             except OSError:
                 if not isdir(path+'\\wavelet\\'+name+'\\'):
                     raise
-#            for i in arange(0, len(self.map), 2):
-#                figure()
-#                subplot(331)
-#                imshow(self.map[i], cm.Greys_r)
-#                subplot(332)
-#                imshow(self.HHH[k], cm.Greys_r)
-#                subplot(333)
-#                imshow(self.HHL[k], cm.Greys_r)
-#                subplot(334)
-#                imshow(self.HLH[k], cm.Greys_r)
-#                subplot(335)
-#                imshow(self.HLL[k], cm.Greys_r)
-#                subplot(336)
-#                imshow(self.LHH[k], cm.Greys_r)
-#                subplot(337)
-#                imshow(self.LHL[k], cm.Greys_r)
-#                subplot(338)
-#                imshow(self.LLH[k], cm.Greys_r)
-#                subplot(339)
-#                imshow(self.LLL[k], cm.Greys_r)
-#                savefig(path+'\\wavelet\\'+name+'\\'+im_name+'_'+str(k)+'.png')
-#                close()
-#                k+=1
+           # for i in arange(0, len(self.map), 2):
+           #     plt.figure()
+           #     plt.subplot(331)
+           #     plt.imshow(self.map[i], cmap=plt.get_cmap('Greys_r'))
+           #     plt.title('original')
+           #     plt.subplot(332)
+           #     plt.imshow(self.HHH[k], cmap=plt.get_cmap('Greys_r'))
+           #     plt.title('HHH')
+           #     plt.subplot(333)
+           #     plt.imshow(self.HHL[k], cmap=plt.get_cmap('Greys_r'))
+           #     plt.title('HHL')
+           #     plt.subplot(334)
+           #     plt.imshow(self.HLH[k], cmap=plt.get_cmap('Greys_r'))
+           #     plt.title('HLH')
+           #     plt.subplot(335)
+           #     plt.imshow(self.HLL[k], cmap=plt.get_cmap('Greys_r'))
+           #     plt.title('HLL')
+           #     plt.subplot(336)
+           #     plt.imshow(self.LHH[k], cmap=plt.get_cmap('Greys_r'))
+           #     plt.title('LHH')
+           #     plt.subplot(337)
+           #     plt.imshow(self.LHL[k], cmap=plt.get_cmap('Greys_r'))
+           #     plt.title('LHL')
+           #     plt.subplot(338)
+           #     plt.imshow(self.LLH[k], cmap=plt.get_cmap('Greys_r'))
+           #     plt.title('LLH')
+           #     plt.subplot(339)
+           #     plt.imshow(self.LLL[k], cmap=plt.get_cmap('Greys_r'))
+           #     plt.title('LLL')
+           #     plt.savefig(path+'\\wavelet\\'+name+'\\'+im_name+'_'+str(k)+'.png')
+           #     plt.close()
+           #     k+=1
+
         elif self.dim == "2D" or dim == "2D_singleSlice":
             HH, HL, LH, LL = self.wavelet_calculation(self.map)
 
@@ -71,26 +73,33 @@ class Wavelet(object):
             self.LH = LH/2
             self.LL = LL/2
             k = 0
+
             try:
                 makedirs(path+'\\wavelet\\2D_'+name+'\\')
             except OSError:
                 if not isdir(path+'\\wavelet\\2D_'+name+'\\'):
                     raise
-#            for i in arange(0, len(self.map), 2):
-#                figure()
-#                subplot(321)
-#                imshow(self.map[i], cm.Greys_r)
-#                subplot(322)
-#                imshow(self.HH[k], cm.Greys_r)
-#                subplot(323)
-#                imshow(self.HL[k], cm.Greys_r)
-#                subplot(324)
-#                imshow(self.LH[k], cm.Greys_r)
-#                subplot(325)
-#                imshow(self.LL[k], cm.Greys_r)
-#                savefig(path+'\\wavelet\\2D_'+name+'\\'+im_name+'_'+str(k)+'.png')
-#                close()
-#                k+=1
+
+            # for i in arange(0, len(self.map), 2):
+            #     plt.figure()
+            #     plt.subplot(321)
+            #     plt.imshow(self.map[i], cmap=plt.get_cmap('Greys_r'))
+            #     plt.title('original')
+            #     plt.subplot(322)
+            #     plt.imshow(self.HH[k], cmap=plt.get_cmap('Greys_r'))
+            #     plt.title('HH')
+            #     plt.subplot(323)
+            #     plt.imshow(self.HL[k], cmap=plt.get_cmap('Greys_r'))
+            #     plt.title('HL')
+            #     plt.subplot(324)
+            #     plt.imshow(self.LH[k], cmap=plt.get_cmap('Greys_r'))
+            #     plt.title('LH')
+            #     plt.subplot(325)
+            #     plt.imshow(self.LL[k], cmap=plt.get_cmap('Greys_r'))
+            #     plt.title('LL')
+            #     plt.savefig(path + '\\wavelet\\2D_' + name + '\\' + im_name + '_' + str(k) + '.png')
+            #     plt.close()
+            #     k += 1
 
     def Return(self):
         # if len(self.map) != 1:

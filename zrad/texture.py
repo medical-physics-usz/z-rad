@@ -279,7 +279,7 @@ class Texture(object):
                 
                 if wv:
                     if 'BV' not in modality:
-                        wave_list = Wavelet(maps[i], path, modality[i], ImName+'_'+pixNr, "3D").Return() #order of trandformed images: original, LLL, HHH, HHL, HLH, HLL, LHH, LHL, LLH
+                        wave_list = Wavelet(maps[i], path, modality[i], ImName+'_'+pixNr, "3D").Return()  # order of trandformed images: original, LLL, HHH, HHL, HLH, HLL, LHH, LHL, LLH
                         # none for dimension
                     else:
                         wave_list = WaveletCTP(maps[i], path, modality[i], ImName+'_'+pixNr).Return()

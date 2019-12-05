@@ -423,7 +423,7 @@ class Structures(object):
                         for j in np.arange(xmin, xmax + 1):  # check if the point in inside the polygon defined by contour points, 0 - on contour, 1 - inside, -1 -outside
                             m[int(i - ymin)][int(j - xmin)] = cv2.pointPolygonTest(np.array(cnt_all[k][n]), (j, i), False)
                     M.append(m)
-                for n in arange(1, len(M)):  # to account for multiple subcontours ina slice, including holes in a contour
+                for n in arange(1, len(M)):  # to account for multiple subcontours in a slice, including holes in a contour
                     M[0] = M[0] * M[n]
                 M[0] = M[0] * (-1) ** (len(M) + 1)
                 ind = np.where(M[0] >= 0)

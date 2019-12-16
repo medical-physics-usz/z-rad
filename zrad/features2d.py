@@ -295,7 +295,7 @@ class Features2D(object):
 
                             # GLCM - 3.6 (grey level co-occurence based features)
                             # ------------------------------------------------------------------------------------------
-                            # method 1) all directions and slices separate
+                            # method 1) all directions and slices separate ( )
                             glcm_m1 = GLCM("GLCM-no-merging", matrix, lista_t_2d, self.n_bits)
                             # calculate glcm matrices for all 2d methods:
                             glcm, glcm_mbs, glcm_mbd, glcm_mf = glcm_m1.matrix_calculation()
@@ -303,20 +303,20 @@ class Features2D(object):
                             glcm_m1.glcm_feature_calculation()
                             self.dict_features = glcm_m1.return_features(self.dict_features, "", m_wv)
 
-                            # method 2) directions merged by slice
+                            # method 2) directions merged by slice (mbs)
                             glcm_m2 = GLCM("GLCM-merging-by-slice", matrix, lista_t_2d, self.n_bits)
                             glcm_m2.norm_marginal_calculation(glcm_mbs)
                             glcm_m2.glcm_feature_calculation()
                             self.dict_features = glcm_m2.return_features(self.dict_features, "mbs", m_wv)
 
                             if dim != "2D_singleSlice":  # skip this part for single 2D
-                                # method 3) slices merged by direction
+                                # method 3) slices merged by direction (mbd)
                                 glcm_m3 = GLCM("GLCM-merging-by-direction", matrix, lista_t_2d, self.n_bits)
                                 glcm_m3.norm_marginal_calculation(glcm_mbd)
                                 glcm_m3.glcm_feature_calculation()
                                 self.dict_features = glcm_m3.return_features(self.dict_features, "mbd", m_wv)
 
-                                # method 4) full merging
+                                # method 4) full merging (mf)
                                 glcm_m4 = GLCM("GLCM-full-merging", matrix, lista_t_2d, self.n_bits)
                                 glcm_m4.norm_marginal_calculation(glcm_mf)
                                 glcm_m4.glcm_feature_calculation()
@@ -346,21 +346,21 @@ class Features2D(object):
                             glrlm_m1.feature_calculation("1)", glrlm)
                             self.dict_features = glrlm_m1.return_features(self.dict_features, "", m_wv)
 
-                            # method 2)
+                            # method 2) (mbs)
                             glrlm_m2 = GLRLM_GLSZM_GLDZM_NGLDM("GLRLM-merging-by-slice", matrix, "GLRLM", self.n_bits,
                                                                lista_t_2d)
                             glrlm_m2.feature_calculation("2)", glrlm_mbs)
                             self.dict_features = glrlm_m2.return_features(self.dict_features, "mbs", m_wv)
 
                             if dim != "2D_singleSlice":
-                                # method 3) (all slices merged per direction)
+                                # method 3) (all slices merged per direction) (mbd)
                                 glrlm_m3 = GLRLM_GLSZM_GLDZM_NGLDM("GLRLM-merging-by-direction", matrix, "GLRLM",
                                                                    self.n_bits,
                                                                    lista_t_2d)
                                 glrlm_m3.feature_calculation("3)", glrlm_mbd)
                                 self.dict_features = glrlm_m3.return_features(self.dict_features, "mbd", m_wv)
 
-                                # method 4) (slices and directions merged)
+                                # method 4) (slices and directions merged) (mf)
                                 glrlm_m4 = GLRLM_GLSZM_GLDZM_NGLDM("GLRLM-full-merging", matrix, "GLRLM", self.n_bits,
                                                                    lista_t_2d)
                                 glrlm_m4.feature_calculation("4)", glrlm_mf)

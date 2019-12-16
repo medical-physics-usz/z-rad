@@ -180,47 +180,25 @@ class Intensity(object):
     def return_features(self, dictionary, m_wv):
         """ dictionary, m_wv (wavelet method) as input """
         # check if intensity features already in there
-        if "%shist_mean" % m_wv not in dictionary.keys():
-            dictionary["%shist_min" % m_wv] = [self.min]
-            dictionary["%shist_max" % m_wv] = [self.max]
-            dictionary["%shist_mean" % m_wv] = [round(self.mean, 3)]
-            dictionary["%shist_sd" % m_wv] = [round(self.std, 3)]
-            dictionary["%shist_coefficientOfVariation" % m_wv] = [round(self.cov, 3)]
-            dictionary["%shist_skewness" % m_wv] = [round(self.skewness, 3)]
-            dictionary["%shist_kurtosis" % m_wv] = [round(self.kurtosis, 3)]
-            dictionary["%shist_variance" % m_wv] = [round(self.var, 3)]
-            dictionary["%shist_median" % m_wv] = [round(self.median, 3)]
-            dictionary["%shist_percentile10" % m_wv] = [round(self.percentile10, 3)]
-            dictionary["%shist_percentile90" % m_wv] = [round(self.percentile90, 3)]
-            dictionary["%shist_interquartileRange" % m_wv] = [round(self.iqr, 3)]  # interquartile range
-            dictionary["%shist_range" % m_wv] = [round(self.Hrange, 3)]
-            dictionary["%shist_meanAbsoluteDeviation" % m_wv] = [round(self.mad, 3)]  # mean absolute deviation
-            dictionary["%shist_robustMeanAbsoluteDeviation" % m_wv] = [round(self.rmad, 3)]  # robust mean absolute deviation
-            dictionary["%shist_energy" % m_wv] = [round(self.H_energy, 3)]
-            dictionary["%shist_entropy" % m_wv] = [round(self.H_entropy, 3)]
-            dictionary["%shist_rms" % m_wv] = [round(self.rms, 3)]  # root mean square
-            dictionary["%shist_uniformity" % m_wv] = [round(self.H_uniformity, 3)]
-
-        else:
-            dictionary["%shist_min" % m_wv].append("")  # leave it empty to only get original min and max values
-            dictionary["%shist_max" % m_wv].append("")
-            dictionary["%shist_mean" % m_wv].append(round(self.mean, 3))
-            dictionary["%shist_sd" % m_wv].append(round(self.std, 3))
-            dictionary["%shist_coefficientOfVariation" % m_wv].append(round(self.cov, 3))
-            dictionary["%shist_skewness" % m_wv].append(round(self.skewness, 3))
-            dictionary["%shist_kurtosis" % m_wv].append(round(self.kurtosis, 3))
-            dictionary["%shist_variance" % m_wv].append(round(self.var, 3))
-            dictionary["%shist_median" % m_wv].append(round(self.median, 3))
-            dictionary["%shist_percentile10" % m_wv].append(round(self.percentile10, 3))
-            dictionary["%shist_percentile90" % m_wv].append(round(self.percentile90, 3))
-            dictionary["%shist_interquartileRange" % m_wv].append(round(self.iqr, 3))  # interquartile range
-            dictionary["%shist_range" % m_wv].append(round(self.Hrange, 3))
-            dictionary["%shist_meanAbsoluteDeviation" % m_wv].append(round(self.mad, 3))  # mean absolute deviation
-            dictionary["%shist_robustMeanAbsoluteDeviation" % m_wv].append(round(self.rmad, 3))  # robust mean absolute deviation
-            dictionary["%shist_energy" % m_wv].append(round(self.H_energy, 3))
-            dictionary["%shist_entropy" % m_wv].append(round(self.H_entropy, 3))
-            dictionary["%shist_rms" % m_wv].append(round(self.rms, 3))  # root mean square
-            dictionary["%shist_uniformity" % m_wv].append(round(self.H_uniformity, 3))
+        dictionary["%shist_min" % m_wv] = [self.min]
+        dictionary["%shist_max" % m_wv] = [self.max]
+        dictionary["%shist_mean" % m_wv] = [round(self.mean, 3)]
+        dictionary["%shist_sd" % m_wv] = [round(self.std, 3)]
+        dictionary["%shist_coefficientOfVariation" % m_wv] = [round(self.cov, 3)]
+        dictionary["%shist_skewness" % m_wv] = [round(self.skewness, 3)]
+        dictionary["%shist_kurtosis" % m_wv] = [round(self.kurtosis, 3)]
+        dictionary["%shist_variance" % m_wv] = [round(self.var, 3)]
+        dictionary["%shist_median" % m_wv] = [round(self.median, 3)]
+        dictionary["%shist_percentile10" % m_wv] = [round(self.percentile10, 3)]
+        dictionary["%shist_percentile90" % m_wv] = [round(self.percentile90, 3)]
+        dictionary["%shist_interquartileRange" % m_wv] = [round(self.iqr, 3)]  # interquartile range
+        dictionary["%shist_range" % m_wv] = [round(self.Hrange, 3)]
+        dictionary["%shist_meanAbsoluteDeviation" % m_wv] = [round(self.mad, 3)]  # mean absolute deviation
+        dictionary["%shist_robustMeanAbsoluteDeviation" % m_wv] = [round(self.rmad, 3)]  # robust mean absolute deviation
+        dictionary["%shist_energy" % m_wv] = [round(self.H_energy, 3)]
+        dictionary["%shist_entropy" % m_wv] = [round(self.H_entropy, 3)]
+        dictionary["%shist_rms" % m_wv] = [round(self.rms, 3)]  # root mean square
+        dictionary["%shist_uniformity" % m_wv] = [round(self.H_uniformity, 3)]
 
         return dictionary
 
@@ -675,62 +653,33 @@ class GLCM(object):
 
     # noinspection PyTypeChecker
     def return_features(self, dictionary, m, m_wv):
-        if "{}GLCM_jointMax" .format(m_wv + m) not in dictionary.keys():
-            dictionary["{}GLCM_jointMax" .format(m_wv + m)] = [round(self.joint_max_av, 3)]  # 3.6.1
-            dictionary["{}GLCM_jointAverage" .format(m_wv + m)] = [round(self.joint_average_av, 3)]
-            dictionary["{}GLCM_jointVariance" .format(m_wv + m)] = [round(self.joint_variance_av, 3)]
-            dictionary["{}GLCM_jointEntropy" .format(m_wv + m)] = [round(self.joint_entropy_av, 3)]
-            dictionary["{}GLCM_differenceAverage" .format(m_wv + m)] = [round(self.diff_average_av, 3)]  # 3.6.5
-            dictionary["{}GLCM_differenceVariance" .format(m_wv + m)] = [round(self.diff_var_av, 3)]
-            dictionary["{}GLCM_differenceEntropy" .format(m_wv + m)] = [round(self.diff_entropy_av, 3)]
-            dictionary["{}GLCM_sumAverage" .format(m_wv + m)] = [round(self.sum_average_av, 3)]
-            dictionary["{}GLCM_sumVariance" .format(m_wv + m)] = [round(self.sum_var_av, 3)]
-            dictionary["{}GLCM_sumEntropy" .format(m_wv + m)] = [round(self.sum_entropy_av, 3)]  # 3.6.10
-            dictionary["{}GLCM_angular_sec_moment" .format(m_wv + m)] = [round(self.angular_sec_moment_av, 3)]
-            dictionary["{}GLCM_contrast" .format(m_wv + m)] = [round(self.contrast_av, 3)]
-            dictionary["{}GLCM_dissimilarity" .format(m_wv + m)] = [round(self.dissimilarity_av, 3)]
-            dictionary["{}GLCM_inverseDifference" .format(m_wv + m)] = [round(self.invers_diff_av, 3)]
-            dictionary["{}GLCM_inverseDifferenceNormalized" .format(m_wv + m)] = [round(self.norm_invers_diff_av, 3)]  # 3.6.15
-            dictionary["{}GLCM_inverseDifferenceMoment" .format(m_wv + m)] = [round(self.invers_diff_moment_av, 3)]
-            dictionary["{}GLCM_inverseDifferenceMomentNormalized" .format(m_wv + m)] = [round(self.norm_invers_diff_moment_av, 3)]
-            dictionary["{}GLCM_inverseVariance" .format(m_wv + m)] = [round(self.invers_var_av, 3)]
-            dictionary["{}GLCM_correlation" .format(m_wv + m)] = [round(self.correlation_av, 3)]
-            dictionary["{}GLCM_autocorrelation" .format(m_wv + m)] = [round(self.autocorrelation_av, 3)]  # 3.6.20
-            dictionary["{}GLCM_clusterTendency" .format(m_wv + m)] = [round(self.cluster_tendency_av, 3)]
-            dictionary["{}GLCM_clusterShade" .format(m_wv + m)] = [round(self.cluster_shade_av, 3)]
-            dictionary["{}GLCM_clusterProminence" .format(m_wv + m)] = [round(self.cluster_prominence_av, 3)]
-            dictionary["{}GLCM_informationCorrelation1" .format(m_wv + m)] = [round(self.info_corr1_av, 3)]
-            dictionary["{}GLCM_informationCorrelation2" .format(m_wv + m)] = [round(self.info_corr2_av, 3)]  # 3.6.25
-            # other features
-            dictionary["{}GLCM_maximalCorrelationCoefficient" .format(m_wv + m)] = [round(self.MCC_av, 3)]
-        else:
-            dictionary["{}GLCM_jointMax" .format(m_wv + m)].append(round(self.joint_max_av, 3))  # 3.6.1
-            dictionary["{}GLCM_jointAverage" .format(m_wv + m)].append(round(self.joint_average_av, 3))
-            dictionary["{}GLCM_jointVariance" .format(m_wv + m)].append(round(self.joint_variance_av, 3))
-            dictionary["{}GLCM_jointEntropy" .format(m_wv + m)].append(round(self.joint_entropy_av, 3))
-            dictionary["{}GLCM_differenceAverage" .format(m_wv + m)].append(round(self.diff_average_av, 3))  # 3.6.5
-            dictionary["{}GLCM_differenceVariance" .format(m_wv + m)].append(round(self.diff_var_av, 3))
-            dictionary["{}GLCM_differenceEntropy" .format(m_wv + m)].append(round(self.diff_entropy_av, 3))
-            dictionary["{}GLCM_sumAverage" .format(m_wv + m)].append(round(self.sum_average_av, 3))
-            dictionary["{}GLCM_sumVariance" .format(m_wv + m)].append(round(self.sum_var_av, 3))
-            dictionary["{}GLCM_sumEntropy" .format(m_wv + m)].append(round(self.sum_entropy_av, 3))  # 3.6.10
-            dictionary["{}GLCM_angular_sec_moment" .format(m_wv + m)].append(round(self.angular_sec_moment_av, 3))
-            dictionary["{}GLCM_contrast" .format(m_wv + m)].append(round(self.contrast_av, 3))
-            dictionary["{}GLCM_dissimilarity" .format(m_wv + m)].append(round(self.dissimilarity_av, 3))
-            dictionary["{}GLCM_inverseDifference" .format(m_wv + m)].append(round(self.invers_diff_av, 3))
-            dictionary["{}GLCM_inverseDifferenceNormalized" .format(m_wv + m)].append(round(self.norm_invers_diff_av, 3))  # 3.6.15
-            dictionary["{}GLCM_inverseDifferenceMoment" .format(m_wv + m)].append(round(self.invers_diff_moment_av, 3))
-            dictionary["{}GLCM_inverseDifferenceMomentNormalized" .format(m_wv + m)].append(round(self.norm_invers_diff_moment_av, 3))
-            dictionary["{}GLCM_inverseVariance" .format(m_wv + m)].append(round(self.invers_var_av, 3))
-            dictionary["{}GLCM_correlation" .format(m_wv + m)].append(round(self.correlation_av, 3))
-            dictionary["{}GLCM_autocorrelation" .format(m_wv + m)].append(round(self.autocorrelation_av, 3))  # 3.6.20
-            dictionary["{}GLCM_clusterTendency" .format(m_wv + m)].append(round(self.cluster_tendency_av, 3))
-            dictionary["{}GLCM_clusterShade" .format(m_wv + m)].append(round(self.cluster_shade_av, 3))
-            dictionary["{}GLCM_clusterProminence" .format(m_wv + m)].append(round(self.cluster_prominence_av, 3))
-            dictionary["{}GLCM_informationCorrelation1" .format(m_wv + m)].append(round(self.info_corr1_av, 3))
-            dictionary["{}GLCM_informationCorrelation2" .format(m_wv + m)].append(round(self.info_corr2_av, 3))  # 3.6.25
-            # other features
-            dictionary["{}GLCM_maximalCorrelationCoefficient" .format(m_wv + m)].append(round(self.MCC_av, 3))
+        dictionary["{}GLCM_jointMax" .format(m_wv + m)] = [round(self.joint_max_av, 3)]  # 3.6.1
+        dictionary["{}GLCM_jointAverage" .format(m_wv + m)] = [round(self.joint_average_av, 3)]
+        dictionary["{}GLCM_jointVariance" .format(m_wv + m)] = [round(self.joint_variance_av, 3)]
+        dictionary["{}GLCM_jointEntropy" .format(m_wv + m)] = [round(self.joint_entropy_av, 3)]
+        dictionary["{}GLCM_differenceAverage" .format(m_wv + m)] = [round(self.diff_average_av, 3)]  # 3.6.5
+        dictionary["{}GLCM_differenceVariance" .format(m_wv + m)] = [round(self.diff_var_av, 3)]
+        dictionary["{}GLCM_differenceEntropy" .format(m_wv + m)] = [round(self.diff_entropy_av, 3)]
+        dictionary["{}GLCM_sumAverage" .format(m_wv + m)] = [round(self.sum_average_av, 3)]
+        dictionary["{}GLCM_sumVariance" .format(m_wv + m)] = [round(self.sum_var_av, 3)]
+        dictionary["{}GLCM_sumEntropy" .format(m_wv + m)] = [round(self.sum_entropy_av, 3)]  # 3.6.10
+        dictionary["{}GLCM_angular_sec_moment" .format(m_wv + m)] = [round(self.angular_sec_moment_av, 3)]
+        dictionary["{}GLCM_contrast" .format(m_wv + m)] = [round(self.contrast_av, 3)]
+        dictionary["{}GLCM_dissimilarity" .format(m_wv + m)] = [round(self.dissimilarity_av, 3)]
+        dictionary["{}GLCM_inverseDifference" .format(m_wv + m)] = [round(self.invers_diff_av, 3)]
+        dictionary["{}GLCM_inverseDifferenceNormalized" .format(m_wv + m)] = [round(self.norm_invers_diff_av, 3)]  # 3.6.15
+        dictionary["{}GLCM_inverseDifferenceMoment" .format(m_wv + m)] = [round(self.invers_diff_moment_av, 3)]
+        dictionary["{}GLCM_inverseDifferenceMomentNormalized" .format(m_wv + m)] = [round(self.norm_invers_diff_moment_av, 3)]
+        dictionary["{}GLCM_inverseVariance" .format(m_wv + m)] = [round(self.invers_var_av, 3)]
+        dictionary["{}GLCM_correlation" .format(m_wv + m)] = [round(self.correlation_av, 3)]
+        dictionary["{}GLCM_autocorrelation" .format(m_wv + m)] = [round(self.autocorrelation_av, 3)]  # 3.6.20
+        dictionary["{}GLCM_clusterTendency" .format(m_wv + m)] = [round(self.cluster_tendency_av, 3)]
+        dictionary["{}GLCM_clusterShade" .format(m_wv + m)] = [round(self.cluster_shade_av, 3)]
+        dictionary["{}GLCM_clusterProminence" .format(m_wv + m)] = [round(self.cluster_prominence_av, 3)]
+        dictionary["{}GLCM_informationCorrelation1" .format(m_wv + m)] = [round(self.info_corr1_av, 3)]
+        dictionary["{}GLCM_informationCorrelation2" .format(m_wv + m)] = [round(self.info_corr2_av, 3)]  # 3.6.25
+        # other features
+        dictionary["{}GLCM_maximalCorrelationCoefficient" .format(m_wv + m)] = [round(self.MCC_av, 3)]
 
         return dictionary
 
@@ -1043,23 +992,23 @@ class GLRLM_GLSZM_GLDZM_NGLDM(object):
                         pass
         return points
 
-    def feature_calculation(self, method, matrix_method):
+    def feature_calculation(self, matrix_dimension_type, matrix_method):
         """ Calculate features from 3.7 """
-        # adapt form of matrix
+        # adapt form of matrix so that we have 4 dimensions for all cases
         matrix_t = matrix_method
-        if method == "1)":
+        if matrix_dimension_type == "1)":
             matrix_t = matrix_method  # d, slice, Ng, run length//zone size//distance
             nv = np.sum(np.sum(~np.isnan(self.matrix), axis=1), axis=1)  # sum of voxels for each slice
-        elif method == "2)":
+        elif matrix_dimension_type == "2)":
             # add an add. dimension so that indices will match
             matrix_t = np.expand_dims(matrix_method, axis=0)  # 1, slice, Ng, run length// zone size// d
             nv = np.sum(np.sum(~np.isnan(self.matrix), axis=1), axis=1)
             if self.matrix_type == "GLRLM":
                 nv = nv * len(self.directionvector)  # *4 because directions merged for GLRLM
-        elif method == "3)":
+        elif matrix_dimension_type == "3)":
             matrix_t = np.expand_dims(matrix_method, axis=1)  # d, 1, Ng, run length// zone size// d
             nv = [np.sum(~np.isnan(self.matrix))]  # sum of all voxels of whole matrix
-        elif method == "4)":
+        elif matrix_dimension_type == "4)":
             matrix_t = np.expand_dims(np.expand_dims(matrix_method, axis=0), axis=0)  # 1, 1, Ng, run length
             nv = [np.sum(~np.isnan(self.matrix))]
             if self.matrix_type == "GLRLM":
@@ -1107,12 +1056,6 @@ class GLRLM_GLSZM_GLDZM_NGLDM(object):
                     for j in arange(0, len(matrix[x][i])):  # run length
                         lgse += matrix[x][i][j] / float(np.uint(i + 1) ** 2)  # otherwise level 0 is not included
                 self.low_grey_level_x_emphasis.append(lgse / sum_elements)
-
-                # lgse = 0
-                # if i calculate it from 1 it will be alright for phantom....
-                # for i in arange (1, len(matrix[x])):
-                #     lgse += np.sum(matrix[x][i]) / float(np.uint(i) **2)
-                # self.low_grey_level_x_emphasis.append(lgse / sum_elements)
 
                 # 3.7.4     high grey level run emphasis    //  hgl zone emphasis
                 hgse = 0
@@ -1240,8 +1183,7 @@ class GLRLM_GLSZM_GLDZM_NGLDM(object):
         self.longLarge_x_low_grey_level_emphasis_av = np.nanmean(self.longLarge_x_low_grey_level_emphasis)
         self.longLarge_x_high_grey_level_emphasis_av = np.nanmean(self.longLarge_x_high_grey_level_emphasis)
         self.grey_level_nonuniform_av = np.nanmean(self.grey_level_nonuniform)
-        self.normalised_grey_level_nonuniform_av = np.nanmean(
-            self.normalised_grey_level_nonuniform)  # 3.7.10         #nanss   ...................
+        self.normalised_grey_level_nonuniform_av = np.nanmean(self.normalised_grey_level_nonuniform)  # 3.7.10         #nanss   ...................
         self.x_lengthSize_nonuniform_av = np.nanmean(self.x_lengthSize_nonuniform)
         self.normalised_x_lengthSize_nonuniform_av = np.nanmean(self.normalised_x_lengthSize_nonuniform)
         self.x_percentage_av = np.nanmean(self.x_percentage)
@@ -1254,155 +1196,81 @@ class GLRLM_GLSZM_GLDZM_NGLDM(object):
     def return_features(self, dictionary, m, m_wv):
         """ m: method applied for feature calculation"""
         if self.matrix_type == "GLRLM":
-            if "{}GLRLM_sre" .format(m_wv + m) not in dictionary.keys():
-                dictionary["{}GLRLM_sre" .format(m_wv + m)] = [round(self.shortSmall_x_emphasis_av, 3)]  # 3.7.1
-                dictionary["{}GLRLM_lre" .format(m_wv + m)] = [round(self.longLarge_x_emphasis_av, 3)]
-                dictionary["{}GLRLM_lgle" .format(m_wv + m)] = [round(self.low_grey_level_x_emphasis_av, 3)]
-                dictionary["{}GLRLM_hgle" .format(m_wv + m)] = [round(self.high_grey_level_x_emphasis_av, 3)]
-                dictionary["{}GLRLM_srlge" .format(m_wv + m)] = [round(self.shortSmall_x_low_grey_level_emphasis_av, 3)]  # 3.7.5
-                dictionary["{}GLRLM_srhge" .format(m_wv + m)] = [round(self.shortSmall_x_high_grey_level_emphasis_av, 3)]
-                dictionary["{}GLRLM_lrlge" .format(m_wv + m)] = [round(self.longLarge_x_low_grey_level_emphasis_av, 3)]
-                dictionary["{}GLRLM_lrhge" .format(m_wv + m)] = [round(self.longLarge_x_high_grey_level_emphasis_av, 3)]
-                dictionary["{}GLRLM_glnu" .format(m_wv + m)] = [round(self.grey_level_nonuniform_av, 3)]
-                dictionary["{}GLRLM_glnuNorm" .format(m_wv + m)] = [round(self.normalised_grey_level_nonuniform_av, 3)]  # 3.7.10
-                dictionary["{}GLRLM_rlnu" .format(m_wv + m)] = [round(self.x_lengthSize_nonuniform_av, 3)]
-                dictionary["{}GLRLM_rlnuNorm" .format(m_wv + m)] = [round(self.normalised_x_lengthSize_nonuniform_av, 3)]
-                dictionary["{}GLRLM_runPercentage" .format(m_wv + m)] = [round(self.x_percentage_av, 3)]
-                dictionary["{}GLRLM_glVar" .format(m_wv + m)] = [round(self.grey_level_var_av, 3)]
-                dictionary["{}GLRLM_rlVar" .format(m_wv + m)] = [round(self.x_lengthSize_var_av, 3)]  # 3.7.15
-                dictionary["{}GLRLM_runEntropy" .format(m_wv + m)] = [round(self.xsize_entropy_av, 3)]
-            else:
-                dictionary["{}GLRLM_sre" .format(m_wv + m)].append(round(self.shortSmall_x_emphasis_av, 3))  # 3.7.1
-                dictionary["{}GLRLM_lre" .format(m_wv + m)].append(round(self.longLarge_x_emphasis_av, 3))
-                dictionary["{}GLRLM_lgle" .format(m_wv + m)].append(round(self.low_grey_level_x_emphasis_av, 3))
-                dictionary["{}GLRLM_hgle" .format(m_wv + m)].append(round(self.high_grey_level_x_emphasis_av, 3))
-                dictionary["{}GLRLM_srlge" .format(m_wv + m)].append(round(self.shortSmall_x_low_grey_level_emphasis_av, 3))  # 3.7.5
-                dictionary["{}GLRLM_srhge" .format(m_wv + m)].append(round(self.shortSmall_x_high_grey_level_emphasis_av, 3))
-                dictionary["{}GLRLM_lrlge" .format(m_wv + m)].append(round(self.longLarge_x_low_grey_level_emphasis_av, 3))
-                dictionary["{}GLRLM_lrhge" .format(m_wv + m)].append(round(self.longLarge_x_high_grey_level_emphasis_av, 3))
-                dictionary["{}GLRLM_glnu" .format(m_wv + m)].append(round(self.grey_level_nonuniform_av, 3))
-                dictionary["{}GLRLM_glnuNorm" .format(m_wv + m)].append(round(self.normalised_grey_level_nonuniform_av, 3))  # 3.7.10
-                dictionary["{}GLRLM_rlnu" .format(m_wv + m)].append(round(self.x_lengthSize_nonuniform_av, 3))
-                dictionary["{}GLRLM_rlnuNorm" .format(m_wv + m)].append(round(self.normalised_x_lengthSize_nonuniform_av, 3))
-                dictionary["{}GLRLM_runPercentage" .format(m_wv + m)].append(round(self.x_percentage_av, 3))
-                dictionary["{}GLRLM_glVar" .format(m_wv + m)].append(round(self.grey_level_var_av, 3))
-                dictionary["{}GLRLM_rlVar" .format(m_wv + m)].append(round(self.x_lengthSize_var_av, 3))  # 3.7.15
-                dictionary["{}GLRLM_runEntropy" .format(m_wv + m)].append(round(self.xsize_entropy_av, 3))
+            dictionary["{}GLRLM_sre" .format(m_wv + m)] = [round(self.shortSmall_x_emphasis_av, 3)]  # 3.7.1
+            dictionary["{}GLRLM_lre" .format(m_wv + m)] = [round(self.longLarge_x_emphasis_av, 3)]
+            dictionary["{}GLRLM_lgle" .format(m_wv + m)] = [round(self.low_grey_level_x_emphasis_av, 3)]
+            dictionary["{}GLRLM_hgle" .format(m_wv + m)] = [round(self.high_grey_level_x_emphasis_av, 3)]
+            dictionary["{}GLRLM_srlge" .format(m_wv + m)] = [round(self.shortSmall_x_low_grey_level_emphasis_av, 3)]  # 3.7.5
+            dictionary["{}GLRLM_srhge" .format(m_wv + m)] = [round(self.shortSmall_x_high_grey_level_emphasis_av, 3)]
+            dictionary["{}GLRLM_lrlge" .format(m_wv + m)] = [round(self.longLarge_x_low_grey_level_emphasis_av, 3)]
+            dictionary["{}GLRLM_lrhge" .format(m_wv + m)] = [round(self.longLarge_x_high_grey_level_emphasis_av, 3)]
+            dictionary["{}GLRLM_glnu" .format(m_wv + m)] = [round(self.grey_level_nonuniform_av, 3)]
+            dictionary["{}GLRLM_glnuNorm" .format(m_wv + m)] = [round(self.normalised_grey_level_nonuniform_av, 3)]  # 3.7.10
+            dictionary["{}GLRLM_rlnu" .format(m_wv + m)] = [round(self.x_lengthSize_nonuniform_av, 3)]
+            dictionary["{}GLRLM_rlnuNorm" .format(m_wv + m)] = [round(self.normalised_x_lengthSize_nonuniform_av, 3)]
+            dictionary["{}GLRLM_runPercentage" .format(m_wv + m)] = [round(self.x_percentage_av, 3)]
+            dictionary["{}GLRLM_glVar" .format(m_wv + m)] = [round(self.grey_level_var_av, 3)]
+            dictionary["{}GLRLM_rlVar" .format(m_wv + m)] = [round(self.x_lengthSize_var_av, 3)]  # 3.7.15
+            dictionary["{}GLRLM_runEntropy" .format(m_wv + m)] = [round(self.xsize_entropy_av, 3)]
 
         if self.matrix_type == "GLSZM":
             # features from 3.8
-            if "{}GLSZM_sze" .format(m_wv + m) not in dictionary.keys():
-                dictionary["{}GLSZM_sze" .format(m_wv + m)] = [round(self.shortSmall_x_emphasis_av, 3)]  # 3.7.1
-                dictionary["{}GLSZM_lze" .format(m_wv + m)] = [round(self.longLarge_x_emphasis_av, 3)]
-                dictionary["{}GLSZM_lgze" .format(m_wv + m)] = [round(self.low_grey_level_x_emphasis_av, 3)]
-                dictionary["{}GLSZM_hgze" .format(m_wv + m)] = [round(self.high_grey_level_x_emphasis_av, 3)]
-                dictionary["{}GLSZM_szlge" .format(m_wv + m)] = [round(self.shortSmall_x_low_grey_level_emphasis_av, 3)]  # 3.7.5
-                dictionary["{}GLSZM_szhge" .format(m_wv + m)] = [round(self.shortSmall_x_high_grey_level_emphasis_av, 3)]
-                dictionary["{}GLSZM_lzlge" .format(m_wv + m)] = [round(self.longLarge_x_low_grey_level_emphasis_av, 3)]
-                dictionary["{}GLSZM_lzhge" .format(m_wv + m)] = [round(self.longLarge_x_high_grey_level_emphasis_av, 3)]
-                dictionary["{}GLSZM_glnu" .format(m_wv + m)] = [round(self.grey_level_nonuniform_av, 3)]
-                dictionary["{}GLSZM_glnuNorm" .format(m_wv + m)] = [round(self.normalised_grey_level_nonuniform_av, 3)]  # 3.7.10
-                dictionary["{}GLSZM_zsnu" .format(m_wv + m)] = [round(self.x_lengthSize_nonuniform_av, 3)]
-                dictionary["{}GLSZM_zsnuNorm" .format(m_wv + m)] = [round(self.normalised_x_lengthSize_nonuniform_av, 3)]
-                dictionary["{}GLSZM_zonePercentage" .format(m_wv + m)] = [round(self.x_percentage_av, 3)]
-                dictionary["{}GLSZM_glVar" .format(m_wv + m)] = [round(self.grey_level_var_av, 3)]
-                dictionary["{}GLSZM_zsVar" .format(m_wv + m)] = [round(self.x_lengthSize_var_av, 3)]  # 3.7.15
-                dictionary["{}GLSZM_zsEntropy" .format(m_wv + m)] = [round(self.xsize_entropy_av, 3)]
-            else:
-                dictionary["{}GLSZM_sze" .format(m_wv + m)].append(round(self.shortSmall_x_emphasis_av, 3))  # 3.7.1
-                dictionary["{}GLSZM_lze" .format(m_wv + m)].append(round(self.longLarge_x_emphasis_av, 3))
-                dictionary["{}GLSZM_lgze" .format(m_wv + m)].append(round(self.low_grey_level_x_emphasis_av, 3))
-                dictionary["{}GLSZM_hgze" .format(m_wv + m)].append(round(self.high_grey_level_x_emphasis_av, 3))
-                dictionary["{}GLSZM_szlge" .format(m_wv + m)].append(round(self.shortSmall_x_low_grey_level_emphasis_av, 3))  # 3.7.5
-                dictionary["{}GLSZM_szhge" .format(m_wv + m)].append(round(self.shortSmall_x_high_grey_level_emphasis_av, 3))
-                dictionary["{}GLSZM_lzlge" .format(m_wv + m)].append(round(self.longLarge_x_low_grey_level_emphasis_av, 3))
-                dictionary["{}GLSZM_lzhge" .format(m_wv + m)].append(round(self.longLarge_x_high_grey_level_emphasis_av, 3))
-                dictionary["{}GLSZM_glnu" .format(m_wv + m)].append(round(self.grey_level_nonuniform_av, 3))
-                dictionary["{}GLSZM_glnuNorm" .format(m_wv + m)].append(round(self.normalised_grey_level_nonuniform_av, 3))  # 3.7.10
-                dictionary["{}GLSZM_zsnu" .format(m_wv + m)].append(round(self.x_lengthSize_nonuniform_av, 3))
-                dictionary["{}GLSZM_zsnuNorm" .format(m_wv + m)].append(round(self.normalised_x_lengthSize_nonuniform_av, 3))
-                dictionary["{}GLSZM_zonePercentage" .format(m_wv + m)].append(round(self.x_percentage_av, 3))
-                dictionary["{}GLSZM_glVar" .format(m_wv + m)].append(round(self.grey_level_var_av, 3))
-                dictionary["{}GLSZM_zsVar" .format(m_wv + m)].append(round(self.x_lengthSize_var_av, 3))  # 3.7.15
-                dictionary["{}GLSZM_zsEntropy" .format(m_wv + m)].append(round(self.xsize_entropy_av, 3))
+            dictionary["{}GLSZM_sze" .format(m_wv + m)] = [round(self.shortSmall_x_emphasis_av, 3)]  # 3.7.1
+            dictionary["{}GLSZM_lze" .format(m_wv + m)] = [round(self.longLarge_x_emphasis_av, 3)]
+            dictionary["{}GLSZM_lgze" .format(m_wv + m)] = [round(self.low_grey_level_x_emphasis_av, 3)]
+            dictionary["{}GLSZM_hgze" .format(m_wv + m)] = [round(self.high_grey_level_x_emphasis_av, 3)]
+            dictionary["{}GLSZM_szlge" .format(m_wv + m)] = [round(self.shortSmall_x_low_grey_level_emphasis_av, 3)]  # 3.7.5
+            dictionary["{}GLSZM_szhge" .format(m_wv + m)] = [round(self.shortSmall_x_high_grey_level_emphasis_av, 3)]
+            dictionary["{}GLSZM_lzlge" .format(m_wv + m)] = [round(self.longLarge_x_low_grey_level_emphasis_av, 3)]
+            dictionary["{}GLSZM_lzhge" .format(m_wv + m)] = [round(self.longLarge_x_high_grey_level_emphasis_av, 3)]
+            dictionary["{}GLSZM_glnu" .format(m_wv + m)] = [round(self.grey_level_nonuniform_av, 3)]
+            dictionary["{}GLSZM_glnuNorm" .format(m_wv + m)] = [round(self.normalised_grey_level_nonuniform_av, 3)]  # 3.7.10
+            dictionary["{}GLSZM_zsnu" .format(m_wv + m)] = [round(self.x_lengthSize_nonuniform_av, 3)]
+            dictionary["{}GLSZM_zsnuNorm" .format(m_wv + m)] = [round(self.normalised_x_lengthSize_nonuniform_av, 3)]
+            dictionary["{}GLSZM_zonePercentage" .format(m_wv + m)] = [round(self.x_percentage_av, 3)]
+            dictionary["{}GLSZM_glVar" .format(m_wv + m)] = [round(self.grey_level_var_av, 3)]
+            dictionary["{}GLSZM_zsVar" .format(m_wv + m)] = [round(self.x_lengthSize_var_av, 3)]  # 3.7.15
+            dictionary["{}GLSZM_zsEntropy" .format(m_wv + m)] = [round(self.xsize_entropy_av, 3)]
 
         if self.matrix_type == "GLDZM":  # 3.9
-            if "{}GLDZM_sde" .format(m_wv + m) not in dictionary.keys():
-                dictionary["{}GLDZM_sde" .format(m_wv + m)] = [round(self.shortSmall_x_emphasis_av, 3)]  # 3.7.1
-                dictionary["{}GLDZM_lde" .format(m_wv + m)] = [round(self.longLarge_x_emphasis_av, 3)]
-                dictionary["{}GLDZM_lgze" .format(m_wv + m)] = [round(self.low_grey_level_x_emphasis_av, 3)]
-                dictionary["{}GLDZM_hgze" .format(m_wv + m)] = [round(self.high_grey_level_x_emphasis_av, 3)]
-                dictionary["{}GLDZM_sdlge" .format(m_wv + m)] = [round(self.shortSmall_x_low_grey_level_emphasis_av, 3)]  # 3.7.5
-                dictionary["{}GLDZM_sdhge" .format(m_wv + m)] = [round(self.shortSmall_x_high_grey_level_emphasis_av, 3)]
-                dictionary["{}GLDZM_ldlge" .format(m_wv + m)] = [round(self.longLarge_x_low_grey_level_emphasis_av, 3)]
-                dictionary["{}GLDZM_ldhge" .format(m_wv + m)] = [round(self.longLarge_x_high_grey_level_emphasis_av, 3)]
-                dictionary["{}GLDZM_glnu" .format(m_wv + m)] = [round(self.grey_level_nonuniform_av, 3)]
-                dictionary["{}GLDZM_glnuNorm" .format(m_wv + m)] = [round(self.normalised_grey_level_nonuniform_av, 3)]  # 3.7.10
-                dictionary["{}GLDZM_zdnu" .format(m_wv + m)] = [round(self.x_lengthSize_nonuniform_av, 3)]
-                dictionary["{}GLDZM_zdnuNorm" .format(m_wv + m)] = [round(self.normalised_x_lengthSize_nonuniform_av, 3)]
-                # this is redundant to GLSZM: GLDZM won't give right value for voxel amount
-                # dictionary["{}GLDZM_zone_percentage" .format(m_wv + m)] = [dictionary["{}GLSZM_zone_percentage"]]
-                dictionary["{}GLDZM_zonePercentage" .format(m_wv + m)] = [round(self.x_percentage_av, 3)]
-                dictionary["{}GLDZM_glVar" .format(m_wv + m)] = [round(self.grey_level_var_av, 3)]
-                dictionary["{}GLDZM_zdVar" .format(m_wv + m)] = [round(self.x_lengthSize_var_av, 3)]  # 3.7.15
-                dictionary["{}GLDZM_zdEntropy" .format(m_wv + m)] = [round(self.xsize_entropy_av, 3)]
-            else:
-                dictionary["{}GLDZM_sde" .format(m_wv + m)].append(round(self.shortSmall_x_emphasis_av, 3))  # 3.7.1
-                dictionary["{}GLDZM_lde" .format(m_wv + m)].append(round(self.longLarge_x_emphasis_av, 3))
-                dictionary["{}GLDZM_lgze" .format(m_wv + m)].append(round(self.low_grey_level_x_emphasis_av, 3))
-                dictionary["{}GLDZM_hgze" .format(m_wv + m)].append(round(self.high_grey_level_x_emphasis_av, 3))
-                dictionary["{}GLDZM_sdlge" .format(m_wv + m)].append(round(self.shortSmall_x_low_grey_level_emphasis_av, 3))  # 3.7.5
-                dictionary["{}GLDZM_sdhge" .format(m_wv + m)].append(round(self.shortSmall_x_high_grey_level_emphasis_av, 3))
-                dictionary["{}GLDZM_ldlge" .format(m_wv + m)].append(round(self.longLarge_x_low_grey_level_emphasis_av, 3))
-                dictionary["{}GLDZM_ldhge" .format(m_wv + m)].append(round(self.longLarge_x_high_grey_level_emphasis_av, 3))
-                dictionary["{}GLDZM_glnu" .format(m_wv + m)].append(round(self.grey_level_nonuniform_av, 3))
-                dictionary["{}GLDZM_glnuNorm" .format(m_wv + m)].append(round(self.normalised_grey_level_nonuniform_av, 3))  # 3.7.10
-                dictionary["{}GLDZM_zdnu" .format(m_wv + m)].append(round(self.x_lengthSize_nonuniform_av, 3))
-                dictionary["{}GLDZM_zdnuNorm" .format(m_wv + m)].append(round(self.normalised_x_lengthSize_nonuniform_av, 3))
-                # no need to append because dictionary["{}GLSZM_zone_percentage"] contains already all values
-                dictionary["{}GLDZM_zonePercentage" .format(m_wv + m)].append(round(self.x_percentage_av, 3))
-                dictionary["{}GLDZM_glVar" .format(m_wv + m)].append(round(self.grey_level_var_av, 3))
-                dictionary["{}GLDZM_zdVar" .format(m_wv + m)].append(round(self.x_lengthSize_var_av, 3))  # 3.7.15
-                dictionary["{}GLDZM_zdEntropy" .format(m_wv + m)].append(round(self.xsize_entropy_av, 3))
+            dictionary["{}GLDZM_sde" .format(m_wv + m)] = [round(self.shortSmall_x_emphasis_av, 3)]  # 3.7.1
+            dictionary["{}GLDZM_lde" .format(m_wv + m)] = [round(self.longLarge_x_emphasis_av, 3)]
+            dictionary["{}GLDZM_lgze" .format(m_wv + m)] = [round(self.low_grey_level_x_emphasis_av, 3)]
+            dictionary["{}GLDZM_hgze" .format(m_wv + m)] = [round(self.high_grey_level_x_emphasis_av, 3)]
+            dictionary["{}GLDZM_sdlge" .format(m_wv + m)] = [round(self.shortSmall_x_low_grey_level_emphasis_av, 3)]  # 3.7.5
+            dictionary["{}GLDZM_sdhge" .format(m_wv + m)] = [round(self.shortSmall_x_high_grey_level_emphasis_av, 3)]
+            dictionary["{}GLDZM_ldlge" .format(m_wv + m)] = [round(self.longLarge_x_low_grey_level_emphasis_av, 3)]
+            dictionary["{}GLDZM_ldhge" .format(m_wv + m)] = [round(self.longLarge_x_high_grey_level_emphasis_av, 3)]
+            dictionary["{}GLDZM_glnu" .format(m_wv + m)] = [round(self.grey_level_nonuniform_av, 3)]
+            dictionary["{}GLDZM_glnuNorm" .format(m_wv + m)] = [round(self.normalised_grey_level_nonuniform_av, 3)]  # 3.7.10
+            dictionary["{}GLDZM_zdnu" .format(m_wv + m)] = [round(self.x_lengthSize_nonuniform_av, 3)]
+            dictionary["{}GLDZM_zdnuNorm" .format(m_wv + m)] = [round(self.normalised_x_lengthSize_nonuniform_av, 3)]
+            # this is redundant to GLSZM: GLDZM won't give right value for voxel amount
+            # dictionary["{}GLDZM_zone_percentage" .format(m_wv + m)] = [dictionary["{}GLSZM_zone_percentage"]]
+            dictionary["{}GLDZM_zonePercentage" .format(m_wv + m)] = [round(self.x_percentage_av, 3)]
+            dictionary["{}GLDZM_glVar" .format(m_wv + m)] = [round(self.grey_level_var_av, 3)]
+            dictionary["{}GLDZM_zdVar" .format(m_wv + m)] = [round(self.x_lengthSize_var_av, 3)]  # 3.7.15
+            dictionary["{}GLDZM_zdEntropy" .format(m_wv + m)] = [round(self.xsize_entropy_av, 3)]
 
         if self.matrix_type == "NGLDM":
             # features from 3.11
-            if "{}NGLDM_lde" .format(m_wv + m) not in dictionary.keys():
-                dictionary["{}NGLDM_lde" .format(m_wv + m)] = [round(self.shortSmall_x_emphasis_av, 3)]  # 3.7.1
-                dictionary["{}NGLDM_hde" .format(m_wv + m)] = [round(self.longLarge_x_emphasis_av, 3)]
-                dictionary["{}NGLDM_lgce" .format(m_wv + m)] = [round(self.low_grey_level_x_emphasis_av, 3)]
-                dictionary["{}NGLDM_hgce" .format(m_wv + m)] = [round(self.high_grey_level_x_emphasis_av, 3)]
-                dictionary["{}NGLDM_ldlge" .format(m_wv + m)] = [round(self.shortSmall_x_low_grey_level_emphasis_av, 3)]  # 3.7.5
-                dictionary["{}NGLDM_ldhge" .format(m_wv + m)] = [round(self.shortSmall_x_high_grey_level_emphasis_av, 3)]
-                dictionary["{}NGLDM_hdlge" .format(m_wv + m)] = [round(self.longLarge_x_low_grey_level_emphasis_av, 3)]
-                dictionary["{}NGLDM_hdhge" .format(m_wv + m)] = [round(self.longLarge_x_high_grey_level_emphasis_av, 3)]
-                dictionary["{}NGLDM_glnu" .format(m_wv + m)] = [round(self.grey_level_nonuniform_av, 3)]
-                dictionary["{}NGLDM_glnuNorm" .format(m_wv + m)] = [round(self.normalised_grey_level_nonuniform_av, 3)]  # 3.7.10
-                dictionary["{}NGLDM_dcnu" .format(m_wv + m)] = [round(self.x_lengthSize_nonuniform_av, 3)]
-                dictionary["{}NGLDM_dcnuNorm" .format(m_wv + m)] = [round(self.normalised_x_lengthSize_nonuniform_av, 3)]  # not listed for NGLDM!
-                dictionary["{}NGLDM_dcPercentage" .format(m_wv + m)] = [round(self.x_percentage_av, 3)]  # 3.11.12
-                dictionary["{}NGLDM_glVar" .format(m_wv + m)] = [round(self.grey_level_var_av, 3)]  # 3.11.13
-                dictionary["{}NGLDM_dcVar" .format(m_wv + m)] = [round(self.x_lengthSize_var_av, 3)]  # 3.11.14
-                dictionary["{}NGLDM_dcEntropy" .format(m_wv + m)] = [round(self.xsize_entropy_av, 3)]
-                dictionary["{}NGLDM_dcEnergy" .format(m_wv + m)] = [round(self.dependence_count_energy_av, 3)]  # 3.11.16
-            else:
-                dictionary["{}NGLDM_lde" .format(m_wv + m)].append(round(self.shortSmall_x_emphasis_av, 3))  # 3.7.1
-                dictionary["{}NGLDM_hde" .format(m_wv + m)].append(round(self.longLarge_x_emphasis_av, 3))
-                dictionary["{}NGLDM_lgce" .format(m_wv + m)].append(round(self.low_grey_level_x_emphasis_av, 3))
-                dictionary["{}NGLDM_hgce" .format(m_wv + m)].append(round(self.high_grey_level_x_emphasis_av, 3))
-                dictionary["{}NGLDM_ldlge" .format(m_wv + m)].append(round(self.shortSmall_x_low_grey_level_emphasis_av, 3))  # 3.7.5
-                dictionary["{}NGLDM_ldhge" .format(m_wv + m)].append(round(self.shortSmall_x_high_grey_level_emphasis_av, 3))
-                dictionary["{}NGLDM_hdlge" .format(m_wv + m)].append(round(self.longLarge_x_low_grey_level_emphasis_av, 3))
-                dictionary["{}NGLDM_hdhge" .format(m_wv + m)].append(round(self.longLarge_x_high_grey_level_emphasis_av, 3))
-                dictionary["{}NGLDM_glnu" .format(m_wv + m)].append(round(self.grey_level_nonuniform_av, 3))
-                dictionary["{}NGLDM_glnuNorm" .format(m_wv + m)].append(round(self.normalised_grey_level_nonuniform_av, 3))  # 3.7.10
-                dictionary["{}NGLDM_dcnu" .format(m_wv + m)].append(round(self.x_lengthSize_nonuniform_av, 3))
-                dictionary["{}NGLDM_dcnuNorm" .format(m_wv + m)].append(round(self.normalised_x_lengthSize_nonuniform_av, 3))  # not listed for NGLDM!
-                dictionary["{}NGLDM_dcPercentage" .format(m_wv + m)].append(round(self.x_percentage_av, 3))  # 3.11.12
-                dictionary["{}NGLDM_glVar" .format(m_wv + m)].append(round(self.grey_level_var_av, 3))  # 3.11.13
-                dictionary["{}NGLDM_dcVar" .format(m_wv + m)].append(round(self.x_lengthSize_var_av, 3))  # 3.11.14
-                dictionary["{}NGLDM_dcEntropy" .format(m_wv + m)].append(round(self.xsize_entropy_av, 3))
-                dictionary["{}NGLDM_dcEnergy" .format(m_wv + m)].append(round(self.dependence_count_energy_av, 3))
+            dictionary["{}NGLDM_lde" .format(m_wv + m)] = [round(self.shortSmall_x_emphasis_av, 3)]  # 3.7.1
+            dictionary["{}NGLDM_hde" .format(m_wv + m)] = [round(self.longLarge_x_emphasis_av, 3)]
+            dictionary["{}NGLDM_lgce" .format(m_wv + m)] = [round(self.low_grey_level_x_emphasis_av, 3)]
+            dictionary["{}NGLDM_hgce" .format(m_wv + m)] = [round(self.high_grey_level_x_emphasis_av, 3)]
+            dictionary["{}NGLDM_ldlge" .format(m_wv + m)] = [round(self.shortSmall_x_low_grey_level_emphasis_av, 3)]  # 3.7.5
+            dictionary["{}NGLDM_ldhge" .format(m_wv + m)] = [round(self.shortSmall_x_high_grey_level_emphasis_av, 3)]
+            dictionary["{}NGLDM_hdlge" .format(m_wv + m)] = [round(self.longLarge_x_low_grey_level_emphasis_av, 3)]
+            dictionary["{}NGLDM_hdhge" .format(m_wv + m)] = [round(self.longLarge_x_high_grey_level_emphasis_av, 3)]
+            dictionary["{}NGLDM_glnu" .format(m_wv + m)] = [round(self.grey_level_nonuniform_av, 3)]
+            dictionary["{}NGLDM_glnuNorm" .format(m_wv + m)] = [round(self.normalised_grey_level_nonuniform_av, 3)]  # 3.7.10
+            dictionary["{}NGLDM_dcnu" .format(m_wv + m)] = [round(self.x_lengthSize_nonuniform_av, 3)]
+            dictionary["{}NGLDM_dcnuNorm" .format(m_wv + m)] = [round(self.normalised_x_lengthSize_nonuniform_av, 3)]  # not listed for NGLDM!
+            dictionary["{}NGLDM_dcPercentage" .format(m_wv + m)] = [round(self.x_percentage_av, 3)]  # 3.11.12
+            dictionary["{}NGLDM_glVar" .format(m_wv + m)] = [round(self.grey_level_var_av, 3)]  # 3.11.13
+            dictionary["{}NGLDM_dcVar" .format(m_wv + m)] = [round(self.x_lengthSize_var_av, 3)]  # 3.11.14
+            dictionary["{}NGLDM_dcEntropy" .format(m_wv + m)] = [round(self.xsize_entropy_av, 3)]
+            dictionary["{}NGLDM_dcEnergy" .format(m_wv + m)] = [round(self.dependence_count_energy_av, 3)]  # 3.11.16
 
         return dictionary
 
@@ -1589,19 +1457,11 @@ class NGTDM(object):
             self.strength = round(np.mean(self.strength), 4)  # 0 values
 
     def return_features(self, dictionary, m, m_wv):
-        if "{}NGTDM_coarseness" .format(m_wv + m) not in dictionary.keys():
-            dictionary["{}NGTDM_coarseness" .format(m_wv + m)] = [self.coarseness]
-            dictionary["{}NGTDM_contrast" .format(m_wv + m)] = [self.contrast]
-            dictionary["{}NGTDM_busyness" .format(m_wv + m)] = [self.busyness]
-            dictionary["{}NGTDM_complexity" .format(m_wv + m)] = [self.complexity]
-            dictionary["{}NGTDM_strength" .format(m_wv + m)] = [self.strength]
-
-        else:
-            dictionary["{}NGTDM_coarseness" .format(m_wv + m)].append(self.coarseness)
-            dictionary["{}NGTDM_contrast" .format(m_wv + m)].append(self.contrast)
-            dictionary["{}NGTDM_busyness" .format(m_wv + m)].append(self.busyness)
-            dictionary["{}NGTDM_complexity" .format(m_wv + m)].append(self.complexity)
-            dictionary["{}NGTDM_strength" .format(m_wv + m)].append(self.strength)
+        dictionary["{}NGTDM_coarseness" .format(m_wv + m)] = [self.coarseness]
+        dictionary["{}NGTDM_contrast" .format(m_wv + m)] = [self.contrast]
+        dictionary["{}NGTDM_busyness" .format(m_wv + m)] = [self.busyness]
+        dictionary["{}NGTDM_complexity" .format(m_wv + m)] = [self.complexity]
+        dictionary["{}NGTDM_strength" .format(m_wv + m)] = [self.strength]
 
         return dictionary
 
@@ -1744,23 +1604,13 @@ class CMS_MTV(object):
             pass
 
     def return_features(self, dictionary, m_wv):
-        if "%sfrac_dim" % m_wv not in dictionary.keys():
-            dictionary["%sfrac_dim" % m_wv] = [round(self.frac_dim, 3)]
-            dictionary["%scms" % m_wv] = [self.cms]
-            dictionary["%smtv2" % m_wv] = [self.mtv[0]]
-            dictionary["%smtv3" % m_wv] = [self.mtv[1]]
-            dictionary["%smtv4" % m_wv] = [self.mtv[2]]
-            dictionary["%smtv5" % m_wv] = [self.mtv[3]]
-            dictionary["%smtv6" % m_wv] = [self.mtv[4]]
-            dictionary["%smtv7" % m_wv] = [self.mtv[5]]
-        else:
-            dictionary["%sfrac_dim" % m_wv].append(self.frac_dim)
-            dictionary["%scms" % m_wv].append(self.cms)
-            dictionary["%smtv2" % m_wv].append(self.mtv[0])
-            dictionary["%smtv3" % m_wv].append(self.mtv[1])
-            dictionary["%smtv4" % m_wv].append(self.mtv[2])
-            dictionary["%smtv5" % m_wv].append(self.mtv[3])
-            dictionary["%smtv6" % m_wv].append(self.mtv[4])
-            dictionary["%smtv7" % m_wv].append(self.mtv[5])
+        dictionary["%sfrac_dim" % m_wv] = [round(self.frac_dim, 3)]
+        dictionary["%scms" % m_wv] = [self.cms]
+        dictionary["%smtv2" % m_wv] = [self.mtv[0]]
+        dictionary["%smtv3" % m_wv] = [self.mtv[1]]
+        dictionary["%smtv4" % m_wv] = [self.mtv[2]]
+        dictionary["%smtv5" % m_wv] = [self.mtv[3]]
+        dictionary["%smtv6" % m_wv] = [self.mtv[4]]
+        dictionary["%smtv7" % m_wv] = [self.mtv[5]]
 
         return dictionary

@@ -1,4 +1,6 @@
-Feature aggregation methods (according to the Image biomarker standardisation initiative)
+Feature aggregation methods 
+(according to the Image Biomarker Standardisation Initiative (IBSI). 
+ abbreviations in brackets (BTW3, SUJT, ...) are according to IBSI p. 135)
 
 Methods for GLCM, GLRLM:
 2D:

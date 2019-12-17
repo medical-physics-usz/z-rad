@@ -117,13 +117,8 @@ class main_texture_ct(object):
                 #     df_phantom = pd.DataFrame.from_dict(dict_features)
                 #     df_features_all = df_phantom
                 #     continue
-                dp = pd.DataFrame.from_dict(dict_features)
-                # dp.index = ["original", "LL", "HH", "HL", "LH"]
-                # dp_stacked = dp.stack()
-                # dp_export = pd.DataFrame(dp_stacked).transpose()
-                # add patientID as index to the data frame
-                dp_export_labeled = dp.rename(index={0: ImName})
-                df_features_all = df_features_all.append(dp_export_labeled)  # ignore index only if not defined before..., ignore_index=True)
+                dp_export = pd.DataFrame(dict_features, index=[ImName])
+                df_features_all = df_features_all.append(dp_export)  # ignore index only if not defined before..., ignore_index=True)
             else:
                 final = [[ImName, lista_results[2], lista_results[:2], lista_results[3:-1], lista_results[-1]]]
                 final_file = Export().ExportResults(final, final_file, par_names, image_modality, wave_names, wv, local)

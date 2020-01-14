@@ -22,6 +22,7 @@ from os.path import isfile, join
 import pylab as py
 import cv2
 import logging
+from tqdm import tqdm
 
 
 class InterpolateROI(object):
@@ -214,7 +215,7 @@ class InterpolateROI(object):
             cnt_all.append(cnt)
 
         M = []
-        for k in arange(0, l_IM):
+        for k in tqdm(arange(0, l_IM)):
             if cnt_all[k] != [[]]:
                 m = np.ones((ymax + 1 - ymin, xmax + 1 - xmin))  # initialize  the 2D matrix with 1
                 for n in arange(0, len(cnt_all[k])):  # sub-contours

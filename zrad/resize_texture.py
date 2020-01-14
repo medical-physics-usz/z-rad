@@ -16,6 +16,7 @@ from scipy.ndimage.morphology import distance_transform_edt
 from scipy.interpolate import interp1d
 import cv2
 from glob import glob
+from tqdm import tqdm
 
 from resize_interpolate_roi import InterpolateROI
 import logging
@@ -69,7 +70,7 @@ class ResizeTexture(object):
         emptyROI = []  # empty contour for one of the structures
         self.listDicomProblem = []  # cannot open as dicom
         error = []
-        for name in self.list_dir:
+        for name in tqdm(self.list_dir):
             try:
                 print('patient ', name)
                 mypath_file = self.mypath_load + name + '\\'  # go to subfolder for given patient

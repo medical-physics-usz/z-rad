@@ -12,6 +12,7 @@ from read import ReadImageStructure
 from export import Export
 from features2d import Features2D
 import logging
+from tqdm import tqdm
 
 
 class main_texture_ct(object):
@@ -47,7 +48,7 @@ class main_texture_ct(object):
 
         # create dataframe to save results for patient on a line
         df_features_all = pd.DataFrame()
-        for ImName in l_ImName:
+        for ImName in tqdm(l_ImName):
             self.logger.info("Patient " + ImName)
             try:
                 mypath_image = path_image + ImName + '\\'

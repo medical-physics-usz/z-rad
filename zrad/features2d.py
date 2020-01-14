@@ -140,7 +140,7 @@ class Features2D(object):
                     for i in arange(0, len(cropStructure["data"])):
                         # wavelet transform
                         if wv:
-                            wave_list_ct = Wavelet(cropStructure["data"][i], path, "CT", ImName + '_' + pixNr, dim).Return()  # order of transformed images: original, LLL, HHH, HHL, HLH, HLL, LHH, LHL, LLH
+                            wave_list_ct = Wavelet(cropStructure["data"][i], path, "CT", ImName + '_' + pixNr, dim, False).Return()  # order of transformed images: original, LLL, HHH, HHL, HLH, HLL, LHH, LHL, LLH
                             sb.SetStatusText(ImName + ' wave done ' + str(datetime.now().strftime('%H:%M:%S')))
                             if dim == "2D" or dim == "2D_singleSlice":
                                 rs_type = [1, 2, 0, 0, 0]

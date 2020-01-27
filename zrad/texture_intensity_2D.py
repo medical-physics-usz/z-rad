@@ -275,9 +275,9 @@ class GLCM(object):
     def matrix_calculation(self):
         """
          returns different (merged) GLCM matrices
-         GLCM_mbs: GLCM of slices - directions are merged by slices (1, slices, x, y)
-         GLCM_mbd: GLCM of directions - slices are merged by directions (directions, 1, x, y)
-         GLCM_mf: both slices and directions merged (1, 1, x, y)
+         GLCM_mbs: GLCM of slices - directions are merged by slices (slices, x, y)
+         GLCM_mbd: GLCM of directions - slices are merged by directions (directions, x, y)
+         GLCM_mf: both slices and directions merged (x, y)
          GLCM: GLCM for each slice and direction - nothing merged (directions, slices, x, y)
          """
         # create for each slice one matrix for all directions
@@ -325,6 +325,12 @@ class GLCM(object):
     def norm_marginal_calculation(self, glcm_matrix):
         """
         input: the glcm's matrix from one method
+        returns:
+        normalized (merged) GLCM matrices
+        GLCM_mbs: GLCM of slices - directions are merged by slices (1, slices, x, y)
+        GLCM_mbd: GLCM of directions - slices are merged by directions (directions, 1, x, y)
+        GLCM_mf: both slices and directions merged (1, 1, x, y)
+        GLCM: GLCM for each slice and direction - nothing merged (directions, slices, x, y)
         norm_matrix: normalized GLCM
         p_plus: diagonal probability. row - slice, column - probability
         p_minus: cross diagonal probability per slice

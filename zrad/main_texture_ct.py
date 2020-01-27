@@ -58,16 +58,12 @@ class main_texture_ct(object):
                 dicomProblem.append([ImName, read.listDicomProblem])
 
                 # parameters to recalculate intensities HU
-                if dim == "2D_singleSlice":
-                    number = 0
-                else:
-                    number = 1
 
-                inter = float(dc.read_file(mypath_image + read.onlyfiles[number]).RescaleIntercept)
-                slope = float(dc.read_file(mypath_image + read.onlyfiles[number]).RescaleSlope)
+                inter = float(dc.read_file(mypath_image + read.onlyfiles[0]).RescaleIntercept)
+                slope = float(dc.read_file(mypath_image + read.onlyfiles[0]).RescaleSlope)
 
-                bitsRead = str(dc.read_file(mypath_image + read.onlyfiles[number]).BitsAllocated)
-                sign = int(dc.read_file(mypath_image + read.onlyfiles[number]).PixelRepresentation)
+                bitsRead = str(dc.read_file(mypath_image + read.onlyfiles[0]).BitsAllocated)
+                sign = int(dc.read_file(mypath_image + read.onlyfiles[0]).PixelRepresentation)
 
                 if sign == 1:
                     bitsRead = 'int' + bitsRead

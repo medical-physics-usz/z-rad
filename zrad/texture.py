@@ -5,6 +5,7 @@ from numpy import arange,floor
 #import matplotlib
 import pylab as py
 import matplotlib
+import matplotlib.pyplot as plt
 #from scipy.fftpack import fft2, fftn, fftfreq
 #from mpl_toolkits.mplot3d import Axes3D
 import scipy.optimize as optimization
@@ -17,7 +18,6 @@ from datetime import datetime
 from texture_wavelet import Wavelet
 from texture_wavelet3D_ctp import WaveletCTP
 from ROImatrix import Matrix
-import matplotlib.pylab as plt
 import logging
 ##from texture_rs import Read_rs
 
@@ -1101,10 +1101,10 @@ class Texture(object):
                         
         matplotlib.rcParams.update({'font.size': 24})
 
-        fig = py.figure(300, figsize = (20,20))
+        fig = plt.figure(300, figsize=(20, 20))
         try:
             fig.text(0.5, 0.95, ImName+' '+name)
-            py.hist(M1)
+            plt.hist(M1)
             try:
                 makedirs(path+'histogram\\')
             except OSError:
@@ -1114,7 +1114,7 @@ class Texture(object):
             pass
         
         fig.savefig(path+'histogram\\'+name+'_'+ImName+'_'+self.structure+'_'+pixNr+'_'+str(w)+'.png')
-        py.close()
+        plt.close()
         return M1
 
     def fun_mean(self, M1): #3.1.1
@@ -2167,21 +2167,21 @@ class Texture(object):
             x0 = np.array([0, 0]) #initial guess
             result = optimization.curve_fit(func_lin, xdata, frac, x0)
             fit = func_lin(x, result[0][0], result[0][1])
-            py.figure(2000)
-            ax = py.subplot(111)
-            py.plot(x,frac, 'o')
-            py.plot(x,fit, label = 'dim = '+str(-round(result[0][0],2)))
-            py.xlabel('ln(r)')
-            py.ylabel('ln(N(r))')
-            py.legend()
+            plt.figure(2000)
+            ax = plt.subplot(111)
+            plt.plot(x,frac, 'o')
+            plt.plot(x,fit, label = 'dim = '+str(-round(result[0][0],2)))
+            plt.xlabel('ln(r)')
+            plt.ylabel('ln(N(r))')
+            plt.legend()
             #print path+'fractals\\'+ImName+'.png'
             try:
                 makedirs(path+'fractals\\')
             except OSError:
                 if not isdir(path+'fractals\\'):
                     raise
-            py.savefig(path+'fractals\\'+ImName+'_'+self.structure+'_'+pixNr+'.png')
-            py.close()
+            plt.savefig(path+'fractals\\'+ImName+'_'+self.structure+'_'+pixNr+'.png')
+            plt.close()
             return -result[0][0]
         except TypeError:
             return ''
@@ -2227,9 +2227,8 @@ class Texture(object):
         pixNr = str(pixNr)
         
         # print matrix
-        
         for n in arange(len(matrix)//24+1):
-            fig = py.figure(10, figsize = (20,20))
+            fig = plt.figure(10, figsize=(20, 20))
             fig.text(0.5, 0.95, ImName+' '+name)
             for j in arange(0, 24):
                 axes = fig.add_subplot(5, 5, j+1)
@@ -2239,31 +2238,37 @@ class Texture(object):
                 except IndexError:
                     break
                     pass
-                axes = fig.add_subplot(5, 5, 25)
+            axes = fig.add_subplot(5, 5, 25)
+            try:
                 fig.colorbar(im)
+            except UnboundLocalError:
+                pass
             try:
                 makedirs(path+ImName+'\\')
             except OSError:
                 if not isdir(path+ImName+'\\'):
                     raise
             fig.savefig(path+ImName+'\\'+name+'_'+self.structure+'_'+pixNr+'_'+str(n+1)+'.png')
-            py.close()
+            plt.close()
             
             del fig
         for n in arange(len(matrix)//24+1):
-            fig = py.figure(20, figsize = (20,20))
+            fig = plt.figure(20, figsize=(20, 20))
             fig.text(0.5, 0.95, ImName+' '+name)
             for j in arange(0, 24):
                 axes = fig.add_subplot(5, 5, j+1, facecolor='#FFFF99')
                 axes.set_title(24*n+j)
                 try:
-                    im = axes.imshow(matrix[24*n+j], cmap=plt.get_cmap('Greys'), vmin = 0, vmax = self.n_bits)
+                    im = axes.imshow(matrix[24*n+j], cmap=plt.get_cmap('Greys'), vmin=0, vmax=self.n_bits)
                 except IndexError:
                     break
                     pass
-                axes = fig.add_subplot(5, 5, 25)
+            axes = fig.add_subplot(5, 5, 25)
+            try:
                 fig.colorbar(im)
+            except UnboundLocalError:
+                pass
             fig.savefig(path+ImName+'\\black_'+name+'_'+self.structure+'_'+pixNr+'_'+str(n+1)+'.png')
-            py.close()
+            plt.close()
             del fig
         

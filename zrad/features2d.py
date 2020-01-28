@@ -483,10 +483,6 @@ class Features2D(object):
         """returns empty string and error type bt does not stop the calculation"""
         for i in arange(0, len(rs_type)):
             self.dict_features["structure"] = info
-            # self.structure = info
-
-            # for y in self.dict_features.keys():
-            #     self.dict_features[y].append('')
 
     def ret(self):
         """return function"""
@@ -499,45 +495,44 @@ class Features2D(object):
         pixNr = str(pixNr)
 
         # print matrix
-
-        # for n in arange(0, len(matrix)):  # / 24 + 1):
-        if True:  # delete this again after having discussed with Marta !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-            fig = plt.figure(10, figsize=(20, 20))
-            fig.text(0.5, 0.95, ImName + ' ' + name)
-            for j in arange(0, 24):
-                axes = fig.add_subplot(5, 5, j + 1)
-                axes.set_title(j)  # (24 * n + j)
-                try:
-                    im = axes.imshow(matrix[j], cmap=plt.get_cmap('jet'), vmin=0, vmax=self.n_bits)  # [24 * n + j], cmap=plt.get_cmap('jet'), vmin=0, vmax=self.n_bits)
-                except IndexError:
-                    break
-                    pass
-            axes = fig.add_subplot(5, 5, 25)
-            fig.colorbar(im)
+        fig = plt.figure(10, figsize=(20, 20))
+        fig.text(0.5, 0.95, ImName + ' ' + name)
+        for j in arange(0, 24):
+            axes = fig.add_subplot(5, 5, j + 1)
+            axes.set_title(j)
             try:
-                makedirs(path + ImName + '\\')
-            except OSError:
-                if not isdir(path + ImName + '\\'):
-                    raise
-            fig.savefig(path + ImName + '\\' + name + '_' + self.structure + '_' + pixNr + '_' + str(j + 1) + '.png')
-            plt.close()
-
-            del fig
-        # for n in arange(0, len(matrix)):  # / 24 + 1):
-        if True:
-            fig = plt.figure(20, figsize=(20, 20))
-            fig.text(0.5, 0.95, ImName + ' ' + name)
-            for j in arange(0, 24):
-                axes = fig.add_subplot(5, 5, j + 1, facecolor='#FFFF99')
-                axes.set_title(j)  # 24 * n + j)
-                try:
-                    im = axes.imshow(matrix[j], cmap=plt.get_cmap('Greys'), vmin=0, vmax=self.n_bits)  #[24 * n + j], cmap=plt.get_cmap('Greys'), vmin=0, vmax=self.n_bits)
-                except IndexError:
-                    break
-                    pass
-            axes = fig.add_subplot(5, 5, 25)        # I inserted this two lines by one tab
+                im = axes.imshow(matrix[j], cmap=plt.get_cmap('jet'), vmin=0, vmax=self.n_bits)
+            except IndexError:
+                pass
+        axes = fig.add_subplot(5, 5, 25)
+        try:
             fig.colorbar(im)
-            fig.savefig(
-                path + ImName + '\\black_' + name + '_' + self.structure + '_' + pixNr + '_' + str(j + 1) + '.png')
-            plt.close()
-            del fig
+        except UnboundLocalError:
+            pass
+        try:
+            makedirs(path + ImName + '\\')
+        except OSError:
+            if not isdir(path + ImName + '\\'):
+                raise
+        fig.savefig(path + ImName + '\\' + name + '_' + self.structure + '_' + pixNr + '_' + str(j + 1) + '.png')
+        plt.close()
+        del fig
+
+        fig = plt.figure(20, figsize=(20, 20))
+        fig.text(0.5, 0.95, ImName + ' ' + name)
+        for j in arange(0, 24):
+            axes = fig.add_subplot(5, 5, j + 1, facecolor='#FFFF99')
+            axes.set_title(j)
+            try:
+                im = axes.imshow(matrix[j], cmap=plt.get_cmap('Greys'), vmin=0, vmax=self.n_bits)
+            except IndexError:
+                pass
+        axes = fig.add_subplot(5, 5, 25)        # I inserted this two lines by one tab
+        try:
+            fig.colorbar(im)
+        except UnboundLocalError:
+            pass
+        fig.savefig(
+            path + ImName + '\\black_' + name + '_' + self.structure + '_' + pixNr + '_' + str(j + 1) + '.png')
+        plt.close()
+        del fig

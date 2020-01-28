@@ -1,7 +1,7 @@
 import numpy as np
 from numpy import arange
-import pylab as py
 import matplotlib
+import matplotlib.pyplot as plt
 from os import makedirs
 from os.path import isdir
 import scipy.optimize as optimization
@@ -46,10 +46,10 @@ class Intensity(object):
 
         matplotlib.rcParams.update({'font.size': 24})
 
-        fig = py.figure(300, figsize=(20, 20))
+        fig = plt.figure(300, figsize=(20, 20))
         try:
             fig.text(0.5, 0.95, ImName + ' ' + name)
-            py.hist(M1)
+            plt.hist(M1)
             try:
                 makedirs(path + 'histogram\\')
             except OSError:
@@ -60,7 +60,7 @@ class Intensity(object):
 
         fig.savefig(
             path + 'histogram\\' + name + '_' + ImName + '_' + structure + '_' + pixNr + '_' + str(w) + '.png')
-        py.close()
+        plt.close()
         self.histogram = M1
 
     def feature_calculation(self, interval):
@@ -1589,21 +1589,21 @@ class CMS_MTV(object):
             x0 = np.array([0, 0])  # initial guess
             result = optimization.curve_fit(func_lin, xdata, frac, x0)
             fit = func_lin(x, result[0][0], result[0][1])
-            py.figure(2000)
-            ax = py.subplot(111)
-            py.plot(x, frac, 'o')
-            py.plot(x, fit, label='dim = ' + str(-round(result[0][0], 2)))
-            py.xlabel('ln(r)')
-            py.ylabel('ln(N(r))')
-            py.legend()
+            plt.figure(2000)
+            ax = plt.subplot(111)
+            plt.plot(x, frac, 'o')
+            plt.plot(x, fit, label='dim = ' + str(-round(result[0][0], 2)))
+            plt.xlabel('ln(r)')
+            plt.ylabel('ln(N(r))')
+            plt.legend()
             # print path+'fractals\\'+ImName+'.png'
             try:
                 makedirs(path + 'fractals\\')
             except OSError:
                 if not isdir(path + 'fractals\\'):
                     raise
-            py.savefig(path + 'fractals\\' + ImName + '_' + self.structure + '_' + pixNr + '.png')
-            py.close()
+            plt.savefig(path + 'fractals\\' + ImName + '_' + self.structure + '_' + pixNr + '.png')
+            plt.close()
             return -result[0][0]
         except TypeError:
             return ''

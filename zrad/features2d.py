@@ -12,7 +12,6 @@ from os.path import isdir
 from datetime import datetime
 from texture_intensity_2D import Intensity, GLCM, GLRLM_GLSZM_GLDZM_NGLDM, NGTDM, CMS_MTV
 from texture_wavelet import Wavelet
-from texture_wavelet3D_ctp import WaveletCTP
 from ROImatrix import Matrix
 import logging
 from collections import OrderedDict

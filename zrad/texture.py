@@ -14,9 +14,7 @@ import cv2
 from os import makedirs
 from os.path import isdir
 from datetime import datetime
-
 from texture_wavelet import Wavelet
-from texture_wavelet3D_ctp import WaveletCTP
 from ROImatrix import Matrix
 import logging
 ##from texture_rs import Read_rs
@@ -281,10 +279,9 @@ class Texture(object):
                     if 'BV' not in modality:
                         ctp = False
                         wave_list = Wavelet(maps[i], path, modality[i], ImName+'_'+pixNr, "3D", ctp).Return()  # order of trandformed images: original, LLL, HHH, HHL, HLH, HLL, LHH, LHL, LLH
-                        # none for dimension
                     else:
-                        # ctp = True
-                        wave_list = WaveletCTP(maps[i], path, modality[i], ImName+'_'+pixNr).Return()
+                        ctp = True
+                        wave_list = Wavelet(maps[i], path, modality[i], ImName+'_'+pixNr, "3D", ctp).Return()
                     sb.SetStatusText(ImName +' wave done ' +str(datetime.now().strftime('%H:%M:%S')))
                     rs_type = [1, 2, 0, 0, 0, 0, 0, 0, 0] #structure type, structure resolution
                     iterations_n = len(wave_list)
@@ -319,7 +316,7 @@ class Texture(object):
                     for i in arange(0, len(cropStructure["data"])): 
                         #wavelet transform
                         if wv:
-                            wave_list_ct = Wavelet(cropStructure["data"][i], path, "CT", ImName+'_'+pixNr, "3D", False).Return()  # order of trandformed images: original, LLL, HHH, HHL, HLH, HLL, LHH, LHL, LLH
+                            wave_list_ct = Wavelet(cropStructure["data"][i], path, "CT", ImName+'_'+pixNr, "3D", False).Return()  # False -> no ctp. order of trandformed images: original, LLL, HHH, HHL, HLH, HLL, LHH, LHL, LLH
                             sb.SetStatusText(ImName +' wave done ' + str(datetime.now().strftime('%H:%M:%S')))
                             rs_type = [1, 2, 0, 0, 0, 0, 0, 0, 0] #structure type, structure resolution
                             iterations_n = len(wave_list_ct)
@@ -2271,4 +2268,3 @@ class Texture(object):
             fig.savefig(path+ImName+'\\black_'+name+'_'+self.structure+'_'+pixNr+'_'+str(n+1)+'.png')
             plt.close()
             del fig
-        

@@ -34,7 +34,7 @@ class Radiomics(wx.Frame):
         self.Show()
 
     def InitUI(self):
-        self.local = False
+        self.local = False  # ATTENTION!: if you set True, be aware that you calculate Radiomics in 3D only. 
 
         self.panelHeight=18 # height of boxes in GUI, 20 for PC and 40 for lenovo laptop
 

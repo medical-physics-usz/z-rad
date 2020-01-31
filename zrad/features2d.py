@@ -467,16 +467,6 @@ class Features2D(object):
                 except ValueError:
                     print(ValueError)
                     self.stop_calculation('ValueError', [1])
-                    # matrix.append([])
-                    # interval.append([])
-                    # # norm_points.append([])
-                    # matrix_v.append([])
-                    # matrix_full.append([])
-
-            # except IndexError:#IndexError:
-            #    matrix = []
-            #    print IndexError
-            #    self.stop_calculation('IndexError', rs_type)
 
     def stop_calculation(self, info, rs_type):
         """returns empty string and error type bt does not stop the calculation"""

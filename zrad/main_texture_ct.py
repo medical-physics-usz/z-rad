@@ -47,7 +47,13 @@ class main_texture_ct(object):
                                                             path_image)
 
         # create dataframe to save results for patient on a line
-        df_features_all = pd.DataFrame()
+
+        # be sure to always have same order of feature names: load feature names out of text file
+        with open("feature_names_2D.txt", "r") as f:
+            feature_names_2D_list = f.read().split()
+
+        df_features_all = pd.DataFrame(columns=feature_names_2D_list)
+
         for ImName in tqdm(l_ImName):
             self.logger.info("Patient " + ImName)
             try:
@@ -115,7 +121,7 @@ class main_texture_ct(object):
                 #     df_features_all = df_phantom
                 #     continue
                 dp_export = pd.DataFrame(dict_features, index=[ImName])
-                df_features_all = df_features_all.append(dp_export)  # ignore index only if not defined before..., ignore_index=True)
+                df_features_all = df_features_all.append(dp_export, sort=False)  # ignore index only if not defined before..., ignore_index=True) try sort=False
             else:
                 final = [[ImName, lista_results[2], lista_results[:2], lista_results[3:-1], lista_results[-1]]]
                 final_file = Export().ExportResults(final, final_file, par_names, image_modality, wave_names, wv, local)

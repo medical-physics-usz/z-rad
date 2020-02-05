@@ -223,8 +223,8 @@ class Features2D(object):
 
                     # make the matrix_list and matrix_v_list with all the subregions to be analyzed
 
-                self.dict_features["points"] = norm_points_list[0]
                 self.dict_features["structure"] = self.structure
+                self.dict_features["points"] = norm_points_list[0]
 
                 try:  # ValueError
                     # calculate features for original and transformed images or local centers if provided

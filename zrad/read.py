@@ -29,11 +29,12 @@ class ReadImageStructure(object):
     *modality - optional argument, list of prefixes in the functional maps for example for CTP modality = ['BV', 'MTT', 'BF']
     """
 
-    def __init__(self, UID, mypath_image, stucture, wv, local, *modality):
+    def __init__(self, UID, mypath_image, stucture, wv, dim, local, *modality):
         self.logger = logging.getLogger(__name__)
         self.logger.info("Start")
         if 'CTP' in UID or 'IVIM' in UID:
             self.modality = modality
+        self.dim = dim
         self.ReadImages(UID, mypath_image)
         self.ReadStucture(mypath_image, stucture, wv, local)
 
@@ -80,6 +81,7 @@ class ReadImageStructure(object):
         self.xCTspace = float(IM.PixelSpacing[0])
         self.x_ct = float(IM.ImagePositionPatient[0])  # x image corner
         self.y_ct = float(IM.ImagePositionPatient[1])  # y image corner
+        self.zCTspace = float(IM.SliceThickness)
         self.onlyfiles = onlyfiles
 
         del IM
@@ -93,8 +95,7 @@ class ReadImageStructure(object):
 
         self.rs = mypath_image + rs
         self.logger.info("StructureSet File" + self.rs)
-        struct = Structures(self.rs, structure, self.slices, self.x_ct, self.y_ct, self.xCTspace, len(self.slices), wv,
-                            local)
+        struct = Structures(self.rs, structure, self.slices, self.x_ct, self.y_ct, self.xCTspace, len(self.slices), wv,self.dim, local)
         self.Xcontour = struct.Xcontour
         self.Xcontour_W = struct.Xcontour_W
         self.Ycontour = struct.Ycontour

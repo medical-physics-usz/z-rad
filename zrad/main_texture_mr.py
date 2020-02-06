@@ -30,7 +30,7 @@ class main_texture_mr(object):
     wv � bool, calculate wavelet
     exportList � list of matrices/features to be calculated and exported
     '''
-    def __init__(self,sb, path_image, path_save, structure, pixNr, binSize, l_ImName, save_as, Dim, struct_norm1, struct_norm2, wv, local, cropStructure, exportList):
+    def __init__(self,sb, path_image, path_save, structure, pixNr, binSize, l_ImName, save_as, dim, struct_norm1, struct_norm2, wv, local, cropStructure, exportList):
         final=[] # list with results
         image_modality = ['MR']
         dicomProblem = []
@@ -43,7 +43,7 @@ class main_texture_mr(object):
                 mypath_image = path_image+ImName+'\\'
                 MR_UID = ['1.2.840.10008.5.1.4.1.1.4'] #MR
 
-                read = ReadImageStructure(MR_UID, mypath_image, structure, wv, local)
+                read = ReadImageStructure(MR_UID, mypath_image, structure, wv, None, local)  # none for dimension
                 
                 print('before ', len(read.slices))
 
@@ -102,11 +102,11 @@ class main_texture_mr(object):
 
     def normalization(self, struct_norm1, struct_norm2, read, mypath_image):
         '''get the normalization coefficients for MR image based on two normal sturctures (for example muscle and white matter) and linear function'''
-        struct1 = Structures(read.rs, [struct_norm1], read.slices, read.x_ct, read.y_ct, read.xCTspace, len(read.slices), False, False) #False for the wavelet and local argument
+        struct1 = Structures(read.rs, [struct_norm1], read.slices, read.x_ct, read.y_ct, read.xCTspace, len(read.slices), False, None, False) #False for the wavelet and local argument, none for dim
         norm1_Xcontour = struct1.Xcontour
         norm1_Ycontour = struct1.Ycontour
 
-        struct2 = Structures(read.rs, [struct_norm2], read.slices, read.x_ct, read.y_ct, read.xCTspace, len(read.slices), False, False) #False for the wavelet and local  argument
+        struct2 = Structures(read.rs, [struct_norm2], read.slices, read.x_ct, read.y_ct, read.xCTspace, len(read.slices), False, None, False) #False for the wavelet and local  argument, none for dim
         norm2_Xcontour = struct2.Xcontour
         norm2_Ycontour = struct2.Ycontour
 

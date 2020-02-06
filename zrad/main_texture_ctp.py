@@ -31,7 +31,7 @@ class main_texture_ctp(object):
     wv – bool, calculate wavelet  
     exportList – list of matrices/features to be calculated and exported
     '''
-    def __init__(self, sb, path_image, path_save, structure, pixNr, binSize, l_ImName, save_as, Dim, outlier_corr,wv,local, cropStructure, exportList):
+    def __init__(self, sb, path_image, path_save, structure, pixNr, binSize, l_ImName, save_as, dim, outlier_corr,wv,local, cropStructure, exportList):
         final=[] # list with results
         image_modality = ['BV', 'MTT', 'BF']
         dicomProblem = []
@@ -43,7 +43,7 @@ class main_texture_ctp(object):
                 mypath_image = path_image+ImName+'\\'
                 UID = ['CTP']
                 
-                read = ReadImageStructure(UID, mypath_image, structure, wv, image_modality)
+                read = ReadImageStructure(UID, mypath_image, structure, wv, None, local, image_modality)  # none for dimension
 
                 dicomProblem.append([ImName, read.listDicomProblem])   
 

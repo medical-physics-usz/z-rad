@@ -30,7 +30,7 @@ class main_texture_pet(object):
     cropStructure - 
     exportList � list of matrices/features to be calculated and exported
     '''
-    def __init__(self,sb, path_image, path_save, structure, pixNr, binSize, l_ImName, save_as, Dim, SUV ,wv, local, cropStructure, exportList):
+    def __init__(self,sb, path_image, path_save, structure, pixNr, binSize, l_ImName, save_as, dim, SUV ,wv, local, cropStructure, exportList):
         self.logger = logging.getLogger(__name__)
         self.logger.info("Start")
         final=[] # list with results
@@ -49,7 +49,7 @@ class main_texture_pet(object):
                 mypath_image = path_image+ImName+'\\'
                 self.logger.debug("PET Path "+ mypath_image)
                 PET_UID = ['1.2.840.10008.5.1.4.1.1.20','Positron Emission Tomography Image Storage', '1.2.840.10008.5.1.4.1.1.128'] # PET
-                read = ReadImageStructure(PET_UID, mypath_image, structure, wv, local)
+                read = ReadImageStructure(PET_UID, mypath_image, structure, wv, None, local)  # none for dimension
 
                 dicomProblem.append([ImName, read.listDicomProblem])
 
@@ -123,7 +123,7 @@ class main_texture_pet(object):
                     self.logger.info("Read in provided CT for cropping")
                     crop_patient_path = cropStructure["ct_path"] + "\\" + ImName+'\\'
                     CT_UID = ['1.2.840.10008.5.1.4.1.1.2', '1.2.840.10008.5.1.4.1.1.2.1'] 
-                    read_crop_CT = ReadImageStructure(CT_UID, crop_patient_path, structure, wv, local)
+                    read_crop_CT = ReadImageStructure(CT_UID, crop_patient_path, structure, wv, None, local)  # none for dimension
 
                     dicomProblem.append(["crop_" + ImName, read_crop_CT.listDicomProblem])
                     # parameters to recalculate intensities HU

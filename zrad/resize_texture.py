@@ -16,6 +16,7 @@ from scipy.ndimage.morphology import distance_transform_edt
 from scipy.interpolate import interp1d
 import cv2
 from glob import glob
+from tqdm import tqdm
 
 from resize_interpolate_roi import InterpolateROI
 import logging
@@ -69,7 +70,7 @@ class ResizeTexture(object):
         emptyROI = []  # empty contour for one of the structures
         self.listDicomProblem = []  # cannot open as dicom
         error = []
-        for name in self.list_dir:
+        for name in tqdm(self.list_dir):
             try:
                 print('patient ', name)
                 mypath_file = self.mypath_load + name + '\\'  # go to subfolder for given patient
@@ -189,7 +190,7 @@ class ResizeTexture(object):
                         IM.append(a_new)
                         del a_new
 
-                    if self.dim == "2D":
+                    if self.dim == "2D" or self.dim == "2D_singleSlice":
                         # skip z interpolation if dim = 2D
                         new_image = np.array(IM)
                     else:
@@ -463,7 +464,7 @@ class ResizeTexture(object):
                     os.rename(mypath_save[:-1], mypath_save[:-1] + '_noRS')
                 else:
                     # the resize structure is not necessary in 2D interpolation. go on with next patient-folder
-                    if self.dim == "2D":
+                    if self.dim == "2D" or self.dim == "2D_singleSlice":
                         # copy structure file into new resize folder
                         copyfile(join(rs_name), join(mypath_save, rs[0]))
                         continue  # structure will not be resized

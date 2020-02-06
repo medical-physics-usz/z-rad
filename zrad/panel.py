@@ -336,7 +336,7 @@ class MyPanelRadiomics(scrolled.ScrolledPanel):
         self.vbox.Add((-1, 10))
 
         # calculation details
-        self.gs_2 = wx.FlexGridSizer(cols=3, vgap=5, hgap=10)
+        self.gs_2 = wx.FlexGridSizer(cols=4, vgap=5, hgap=10)
 
         st_name = wx.StaticText(self, label='Structure name ')
         # name of ROI to be analysed, separate by ',';  take the first structure which can be found in the RS
@@ -348,9 +348,10 @@ class MyPanelRadiomics(scrolled.ScrolledPanel):
         tc_size = wx.TextCtrl(self, id=1052, size=(200, h), value="",
                               style=wx.TE_PROCESS_ENTER)  # number of bins for discretization
         st_dim = wx.StaticText(self, label='Dimension')
-        rb_dim2 = wx.RadioButton(self, id=1061, label='2D',
+        rb_dim2 = wx.RadioButton(self, id=1061, label='2D several slices',
                                  style=wx.RB_GROUP)  # 2D analysis, radiobutton - only one option from the group can be selected
-        rb_dim3 = wx.RadioButton(self, id=1062, label="3D")  # 3D analysis
+        rb_dim2single = wx.RadioButton(self, id=10611, label='2D single slice')
+        rb_dim3 = wx.RadioButton(self, id=1062, label="3D volume")  # 3D analysis
         st_wv = wx.StaticText(self, label='Wavelet transform ')
         rb_wvT = wx.RadioButton(self, id=1071, label='On',
                                 style=wx.RB_GROUP)  # wavelet on, radiobutton - only one option from the group can be selected
@@ -370,15 +371,15 @@ class MyPanelRadiomics(scrolled.ScrolledPanel):
                                  style=wx.TE_PROCESS_ENTER)  # name of LN structure to be analysed, for example g_LN will search for g_LN_X
 
         # fill grid sizer
-        self.gs_2.AddMany([st_name, tc_name, wx.StaticText(self, label=''),
-                           st_disc, st_bin, st_size,
-                           wx.StaticText(self, label=''), tc_bin, tc_size,
-                           st_dim, rb_dim2, rb_dim3,
-                           st_wv, rb_wvT, rb_wvF,
-                           st_s, rb_sT, rb_sF,
-                           wx.StaticText(self, label=''), st_name_shape, tc_name_shape,
-                           st_LN, rb_LNT, rb_LNF,
-                           wx.StaticText(self, label=''), st_name_LN, tc_name_LN])
+        self.gs_2.AddMany([st_name, tc_name, wx.StaticText(self, label=''), wx.StaticText(self, label=''),
+                           st_disc, st_bin, st_size, wx.StaticText(self, label=''),
+                           wx.StaticText(self, label=''), tc_bin, tc_size, wx.StaticText(self, label=''),
+                           st_dim, rb_dim2single, rb_dim2, rb_dim3,
+                           st_wv, rb_wvT, rb_wvF, wx.StaticText(self, label=''),
+                           st_s, rb_sT, rb_sF, wx.StaticText(self, label=''),
+                           wx.StaticText(self, label=''), st_name_shape, tc_name_shape, wx.StaticText(self, label=''),
+                           st_LN, rb_LNT, rb_LNF, wx.StaticText(self, label=''),
+                           wx.StaticText(self, label=''), st_name_LN, tc_name_LN, wx.StaticText(self, label='')])
 
         h2box = wx.BoxSizer(wx.HORIZONTAL)
         h2box.Add((10, 10))
@@ -539,7 +540,7 @@ class MyPanelRadiomics(scrolled.ScrolledPanel):
         """method called by parent to fill the text boxes with save settings
         l - list of elements read from a text file"""
         # ids of the boxes to be filled
-        ids = [107, 108, 109, 110, 102, 103, 104, 1051, 1052, 1061, 1062, 1071, 1072, 1081, 1082, 1083, 1091, 1092,
+        ids = [107, 108, 109, 110, 102, 103, 104, 1051, 1052, 1061, 10611, 1062, 1071, 1072, 1081, 1082, 1083, 1091, 1092,
                1093, 120, 125, 126, 127, 130, 131, 132, 133, 135, 136, 137, 140, 141, 142, 150, 151, 152, 160]
 
         for i in range(0, len(l)):
@@ -573,7 +574,7 @@ class MyPanelRadiomics(scrolled.ScrolledPanel):
         """save the last used settings"""
         l = []
 
-        ids = [107, 108, 109, 110, 102, 103, 104, 1051, 1052, 1061, 1062, 1071, 1072, 1081, 1082, 1083, 1091, 1092,
+        ids = [107, 108, 109, 110, 102, 103, 104, 1051, 1052, 1061, 10611, 1062, 1071, 1072, 1081, 1082, 1083, 1091, 1092,
                1093, 120, 125, 126, 127, 130, 131, 132, 133, 135, 136, 137, 140, 141, 142, 150, 151, 152, 160]
         for i in ids:
             l.append(self.FindWindowById(i).GetValue())

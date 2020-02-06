@@ -1,21 +1,15 @@
 # -*- coding: utf-8 -*-
 #import libraries
-try:
-    import pydicom as dc # dicom library
-except ImportError:
-    import dicom as dc # dicom library
+import pydicom as dc # dicom library
 import numpy as np # numerical computation 
-from numpy import arange, floor 
 import pylab as py # drawing plots
-from os import listdir, makedirs # managing files
-from os.path import isfile, join, isdir
 import scipy.stats as st
+from os import makedirs # managing files
+from os.path import isdir
 
 #own classes
 #import class to calculate texture parameters
 from texture import Texture
-from structure import Structures
-from exception import MyException
 from read import ReadImageStructure
 from export import Export
 
@@ -37,33 +31,33 @@ class main_texture_ctp(object):
     wv – bool, calculate wavelet  
     exportList – list of matrices/features to be calculated and exported
     '''
-    def __init__(self, sb, path_image, path_save, structure, pixNr, binSize, l_ImName, save_as, Dim, outlier_corr,wv,local, cropStructure, exportList):
+    def __init__(self, sb, path_image, path_save, structure, pixNr, binSize, l_ImName, save_as, dim, outlier_corr,wv,local, cropStructure, exportList):
         final=[] # list with results
         image_modality = ['BV', 'MTT', 'BF']
         dicomProblem = []
         for ImName in l_ImName:
-            print 'patient', ImName
+            print('patient', ImName)
             try:
                 sb.SetStatusText('Load '+ImName)
                 
                 mypath_image = path_image+ImName+'\\'
                 UID = ['CTP']
                 
-                read = ReadImageStructure(UID, mypath_image, structure, wv, image_modality)
+                read = ReadImageStructure(UID, mypath_image, structure, wv, None, local, image_modality)  # none for dimension
 
                 dicomProblem.append([ImName, read.listDicomProblem])   
 
-                l_IM_matrix = [] #list containing different perfusion maps
-                for m_name in arange(0, len(image_modality)):
+                l_IM_matrix = [] # list containing different perfusion maps
+                for m_name in np.arange(0, len(image_modality)):
                     IM_matrix = [] #list containing the images matrix
                     for f in read.onlyfiles[m_name]:
-                        data = dc.read_file(mypath_image+f).PixelData
+                        data = dc.read_file(mypath_image + f).PixelData
                         data16 = np.array(np.fromstring(data, dtype=np.float16)) #converitng to decimal
-                        #recalculating for rows x columns
-                        a=[]
-                        for j in arange(0, read.rows):#(0, rows):
+                        # recalculating for rows x columns
+                        a = []
+                        for j in np.arange(0, read.rows):#(0, rows):
                             a.append(data16[j*read.columns:(j+1)*read.columns])
-                        a=np.array(a)
+                        a = np.array(a)
                         IM_matrix.append(np.array(a))
                     IM_matrix = np.array(IM_matrix)
 
@@ -76,10 +70,10 @@ class main_texture_ctp(object):
                     self.Xcontour_W = read.Xcontour_W
                     self.Ycontour = read.Ycontour
                     self.Ycontour_W = read.Ycontour_W
-                    for m in arange(0, len(l_IM_matrix)):
+                    for m in np.arange(0, len(l_IM_matrix)):
                         p_remove, norm_points = self.MatrixRemove(l_IM_matrix[m], image_modality[m], ImName, path_save) #returns list of indicies for outliers and the number of points left with gray value != nan
                         points_remove.append(p_remove)
-                    for m in arange(0, len(l_IM_matrix)):
+                    for m in np.arange(0, len(l_IM_matrix)):
                         l_IM_matrix[m] = self.remove_points(l_IM_matrix[m], points_remove) #place NaN in the place of outliers
 
                     del points_remove
@@ -109,20 +103,20 @@ class main_texture_ctp(object):
     def MatrixRemove(self, imap, perf, ImName, path):
         '''read the gray values in the ROI, remove the NaN and fir gaussian function '''
         v = [] #read gray values in ROI
-        for i in arange(0, len(self.Xcontour)): #slices
-            for j in arange(0, len(self.Xcontour[i])): #sub-structres in the slice
-                for k in arange(0, len(self.Xcontour[i][j])):
+        for i in np.arange(0, len(self.Xcontour)): #slices
+            for j in np.arange(0, len(self.Xcontour[i])): #sub-structres in the slice
+                for k in np.arange(0, len(self.Xcontour[i][j])):
                     v.append(imap[i][self.Ycontour[i][j][k]][self.Xcontour[i][j][k]])
 
         #remove NaN
         ind = np.where(np.isnan(np.array(v)))[0]
-        for j in arange(1, len(ind)+1):
+        for j in np.arange(1, len(ind)+1):
             v.pop(ind[-j])
         #fitting gaussian function and deleting ouliers.
         remove = self.histfit(v, 15, perf, ImName, path)
         p_remove=[]
-        for j in arange(0,len(remove)):
-            p_remove.append(np.where(np.array(imap)==remove[j])) #which indices corresponds to the values that should be removed
+        for j in np.arange(0, len(remove)):
+            p_remove.append(np.where(np.array(imap) == remove[j])) #which indices corresponds to the values that should be removed
         return p_remove, len(v)
 
     def histfit(self,x,N_bins, name, ImName, path):
@@ -178,7 +172,7 @@ class main_texture_ctp(object):
         for i in p:
             if i !=[]:
                 for j in i:
-                    for k in arange(0, len(j[0])):
+                    for k in np.arange(0, len(j[0])):
                         M[j[0][k]][j[1][k]][j[2][k]] = np.nan
         return M
 

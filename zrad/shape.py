@@ -55,12 +55,12 @@ class Shape(object):
         fGTV = open(path_results, "w") #use "a" to append
         fGTV.write("Name\tMC-Volume\tnonzero_Points\tMC-Surface\tClusters\tCompactness_1\tCompactness_2\tDispr.\tSphericity\tAsphericity\tA/V\tthickness_median\tthickness_SD\teuclidian_distance\tmajor_axis\tminor_axis\tleast_axis\telongation\tflatness" "\n")
 
-        print 'Start_0: ', datetime.now().strftime('%H:%M:%S')
+        print('Start_0: ', datetime.now().strftime('%H:%M:%S'))
 
         for nn in nlist:
             try:
                 if exists(self.path_load+nn) and not listdir(self.path_load+nn) == []: 
-                    print 'processing: ',nn + ', start: ', datetime.now().strftime('%H:%M:%S')
+                    print('processing: ',nn + ', start: ', datetime.now().strftime('%H:%M:%S'))
                     pic3d, pnz, extent = self.fill(nn)
                     num_cluster = self.clust(pic3d,0)
                     dst_median,dst_std,dst_mean = self.thickness(nn,pic3d,0)
@@ -85,7 +85,7 @@ class Shape(object):
                     fGTV.write("\n")
                     sys.stdout.flush()
                 else:
-                    print 'directory %s does not exist or is empty'%(nn)
+                    print('directory %s does not exist or is empty'%(nn))
             except WindowsError:
                 pass
 
@@ -139,7 +139,7 @@ class Shape(object):
         pic3d[3]
         pnz = np.nonzero(pic3d)
      
-        print'Number of nonzero points = ',len(pnz[0])
+        print('Number of nonzero points = ',len(pnz[0]))
         #extent for vtk - analysis:
         extent = (0, zma-zmi-1, 0, yma-ymi-1, 0, xma-xmi-1)
         return pic3d, pnz, extent
@@ -162,14 +162,14 @@ class Shape(object):
             D = spatial.distance.pdist(np.transpose(pnzs),'euclidean')    #creates the condensed distance matrix
             maxeucl = np.max(D)   
     #        
-        print'Longest euclidean distance = ',np.round(maxeucl)
+        print('Longest euclidean distance = ',np.round(maxeucl))
         sys.stdout.flush()
         return maxeucl
         
     def clust(self, vol,rend):    #Number of Clusters
         s = ndi.generate_binary_structure(3,3)
         la, num_features = ndi.label(vol, structure=s)#la = labeled_array
-        print "Number of Clusters:", num_features
+        print("Number of Clusters:", num_features)
         
         #Coloring of the Clusters
     ##    la1 = la>0 #
@@ -272,7 +272,7 @@ class Shape(object):
         #    print "VTK-MC-Surface = ",vtksur
 
 
-        print(vtkvol, vtksur, comp1, comp2, ar, dispr, spher, AtoV)
+        print((vtkvol, vtksur, comp1, comp2, ar, dispr, spher, AtoV))
         sys.stdout.flush()
 
         # 3d-Render-Block
@@ -329,7 +329,7 @@ class Shape(object):
         least_axis = 4*eigen_value[0]**0.5 
         elong = minor_axis/major_axis
         flat = least_axis/major_axis
-        print 'axis', major_axis, minor_axis, least_axis
+        print('axis', major_axis, minor_axis, least_axis)
         return major_axis, minor_axis, least_axis, elong, flat
 
     ###################

@@ -1,22 +1,12 @@
 # -*- coding: utf-8 -*-
 '''read data and save texture parameters in txt file'''
 #import libraries
-try:
-    import pydicom as dc # dicom library
-except ImportError:
-    import dicom as dc # dicom library
+import pydicom as dc # dicom library
 import numpy as np # numerical computation 
-from numpy import arange, floor 
-import pylab as py # drawing plots
-from os import listdir, makedirs # managing files
-from os.path import isfile, join, isdir
-import scipy.stats as st
 
 #own classes
 #import class to calculate texture parameters
 from texture import Texture
-from structure import Structures
-from exception import MyException
 from read import ReadImageStructure
 from export import Export
 
@@ -39,25 +29,25 @@ class main_texture_ivim(object):
     wv – bool, calculate wavelet  
     exportList – list of matrices/features to be calculated and exported
     '''
-    def __init__(self, sb, path_image, path_save, structure, pixNr, binSize, l_ImName, save_as, Dim, outlier_corr,wv,local, cropStructure, exportList):
+    def __init__(self, sb, path_image, path_save, structure, pixNr, binSize, l_ImName, save_as, dim, outlier_corr,wv,local, cropStructure, exportList):
         final=[] # list with results
         image_modality = ['DSlow2', 'DFast2', 'F2']
         dicomProblem = []
         slope_list = [10**(-6),10**(-4),10**(-3)] #'dslow', 'dfast', 'F2' ocrresponding slopes to different maps
         for ImName in l_ImName:
-            print 'patient', ImName
+            print('patient', ImName)
             try:
                 sb.SetStatusText('Load '+ImName)
 
                 mypath_image = path_image+ImName+'\\'+prefix[m_name]+"\\"
                 UID = ['IVIM']
                 
-                read = ReadImageStructure(UID, mypath_image, structure, wv, image_modality)
+                read = ReadImageStructure(UID, mypath_image, structure, wv, None, local, image_modality)  # none for dimension
 
                 dicomProblem.append([ImName, read.listDicomProblem])   
                 
                 l_IM_matrix = [] #list containing different perfusion maps
-                for m_name in arange(0, len(image_modality)):
+                for m_name in np.arange(0, len(image_modality)):
                     IM_matrix = [] #list containing the images matrix
                     for f in read.onlyfiles[m_name]:
                         data = dc.read_file(mypath_image+f).PixelData
@@ -65,7 +55,7 @@ class main_texture_ivim(object):
                         data16 = data16*slope_list[m_name]
                         #recalculating for rows x columns
                         a=[]
-                        for j in arange(0, read.rows):#(0, rows):
+                        for j in np.arange(0, read.rows):#(0, rows):
                             a.append(data16[j*read.columns:(j+1)*read.columns])
                         a=np.array(a)
                         IM_matrix.append(np.array(a))

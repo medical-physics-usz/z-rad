@@ -1,26 +1,13 @@
 # -*- coding: cp1252 -*-
 
 #import libraries
-try:
-    import pydicom as dc # dicom library
-except ImportError:
-    import dicom as dc # dicom library
+import pydicom as dc # dicom library
 import numpy as np # numerical computation
-from numpy import arange, floor
-import pylab as py # drawing plots
-from os import listdir, makedirs # managing files
-from os.path import isfile, join, isdir
-from scipy.stats import norm # statistical analysis
-import scipy.optimize as optimization
-import matplotlib
-from scipy import ndimage
-from time import gmtime
 
 #own classes
 #import class to calculate texture parameters
 from texture import Texture
 from structure import Structures
-from exception import MyException
 from read import ReadImageStructure
 from export import Export
 
@@ -43,7 +30,7 @@ class main_texture_mr(object):
     wv � bool, calculate wavelet
     exportList � list of matrices/features to be calculated and exported
     '''
-    def __init__(self,sb, path_image, path_save, structure, pixNr, binSize, l_ImName, save_as, Dim, struct_norm1, struct_norm2, wv, local, cropStructure, exportList):
+    def __init__(self,sb, path_image, path_save, structure, pixNr, binSize, l_ImName, save_as, dim, struct_norm1, struct_norm2, wv, local, cropStructure, exportList):
         final=[] # list with results
         image_modality = ['MR']
         dicomProblem = []
@@ -51,38 +38,38 @@ class main_texture_mr(object):
         final_file, wave_names, par_names = Export().Preset(exportList, wv,local, path_save, save_as, image_modality, path_image)
 
         for ImName in l_ImName:
-            print 'patient', ImName
+            print('patient', ImName)
             try:
                 mypath_image = path_image+ImName+'\\'
                 MR_UID = ['1.2.840.10008.5.1.4.1.1.4'] #MR
 
-                read = ReadImageStructure(MR_UID, mypath_image, structure, wv, local)
+                read = ReadImageStructure(MR_UID, mypath_image, structure, wv, None, local)  # none for dimension
                 
-                print 'before ', len(read.slices)
+                print('before ', len(read.slices))
 
                 dicomProblem.append([ImName, read.listDicomProblem])
 
                 #MR intiensities normalization
                 norm_slope, norm_inter = self.normalization(struct_norm1, struct_norm2, read, mypath_image)
 
-                bitsRead = str(dc.read_file(mypath_image+read.onlyfiles[1]).BitsAllocated)
-                sign = int(dc.read_file(mypath_image+read.onlyfiles[1]).PixelRepresentation)
+                bitsRead = str(dc.read_file(mypath_image + read.onlyfiles[1]).BitsAllocated)
+                sign = int(dc.read_file(mypath_image + read.onlyfiles[1]).PixelRepresentation)
 
                 if sign == 1:
                     bitsRead = 'int'+bitsRead
                 elif sign ==0:
                     bitsRead = 'uint'+bitsRead
                     
-                print 'after ', len(read.slices), read.rows, read.columns
+                print('after ', len(read.slices), read.rows, read.columns)
 
                 IM_matrix = [] #list containing the images matrix
                 for f in read.onlyfiles:
-                    data = dc.read_file(mypath_image+f).PixelData
+                    data = dc.read_file(mypath_image + f).PixelData
                     data16 = np.array(np.fromstring(data, dtype=bitsRead)) #converitng to decimal
-                    data16 = data16*norm_slope+norm_inter
+                    data16 = data16 * norm_slope + norm_inter
                     #recalculating for rows x columns
                     a=[]
-                    for j in arange(0, read.rows):
+                    for j in np.arange(0, read.rows):
                         a.append(data16[j*read.columns:(j+1)*read.columns])
                     a=np.array(a)
                     IM_matrix.append(np.array(a))
@@ -115,20 +102,20 @@ class main_texture_mr(object):
 
     def normalization(self, struct_norm1, struct_norm2, read, mypath_image):
         '''get the normalization coefficients for MR image based on two normal sturctures (for example muscle and white matter) and linear function'''
-        struct1 = Structures(read.rs, [struct_norm1], read.slices, read.x_ct, read.y_ct, read.xCTspace, len(read.slices), False, False) #False for the wavelet and local argument
+        struct1 = Structures(read.rs, [struct_norm1], read.slices, read.x_ct, read.y_ct, read.xCTspace, len(read.slices), False, None, False) #False for the wavelet and local argument, none for dim
         norm1_Xcontour = struct1.Xcontour
         norm1_Ycontour = struct1.Ycontour
 
-        struct2 = Structures(read.rs, [struct_norm2], read.slices, read.x_ct, read.y_ct, read.xCTspace, len(read.slices), False, False) #False for the wavelet and local  argument
+        struct2 = Structures(read.rs, [struct_norm2], read.slices, read.x_ct, read.y_ct, read.xCTspace, len(read.slices), False, None, False) #False for the wavelet and local  argument, none for dim
         norm2_Xcontour = struct2.Xcontour
         norm2_Ycontour = struct2.Ycontour
 
         #to read only slices where there is a contour
         ind = []
-        for f in arange(0, len(norm1_Xcontour)):
+        for f in np.arange(0, len(norm1_Xcontour)):
             if norm1_Xcontour[f] != []:
                 ind.append(f)
-        for f in arange(0, len(norm2_Xcontour)):
+        for f in np.arange(0, len(norm2_Xcontour)):
             if norm2_Xcontour[f] != []:
                 ind.append(f)
 
@@ -148,7 +135,7 @@ class main_texture_mr(object):
             data16 = np.array(np.fromstring(data, dtype=np.int16)) #converitng to decimal
             #recalculating for rows x columns
             a=[]
-            for j in arange(0, read.rows):
+            for j in np.arange(0, read.rows):
                 a.append(data16[j*read.columns:(j+1)*read.columns])
             a=np.array(a)
             IM_matrix.append(np.array(a))
@@ -158,20 +145,20 @@ class main_texture_mr(object):
         v1 = [] #values for structure 1
         v2 = [] #values for structure 2
 
-        for i in arange(0, len(norm1_Xcontour)): #slices
-            for j in arange(0, len(norm1_Xcontour[i])): #sub-structres in the slice
-                for k in arange(0, len(norm1_Xcontour[i][j])):
+        for i in np.arange(0, len(norm1_Xcontour)): # slices
+            for j in np.arange(0, len(norm1_Xcontour[i])): #sub-structres in the slice
+                for k in np.arange(0, len(norm1_Xcontour[i][j])):
                     v1.append(IM_matrix[i][norm1_Ycontour[i][j][k]][norm1_Xcontour[i][j][k]])
 
-        for i in arange(0, len(norm2_Xcontour)): #slices
-            for j in arange(0, len(norm2_Xcontour[i])): #sub-structres in the slice
-                for k in arange(0, len(norm2_Xcontour[i][j])):
+        for i in np.arange(0, len(norm2_Xcontour)): #slices
+            for j in np.arange(0, len(norm2_Xcontour[i])): #sub-structres in the slice
+                for k in np.arange(0, len(norm2_Xcontour[i][j])):
                     v2.append(IM_matrix[i][norm2_Ycontour[i][j][k]][norm2_Xcontour[i][j][k]])
 
         f1 = np.mean(v1)
         f2 = np.mean(v2)
 
-        fa = (800-300)/(f1-f2) #find coefficients of a linear function
-        fb = 800 - f1*fa
+        fa = (800-300) / (f1-f2) #find coefficients of a linear function
+        fb = 800 - f1 * fa
 
         return fa, fb

@@ -36,7 +36,8 @@ Installing Python packages
 
 **Without admin rights:**
 
-Due to access right restrictions from USZ site, installation is possible either using compiled binary wheels or via ``pip`` through proxy. 
+Due to access right restrictions from USZ site, installation is possible either using compiled binary wheels or via ``pip`` through proxy.
+
     1. **Wheel**: Download the packages from the Unofficial Windows Binaries for Python Extension Packages: https://www.lfd.uci.edu/~gohlke/pythonlibs/ and then go to the directory where the wheel was downloaded. Use the following command to install them::
 
         pip install <name_of_the_wheel.whl>

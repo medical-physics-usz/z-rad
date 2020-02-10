@@ -36,20 +36,20 @@ Installing Python packages
 
 **Without admin rights:**
 
-Due to access right restrictions from USZ site, installation is possible either using compiled binary wheels or via ``pip`` through proxy.
+Due to access right restrictions from USZ site, installation is possible either using compiled binary wheels or via ``pip`` through a proxy.
 
-    1. **Wheel**: Download the packages from the Unofficial Windows Binaries for Python Extension Packages: https://www.lfd.uci.edu/~gohlke/pythonlibs/ and then go to the directory where the wheel was downloaded. Use the following command to install them::
+1. **Wheel**: Download the packages from the Unofficial Windows Binaries for Python Extension Packages: https://www.lfd.uci.edu/~gohlke/pythonlibs/ and then go to the directory where the wheel was downloaded. Use the following command to install them::
 
-        pip install <name_of_the_wheel.whl>
-    2. **PIP through a proxy**: Create *pip.ini* file in ``%APPDATA%\pip\pip.ini`` with the following contents::
+    pip install <name_of_the_wheel.whl>
+2. **PIP through a proxy**: Create *pip.ini* file in ``%APPDATA%\pip\pip.ini`` with the following contents::
 
-        [global]
-        proxy = http://username:password@proxy.usz.ch:8080
-        trusted-host = pypi.python.org
-                       pypi.org
-                       files.pythonhosted.org
-   
-       This configuration file routes the network traffic related to ``pip``. Do not forget to change *username* and *password* to your credentials.
+    [global]
+    proxy = http://username:password@proxy.usz.ch:8080
+    trusted-host = pypi.python.org
+                   pypi.org
+                   files.pythonhosted.org
+
+   This configuration file routes the network traffic related to ``pip``. Do not forget to change *username* and *password* to your credentials.
 
 
 

@@ -53,9 +53,15 @@ class MyPanelResize(scrolled.ScrolledPanel):
         st_reso = wx.StaticText(self, label='Resolution for texture calculation [mm]')
         tc_reso = wx.TextCtrl(self, id=1004, size=(100, h), value="",
                               style=wx.TE_PROCESS_ENTER)  # resolution for texture calculation
+####
+        int_type = wx.StaticText(self, label='Interpolation (default = linear):')
+        inte_type = wx.ComboBox(self, id=1015, size=(100, 2*h), value='linear', choices=['linear', 'nearest', 'cubic'],
+                              style=wx.CB_READONLY)  # Type of Interpolation used -- read only drop down menu to avoid errors
+        #inte_type=wx.Choice(self, id=1015, pos, size=(100, h), n, choices=['linear', 'nearest', 'cubic'], style)
+        #inte_type=wx.Choice(self, id=1015, pos, size=(100, h), n, choices[], style)
         st_type = wx.StaticText(self, label='Image type')
-        tc_type = wx.ComboBox(self, id=1005, size=(100, h), value="", choices=['CT', 'PET', 'MR', 'IVIM'],
-                              style=wx.TE_PROCESS_ENTER)  # modality type
+        tc_type = wx.ComboBox(self, id=1005, size=(100, 2*h), value="", choices=['CT', 'PET', 'MR', 'IVIM'],
+                              style=wx.CB_READONLY)  # modality type
         st_start = wx.StaticText(self, label='Start')
         tc_start = wx.TextCtrl(self, id=1006, size=(100, h), value="",
                                style=wx.TE_PROCESS_ENTER)  # patient number to start
@@ -86,7 +92,8 @@ class MyPanelResize(scrolled.ScrolledPanel):
                             st_save_resized, tc_save_resized, btn_load_resized, wx.StaticText(self, label=''),
                             st_name, tc_name, wx.StaticText(self, label=''), wx.StaticText(self, label=''),
                             st_reso, tc_reso, wx.StaticText(self, label=''), wx.StaticText(self, label=''),
-                            st_type, tc_type, wx.StaticText(self, label=''), wx.StaticText(self, label=''),
+                            int_type, inte_type, wx.StaticText(self, label=''), wx.StaticText(self, label=''),
+                            st_type, tc_type, wx.StaticText(self, label=''), wx.StaticText(self, label=''), ##
                             st_start, tc_start, wx.StaticText(self, label=''), wx.StaticText(self, label=''),
                             st_stop, tc_stop, wx.StaticText(self, label=''), wx.StaticText(self, label=''),
                             cb_texture, cb_texture_dim2, wx.StaticText(self, label=''), wx.StaticText(self, label=''),
@@ -162,7 +169,8 @@ class MyPanelResize(scrolled.ScrolledPanel):
         inp_struct = self.FindWindowById(1003).GetValue()
         inp_mypath_load = self.FindWindowById(1001).GetValue()
         inp_mypath_save = self.FindWindowById(1002).GetValue()
-        image_type = self.FindWindowById(1005).GetValue()
+        interpolation_type=self.FindWindowById(1015).GetValue()
+        image_type = self.FindWindowById(1005).GetValue()####
         begin = int(self.FindWindowById(1006).GetValue())
         stop = int(self.FindWindowById(1007).GetValue())
         cropArg = bool(self.FindWindowById(1012).GetValue())
@@ -186,15 +194,17 @@ class MyPanelResize(scrolled.ScrolledPanel):
                 dimension_resize = "2D"
             else:
                 dimension_resize = "3D"
-            ResizeTexture(inp_resolution, list_structure, inp_mypath_load, inp_mypath_save, image_type, begin, stop,
-                          cropInput, dimension_resize)  # resize images and structure to the resolution of texture
 
+            print(interpolation_type)
+            ResizeTexture(inp_resolution, interpolation_type, list_structure, inp_mypath_load, inp_mypath_save, image_type, begin, stop,
+                          cropInput, dimension_resize)  # resize images and structure to the resolution of texture
+####
         if self.FindWindowById(1009).GetValue():  # if resizing to shape resolution selected
             inp_mypath_save_shape = inp_mypath_save + '\\resized_1mm\\'
 
             for shape_struct in list_structure:
                 ResizeShape(shape_struct, inp_mypath_load, inp_mypath_save_shape, image_type, begin, stop,
-                            inp_resolution,
+                            inp_resolution, interpolation_type,
                             cropInput)  # resize the structure to the resolution of shape, default 1mm unless resolution of texture smaller than 1mm then 0.1 mm
 
         MyInfo('Resize done')  # show info box

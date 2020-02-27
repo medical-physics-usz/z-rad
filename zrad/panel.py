@@ -204,7 +204,7 @@ class MyPanelResize(scrolled.ScrolledPanel):
 
             for shape_struct in list_structure:
                 ResizeShape(shape_struct, inp_mypath_load, inp_mypath_save_shape, image_type, begin, stop,
-                            inp_resolution, interpolation_type,
+                            inp_resolution, interpolat='linear',
                             cropInput)  # resize the structure to the resolution of shape, default 1mm unless resolution of texture smaller than 1mm then 0.1 mm
 
         MyInfo('Resize done')  # show info box

@@ -274,7 +274,7 @@ class InterpolateROI(object):
         con_m = np.zeros((len(znew), len(im1), len(im1[0])))  # interpolated 3D matrix
         for i in arange(0, len(im1)):  # interpolate each voxel in z direction
             for j in arange(0, len(im1[0])):
-                f = interp1d(z, con[:, i, j], kind=interp_algo, fill_value="extrapolate")
+                f = interp1d(z, con[:, i, j], kind='linear')
                 con_m[:, i, j] = f(znew)
         del con
         del im1

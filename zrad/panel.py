@@ -57,7 +57,6 @@ class MyPanelResize(scrolled.ScrolledPanel):
         int_type = wx.StaticText(self, label='Interpolation (default = linear):')
         inte_type = wx.ComboBox(self, id=1015, size=(100, 2*h), value='linear', choices=['linear', 'nearest', 'cubic'],
                               style=wx.CB_READONLY)  # Type of Interpolation used -- read only drop down menu to avoid errors
-        #inte_type=wx.Choice(self, id=1015, pos, size=(100, h), n, choices=['linear', 'nearest', 'cubic'], style)
         #inte_type=wx.Choice(self, id=1015, pos, size=(100, h), n, choices[], style)
         st_type = wx.StaticText(self, label='Image type')
         tc_type = wx.ComboBox(self, id=1005, size=(100, 2*h), value="", choices=['CT', 'PET', 'MR', 'IVIM'],

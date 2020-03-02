@@ -50,8 +50,12 @@ class main_texture_mr(object):
                 dicomProblem.append([ImName, read.listDicomProblem])
 
                 #MR intiensities normalization
-                norm_slope, norm_inter = self.normalization(struct_norm1, struct_norm2, read, mypath_image)
-
+                if struct_norm1 !='':
+                    norm_slope, norm_inter = self.normalization(struct_norm1, struct_norm2, read, mypath_image)
+                else: 
+                     norm_slope = 1 #to allow for calculation with no normalization
+                     norm_inter = 0
+                    
                 bitsRead = str(dc.read_file(mypath_image + read.onlyfiles[1]).BitsAllocated)
                 sign = int(dc.read_file(mypath_image + read.onlyfiles[1]).PixelRepresentation)
 
@@ -84,7 +88,7 @@ class main_texture_mr(object):
                 #arguments: image, stucture name, image corner x, image corner x, columns, pixelSpacing, HFS or FFS, structure file, list of slice positions, patient number, path to save the textutre maps, map name (eg. AIF1), pixel discretization, site
                 #function returns: number of removed points, minimum values, maximum values, structre used for calculations, mean,std, cov, skewness, kurtosis, enenrgy, entropy, contrast, corrrelation, homogenity, coarseness, neighContrast, busyness, complexity, intensity varation, size variation, fractal dimension, number of points used in the calculations, histogram (values bigger/smaller than median)
             stop_calc = '' #in case someting would be wrong with the image tags                
-            if Dim == '3D':
+            if dim == '3D':
                 lista_results = Texture(sb,[IM_matrix], read.structure_f, read.columns, read.rows, read.xCTspace, read.slices, path_save, ImName, pixNr, binSize, image_modality, wv, local,cropStructure, stop_calc, read.Xcontour, read.Xcontour_W, read.Ycontour, read.Ycontour_W, read.Xcontour_Rec, read.Ycontour_Rec).ret()
 
 #                elif Dim == '2D': #not working

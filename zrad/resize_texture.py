@@ -33,11 +33,11 @@ class ResizeTexture(object):
     stop – stop number
     """
 
-    def __init__(self, inp_resolution, inp_struct, inp_mypath_load, inp_mypath_save, image_type,
+    def __init__(self, inp_resolution, interpolation_type, inp_struct, inp_mypath_load, inp_mypath_save, image_type,
                  begin, stop, cropInput, dim):
         self.logger = logging.getLogger(__name__)
         self.logger.info("Start: Resize Texture")
-
+        self.interpolation_alg=interpolation_type
         self.resolution = float(inp_resolution)
         if self.resolution < 1.:  # set a round factor for slice position
             self.round_factor = 3
@@ -177,14 +177,17 @@ class ResizeTexture(object):
                         a = np.reshape(data16, (rows, columns))
                         del data
                         del data16
-
                         # interpolate XY
                         b_new = np.zeros((len(old_gridY), len(new_gridX)))
                         for j in np.arange(0, len(a)):  # interpolate in x direction (each row)
-                            b_new[j] = np.interp(new_gridX, old_gridX, a[j])
+
+                            f = interp1d(old_gridX, a[j], kind=self.interpolation_alg, fill_value="extrapolate")
+                            b_new[j]=f(new_gridX)
                         a_new = np.zeros((len(new_gridY), len(new_gridX)))
                         for j in np.arange(0, len(b_new[0])):
-                            a_new[:, j] = np.interp(new_gridY, old_gridY, b_new[:, j])
+                            f = interp1d(old_gridY, b_new[:,j], kind=self.interpolation_alg, fill_value="extrapolate")
+                            a_new[:,j]=f(new_gridY)
+
                         del b_new
                         del a
                         IM.append(a_new)
@@ -219,7 +222,9 @@ class ResizeTexture(object):
                         try:
                             for x in arange(0, new_columns):
                                 for y in arange(0, new_rows):
-                                    new_image[:, y, x] = np.interp(new_gridZ, old_gridZ, IM[:, y, x])
+                                    f = interp1d(old_gridZ, IM[:,y,x], kind=self.interpolation_alg, fill_value="extrapolate")
+                                    new_image[:,y,x]=f(new_gridZ)
+
                         except ValueError:
                             if slices[1] - slices[0] < 0:
                                 slices_r = np.array(slices).copy()
@@ -230,7 +235,8 @@ class ResizeTexture(object):
                                 old_gridZ = np.array(slices)
                             for x in arange(0, new_columns):
                                 for y in arange(0, new_rows):
-                                    new_image[:, y, x] = np.interp(new_gridZ, old_gridZ, IM[:, y, x])
+                                    f = interp1d(old_gridZ, IM[:,y,x], kind=self.interpolation_alg, fill_value="extrapolate")
+                                    new_image[:,y,x]=f(new_gridZ)
 
                     # check if all dicom tags are valid
                     CT = dc.read_file(mypath_file + onlyfiles[0])
@@ -359,10 +365,14 @@ class ResizeTexture(object):
                             # interpolate XY
                             b_new = np.zeros((len(old_gridY), len(new_gridX)))
                             for j in np.arange(0, len(a)):
-                                b_new[j] = np.interp(new_gridX, old_gridX, a[j])
+                                f = interp1d(old_gridX, a[j], kind=self.interpolation_alg, fill_value="extrapolate")
+                                b_new[j]=f(new_gridX)
+
                             a_new = np.zeros((len(new_gridY), len(new_gridX)))
                             for j in np.arange(0, len(b_new[0])):
-                                a_new[:, j] = np.interp(new_gridY, old_gridY, b_new[:, j])
+                                f = interp1d(old_gridY, b_new[j], kind=self.interpolation_alg, fill_value="extrapolate")
+                                a_new[:, j] = f(new_gridY)
+
                             del b_new
                             del a
                             IM.append(a_new)
@@ -396,7 +406,9 @@ class ResizeTexture(object):
                             try:
                                 for x in arange(0, new_columns):
                                     for y in arange(0, new_rows):
-                                        new_image[:, y, x] = np.interp(new_gridZ, old_gridZ, IM[:, y, x])
+                                        f = interp1d(old_gridZ, IM[:, y, x], kind=self.type_of_int, fill_value="extrapolate")
+                                        new_image[:, y, x]=f(new_gridZ)
+
                             except ValueError:
                                 if slices[1] - slices[0] < 0:
                                     slices_r = np.array(slices).copy()
@@ -408,8 +420,8 @@ class ResizeTexture(object):
                                     old_gridZ = np.array(slices)
                                 for x in arange(0, new_columns):
                                     for y in arange(0, new_rows):
-                                        new_image[:, y, x] = np.interp(new_gridZ, old_gridZ, IM[:, y, x])
-
+                                        f = interp1d(old_gridZ, IM[:,y,x], kind=self.interpolation_alg, fill_value="extrapolate")
+                                        new_image[:,y,x]=f(new_gridZ)
                         # save interpolated images
                         for im in arange(0, len(new_image)):
                             im_nr = int(im * float(len(onlyfiles)) / len(new_image))  # choose an original dicom file to be modify
@@ -508,14 +520,14 @@ class ResizeTexture(object):
                                         for gz in arange(0, len(zi)):
                                             zi[gz] = round(zi[gz], self.round_factor)
                                         # interpolate, X list of x positions of the interpolated contour, Y list of y positions of the interpolated contour , interpolation type  texture find polygon encompassing the sturcture
-                                        X, Y = InterpolateROI().interpolate(M[n_s], M[n_s + 1], np.linspace(0, 1, sliceThick / 0.01 + 1), 'texture')
+                                        X, Y = InterpolateROI().interpolate(self.interpolation_alg, M[n_s], M[n_s + 1], np.linspace(0, 1, sliceThick / 0.01 + 1), 'texture')
                                     elif self.round_factor == 3:
                                         zi = np.linspace(old_gridZ[n_s], old_gridZ[n_s + 1], sliceThick / 0.001 + 1)  # create an interpolation grid between those slices
                                         # round interpolation grid according to specified precision
                                         for gz in arange(0, len(zi)):
                                             zi[gz] = round(zi[gz], self.round_factor)
                                         # interpolate, X list of x positions of the interpolated contour, Y list of y positions of the interpolated contour, interpolation type  texture find polygon encompassing the sturcture
-                                        X, Y = InterpolateROI().interpolate(M[n_s], M[n_s + 1], np.linspace(0, 1, sliceThick / 0.001 + 1), 'texture')
+                                        X, Y = InterpolateROI().interpolate(self.interpolation_alg, M[n_s], M[n_s + 1], np.linspace(0, 1, sliceThick / 0.001 + 1), 'texture')
                                     # check which position in the interpolation grid corresponds to the new slice position
                                     for i in arange(0, len(zi)):
                                         if zi[i] in new_gridZ and zi[i] not in insertedZ:  # insertedZ gathers all slice positions which are already filled in case that slice position is on the ovelap of two slices from orignal

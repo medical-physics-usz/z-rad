@@ -50,7 +50,7 @@ class main_texture_mr(object):
                 dicomProblem.append([ImName, read.listDicomProblem])
 
                 #MR intiensities normalization
-                if struct_norm1 !='':
+                if struct_norm1 != '':
                     norm_slope, norm_inter = self.normalization(struct_norm1, struct_norm2, read, mypath_image)
                 else: 
                      norm_slope = 1 #to allow for calculation with no normalization

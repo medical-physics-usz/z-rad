@@ -49,7 +49,7 @@ class main_texture_pet(object):
                 mypath_image = path_image+ImName+'\\'
                 self.logger.debug("PET Path "+ mypath_image)
                 PET_UID = ['1.2.840.10008.5.1.4.1.1.20','Positron Emission Tomography Image Storage', '1.2.840.10008.5.1.4.1.1.128'] # PET
-                read = ReadImageStructure(PET_UID, mypath_image, structure, wv, None, local)  # none for dimension
+                read = ReadImageStructure(PET_UID, mypath_image, structure, wv, dim, local)
 
                 dicomProblem.append([ImName, read.listDicomProblem])
 

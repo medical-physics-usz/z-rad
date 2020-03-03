@@ -245,7 +245,7 @@ class InterpolateROI(object):
 
         return M  # M - 3D matrix with -1 outside, 0 on the border and 1 inside
 
-    def interpolate(self, s1, s2, znew, output_type):
+    def interpolate(self, interp_algo, s1, s2, znew, output_type):
         """interpolate structure between slices"""
         s1 = np.array(s1)  # ROI points in 2D matrix, -1 out, 0 border, 1 in
         s2 = np.array(s2)  # ROI points in 2D matrix, -1 out, 0 border, 1 in
@@ -274,7 +274,7 @@ class InterpolateROI(object):
         con_m = np.zeros((len(znew), len(im1), len(im1[0])))  # interpolated 3D matrix
         for i in arange(0, len(im1)):  # interpolate each voxel in z direction
             for j in arange(0, len(im1[0])):
-                f = interp1d(z, con[:, i, j])
+                f = interp1d(z, con[:, i, j], kind='linear')
                 con_m[:, i, j] = f(znew)
         del con
         del im1

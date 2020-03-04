@@ -43,7 +43,7 @@ class main_texture_mr(object):
                 mypath_image = path_image+ImName+'\\'
                 MR_UID = ['1.2.840.10008.5.1.4.1.1.4'] #MR
 
-                read = ReadImageStructure(MR_UID, mypath_image, structure, wv, None, local)  # none for dimension
+                read = ReadImageStructure(MR_UID, mypath_image, structure, wv, dim, local)
                 
                 print('before ', len(read.slices))
 
@@ -91,7 +91,7 @@ class main_texture_mr(object):
             if dim == '3D':
                 lista_results = Texture(sb,[IM_matrix], read.structure_f, read.columns, read.rows, read.xCTspace, read.slices, path_save, ImName, pixNr, binSize, image_modality, wv, local,cropStructure, stop_calc, read.Xcontour, read.Xcontour_W, read.Ycontour, read.Ycontour_W, read.Xcontour_Rec, read.Ycontour_Rec).ret()
 
-#                elif Dim == '2D': #not working
+#                elif dim == '2D': #not working
 #                    lista_results = Texture2D(sb,IM_matrix, structure, x_ct,y_ct, columns, rows, xCTspace, patientPos, rs, slices, path_save, ImName, pixNr, prefix).ret()
 
             final = [[ImName, lista_results[2], lista_results[:2], lista_results[3:-1], lista_results[-1]]]

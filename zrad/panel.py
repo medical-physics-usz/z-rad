@@ -228,7 +228,7 @@ class MyPanelResize(scrolled.ScrolledPanel):
     def fill(self, l):
         """method called by parent to fill the text boxes with save settings
         l - list of elements read from a text file"""
-        ids = [1001, 1002, 1003, 1004, 1005, 1006, 1007, 10081, 10082, 10083, 1009, 1012,
+        ids = [1001, 1002, 1003, 1004, 1015, 1005, 1006, 1007, 10081, 10082, 10083, 1009, 1012,
                1013]  # ids of field to fill # if adjust number of ids then also adjust in main_texture in self.panelResize.fill(l[:11])!!!!
 
         for i in range(0, len(l)):
@@ -260,7 +260,7 @@ class MyPanelResize(scrolled.ScrolledPanel):
     def save(self):
         """save the last used settings"""
         l = []
-        ids = [1001, 1002, 1003, 1004, 1005, 1006, 1007, 10081, 10082, 10083, 1009, 1012, 1013]
+        ids = [1001, 1002, 1003, 1004, 1015, 1005, 1006, 1007, 10081, 10082, 10083, 1009, 1012, 1013]
         for i in ids:
             l.append(self.FindWindowById(i).GetValue())
         return l

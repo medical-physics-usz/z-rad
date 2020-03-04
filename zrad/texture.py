@@ -867,12 +867,7 @@ class Texture(object):
                 except ValueError:
                     print(ValueError)
                     self.stop_calculation('ValueError', [1])
-                    matrix.append([])
-                    interval.append([])
-                    norm_points.append([])
-                    matrix_v.append([])
-                    matrix_full.append([])
-                    
+
             #except IndexError:#IndexError:
             #    matrix = []
             #    print IndexError

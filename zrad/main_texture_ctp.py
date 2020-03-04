@@ -43,7 +43,7 @@ class main_texture_ctp(object):
                 mypath_image = path_image+ImName+'\\'
                 UID = ['CTP']
                 
-                read = ReadImageStructure(UID, mypath_image, structure, wv, None, local, image_modality)  # none for dimension
+                read = ReadImageStructure(UID, mypath_image, structure, wv, dim, local, image_modality)  # none for dimension
 
                 dicomProblem.append([ImName, read.listDicomProblem])   
 

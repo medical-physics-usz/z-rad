@@ -42,7 +42,7 @@ class main_texture_ivim(object):
                 mypath_image = path_image+ImName+'\\'+prefix[m_name]+"\\"
                 UID = ['IVIM']
                 
-                read = ReadImageStructure(UID, mypath_image, structure, wv, None, local, image_modality)  # none for dimension
+                read = ReadImageStructure(UID, mypath_image, structure, wv, dim, local, image_modality)  # none for dimension
 
                 dicomProblem.append([ImName, read.listDicomProblem])   
                 

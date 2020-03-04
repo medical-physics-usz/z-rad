@@ -49,7 +49,7 @@ class main_texture_pet(object):
                 mypath_image = path_image+ImName+'\\'
                 self.logger.debug("PET Path "+ mypath_image)
                 PET_UID = ['1.2.840.10008.5.1.4.1.1.20','Positron Emission Tomography Image Storage', '1.2.840.10008.5.1.4.1.1.128'] # PET
-                read = ReadImageStructure(PET_UID, mypath_image, structure, wv, None, local)  # none for dimension
+                read = ReadImageStructure(PET_UID, mypath_image, structure, wv, dim, local)
 
                 dicomProblem.append([ImName, read.listDicomProblem])
 
@@ -123,7 +123,7 @@ class main_texture_pet(object):
                     self.logger.info("Read in provided CT for cropping")
                     crop_patient_path = cropStructure["ct_path"] + "\\" + ImName+'\\'
                     CT_UID = ['1.2.840.10008.5.1.4.1.1.2', '1.2.840.10008.5.1.4.1.1.2.1'] 
-                    read_crop_CT = ReadImageStructure(CT_UID, crop_patient_path, structure, wv, None, local)  # none for dimension
+                    read_crop_CT = ReadImageStructure(CT_UID, crop_patient_path, structure, wv, dim, local)
 
                     dicomProblem.append(["crop_" + ImName, read_crop_CT.listDicomProblem])
                     # parameters to recalculate intensities HU
@@ -167,7 +167,7 @@ class main_texture_pet(object):
             elif np.isnan(weight):  
                 stop_calc = 'undefined weight'
             lista_results = Texture(sb,[IM_matrix], read.structure_f, read.columns, read.rows, read.xCTspace, read.slices, path_save, ImName, pixNr, binSize, image_modality, wv, local,cropStructure, stop_calc, read.Xcontour, read.Xcontour_W, read.Ycontour, read.Ycontour_W, read.Xcontour_Rec, read.Ycontour_Rec).ret()
-#            elif Dim == '2D': #not working
+#            elif dim == '2D': #not working
 #                lista_results = Texture2D(sb,IM_matrix, structure, x_ct,y_ct, columns, rows, xCTspace, patientPos, rs, slices, path_save, ImName, pixNr, prefix).ret()         
             final = [[ImName, lista_results[2], lista_results[:2], lista_results[3:-1], lista_results[-1]]]
 

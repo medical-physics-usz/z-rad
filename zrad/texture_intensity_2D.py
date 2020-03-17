@@ -809,14 +809,16 @@ class GLRLM_GLSZM_GLDZM_NGLDM(object):
             (indz, indy, indx) = np.where(~np.isnan(self.matrix))
             for i in arange(0, len(indz)):
                 dist = []  # vector of distances for one voxel
-                z = self.matrix[:, indy[i], indx[i]]
-                nanz = np.where(np.isnan(z))[0]
-                d = []
-                if len(nanz) != 0:
-                    d = list(abs(nanz - indz[i]))
-                d.append(indz[i] + 1 - 0)
-                d.append(len(self.matrix) - indz[i])
-                dist.append(np.min(d))
+#                # 3D implementation:
+# 3D implementation
+#                z = self.matrix[:, indy[i], indx[i]]
+#                nanz = np.where(np.isnan(z))[0]
+#                d = []
+#                if len(nanz) != 0:
+#                    d = list(abs(nanz - indz[i]))
+#                d.append(indz[i] + 1 - 0)
+#                d.append(len(self.matrix) - indz[i])
+#                dist.append(np.min(d))
 
                 y = self.matrix[indz[i], :, indx[i]]
                 nany = np.where(np.isnan(y))[0]

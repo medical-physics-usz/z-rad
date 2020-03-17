@@ -31,6 +31,7 @@ class ResizeTexture(object):
     image_type – image modality
     begin – start number
     stop – stop number
+    dim - dimension for resizing
     """
 
     def __init__(self, inp_resolution, interpolation_type, inp_struct, inp_mypath_load, inp_mypath_save, image_type,

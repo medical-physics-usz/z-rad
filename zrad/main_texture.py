@@ -73,8 +73,8 @@ class Radiomics(wx.Frame):
             l.append(i)
             # self.logger.debug("list of config " + i )
 
-        self.panelResize.fill(l[:13])  # use the saved configuration
-        self.panel.fill(l[13:])
+        self.panelResize.fill(l[:14])  # use the saved configuration
+        self.panel.fill(l[14:])
         del l
         config.close()
 

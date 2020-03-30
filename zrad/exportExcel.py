@@ -1,11 +1,6 @@
 # -*- coding: utf-8 -*-
-"""
-Created on Fri Jun 15 13:17:28 2018
 
-@author: Physics
-"""
-
-from numpy import loadtxt, arange
+# import libraries
 import numpy as np
 import pandas as pd
 

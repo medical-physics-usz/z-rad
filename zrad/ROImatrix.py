@@ -1,10 +1,6 @@
 # -*- coding: utf-8 -*-
-"""
-Created on Mon Apr 30 18:52:38 2018
 
-@author: nesma
-"""
-
+# import libraries
 import numpy as np
 import logging
 

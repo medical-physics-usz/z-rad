@@ -1,16 +1,11 @@
 # -*- coding: utf-8 -*-s
 
+# import libraries
 from numpy import arange, floor
 import cv2
 import numpy as np
 import copy
-
-try:
-    import pydicom as dc  # dicom library
-except ImportError:
-    import dicom as dc  # dicom library
-
-from exception import MyException
+import pydicom as dc  # dicom library
 import logging
 
 

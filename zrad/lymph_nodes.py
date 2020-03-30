@@ -1,34 +1,19 @@
 # -*- coding: utf-8 -*-
-"""
-Created on Wed May 17 14:58:27 2017
 
-@author: nesma
-"""
-
-'''read data and save texture parameters in txt file'''
-#import libraries
-try:
-    import pydicom as dc # dicom library
-except ImportError:
-    import dicom as dc # dicom library
+# import libraries
 import numpy as np # numerical computation  # numpy 1.13 required
-from numpy import arange, floor 
 import pylab as py # drawing plots
 from os import listdir, makedirs # managing files
 from os.path import isfile, join, isdir
 import vtk
 from vtk import *
 
-from scipy.stats import norm # statistical analysis
-import scipy.optimize as optimization
 from sklearn.decomposition import PCA
 from sklearn.cluster import KMeans
 from sklearn.metrics import calinski_harabaz_score
 from scipy.spatial import Delaunay
 from scipy.sparse.csgraph import minimum_spanning_tree
 import matplotlib
-from scipy import ndimage
-from time import gmtime
 
 class LymphNodes(object):
     '''
@@ -45,7 +30,7 @@ class LymphNodes(object):
 
     def __init__(self, name_ln, name_sh, path_files_shape, path_save, path_save_dir, start, stop):
         final=[] # list with results
-        for ImName in arange(start, stop+1):
+        for ImName in np.arange(start, stop+1):
             ImName = str(ImName)
             print('patient', ImName)
             tumorMass, ptVol, ptPoints = self.FindMassCenter(name_sh, path_files_shape, ImName) #calculates the tumor center of the mass
@@ -299,7 +284,7 @@ class LymphNodes(object):
 ##            area = 0
 ##            for t in tri:
 ##                lengths = []
-##                for ind in arange(0, len(t)):
+##                for ind in np.arange(0, len(t)):
 ##                    #caculate area with herons equation
 ##                    lengths.append(np.sqrt(float(np.sum((points[t[ind]]-points[t[ind-1]])**2)))) 
 ##                p = 0.5*np.sum(lengths)
@@ -320,7 +305,7 @@ class LymphNodes(object):
             optClust = 1
         else:
             ch = [] # list of calinski_harabaz scores for different numbers of clusters
-            for i in arange(2,len(points)):
+            for i in np.arange(2,len(points)):
                 kmeans_model = KMeans(n_clusters=i, random_state=1).fit(points)
                 labels = kmeans_model.labels_
                 ch.append((calinski_harabaz_score(points, labels),i))

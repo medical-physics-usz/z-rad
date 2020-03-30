@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-s
+
+# import libraries
 import wx
 import wx.lib.scrolledpanel as scrolled
 

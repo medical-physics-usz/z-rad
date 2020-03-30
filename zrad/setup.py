@@ -1,6 +1,7 @@
-from distutils.core import setup
-import py2exe
+# -*- coding: utf-8 -*-
 
+# import libraries
+from distutils.core import setup
 # Remove the build folder, a bit slower but ensures that build contains the latest
 import shutil
 shutil.rmtree("build", ignore_errors=True)

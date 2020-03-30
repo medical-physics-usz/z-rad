@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+
+# import libraries
 import wx
 
 class Set(wx.Frame):

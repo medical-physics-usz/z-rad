@@ -1,8 +1,11 @@
 # -*- coding: utf-8 -*-s
+
+# import libraries
 import wx
 import wx.lib.scrolledpanel as scrolled
-from myinfo import MyInfo
 
+# own classes
+from myinfo import MyInfo
 from resize_texture import ResizeTexture
 from resize_shape import ResizeShape
 from check import CheckStructures

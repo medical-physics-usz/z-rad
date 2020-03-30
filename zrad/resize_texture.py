@@ -1,25 +1,20 @@
 # -*- coding: utf-8 -*-s
-import os
 
-try:
-    import dicom as dc
-    from dicom.filereader import InvalidDicomError
-except:
-    import pydicom as dc
-    from pydicom.filereader import InvalidDicomError
+# import libraries
+import os
+import pydicom as dc
+from pydicom.filereader import InvalidDicomError
 import numpy as np
-from numpy import arange
 from shutil import copyfile
 from os import path, makedirs, listdir, rmdir
 from os.path import isfile, join
-from scipy.ndimage.morphology import distance_transform_edt
 from scipy.interpolate import interp1d
-import cv2
 from glob import glob
 from tqdm import tqdm
-
-from resize_interpolate_roi import InterpolateROI
 import logging
+
+# own classes
+from resize_interpolate_roi import InterpolateROI
 
 
 class ResizeTexture(object):
@@ -52,7 +47,7 @@ class ResizeTexture(object):
         self.UID = '2030'  # UID for new images
         self.image_type = image_type
 
-        self.list_dir = [str(f) for f in arange(begin, stop + 1)]  # list of directories to be analyzed
+        self.list_dir = [str(f) for f in np.arange(begin, stop + 1)]  # list of directories to be analyzed
         self.resize()
 
         # if there were non dicom files save file
@@ -102,7 +97,7 @@ class ResizeTexture(object):
                             pass
 
                     onlyfiles.sort()  # sort and take only file names
-                    for i in arange(0, len(onlyfiles)):
+                    for i in np.arange(0, len(onlyfiles)):
                         onlyfiles[i] = onlyfiles[i][1]
 
                     # data needed to decode images
@@ -205,7 +200,7 @@ class ResizeTexture(object):
                             new_gridZ = np.arange(slices[-1], slices[0] + sliceThick, self.resolution)
                             old_gridZ = np.arange(slices[-1], slices[0] + sliceThick, sliceThick)
                             Image = IM.copy()
-                            for j in arange(0, len(IM)):
+                            for j in np.arange(0, len(IM)):
                                 IM[j] = Image[-j - 1]
                             del Image
                         else:
@@ -220,8 +215,8 @@ class ResizeTexture(object):
                             (len(new_gridZ), new_rows, new_columns))  # matrix with zeros for the new image
                         # interpolate in z direction
                         try:
-                            for x in arange(0, new_columns):
-                                for y in arange(0, new_rows):
+                            for x in np.arange(0, new_columns):
+                                for y in np.arange(0, new_rows):
                                     f = interp1d(old_gridZ, IM[:,y,x], kind=self.interpolation_alg, fill_value="extrapolate")
                                     new_image[:,y,x]=f(new_gridZ)
 
@@ -233,8 +228,8 @@ class ResizeTexture(object):
                                 old_gridZ = np.array(slices_r)
                             else:
                                 old_gridZ = np.array(slices)
-                            for x in arange(0, new_columns):
-                                for y in arange(0, new_rows):
+                            for x in np.arange(0, new_columns):
+                                for y in np.arange(0, new_rows):
                                     f = interp1d(old_gridZ, IM[:,y,x], kind=self.interpolation_alg, fill_value="extrapolate")
                                     new_image[:,y,x]=f(new_gridZ)
 
@@ -252,7 +247,7 @@ class ResizeTexture(object):
                         wrongROI.append(name + ' invalid tag' + str(ki))
 
                     # save interpolated images
-                    for im in arange(0, len(new_image)):
+                    for im in np.arange(0, len(new_image)):
                         im_nr = int(
                             im * float(len(onlyfiles)) / len(new_image))  # choose an original dicom file to be modify
                         CT = dc.read_file(mypath_file + onlyfiles[im_nr])  # read file to be modified
@@ -320,12 +315,12 @@ class ResizeTexture(object):
                         mypath_ivim = mypath_file + ivim_map + '\\'  # IVIM subtype
                         onlyfiles = [f for f in listdir(mypath_ivim) if isfile(join(mypath_ivim, f))]  # read all files in
 
-                        for i in arange(0, len(onlyfiles)):
+                        for i in np.arange(0, len(onlyfiles)):
                             onlyfiles[i] = (float(dc.read_file(mypath_ivim + onlyfiles[i]).ImagePositionPatient[2]), onlyfiles[i])
 
                         # sorting the files according to theirs slice position
                         onlyfiles.sort()
-                        for i in arange(0, len(onlyfiles)):
+                        for i in np.arange(0, len(onlyfiles)):
                             onlyfiles[i] = onlyfiles[i][1]
 
                         CT = dc.read_file(mypath_ivim + onlyfiles[0])  # example image
@@ -390,7 +385,7 @@ class ResizeTexture(object):
                                 new_gridZ = np.arange(slices[-1], slices[0] + sliceThick, self.resolution)
                                 old_gridZ = np.arange(slices[-1], slices[0] + sliceThick, sliceThick)
                                 Image = IM.copy()
-                                for j in arange(0, len(IM)):
+                                for j in np.arange(0, len(IM)):
                                     IM[j] = Image[-j - 1]
                                 del Image
                             else:
@@ -404,8 +399,8 @@ class ResizeTexture(object):
                             new_image = np.zeros((len(new_gridZ), new_rows, new_columns))  # matrix with zeros for the new image
                             # interpolate in z direction
                             try:
-                                for x in arange(0, new_columns):
-                                    for y in arange(0, new_rows):
+                                for x in np.arange(0, new_columns):
+                                    for y in np.arange(0, new_rows):
                                         f = interp1d(old_gridZ, IM[:, y, x], kind=self.type_of_int, fill_value="extrapolate")
                                         new_image[:, y, x]=f(new_gridZ)
 
@@ -418,12 +413,12 @@ class ResizeTexture(object):
                                 else:
                                     print('tu')
                                     old_gridZ = np.array(slices)
-                                for x in arange(0, new_columns):
-                                    for y in arange(0, new_rows):
+                                for x in np.arange(0, new_columns):
+                                    for y in np.arange(0, new_rows):
                                         f = interp1d(old_gridZ, IM[:,y,x], kind=self.interpolation_alg, fill_value="extrapolate")
                                         new_image[:,y,x]=f(new_gridZ)
                         # save interpolated images
-                        for im in arange(0, len(new_image)):
+                        for im in np.arange(0, len(new_image)):
                             im_nr = int(im * float(len(onlyfiles)) / len(new_image))  # choose an original dicom file to be modify
                             CT = dc.read_file(mypath_ivim + onlyfiles[im_nr])  # read file to be modified
                             CT.FrameOfReferenceUID = CT.FrameOfReferenceUID[:-2] + self.UID  # change UID so it is treated as new image
@@ -485,7 +480,7 @@ class ResizeTexture(object):
 
                     list_organs = []  # ROI (name, number)
                     list_organs_names = []  # ROI names
-                    for j in arange(0, len(rs.StructureSetROISequence)):
+                    for j in np.arange(0, len(rs.StructureSetROISequence)):
                         list_organs.append([rs.StructureSetROISequence[j].ROIName, rs.StructureSetROISequence[j].ROINumber])
                         list_organs_names.append(rs.StructureSetROISequence[j].ROIName)
 
@@ -495,7 +490,7 @@ class ResizeTexture(object):
                             change_struct.append(j)
 
                     structure_nr_to_save = []
-                    for s in arange(0, len(change_struct)):
+                    for s in np.arange(0, len(change_struct)):
                         print('structure: ', change_struct[s])
                         try:
                             # read contour points for given structure
@@ -512,27 +507,27 @@ class ResizeTexture(object):
                             insertedZ = []  # list of contour slices already inserted for the given ROI
                             for gz in range(0, len(new_gridZ)):
                                 new_gridZ[gz] = round(new_gridZ[gz], self.round_factor)
-                            for n_s in arange(0, len(M) - 1):  # n_s slice number
+                            for n_s in np.arange(0, len(M) - 1):  # n_s slice number
                                 if M[n_s] != [] and M[n_s + 1] != []:  # if two consecutive slices not empty - interpolate
                                     if self.round_factor == 2:
                                         zi = np.linspace(old_gridZ[n_s], old_gridZ[n_s + 1], sliceThick / 0.01 + 1)  # create an interpolation grid between those slices
                                         # round interpolation grid according to specified precision
-                                        for gz in arange(0, len(zi)):
+                                        for gz in np.arange(0, len(zi)):
                                             zi[gz] = round(zi[gz], self.round_factor)
                                         # interpolate, X list of x positions of the interpolated contour, Y list of y positions of the interpolated contour , interpolation type  texture find polygon encompassing the sturcture
                                         X, Y = InterpolateROI().interpolate(self.interpolation_alg, M[n_s], M[n_s + 1], np.linspace(0, 1, sliceThick / 0.01 + 1), 'texture')
                                     elif self.round_factor == 3:
                                         zi = np.linspace(old_gridZ[n_s], old_gridZ[n_s + 1], sliceThick / 0.001 + 1)  # create an interpolation grid between those slices
                                         # round interpolation grid according to specified precision
-                                        for gz in arange(0, len(zi)):
+                                        for gz in np.arange(0, len(zi)):
                                             zi[gz] = round(zi[gz], self.round_factor)
                                         # interpolate, X list of x positions of the interpolated contour, Y list of y positions of the interpolated contour, interpolation type  texture find polygon encompassing the sturcture
                                         X, Y = InterpolateROI().interpolate(self.interpolation_alg, M[n_s], M[n_s + 1], np.linspace(0, 1, sliceThick / 0.001 + 1), 'texture')
                                     # check which position in the interpolation grid corresponds to the new slice position
-                                    for i in arange(0, len(zi)):
+                                    for i in np.arange(0, len(zi)):
                                         if zi[i] in new_gridZ and zi[i] not in insertedZ:  # insertedZ gathers all slice positions which are already filled in case that slice position is on the ovelap of two slices from orignal
                                             insertedZ.append(zi[i])
-                                            for j in arange(0, len(X[i])):  # substructures in the slice
+                                            for j in np.arange(0, len(X[i])):  # substructures in the slice
                                                 l = np.zeros((3 * len(X[i][j])))
                                                 # this needs to be new position for structure!
                                                 if self.cropStructure["ct_path"] != "":
@@ -549,9 +544,9 @@ class ResizeTexture(object):
 
                             # search for ROI number I'm interested in
                             st_nr = 1000000
-                            for j in arange(0, len(list_organs)):
+                            for j in np.arange(0, len(list_organs)):
                                 if list_organs[j][0] == change_struct[s]:
-                                    for k in arange(0, len(rs.ROIContourSequence)):
+                                    for k in np.arange(0, len(rs.ROIContourSequence)):
                                         if rs.ROIContourSequence[k].ReferencedROINumber == list_organs[j][1]:
                                             st_nr = k
                                             break
@@ -561,7 +556,7 @@ class ResizeTexture(object):
                             rs.StructureSetROISequence[st_nr].ROIName = change_struct[s]
 
                             # modify the rs file, replace old contour sequence with the new one
-                            for j in arange(0, len(contour)):
+                            for j in np.arange(0, len(contour)):
                                 try:
                                     rs.ROIContourSequence[st_nr].ContourSequence[j].ContourData = contour[j]
                                     nr = len(contour[j]) // 3  #number of points
@@ -574,7 +569,7 @@ class ResizeTexture(object):
                                     a.add_new((0x3006,0x50), 'DS', contour[j])
                                     rs.ROIContourSequence[st_nr].ContourSequence.append(a)
                             # delete the sequence elements if the original sequence was longer than interpolated
-                            for j in arange(len(contour), len(rs.ROIContourSequence[st_nr].ContourSequence)):
+                            for j in np.arange(len(contour), len(rs.ROIContourSequence[st_nr].ContourSequence)):
                                 del rs.ROIContourSequence[st_nr].ContourSequence[-1]
 
                             print('length of new contour: ', len(contour))

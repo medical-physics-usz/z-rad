@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
-#import libraries
+
+# import libraries
 import pydicom as dc # dicom library
 import numpy as np # numerical computation 
 import pylab as py # drawing plots

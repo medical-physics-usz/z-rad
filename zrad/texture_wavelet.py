@@ -1,10 +1,12 @@
+# -*- coding: utf-8 -*-s
+
+# import libraries
 import pywt
 from numpy import sqrt, arange, array, zeros, where, floor, isnan, nan
 import matplotlib.pyplot as plt
 from os import makedirs
 from os.path import isdir
 import logging
-
 
 class Wavelet(object):
     """wavelet transform"""

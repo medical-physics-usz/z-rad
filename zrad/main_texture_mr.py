@@ -1,11 +1,10 @@
-# -*- coding: cp1252 -*-
+# -*- coding: utf-8 -*-
 
-#import libraries
+# import libraries
 import pydicom as dc # dicom library
 import numpy as np # numerical computation
 
-#own classes
-#import class to calculate texture parameters
+# own classes
 from texture import Texture
 from structure import Structures
 from read import ReadImageStructure

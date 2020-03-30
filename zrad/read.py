@@ -1,19 +1,13 @@
 # -*- coding: utf-8 -*-
-"""
-Created on Tue Nov 14 14:59:51 2017
 
-@author: Marta Bogowicz
-"""
-
-try:
-    import pydicom as dc  # dicom library
-except ImportError:
-    import dicom as dc  # dicom library
+# import libraries
+import pydicom as dc  # dicom library
 from os import listdir, makedirs  # managing files
 from os.path import isfile, join, isdir
 from numpy import arange
 import logging
 
+# own classes
 from structure import Structures
 
 

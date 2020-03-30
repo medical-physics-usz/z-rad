@@ -1,10 +1,14 @@
+# -*- coding: utf-8 -*-
+
 """read data and save texture parameters in txt file"""
+# import libraries
 import logging
 from numpy import arange
 import wx
 from wx.adv import AboutBox
 from wx.adv import AboutDialogInfo
 
+# own classes
 from exportExcel import ExportExcel
 from lymph_nodes import LymphNodes
 from main_texture_pet import main_texture_pet

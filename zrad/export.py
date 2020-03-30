@@ -1,16 +1,10 @@
 # -*- coding: utf-8 -*-
-"""
-Created on Fri Aug 11 15:59:48 2017
 
-@author: nesma
-"""
+# import libraries
 from numpy import arange, array, float64
 import sys
 from os import makedirs
 from os.path import isdir
-
-from exception import MyException
-
 
 class Export(object):
     def Preset(self, exportList, wv,local, path_save, save_as, perf_names, path_image):

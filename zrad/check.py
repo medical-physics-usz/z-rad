@@ -1,25 +1,14 @@
 # -*- coding: utf-8 -*-
-"""
-Created on Thu Nov 23 10:14:20 2017
 
-@author: MB
-"""
-
-import os
-try:
-    import pydicom as dc # dicom library
-except ImportError:
-    import dicom as dc # dicom library
-try:
-    from pydicom.filereader import InvalidDicomError
-except ImportError:
-    from dicom.filereader import InvalidDicomError
+# import libraries
+import pydicom as dc # dicom library
+from pydicom.filereader import InvalidDicomError
 import numpy as np
-from numpy import arange
 from os import path, makedirs, listdir, rmdir
 from os.path import isfile, join
 import xlsxwriter as xlsx
 
+# own classes
 from exception import MyException
 
 class CheckStructures(object):
@@ -61,7 +50,7 @@ class CheckStructures(object):
         for s in self.list_structure: #create a key for each user defined structure
             dict_check[s] = []
           
-        for n in arange(begin, stop+1): 
+        for n in np.arange(begin, stop+1): 
             mypath_file = inp_mypath_load + str(n) + '\\'
             try:              
                 rs=[]
@@ -83,7 +72,7 @@ class CheckStructures(object):
                     rs = dc.read_file(rs_name) #read rs
 
                     list_organs_names = [] #ROI names
-                    for j in arange(0, len(rs.StructureSetROISequence)):
+                    for j in np.arange(0, len(rs.StructureSetROISequence)):
                         list_organs_names.append(rs.StructureSetROISequence[j].ROIName)
                     
                     dict_check['pat_nr'].append(n)
@@ -114,12 +103,12 @@ class CheckStructures(object):
             ws.name = 'ROI_check'
                     
             ws.write(0, 0, 'patient number')
-            for s in arange(0, len(self.list_structure)):
+            for s in np.arange(0, len(self.list_structure)):
                 ws.write(s+1, 0, self.list_structure[s])
             ws.write(0, 0, 'ROI in RS')
             
             max_pat_nr = len(dict_check['pat_nr'])
-            for n in arange(0, max_pat_nr):
+            for n in np.arange(0, max_pat_nr):
                 ws.write(0, n+1, dict_check['pat_nr'][n])
                 for i, s in enumerate(self.list_structure):
                     if dict_check[s][n] == '':

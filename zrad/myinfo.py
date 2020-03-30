@@ -1,3 +1,6 @@
+# -*- coding: utf-8 -*-
+
+# import libraries
 import wx
 
 class MyInfo(Exception):

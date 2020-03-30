@@ -1,26 +1,20 @@
 # -*- coding: utf-8 -*-
 '''calculated the co matirxin 3D in all possible directions and average the results'''
+
+# import libraries
 import numpy as np
-from numpy import arange,floor
-#import matplotlib
-import pylab as py
 import matplotlib
 import matplotlib.pyplot as plt
-#from scipy.fftpack import fft2, fftn, fftfreq
-#from mpl_toolkits.mplot3d import Axes3D
 import scipy.optimize as optimization
-#import scipy.stats as st
-import cv2
 from os import makedirs
 from os.path import isdir
 from datetime import datetime
+import logging
+
+# own classes
 from texture_wavelet import Wavelet
 from ROImatrix import Matrix
-import logging
-##from texture_rs import Read_rs
 
-##from margin4 import Margin
-##from edge import Edge
 
 class Texture(object):
     '''Calculate texture, intenisty, fractal dim and center of the mass shift

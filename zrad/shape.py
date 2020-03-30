@@ -1,24 +1,17 @@
 # -*- coding: utf-8 -*-
+
+# import libraries
 import numpy as np
 import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d.art3d import Poly3DCollection
-from mpl_toolkits.mplot3d import Axes3D
 import vtk
-import os.path
 from vtk import *
 from os import listdir, remove # managing files
 from os.path import isfile, join, exists
-##from mayavi import mlab
-#from mayavi.mlab import triangular_mesh
-from vtk.numpy_interface import dataset_adapter as dsa
 import scipy
 from scipy import spatial
 import scipy.ndimage as ndi
-#import mahotas
-import matplotlib.cm as cm
 import sys
 from datetime import datetime
-
 from sklearn.decomposition import PCA
 
 class Shape(object):

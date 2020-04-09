@@ -29,7 +29,7 @@ class CheckStructures(object):
             self.list_structure = [inp_struct]
         else:
             self.list_structure =inp_struct.split(',')
-        for i in range(0,len(self.list_structure)):
+        for i in range(len(self.list_structure)):
             if self.list_structure[i][0]==' ':
                 self.list_structure[i] = self.list_structure[i][1:]
             if self.list_structure[i][-1]==' ':
@@ -50,7 +50,7 @@ class CheckStructures(object):
         for s in self.list_structure: #create a key for each user defined structure
             dict_check[s] = []
           
-        for n in np.arange(begin, stop+1): 
+        for n in range(begin, stop+1): 
             mypath_file = inp_mypath_load + str(n) + '\\'
             try:              
                 rs=[]
@@ -72,7 +72,7 @@ class CheckStructures(object):
                     rs = dc.read_file(rs_name) #read rs
 
                     list_organs_names = [] #ROI names
-                    for j in np.arange(0, len(rs.StructureSetROISequence)):
+                    for j in range(len(rs.StructureSetROISequence)):
                         list_organs_names.append(rs.StructureSetROISequence[j].ROIName)
                     
                     dict_check['pat_nr'].append(n)
@@ -103,12 +103,12 @@ class CheckStructures(object):
             ws.name = 'ROI_check'
                     
             ws.write(0, 0, 'patient number')
-            for s in np.arange(0, len(self.list_structure)):
+            for s in range(len(self.list_structure)):
                 ws.write(s+1, 0, self.list_structure[s])
             ws.write(0, 0, 'ROI in RS')
             
             max_pat_nr = len(dict_check['pat_nr'])
-            for n in np.arange(0, max_pat_nr):
+            for n in range(max_pat_nr):
                 ws.write(0, n+1, dict_check['pat_nr'][n])
                 for i, s in enumerate(self.list_structure):
                     if dict_check[s][n] == '':

@@ -214,7 +214,7 @@ class LymphNodes(object):
             
             distMatrix = np.zeros((len(points), len(points)))
             for triangle in tri.simplices:
-                for corner in np.arange(0, len(triangle)):
+                for corner in range(len(triangle)):
                     dist = np.sqrt(float(np.sum((points[triangle[corner]]-points[triangle[corner-1]])**2)))
                     distMatrix[min(triangle[corner], triangle[corner-1])][max(triangle[corner], triangle[corner-1])] = dist
                         
@@ -284,7 +284,7 @@ class LymphNodes(object):
 ##            area = 0
 ##            for t in tri:
 ##                lengths = []
-##                for ind in np.arange(0, len(t)):
+##                for ind in np.arange(len(t)):
 ##                    #caculate area with herons equation
 ##                    lengths.append(np.sqrt(float(np.sum((points[t[ind]]-points[t[ind-1]])**2)))) 
 ##                p = 0.5*np.sum(lengths)

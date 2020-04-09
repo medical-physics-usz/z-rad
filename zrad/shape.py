@@ -27,7 +27,7 @@ class Shape(object):
         path_results = inp_mypath_results #'F:\\HN PET data\\validation_shapePT.txt'
         self.path_load = inp_mypath_load+"\\"
         #nlist = [52,66,74,77, 88,108,109,115,122,129,141,147,175,184,187,214,228,233,245,260,265]
-        nlist =  [str(i) for i in np.arange(low, high+1)]#[4,5,13,20,32,35,47,48,54,59,60]
+        nlist =  [str(i) for i in range(low, high+1)]#[4,5,13,20,32,35,47,48,54,59,60]
 
         #maximum euclidian distance, one needs 
         scalefactor = 0.3 #0.4 #0.1 => 8 s /file, 0.2 => 10 s/file, 0.3 => 1 min/file, 0.4 => MemoryOverload

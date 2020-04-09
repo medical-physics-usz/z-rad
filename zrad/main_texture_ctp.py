@@ -49,14 +49,14 @@ class main_texture_ctp(object):
                 dicomProblem.append([ImName, read.listDicomProblem])   
 
                 l_IM_matrix = [] # list containing different perfusion maps
-                for m_name in np.arange(0, len(image_modality)):
+                for m_name in range(len(image_modality)):
                     IM_matrix = [] #list containing the images matrix
                     for f in read.onlyfiles[m_name]:
                         data = dc.read_file(mypath_image + f).PixelData
                         data16 = np.array(np.fromstring(data, dtype=np.float16)) #converitng to decimal
                         # recalculating for rows x columns
                         a = []
-                        for j in np.arange(0, read.rows):#(0, rows):
+                        for j in range(read.rows):#(0, rows):
                             a.append(data16[j*read.columns:(j+1)*read.columns])
                         a = np.array(a)
                         IM_matrix.append(np.array(a))
@@ -71,10 +71,10 @@ class main_texture_ctp(object):
                     self.Xcontour_W = read.Xcontour_W
                     self.Ycontour = read.Ycontour
                     self.Ycontour_W = read.Ycontour_W
-                    for m in np.arange(0, len(l_IM_matrix)):
+                    for m in range(len(l_IM_matrix)):
                         p_remove, norm_points = self.MatrixRemove(l_IM_matrix[m], image_modality[m], ImName, path_save) #returns list of indicies for outliers and the number of points left with gray value != nan
                         points_remove.append(p_remove)
-                    for m in np.arange(0, len(l_IM_matrix)):
+                    for m in range(len(l_IM_matrix)):
                         l_IM_matrix[m] = self.remove_points(l_IM_matrix[m], points_remove) #place NaN in the place of outliers
 
                     del points_remove
@@ -104,9 +104,9 @@ class main_texture_ctp(object):
     def MatrixRemove(self, imap, perf, ImName, path):
         '''read the gray values in the ROI, remove the NaN and fir gaussian function '''
         v = [] #read gray values in ROI
-        for i in np.arange(0, len(self.Xcontour)): #slices
-            for j in np.arange(0, len(self.Xcontour[i])): #sub-structres in the slice
-                for k in np.arange(0, len(self.Xcontour[i][j])):
+        for i in range(len(self.Xcontour)): #slices
+            for j in range(len(self.Xcontour[i])): #sub-structres in the slice
+                for k in range(len(self.Xcontour[i][j])):
                     v.append(imap[i][self.Ycontour[i][j][k]][self.Xcontour[i][j][k]])
 
         #remove NaN
@@ -116,7 +116,7 @@ class main_texture_ctp(object):
         #fitting gaussian function and deleting ouliers.
         remove = self.histfit(v, 15, perf, ImName, path)
         p_remove=[]
-        for j in np.arange(0, len(remove)):
+        for j in range(len(remove)):
             p_remove.append(np.where(np.array(imap) == remove[j])) #which indices corresponds to the values that should be removed
         return p_remove, len(v)
 
@@ -173,7 +173,7 @@ class main_texture_ctp(object):
         for i in p:
             if i !=[]:
                 for j in i:
-                    for k in np.arange(0, len(j[0])):
+                    for k in range(len(j[0])):
                         M[j[0][k]][j[1][k]][j[2][k]] = np.nan
         return M
 

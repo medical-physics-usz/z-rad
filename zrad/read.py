@@ -47,9 +47,9 @@ class ReadImageStructure(object):
                         # hier müsste eine Fehlermeldung kommen, falls nicht!
                 of.sort()
                 onlyfiles.append(of)
-            for u in arange(0, len(UID)):
+            for u in arange(len(UID)):
                 s = []
-                for i in arange(0, len(onlyfiles[u])):
+                for i in arange(len(onlyfiles[u])):
                     s.append(onlyfiles[u][i][0])
                     onlyfiles[u][i] = onlyfiles[u][i][1]
             self.slices = s
@@ -64,7 +64,7 @@ class ReadImageStructure(object):
 
             onlyfiles.sort()  # sort and take only file names
             self.slices = []
-            for i in arange(0, len(onlyfiles)):
+            for i in arange(len(onlyfiles)):
                 self.slices.append(onlyfiles[i][0])
                 onlyfiles[i] = onlyfiles[i][1]
 

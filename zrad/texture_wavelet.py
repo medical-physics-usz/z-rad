@@ -22,25 +22,25 @@ class Wavelet(object):
             mean = 0
             licz = 0
             cnt = []
-            for i in arange(0, len(ind[0])):
+            for i in range(len(ind[0])):
                 cnt.append([ind[0][i], ind[1][i], ind[2][i]])
-            for z in arange(0, len(m)):
-                for y in arange(0, len(m[z])):
-                    for x in arange(0, len(m[z][y])):
+            for z in range(len(m)):
+                for y in range(len(m[z])):
+                    for x in range(len(m[z][y])):
                         if [z, y, x] not in cnt:
                             mean += m[z][y][x]
                             licz += 1.
             mean = mean/licz
-            for i in arange(0, len(ind[0])):
+            for i in range(len(ind[0])):
                 self.map[ind[0][i]][ind[1][i]][ind[2][i]] = mean
 
         if self.dim == "3D":
             HHH, HHL, HLH, HLL, LHH, LHL, LLH, LLL = self.wavelet_calculation(self.map)  # xyz
 
             if ctp:
-                for i in arange(0, len(ind[0])):
+                for i in range(len(ind[0])):
                     self.map[ind[0][i]][ind[1][i]][ind[2][i]] = nan
-                for i in arange(0, len(cnt)):
+                for i in range(len(cnt)):
                     cnt[i] = [int(round(cnt[i][0] / 2. + 1, 0)), int(round(cnt[i][1] / 2. + 1, 0)),
                               int(round(cnt[i][2] / 2. + 1, 0))]
 
@@ -79,7 +79,7 @@ class Wavelet(object):
                 if not isdir(path+'\\wavelet\\'+name+'\\'):
                     raise
             # if not ctp:
-               # for i in arange(0, len(self.map), 2):
+               # for i in range(len(self.map), 2):
                #     plt.figure()
                #     plt.subplot(331)
                #     plt.imshow(self.map[i], cmap=plt.get_cmap('Greys_r'))
@@ -112,7 +112,7 @@ class Wavelet(object):
                #     plt.close()
                #     k+=1
             if ctp:  # if ctp
-                for i in arange(0, len(self.map), 2):
+                for i in range(len(self.map), 2):
                     plt.figure()
                     plt.subplot(331)
                     plt.imshow(self.map[i], vmin=0, vmax=10, cmap=plt.get_cmap('Jet'))
@@ -156,7 +156,7 @@ class Wavelet(object):
                 if not isdir(path+'\\wavelet\\2D_'+name+'\\'):
                     raise
 
-            # for i in arange(0, len(self.map), 2):
+            # for i in range(len(self.map), 2):
             #     plt.figure()
             #     plt.subplot(321)
             #     plt.imshow(self.map[i], cmap=plt.get_cmap('Greys_r'))
@@ -188,7 +188,7 @@ class Wavelet(object):
         # x direction
         H = []
         L = []
-        for z in arange(0, len(a)):
+        for z in range(len(a)):
             h = []
             l = []
             for i in a[z]:  # calculate wavelet for each row
@@ -207,14 +207,14 @@ class Wavelet(object):
         lh = zeros((len(a), int(floor((len(a[0])+5)/2.)), int(floor((len(a[0][0])+5)/2.))))
         ll = zeros((len(a), int(floor((len(a[0])+5)/2.)), int(floor((len(a[0][0])+5)/2.))))
 
-        for z in arange(0, len(a)):
-            for i in arange(0, len(H[z][0])):  # calculate wavelets over all columns
+        for z in range(len(a)):
+            for i in range(len(H[z][0])):  # calculate wavelets over all columns
                 cA, cD = pywt.dwt(H[z][:, i], 'coif1')  # for detailed coeff. from x direction
                 hh[z][:, i] = cD  # xy
                 hl[z][:, i] = cA
                 
-        for z in arange(0, len(a)):
-            for i in arange(0, len(L[z][0])):
+        for z in range(len(a)):
+            for i in range(len(L[z][0])):
                 cA, cD = pywt.dwt(L[z][:, i], 'coif1')
                 lh[z][:, i] = cD
                 ll[z][:, i] = cA
@@ -233,26 +233,26 @@ class Wavelet(object):
         llh = zeros((int(floor((len(a)+5)/2.)), int(floor((len(a[0])+5)/2.)), int(floor((len(a[0][0])+5)/2.))))
         lll = zeros((int(floor((len(a)+5)/2.)), int(floor((len(a[0])+5)/2.)), int(floor((len(a[0][0])+5)/2.))))
 
-        for y in arange(0, len(hh[0])):
-            for x in arange(0, len(hh[0][y])):
+        for y in range(len(hh[0])):
+            for x in range(len(hh[0][y])):
                 cA, cD = pywt.dwt(hh[:, y, x], 'coif1')
                 hhh[:, y, x] = cD
                 hhl[:, y, x] = cA
                 
-        for y in arange(0, len(hl[0])):
-            for x in arange(0, len(hl[0][y])):
+        for y in range(len(hl[0])):
+            for x in range(len(hl[0][y])):
                 cA, cD = pywt.dwt(hl[:, y, x], 'coif1')
                 hlh[:, y, x] = cD  # xyz
                 hll[:, y, x] = cA
 
-        for y in arange(0, len(lh[0])):
-            for x in arange(0, len(lh[0][y])):
+        for y in range(len(lh[0])):
+            for x in range(len(lh[0][y])):
                 cA, cD = pywt.dwt(lh[:, y, x], 'coif1')
                 lhh[:, y, x] = cD
                 lhl[:, y, x] = cA
 
-        for y in arange(0, len(ll[0])):
-            for x in arange(0, len(ll[0][y])):
+        for y in range(len(ll[0])):
+            for x in range(len(ll[0][y])):
                 cA, cD = pywt.dwt(ll[:, y, x], 'coif1')
                 llh[:, y, x] = cD
                 lll[:, y, x] = cA

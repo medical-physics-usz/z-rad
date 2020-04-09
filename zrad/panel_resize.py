@@ -182,7 +182,7 @@ class panelResize(scrolled.ScrolledPanel):
         else:
             list_structure = inp_struct.split(',')
 
-        for i in range(0, len(list_structure)):
+        for i in range(len(list_structure)):
             list_structure[i] = list_structure[i].strip()
 
         if self.FindWindowById(10082).GetValue() or self.FindWindowById(10083).GetValue():  # if resizing to texture resolution selected
@@ -225,10 +225,9 @@ class panelResize(scrolled.ScrolledPanel):
     def fill(self, l):
         """method called by parent to fill the text boxes with save settings
         l - list of elements read from a text file"""
-        ids = [1001, 1002, 1003, 1004, 1015, 1005, 1006, 1007, 10081, 10082, 10083, 1009, 1012,
-               1013]  # ids of field to fill # if adjust number of ids then also adjust in main_texture in self.panelResize.fill(l[:11])!!!!
+        ids = [1001, 1002, 1003, 1004, 1015, 1005, 1006, 1007, 10081, 10082, 10083, 1009, 1012, 1013]  # ids of field to fill # if adjust number of ids then also adjust in main_texture in self.panelResize.fill(l[:11])!!!!
 
-        for i in range(0, len(l)):
+        for i in range(len(l)):
             try:
                 if l[i][-1] == '\n':  # check if there is an end of line sign and remove
                     try:

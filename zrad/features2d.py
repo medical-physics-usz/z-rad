@@ -97,7 +97,7 @@ class Features2D(object):
             self.stop_calculation(stop_calc, rs_type)
         else:
 
-            for i in np.arange(0, len(maps)):  # iterate through different map type for example for CTP: BV, BF, MTT
+            for i in range(len(maps)):  # iterate through different map type for example for CTP: BV, BF, MTT
                 # wavelet transform
                 if wv:
                     if 'BV' not in modality:
@@ -139,7 +139,7 @@ class Features2D(object):
                     self.logger.info("Start: create HU mask from CT structure")
                     wave_list_ct = []
                     #                   ### CT initialize ###
-                    for i in np.arange(0, len(cropStructure["data"])):
+                    for i in range(len(cropStructure["data"])):
                         # wavelet transform
                         if wv:
                             wave_list_ct = Wavelet(cropStructure["data"][i], path, "CT", ImName + '_' + pixNr, dim, False).Return()  # order of transformed images: original, LLL, HHH, HHL, HLH, HLL, LHH, LHL, LLH
@@ -160,7 +160,7 @@ class Features2D(object):
                     # create mask from CT data for PET data
                     self.logger.info("End: create HU mask from CT structure")
                     self.logger.info("Initialize Matrices used for Texture and Wavelet")
-                    for w in np.arange(0, len(wave_list)):
+                    for w in range(len(wave_list)):
                         self.logger.debug("RS-Type " + str(rs_type[w]))
                         self.logger.debug("Intialize CT Matrix")
                         CT_ROImatrix = Matrix(wave_list_ct[w], rs_type[w], structure, ["CT"],
@@ -190,7 +190,7 @@ class Features2D(object):
 
                 else:
                     self.logger.info("Normal Mode, no cropping")
-                    for w in np.arange(0, len(wave_list)):
+                    for w in range(len(wave_list)):
                         ROImatrix = Matrix(wave_list[w], rs_type[w], structure, modality[i], self.Xcontour,
                                            self.Ycontour, self.Xcontour_W, self.Ycontour_W, self.Xcontour_Rec,
                                            self.Ycontour_Rec, self.columns, self.rows, self.HUmin, self.HUmax,
@@ -243,7 +243,7 @@ class Features2D(object):
                     # img_obj[3, :, :] = [[1, 4, 4, np.nan, np.nan], [1, 1, 1, 1, 1], [1, 1, 1, 1, 1], [1, 1, 6, 1, 1]]
                     # img_obj = img_obj - 1
 
-                    for w in np.arange(0, iterations_n):
+                    for w in range(iterations_n):
                         m_wv = method_wv[w]
                         # for phantom test:
                         # matrix = img_obj
@@ -473,7 +473,7 @@ class Features2D(object):
 
     def stop_calculation(self, info, rs_type):
         """returns empty string and error type bt does not stop the calculation"""
-        for i in np.arange(0, len(rs_type)):
+        for i in range(len(rs_type)):
             self.dict_features["structure"] = info
 
     def ret(self):
@@ -489,7 +489,7 @@ class Features2D(object):
         # print matrix
         fig = plt.figure(10, figsize=(20, 20))
         fig.text(0.5, 0.95, ImName + ' ' + name)
-        for j in np.arange(0, 24):
+        for j in range(24):
             axes = fig.add_subplot(5, 5, j + 1)
             axes.set_title(j)
             try:
@@ -512,7 +512,7 @@ class Features2D(object):
 
         fig = plt.figure(20, figsize=(20, 20))
         fig.text(0.5, 0.95, ImName + ' ' + name)
-        for j in np.arange(0, 24):
+        for j in range(24):
             axes = fig.add_subplot(5, 5, j + 1, facecolor='#FFFF99')
             axes.set_title(j)
             try:

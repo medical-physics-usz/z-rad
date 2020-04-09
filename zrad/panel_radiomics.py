@@ -291,8 +291,7 @@ class panelRadiomics(scrolled.ScrolledPanel):
         ids = [107, 108, 109, 110, 102, 103, 104, 1051, 1052, 1061, 10611, 1062, 1071, 1072, 1081, 1082, 1083, 1091, 1092,
                1093, 120, 125, 126, 127, 130, 131, 132, 133, 135, 136, 137, 140, 141, 142, 150, 151, 152, 160]
 
-        for i in range(0, len(l)):
-            # print "fill", repr(l[i])
+        for i in range(len(l)):
             try:
                 if l[i][-1] == '\n':  # check if there is an end of line sign and remove
                     try:
@@ -316,7 +315,7 @@ class panelRadiomics(scrolled.ScrolledPanel):
                 self.FindWindowById(ids[i]).SetValue(l[i])
             except IndexError:
                 pass
-        self.Layout()  # refresh view
+        self.Layout()  # refresh the view
 
     def save(self):
         """save the last used settings"""

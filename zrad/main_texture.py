@@ -82,8 +82,8 @@ class Radiomics(wx.Frame):
             l.append(i)
             # self.logger.debug("list of config " + i )
 
-        self.panelResize.fill(l[:13])  # use the saved configuration
-        self.panelRadiomics.fill(l[13:])
+        self.panelResize.fill(l[:14])  # use the saved configuration
+        self.panelRadiomics.fill(l[14:])
         del l
         config.close()
 
@@ -107,6 +107,8 @@ class Radiomics(wx.Frame):
         """initialize radiomics calculaiton"""
 
         path_save, save_as, structure, pixNr, binSize, path_image, n_pref, start, stop = self.panelRadiomics.read()
+        path_save += "\\"
+        path_image += "\\"
         self.logger.info("Start: Calculate Radiomics")
         # self.logger.info( "Structures found", ', '.join(structure))
         MyInfo('Test done!')

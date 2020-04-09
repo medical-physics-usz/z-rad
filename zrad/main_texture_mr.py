@@ -72,7 +72,7 @@ class main_texture_mr(object):
                     data16 = data16 * norm_slope + norm_inter
                     #recalculating for rows x columns
                     a=[]
-                    for j in np.arange(0, read.rows):
+                    for j in range(read.rows):
                         a.append(data16[j*read.columns:(j+1)*read.columns])
                     a=np.array(a)
                     IM_matrix.append(np.array(a))
@@ -115,10 +115,10 @@ class main_texture_mr(object):
 
         #to read only slices where there is a contour
         ind = []
-        for f in np.arange(0, len(norm1_Xcontour)):
+        for f in range(len(norm1_Xcontour)):
             if norm1_Xcontour[f] != []:
                 ind.append(f)
-        for f in np.arange(0, len(norm2_Xcontour)):
+        for f in range(len(norm2_Xcontour)):
             if norm2_Xcontour[f] != []:
                 ind.append(f)
 
@@ -138,7 +138,7 @@ class main_texture_mr(object):
             data16 = np.array(np.fromstring(data, dtype=np.int16)) #converitng to decimal
             #recalculating for rows x columns
             a=[]
-            for j in np.arange(0, read.rows):
+            for j in range(read.rows):
                 a.append(data16[j*read.columns:(j+1)*read.columns])
             a=np.array(a)
             IM_matrix.append(np.array(a))
@@ -148,14 +148,14 @@ class main_texture_mr(object):
         v1 = [] #values for structure 1
         v2 = [] #values for structure 2
 
-        for i in np.arange(0, len(norm1_Xcontour)): # slices
-            for j in np.arange(0, len(norm1_Xcontour[i])): #sub-structres in the slice
-                for k in np.arange(0, len(norm1_Xcontour[i][j])):
+        for i in range(len(norm1_Xcontour)): # slices
+            for j in range(len(norm1_Xcontour[i])): #sub-structres in the slice
+                for k in range(len(norm1_Xcontour[i][j])):
                     v1.append(IM_matrix[i][norm1_Ycontour[i][j][k]][norm1_Xcontour[i][j][k]])
 
-        for i in np.arange(0, len(norm2_Xcontour)): #slices
-            for j in np.arange(0, len(norm2_Xcontour[i])): #sub-structres in the slice
-                for k in np.arange(0, len(norm2_Xcontour[i][j])):
+        for i in range(len(norm2_Xcontour)): #slices
+            for j in range(len(norm2_Xcontour[i])): #sub-structres in the slice
+                for k in range(len(norm2_Xcontour[i][j])):
                     v2.append(IM_matrix[i][norm2_Ycontour[i][j][k]][norm2_Xcontour[i][j][k]])
 
         f1 = np.mean(v1)

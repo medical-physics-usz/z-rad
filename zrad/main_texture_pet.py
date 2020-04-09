@@ -107,7 +107,7 @@ class main_texture_pet(object):
                     data16 = (data16*slope+inter)/(activity/weight) #correcting for SUV
                     #recalculating for rows x columns
                     a=[]
-                    for j in np.arange(0, read.rows):
+                    for j in range(read.rows):
                         a.append(data16[j * read.columns: (j + 1)*read.columns])
                     a = np.array(a)
                     IM_matrix.append(np.array(a))
@@ -144,7 +144,7 @@ class main_texture_pet(object):
                         data16 = data16 * slope + inter
                         #recalculating for rows x columns
                         data_matrix_CT = []
-                        for j in np.arange(0, read_crop_CT.rows):
+                        for j in range(read_crop_CT.rows):
                             data_matrix_CT.append(data16[j * read_crop_CT.columns:(j+1) * read_crop_CT.columns])
                         data_matrix_CT = np.array(data_matrix_CT)
                         CT_matrix.append(np.array(data_matrix_CT))

@@ -266,7 +266,7 @@ class Texture(object):
             self.stop_calculation(stop_calc, rs_type)
         else: 
 
-            for i in arange(0, len(maps)): #iterate through different map type for example for CTP: BV, BF, MTT
+            for i in range(len(maps)): #iterate through different map type for example for CTP: BV, BF, MTT
                 #wavelet transform
                 
                 if wv:
@@ -307,7 +307,7 @@ class Texture(object):
                     self.logger.info("Start: create HU mask from CT structure")
                     wave_list_ct = []
 #                   ### CT initialize ###
-                    for i in arange(0, len(cropStructure["data"])): 
+                    for i in range(len(cropStructure["data"])): 
                         #wavelet transform
                         if wv:
                             wave_list_ct = Wavelet(cropStructure["data"][i], path, "CT", ImName+'_'+pixNr, "3D", False).Return()  # False -> no ctp. order of trandformed images: original, LLL, HHH, HHL, HLH, HLL, LHH, LHL, LLH
@@ -322,7 +322,7 @@ class Texture(object):
                     # create mask from CT data for PET data
                     self.logger.info("End: create HU mask from CT structure")
                     self.logger.info("Initialize Matrices used for Texture and Wavelet")
-                    for w in arange(0, len(wave_list)):
+                    for w in range(len(wave_list)):
                         self.logger.debug("RS-Type " + str(rs_type[w]))
                         self.logger.debug("Intialize CT Matrix")
                         CT_ROImatrix = Matrix(wave_list_ct[w], rs_type[w], structure, ["CT"], cropStructure["readCT"].Xcontour, cropStructure["readCT"].Ycontour, cropStructure["readCT"].Xcontour_W, cropStructure["readCT"].Ycontour_W, cropStructure["readCT"].Xcontour_Rec, cropStructure["readCT"].Ycontour_Rec, cropStructure["readCT"].columns, cropStructure["readCT"].rows, cropStructure["hu_min"],  cropStructure["hu_max"],  0,  0, False, HUmask, cropStructure)
@@ -342,7 +342,7 @@ class Texture(object):
                     del wave_list_ct
                 else:
                     self.logger.info("Normal Mode, no cropping")
-                    for w in arange(0, len(wave_list)):
+                    for w in range(len(wave_list)):
                         ROImatrix = Matrix(wave_list[w], rs_type[w], structure, modality[i], self.Xcontour, self.Ycontour, self.Xcontour_W, self.Ycontour_W, self.Xcontour_Rec, self.Ycontour_Rec, self.columns, self.rows, self.HUmin, self.HUmax, self.binSize, self.bits, self.outlier_correction, HUmask, cropStructure)
                         matrix_list.append(ROImatrix.matrix) #tumor matrix
                         interval_list.append(ROImatrix.interval)
@@ -381,7 +381,7 @@ class Texture(object):
                 try: #ValueError
                     #calulate features for original and transformed images or local centers if provided 
                     #feed in the list of maps to calculate
-                    for w in arange(0, iterations_n):
+                    for w in range(iterations_n):
                         matrix = matrix_list[w]
                         matrix_v = matrix_v_list[w]    
                         self.n_bits = int(n_bits_list[w])
@@ -869,7 +869,7 @@ class Texture(object):
 
     def stop_calculation(self, info, rs_type):
         '''returns empty string and error type bt does not stop the calculation'''
-        for i in arange(0, len(rs_type)):
+        for i in range(len(rs_type)):
             self.structure = info
             self.mean.append('')
             self.std.append('')
@@ -1078,8 +1078,8 @@ class Texture(object):
         ''' calcuate and plot the histogram'''
         M1=[] # take all values except of nan
         for m in M:
-            for i in arange(0, len(m)):
-                for j in arange(0, len(m[i])):
+            for i in range(len(m)):
+                for j in range(len(m[i])):
                     if np.isnan(m[i][j]):
                         pass
                     else:
@@ -1164,10 +1164,10 @@ class Texture(object):
         '''robust meand absolute deivation'''
         temp = list(M1)
         ind1 = np.where(np.array(temp)<p10)[0]
-        for i in arange(1, len(ind1)+1):
+        for i in range(1, len(ind1)+1):
             temp.pop(ind1[-i])
         ind2 = np.where(np.array(temp)>p90)[0]
-        for i in arange(1, len(ind2)+1):
+        for i in range(1, len(ind2)+1):
             temp.pop(ind2[-i])
         mad = np.sum(abs((np.array(temp)-np.mean(temp))))/float(len(temp))
         return mad
@@ -1184,7 +1184,7 @@ class Texture(object):
         s = set(dM1)
         sl = list(s)
         w = []
-        for si in arange(0, len(sl)):
+        for si in range(len(sl)):
             i = np.where(dM1 == sl[si])[0]
             w.append(len(i))
         p = 1.0 * np.array(w) / np.sum(w)
@@ -1204,7 +1204,7 @@ class Texture(object):
 
         g = list(set(dM1))
         p = []
-        for gi in arange(0, len(g)):
+        for gi in range(len(g)):
             ind = np.where(np.array(dM1) == g[gi])[0]
             p.append(len(ind) * 1.0 / len(dM1))
         u = np.sum(np.array(p) ** 2)
@@ -1227,9 +1227,9 @@ class Texture(object):
         '''trans correponds to translation vector'''
         coMatrix = np.zeros((self.n_bits, self.n_bits))
         norm = 0
-        for i in arange(0, len(M)):
-            for y in arange(0, len(M[i])):
-                for x in arange(0, len(M[i][y])):
+        for i in range(len(M)):
+            for y in range(len(M[i])):
+                for x in range(len(M[i][y])):
                     if i + trans[2] >= 0 and y + trans[1] >= 0 and x + trans[0] >= 0 and i + trans[2] < len(M) and y + trans[1] < len(M[0]) and x + trans[0] < len(M[0][0]): #to check for indexerror
                         value1 = M[i][y][x]  # value in the structure matrix
                         value2 = M[i + trans[2]][y + trans[1]][x + trans[0]]
@@ -1240,7 +1240,7 @@ class Texture(object):
                             coMatrix[x_cm][y_cm] += 1.
                             norm += 2  # symmetrical matrix
                             # values at the digonal should be added only once, but not in IBSI definition
-                            #        for i in arange(0, len(coMatrix)):
+                            #        for i in range(len(coMatrix)):
                             #            coMatrix[i][i] = coMatrix[i][i]/2.
         norm = np.sum(coMatrix)
         if norm != 0:
@@ -1251,8 +1251,8 @@ class Texture(object):
         #marignal probabilites
         p_minus = np.zeros(self.n_bits)
         p_plus = np.zeros(2 * self.n_bits + 3)
-        for i in arange(0, len(coMatrixN)):
-            for j in arange(0, len(coMatrixN[i])):
+        for i in range(len(coMatrixN)):
+            for j in range(len(coMatrixN[i])):
                 p_minus[abs(i - j)] += coMatrixN[i][j]
                 p_plus[abs(i + j) + 2] += coMatrixN[i][j]
 
@@ -1261,14 +1261,14 @@ class Texture(object):
     def merge_COM(self, list_CO_merged):
         '''Merge GLCM from all directions and calculate average'''
         CO_merged = list_CO_merged[0]
-        for i in arange(1, len(list_CO_merged)):
+        for i in range(1, len(list_CO_merged)):
             CO_merged += list_CO_merged[i]
         CO_merged = CO_merged / float(np.sum(CO_merged))
 
         p_minus_merged = np.zeros(self.n_bits)
         p_plus_merged = np.zeros(2 * self.n_bits + 3)
-        for i in arange(0, len(CO_merged)):
-            for j in arange(0, len(CO_merged[i])):
+        for i in range(len(CO_merged)):
+            for j in range(len(CO_merged[i])):
                 p_minus_merged[abs(i - j)] += CO_merged[i][j]
                 p_plus_merged[abs(i + j) + 2] += CO_merged[i][j]
 
@@ -1277,14 +1277,14 @@ class Texture(object):
     def fun_energy(self, coM):  # 3.3.11
         energy = 0
         ind = np.where(coM != 0) #non-zero entries only to speed up calculation
-        for j in arange(0, len(ind[0])):
+        for j in range(len(ind[0])):
             energy += (coM[ind[0][j]][ind[1][j]]) ** 2
         return energy
 
     def fun_entropy(self, coM):  # 3.3.4
         entropy = 0
         ind = np.where(coM != 0) #non-zero entries only to speed up calculation
-        for j in arange(0, len(ind[0])):
+        for j in range(len(ind[0])):
             s = (coM[ind[0][j]][ind[1][j]]) * np.log2(coM[ind[0][j]][ind[1][j]])
             if np.isnan(s):
                 pass
@@ -1297,7 +1297,7 @@ class Texture(object):
     def fun_contrast(self, coM):  # 3.3.12
         contrast = 0
         ind = np.where(coM != 0) #non-zero entries only to speed up calculation
-        for j in arange(0, len(ind[0])):
+        for j in range(len(ind[0])):
             contrast += ((ind[0][j] - ind[1][j]) ** 2) * coM[ind[0][j]][ind[1][j]]
         if contrast == 0:
             contrast = np.nan
@@ -1306,17 +1306,17 @@ class Texture(object):
     def fun_correlation(self, coM):  # 3.3.19
         '''symmetrical matrix'''
         mean = 0
-        for i in arange(0, len(coM)):
+        for i in range(len(coM)):
             mean += (i + 1) * np.sum(coM[i]) #i+1 gray values starting from 1 not from 0
 
         std = 0
-        for i in arange(0, len(coM)):
+        for i in range(len(coM)):
             std += ((i + 1 - mean) ** 2) * np.sum(coM[i]) #i+1 gray values starting from 1 not from 0
         std = np.sqrt(std)
 
         ind = np.where(np.array(coM) != 0) #non-zero entries only to speed up calculation#non-zero entries only to speed up calculation
         corr = 0
-        for i in arange(0, len(ind[0])):
+        for i in range(len(ind[0])):
             corr += (ind[0][i] + 1) * (ind[1][i] + 1) * coM[ind[0][i]][ind[1][i]] #i+1 gray values starting from 1 not from 0
         corr = (corr - mean ** 2) / std ** 2
         return corr
@@ -1325,7 +1325,7 @@ class Texture(object):
         homo = 0
         nhomo = 0
         ind = np.where(coM != 0) #non-zero entries only to speed up calculation
-        for j in arange(0, len(ind[0])):
+        for j in range(len(ind[0])):
             homo += coM[ind[0][j]][ind[1][j]] / (1 + (ind[0][j] - ind[1][j]) ** 2)
             nhomo += coM[ind[0][j]][ind[1][j]] / (1 + ((ind[0][j] - ind[1][j]) / float(len(coM))) ** 2)
         if homo == 0:
@@ -1336,7 +1336,7 @@ class Texture(object):
         homo = 0
         nhomo = 0
         ind = np.where(coM != 0) #non-zero entries only to speed up calculation
-        for j in arange(0, len(ind[0])):
+        for j in range(len(ind[0])):
             homo += coM[ind[0][j]][ind[1][j]] / (1 + abs(ind[0][j] - ind[1][j]))
             nhomo += coM[ind[0][j]][ind[1][j]] / (1 + abs(ind[0][j] - ind[1][j]) / float(len(coM)))
         if homo == 0:
@@ -1346,10 +1346,10 @@ class Texture(object):
     def fun_variance(self, coM): #3.3.3
         var = 0
         miu = 0
-        for i in arange(0, len(coM)):
+        for i in range(len(coM)):
             miu += (i + 1) * np.sum(coM[i]) #i+1 gray values starting from 1 not from 0
         ind = np.where(coM != 0) #non-zero entries only to speed up calculation
-        for j in arange(0, len(ind[0])):
+        for j in range(len(ind[0])):
             var += (ind[0][j] + 1 - miu) ** 2 * coM[ind[0][j]][ind[1][j]] #i+1 gray values starting from 1 not from 0
         if var == 0:
             var = np.nan
@@ -1358,17 +1358,17 @@ class Texture(object):
     def fun_sum_average_var(self, p_plus):  # 3.3.8 and 3.3.9
         a = 0
         v = 0
-        for k in arange(2, len(p_plus)):
+        for k in range(2, len(p_plus)):
             a += k * p_plus[k]
 
-        for k in arange(2, len(p_plus)):
+        for k in range(2, len(p_plus)):
             v += (k - a) ** 2 * p_plus[k]
 
         return a, v
 
     def fun_sum_entropy(self, p_plus):  # 3.3.10
         e = 0
-        for i in arange(2, len(p_plus)):
+        for i in range(2, len(p_plus)):
             if p_plus[i] != 0:
                 e += -p_plus[i] * np.log2(p_plus[i])
         return e
@@ -1376,7 +1376,7 @@ class Texture(object):
     def fun_diff_entropy(self, p_minus):  # 3.3.7
         e = 0
 
-        for i in arange(0, len(p_minus)):
+        for i in range(len(p_minus)):
             if p_minus[i] != 0:
                 e += -p_minus[i] * np.log2(p_minus[i])
 
@@ -1386,19 +1386,19 @@ class Texture(object):
         hxy = entropy
 
         X = []
-        for i in arange(0, len(coM)):
+        for i in range(len(coM)):
             X.append(np.sum(coM[i]))
 
         hxy1 = 0
         hxy2 = 0
-        for i in arange(0, len(coM)):
-            for j in arange(0, len(coM[i])):
+        for i in range(len(coM)):
+            for j in range(len(coM[i])):
                 if X[i] * X[j] != 0:
                     hxy1 += -coM[i][j] * np.log2(X[i] * X[j])
                     hxy2 += -X[i] * X[j] * np.log2(X[i] * X[j])
 
         hx = 0
-        for i in arange(0, len(X)):
+        for i in range(len(X)):
             if X[i] != 0:
                 hx += -X[i] * np.log2(X[i])
 
@@ -1418,12 +1418,12 @@ class Texture(object):
         try:
             Q = np.zeros((len(coM), len(coM[0])))
             X = []
-            for i in arange(0, len(coM)):
+            for i in range(len(coM)):
                 X.append(np.sum(coM[i]))
 
-            for i in arange(0, len(coM)):
-                for j in arange(0, len(coM[i])):
-                    for k in arange(0, len(X)):
+            for i in range(len(coM)):
+                for j in range(len(coM[i])):
+                    for k in range(len(X)):
                         if (X[i] * X[k]) != 0:
                             Q[i][j] += coM[i][k] * coM[j][k] / (X[i] * X[k])
 
@@ -1442,17 +1442,17 @@ class Texture(object):
 
     def fun_joint_average(self, coM):  # 3.3.2
         s = 0
-        for i in arange(0, len(coM)):
+        for i in range(len(coM)):
             s += (i + 1) * np.sum(coM[i]) #i+1 gray values starting from 1 not from 0
         return s
 
     def fun_diff_average_var(self, p_minus):  # 3.3.5 and 3.3.6
         a = 0
         v = 0
-        for k in arange(0, len(p_minus)):
+        for k in range(len(p_minus)):
             a += k * p_minus[k]
 
-        for k in arange(0, len(p_minus)):
+        for k in range(len(p_minus)):
             v += (k - a) ** 2 * p_minus[k]
 
         return a, v
@@ -1460,34 +1460,34 @@ class Texture(object):
     def fun_dissimilarity(self, coM):  # 3.3.13
         ds = 0
         ind = np.where(np.array(coM) != 0) #non-zero entries only to speed up calculation
-        for i in arange(0, len(ind[0])):
+        for i in range(len(ind[0])):
             ds += abs(ind[0][i] - ind[1][i]) * coM[ind[0][i]][ind[1][i]]
         return ds
 
     def fun_inverse_var(self, coM):  # 3.3.18
         f = 0
-        for i in arange(0, len(coM)):
-            for j in arange(i + 1, len(coM[0])):
+        for i in range(len(coM)):
+            for j in range(i + 1, len(coM[0])):
                 f += coM[i][j] / (i - j) ** 2 
         return 2 * f
 
     def fun_autocorr(self, coM):  # 3.3.20
         c = 0
         ind = np.where(np.array(coM) != 0) #non-zero entries only to speed up calculation
-        for i in arange(0, len(ind[0])):
+        for i in range(len(ind[0])):
             c += (ind[0][i] + 1) * (ind[1][i] + 1) * coM[ind[0][i]][ind[1][i]] #i+1 gray values starting from 1 not from 0
         return c
 
     def fun_cluster(self, coM):  # 3.3.21, 3.3.22 and 3.3.23
         mean = 0
-        for i in arange(0, len(coM)):
+        for i in range(len(coM)):
             mean += (i + 1) * np.sum(coM[i])
 
         clust_t = 0
         clust_s = 0
         clust_p = 0
         ind = np.where(np.array(coM) != 0) #non-zero entries only to speed up calculation
-        for i in arange(0, len(ind[0])):
+        for i in range(len(ind[0])):
             clust_t += ((ind[0][i] + ind[1][i] + 2 - 2 * mean) ** 2) * coM[ind[0][i]][ind[1][i]] #i+1 gray values starting from 1 not from 0
             clust_s += ((ind[0][i] + ind[1][i] + 2 - 2 * mean) ** 3) * coM[ind[0][i]][ind[1][i]]
             clust_p += ((ind[0][i] + ind[1][i] + 2 - 2 * mean) ** 4) * coM[ind[0][i]][ind[1][i]]
@@ -1497,10 +1497,10 @@ class Texture(object):
         '''neighborhood gray-tone difference matrix'''
         s = np.zeros(self.n_bits) #average gray level of voxels adjjacent to voxels with given gray value
         Ni = np.zeros(self.n_bits) #number of voxels of a given gray level
-        for k in arange(0, len(matrix)):
-            for v in arange(0, self.n_bits):
+        for k in range(len(matrix)):
+            for v in range(self.n_bits):
                 index = np.where(matrix[k] == v)  # serach for a value level
-                for ind in arange(0, len(index[0])):
+                for ind in range(len(index[0])):
                     temp = []
                     numerator = 0
                     for z in [-1, 1]:
@@ -1526,7 +1526,7 @@ class Texture(object):
                         else:
                             numerator += 1
                     ind_nan = np.where(np.isnan(np.array(temp)))[0]
-                    for n in arange(1, len(ind_nan) + 1):
+                    for n in range(1, len(ind_nan) + 1):
                         temp.pop(ind_nan[-n])
                     numerator += len(ind_nan)
                     if numerator != 26:
@@ -1613,7 +1613,7 @@ class Texture(object):
         '''gray-level run length matrix'''
         GLRLM = []
         Smax = 1
-        for i in arange(0, self.n_bits):
+        for i in range(self.n_bits):
             GLRLM.append([0])
 
         # library of planes
@@ -1638,7 +1638,7 @@ class Texture(object):
                           int(np.sqrt(len(matrix) ** 2 + len(matrix[0]) ** 2)) + 1,
                           int(np.sqrt(len(matrix) ** 2 + len(matrix[0][0]) ** 2)) + 1,
                           int(np.sqrt(len(matrix[0][0]) ** 2 + len(matrix[0]) ** 2)) + 1])
-        v = arange(0, vector_len)
+        v = np.arange(0, vector_len)
 
         Vx = []  # coordinates of the vectors to extract
         Vy = []
@@ -1649,41 +1649,41 @@ class Texture(object):
         # rays from the plane
         vm = self.M4L_ray(matrix, seeds, di, v, shiftX=0, shiftY=0, shiftZ=0)
         if np.ndim(vm) != 1: # #to account for different dimensions
-            nan_list = [np.nan for inan in arange(0,np.ndim(vm)+1)]
+            nan_list = [np.nan for inan in range(np.ndim(vm)+1)]
             vm.append(nan_list)
         
         # move the plane to account for diagonal crossings
         if np.sum(di) != 1 or di[0] * di[1] * di[2] != 0:
-            v = arange(0, vector_len + 1)
+            v = np.arange(0, vector_len + 1)
             if di[2] == -1:
                 new_vm = self.M4L_ray(matrix, seeds, di, v, shiftX=1, shiftY=0, shiftZ=0) #to account for different dimensions
                 if np.ndim(new_vm) != 1:
-                    nan_list = [np.nan for inan in arange(0,np.ndim(new_vm)+1)]
+                    nan_list = [np.nan for inan in range(np.ndim(new_vm)+1)]
                     new_vm.append(nan_list)
                 vm = np.concatenate((vm, new_vm))
             else:
                 new_vm = self.M4L_ray(matrix, seeds, di, v, shiftX=-1, shiftY=0, shiftZ=0)
                 if np.ndim(new_vm) != 1:
-                    nan_list = [np.nan for inan in arange(0,np.ndim(new_vm)+1)]
+                    nan_list = [np.nan for inan in range(np.ndim(new_vm)+1)]
                     new_vm.append(nan_list)
                 vm = np.concatenate((vm, new_vm))
             if di in direction[5:]:
                 new_vm = self.M4L_ray(matrix, seeds, di, v, shiftX=0, shiftY=0, shiftZ=-1)
                 if np.ndim(new_vm) != 1:
-                    nan_list = [np.nan for inan in arange(0,np.ndim(new_vm)+1)]
+                    nan_list = [np.nan for inan in range(np.ndim(new_vm)+1)]
                     new_vm.append(nan_list)
                 vm = np.concatenate((vm, new_vm))
             if di in direction[9:]:
                 if di[2] == -1:
                     new_vm = self.M4L_ray(matrix, seeds, di, v, shiftX=1, shiftY=0, shiftZ=-1)
                     if np.ndim(new_vm) != 1:
-                        nan_list = [np.nan for inan in arange(0,np.ndim(new_vm)+1)]
+                        nan_list = [np.nan for inan in range(np.ndim(new_vm)+1)]
                         new_vm.append(nan_list)
                     vm = np.concatenate((vm, new_vm))
                 else:
                     new_vm = self.M4L_ray(matrix, seeds, di, v, shiftX=-1, shiftY=0, shiftZ=-1)
                     if np.ndim(new_vm) != 1:
-                        nan_list = [np.nan for inan in arange(0,np.ndim(new_vm)+1)]
+                        nan_list = [np.nan for inan in range(np.ndim(new_vm)+1)]
                         new_vm.append(nan_list)
                     vm = np.concatenate((vm, new_vm))
 
@@ -1695,19 +1695,19 @@ class Texture(object):
 
     def M4L_fill(self, v, M, Smax, vmin, vmax):
         v = np.array(v)  # matrix of the vector with gray values
-        for g in arange(vmin, vmax + 1):  # g - gray values in the vector
-            for vi in arange(0, len(v)):  # vi - single vector
+        for g in range(vmin, vmax + 1):  # g - gray values in the vector
+            for vi in range(len(v)):  # vi - single vector
                 ind = np.where(np.array(v[vi]) == g)[0]  # where in this vector is g
                 s = 1  # length of the vector
                 S = 0
-                for i in arange(0, len(ind) - 1):
+                for i in range(len(ind) - 1):
                     if ind[i + 1] - ind[i] == 1:  # if the neighboor has the same gray value, increase the size
                         s += 1
                     else:
                         if s != 1:  # if not the length needs to be added to main GLRLM matrix
                             if s > Smax:  # check is if Smax needs to be increased
-                                for Ms in arange(0, len(M)):
-                                    for si in arange(0, s - Smax):
+                                for Ms in range(len(M)):
+                                    for si in range(s - Smax):
                                         M[Ms].append(0)
                                 Smax = s
                             M[g][s - 1] += 1
@@ -1715,8 +1715,8 @@ class Texture(object):
                             s = 1
                 if s != 1:  # check if in the matrix left something to be added
                     if s > Smax:
-                        for Ms in arange(0, len(M)):
-                            for si in arange(0, s - Smax):
+                        for Ms in range(len(M)):
+                            for si in range(s - Smax):
                                 M[Ms].append(0)
                         Smax = s
                     M[g][s - 1] += 1
@@ -1739,34 +1739,34 @@ class Texture(object):
             corner = [0, 0, len(matrix[0][0])]
         if d[0] == 0:
             if np.sum(d) == 1:
-                for z in arange(0, len(matrix) + 1):
-                    for cor in arange(-max_dim, max_dim):
+                for z in range(len(matrix) + 1):
+                    for cor in range(-max_dim, max_dim):
                         seeds.append(
                             [z + corner[0], (cor + corner[1]) * abs(d[1] - 1), (cor + corner[2]) * abs(d[2] - 1)])
             else:
-                for z in arange(0, len(matrix) + 1):
-                    for cor in arange(-max_dim, max_dim):
+                for z in range(len(matrix) + 1):
+                    for cor in range(-max_dim, max_dim):
                         seeds.append([z + corner[0], (cor + corner[1]) * d[1], (cor + corner[2]) * (-d[2])])
         else:
             if d[1] == 0 and d[2] == 0:
-                for x in arange(0, max_dim + 1):
-                    for y in arange(0, max_dim + 1):
+                for x in range(max_dim + 1):
+                    for y in range(max_dim + 1):
                         seeds.append([0, (y + corner[1]), (x + corner[2])])
             elif d[0] >= 0 and d[1] >= 0 and d[2] >= 0:
-                for z in arange(-max_dim, max_dim + 1):
-                    for cor in arange(-max_dim, max_dim + 1):
+                for z in range(-max_dim, max_dim + 1):
+                    for cor in range(-max_dim, max_dim + 1):
                         seeds.append([z + corner[0], (cor + corner[1]) - z, -(cor + corner[2]) - z])
             elif np.sum(d[1:]) == -2:
-                for cor in arange(-max_dim - 1, max_dim + 1):
-                    for z in arange(-max_dim, max_dim + 1):
+                for cor in range(-max_dim - 1, max_dim + 1):
+                    for z in range(-max_dim, max_dim + 1):
                         seeds.append([z + corner[0], (cor + corner[1]) + z, (-cor + corner[2]) + z])
             elif d[2] == -1:
-                for cor in arange(-max_dim, max_dim + 1):
-                    for z in arange(-max_dim, max_dim + 1):
+                for cor in range(-max_dim, max_dim + 1):
+                    for z in range(-max_dim, max_dim + 1):
                         seeds.append([z + corner[0], (cor + corner[1]) - z, (cor + corner[2]) + z])
             elif d[1] == -1:
-                for cor in arange(-max_dim, max_dim + 1):
-                    for z in arange(-max_dim, max_dim + 1):
+                for cor in range(-max_dim, max_dim + 1):
+                    for z in range(-max_dim, max_dim + 1):
                         seeds.append([z + corner[0], (cor + corner[1]) + z, (cor + corner[2]) - z])
 
         return seeds
@@ -1808,15 +1808,15 @@ class Texture(object):
         size = [len(m[0]) for m in list_GLRLM_merged]
         size_max = np.max(size)
         # extend matricies
-        for i in arange(0, len(list_GLRLM_merged)):
+        for i in range(len(list_GLRLM_merged)):
             temp = list_GLRLM_merged[i].tolist()
-            for j in arange(0, len(temp)):
-                for n in arange(len(temp[j]), size_max):
+            for j in range(len(temp)):
+                for n in range(len(temp[j]), size_max):
                     temp[j].append(0)
             list_GLRLM_merged[i] = np.array(temp)
 
         GLRLM_merged = list_GLRLM_merged[0]
-        for i in arange(1, len(list_GLRLM_merged)):
+        for i in range(1, len(list_GLRLM_merged)):
             GLRLM_merged += list_GLRLM_merged[i]
         norm_GLRLM_merged = float(np.sum(GLRLM_merged))
 
@@ -1834,12 +1834,12 @@ class Texture(object):
         m.dtype = np.float
         Smax = 1 #maximal size
         Dmax = 1 #maximal distance
-        for i in arange(0, self.n_bits):
+        for i in range(self.n_bits):
             GLSZM.append([0])
             GLDZM.append([0])
-        for k in arange(0, len(m)):
-            for i in arange(0, len(m[k])):
-                for j in arange(0, len(m[k][i])):
+        for k in range(len(m)):
+            for i in range(len(m[k])):
+                for j in range(len(m[k][i])):
                     if np.isnan(m[k][i][j]):
                         pass
                     else:
@@ -1854,7 +1854,7 @@ class Texture(object):
                             m[ni[0]][ni[1]][ni[2]] = np.nan
                         while len(points)!=0:
                             p = []
-                            for n in arange(0, len(points)):
+                            for n in range(len(points)):
                                 poin = self.neighbor(points[n][0],points[n][1],points[n][2], m,v)
                                 for ni in poin:
                                     zone.append(ni)
@@ -1864,8 +1864,8 @@ class Texture(object):
                             points = p 
 
                         if size>Smax:
-                            for s in arange(0, len(GLSZM)):
-                                for si in arange(0,size-Smax):
+                            for s in range(len(GLSZM)):
+                                for si in range(size-Smax):
                                     GLSZM[s].append(0)
                             Smax=size
                             GLSZM[v][size-1] +=1
@@ -1878,15 +1878,15 @@ class Texture(object):
                             distance.append(dist_matrix[zi[0], zi[1],zi[2]])
                         min_distance = int(np.min(distance))
                         if min_distance>Dmax:
-                            for s in arange(0, len(GLDZM)):
-                                for si in arange(0,min_distance-Dmax):
+                            for s in range(len(GLDZM)):
+                                for si in range(min_distance-Dmax):
                                     GLDZM[s].append(0)
                             Dmax=min_distance
                             GLDZM[v][min_distance-1] +=1
                         else:
                             GLDZM[v][min_distance-1] +=1
 
-        for i in arange(0, len(GLSZM)):
+        for i in range(len(GLSZM)):
             GLSZM[i] = np.array(GLSZM[i])
         GLSZM = np.array(GLSZM)#no normalization according to IBSI /float(np.sum(GLSZM))
         norm_GLSZM = np.sum(GLSZM)
@@ -1901,9 +1901,9 @@ class Texture(object):
     def neighbor(self, z,y,x, matrix,v):
         '''search for neighbours with the same gray level'''
         points = []
-        for k in arange(-1,2):
-            for i in arange(-1,2):
-                for j in arange(-1,2):
+        for k in range(-1,2):
+            for i in range(-1,2):
+                for j in range(-1,2):
                     try:
                         if matrix[z+k][y+i][x+j] == v and z+k >= 0 and y+i >= 0 and x+j >= 0:
                             points.append([z+k,y+i,x+j])
@@ -1915,7 +1915,7 @@ class Texture(object):
         # distance to the ROI border, this distance is not exactly the same as in the IBSI, it just seacrhine for the closest nan voxel not a clostest nan voxel from the original ROI
         dm = np.array(matrix).copy()
         (indz, indy, indx) = np.where(~np.isnan(matrix))
-        for i in arange(0, len(indz)):
+        for i in range(len(indz)):
             dist = []  # vector of distances for one voxel
             z = matrix[:, indy[i], indx[i]]
             nanz = np.where(np.isnan(z))[0]
@@ -1952,9 +1952,9 @@ class Texture(object):
     def sizeVariability(self, GLSZM, norm):  # 3.4.11 and #3.4.12
         var = 0
         GLSZM = GLSZM / np.sqrt(norm)
-        for n in arange(0, len(GLSZM[0])):
+        for n in range(len(GLSZM[0])):
             s = 0
-            for m in arange(0, len(GLSZM)):
+            for m in range(len(GLSZM)):
                 s += GLSZM[m][n]
             var += s ** 2 #to avoid overflow
         return var, float(var) / norm 
@@ -1962,73 +1962,73 @@ class Texture(object):
     def intensityVariability(self, GLSZM, norm):  # 3.4.9 and #3.4.10
         var = 0
         GLSZM = GLSZM / np.sqrt(norm)
-        for m in arange(0, len(GLSZM)):
+        for m in range(len(GLSZM)):
             s = 0
-            for n in arange(0, len(GLSZM[m])):
+            for n in range(len(GLSZM[m])):
                 s += GLSZM[m][n]
             var += s ** 2 #to avoid overflow error
         return var, float(var) / norm 
 
     def shortSize(self, GLSZM, norm):  # 3.4.1
         sse = 0
-        for i in arange(0, len(GLSZM)):
-            for j in arange(0, len(GLSZM[i])):
+        for i in range(len(GLSZM)):
+            for j in range(len(GLSZM[i])):
                 sse += GLSZM[i][j] / float(np.uint(j + 1) ** 2)  # place 0 in the list corresponds to size 1
         return sse / norm
 
     def longSize(self, GLSZM, norm):  # 3.4.2
         lse = 0
-        for i in arange(0, len(GLSZM)):
-            for j in arange(0, len(GLSZM[i])):
+        for i in range(len(GLSZM)):
+            for j in range(len(GLSZM[i])):
                 lse += GLSZM[i][j] * float(np.uint(j + 1) ** 2)  # place 0 in the list corresponds to size 1
         return lse / norm
 
     def LGSE(self, GLSZM, norm):  # 3.4.3
         lgse = 0
-        for i in arange(0, len(GLSZM)):
-            for j in arange(0, len(GLSZM[i])):
+        for i in range(len(GLSZM)):
+            for j in range(len(GLSZM[i])):
                 lgse += GLSZM[i][j] / float(np.uint(i + 1) ** 2)  # otherwise level 0 is not included
         return lgse / norm
 
     def HGSE(self, GLSZM, norm):  # 3.4.4
         hgse = 0
-        for i in arange(0, len(GLSZM)):
-            for j in arange(0, len(GLSZM[i])):
+        for i in range(len(GLSZM)):
+            for j in range(len(GLSZM[i])):
                 hgse += GLSZM[i][j] * float(np.uint(i + 1) ** 2)  # otherwise level 0 is not included
         return hgse / norm
 
     def SSLGE(self, GLSZM, norm):  # 3.4.5
         sslge = 0
-        for i in arange(0, len(GLSZM)):
-            for j in arange(0, len(GLSZM[i])):
+        for i in range(len(GLSZM)):
+            for j in range(len(GLSZM[i])):
                 sslge += GLSZM[i][j] / float((np.uint(j + 1) ** 2 * (i + 1) ** 2))  # otherwise level 0 is not included
         return sslge / norm
 
     def SSHGE(self, GLSZM, norm):  # 3.4.6
         sshge = 0
-        for i in arange(0, len(GLSZM)):
-            for j in arange(0, len(GLSZM[i])):
+        for i in range(len(GLSZM)):
+            for j in range(len(GLSZM[i])):
                 sshge += GLSZM[i][j] * float((i + 1) ** 2) / float(np.uint(j + 1) ** 2)  # otherwise level 0 is not included
         return sshge / norm
 
     def LSLGE(self, GLSZM, norm):  # 3.4.7
         lslge = 0
-        for i in arange(0, len(GLSZM)):
-            for j in arange(0, len(GLSZM[i])):
+        for i in range(len(GLSZM)):
+            for j in range(len(GLSZM[i])):
                 lslge += GLSZM[i][j] * float(np.uint(j + 1) ** 2) / float((i + 1) ** 2)  # otherwise level 0 is not included
         return lslge / norm
 
     def LSHGE(self, GLSZM, norm):  # 3.4.8
         lshge = 0
-        for i in arange(0, len(GLSZM)):
-            for j in arange(0, len(GLSZM[i])):
+        for i in range(len(GLSZM)):
+            for j in range(len(GLSZM[i])):
                 lshge += GLSZM[i][j] * float(np.uint(j + 1) ** 2 * (i + 1) ** 2)  # otherwise level 0 is not included
         return lshge / norm
 
     def runPer(self, GLSZM, norm):  # 3.4.13
         Nv = 0
-        for i in arange(0, len(GLSZM)):
-            for j in arange(0, len(GLSZM[i])):
+        for i in range(len(GLSZM)):
+            for j in range(len(GLSZM[i])):
                 Nv += (j + 1) * GLSZM[i][j]
         rpc = norm / float(Nv)
         return rpc
@@ -2036,11 +2036,11 @@ class Texture(object):
     def fun_GLvar(self, GLSZM, norm):  # 3.4.14
         pGLSZM = GLSZM / float(norm)
         miu = 0
-        for i in arange(0, len(GLSZM)):
+        for i in range(len(GLSZM)):
             miu += (i + 1) * np.sum(pGLSZM[i])
 
         glv = 0
-        for i in arange(0, len(GLSZM)):
+        for i in range(len(GLSZM)):
             glv += ((i + 1 - miu) ** 2) * np.sum(pGLSZM[i])
 
         return glv
@@ -2048,13 +2048,13 @@ class Texture(object):
     def fun_LSvar(self, GLSZM, norm):  # 3.4.15
         pGLSZM = GLSZM / float(norm)
         miu = 0
-        for i in arange(0, len(GLSZM)):
-            for j in arange(0, len(GLSZM[i])):
+        for i in range(len(GLSZM)):
+            for j in range(len(GLSZM[i])):
                 miu += (j + 1) * np.sum(pGLSZM[i][j])
 
         lsv = 0
-        for i in arange(0, len(GLSZM)):
-            for j in arange(0, len(GLSZM[i])):
+        for i in range(len(GLSZM)):
+            for j in range(len(GLSZM[i])):
                 lsv += ((j + 1 - miu) ** 2) * pGLSZM[i][j]
 
         return lsv
@@ -2063,21 +2063,21 @@ class Texture(object):
         pGLSZM = GLSZM / float(norm)
         ind = np.where(pGLSZM != 0)
         e = 0
-        for i in arange(0, len(ind[0])):
+        for i in range(len(ind[0])):
             e += -pGLSZM[ind[0][i]][ind[1][i]] * np.log2(pGLSZM[ind[0][i]][ind[1][i]])
         return e
 
     def NGLDM(self, matrix):  # Oncoray 4.2
         """Calculate neighborhood gray-level dependence matrix"""
         s = []
-        for i in arange(0, self.n_bits):
+        for i in range(self.n_bits):
             s.append([0])
         maxSize = 0
 
-        for k in arange(0, len(matrix)):
-            for v in arange(0, self.n_bits):
+        for k in range(len(matrix)):
+            for v in range(self.n_bits):
                 index = np.where(matrix[k] == v)  # serach for a value level
-                for ind in arange(0, len(index[0])):
+                for ind in range(len(index[0])):
                     temp = []
                     numerator = 0
                     for z in [-1, 1]:
@@ -2105,14 +2105,14 @@ class Texture(object):
                         else:
                             numerator += 1
                     ind_nan = np.where(np.isnan(np.array(temp)))[0]
-                    for n in arange(1, len(ind_nan) + 1):
+                    for n in range(1, len(ind_nan) + 1):
                         temp.pop(ind_nan[-n])
                     numerator += len(ind_nan)
                     if numerator != 26:  # if it has neigbourhood
                         size = len(np.where(np.array(temp) == v)[0])
                         if size > maxSize:
-                            for gray in arange(0, len(s)):
-                                for app in arange(maxSize, size):
+                            for gray in range(len(s)):
+                                for app in range(maxSize, size):
                                     s[gray].append(0)
                             maxSize = size  # update maxSize
                         s[int(v)][size] += 1
@@ -2137,18 +2137,18 @@ class Texture(object):
             
             maxR = np.min([len(m),len(m[0]),len(m[0][0])])
             frac = []
-            for r in arange(2, maxR+1): #because log(1) = 0
+            for r in range(2, maxR+1): #because log(1) = 0
                 N=0
-                for z in arange(0, len(m), r):
-                    for y in arange(0, len(m[0]),r):
-                        for x in arange(0, len(m[0][0]),r):
+                for z in range(0, len(m), r):
+                    for y in range(0, len(m[0]), r):
+                        for x in range(0, len(m[0][0]),r):
                             m =np.array(m)
                             matrix=m[z:z+r,y:y+r,x:x+r] #doesn't produce indexerror
                             ind = len(np.where(np.isnan(matrix))[0])
                             if ind<(r**3):
                                 N+=1
                 frac.append(np.log(N))
-            x = np.log(arange(2, maxR+1))
+            x = np.log(np.arange(2, maxR+1))
             xdata=np.transpose(x)
             x0 = np.array([0, 0]) #initial guess
             result = optimization.curve_fit(func_lin, xdata, frac, x0)
@@ -2213,10 +2213,10 @@ class Texture(object):
         pixNr = str(pixNr)
         
         # print matrix
-        for n in arange(len(matrix)//24+1):
+        for n in range(len(matrix)//24+1):
             fig = plt.figure(10, figsize=(20, 20))
             fig.text(0.5, 0.95, ImName+' '+name)
-            for j in arange(0, 24):
+            for j in range(24):
                 axes = fig.add_subplot(5, 5, j+1)
                 axes.set_title(24*n+j)
                 try:
@@ -2238,10 +2238,10 @@ class Texture(object):
             plt.close()
             
             del fig
-        for n in arange(len(matrix)//24+1):
+        for n in range(len(matrix)//24+1):
             fig = plt.figure(20, figsize=(20, 20))
             fig.text(0.5, 0.95, ImName+' '+name)
-            for j in arange(0, 24):
+            for j in range(24):
                 axes = fig.add_subplot(5, 5, j+1, facecolor='#FFFF99')
                 axes.set_title(24*n+j)
                 try:

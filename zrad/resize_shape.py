@@ -54,7 +54,7 @@ class ResizeShape(object):
         self.listDicomProblem = [] #cannot open as dicom
         self.wrongROI = [] #in case of key errors
 
-        self.lista_dir =  [str(i) for i in np.arange(low, high+1)] #list of directories to be analyzed
+        self.lista_dir =  [str(i) for i in range(low, high+1)] #list of directories to be analyzed
 
         self.resize()
 
@@ -86,7 +86,7 @@ class ResizeShape(object):
 
                 onlyfiles.sort() #sort and take only file names
                 slices = []
-                for i in np.arange(0, len(onlyfiles)):
+                for i in range(len(onlyfiles)):
                     slices.append(onlyfiles[i][0])
                     onlyfiles[i] = onlyfiles[i][1]
 
@@ -107,11 +107,11 @@ class ResizeShape(object):
                 sliceThick = round(abs(slices[0]-slices[1]),self.round_factor)
                 #check slice sorting,for the interpolation funtcion one need increasing slice position
                 if slices[1]-slices[0] < 0:
-                    new_gridZ = np.arange(slices[-1], slices[0]+sliceThick, self.resolution)
-                    old_gridZ = np.arange(slices[-1], slices[0]+sliceThick, sliceThick)
+                    new_gridZ = range(slices[-1], slices[0]+sliceThick, self.resolution)
+                    old_gridZ = range(slices[-1], slices[0]+sliceThick, sliceThick)
                 else:
-                    new_gridZ = np.arange(slices[0], slices[-1]+sliceThick, self.resolution)
-                    old_gridZ = np.arange(slices[0], slices[-1]+sliceThick, sliceThick)
+                    new_gridZ = range(slices[0], slices[-1]+sliceThick, self.resolution)
+                    old_gridZ = range(slices[0], slices[-1]+sliceThick, sliceThick)
 
                 #check the length in case of rounding problems
                 if len(old_gridZ) != len(slices):
@@ -146,7 +146,7 @@ class ResizeShape(object):
 
                     list_organs = [] #ROI (name, number)
                     list_organs_names = [] #ROI names
-                    for j in np.arange(0, len(rs.StructureSetROISequence)):
+                    for j in range(len(rs.StructureSetROISequence)):
                         list_organs.append([rs.StructureSetROISequence[j].ROIName, rs.StructureSetROISequence[j].ROINumber])
                         list_organs_names.append(rs.StructureSetROISequence[j].ROIName)
 
@@ -160,7 +160,7 @@ class ResizeShape(object):
                                 if not path.isdir(mypath_save+'\\'+j+'\\'+name+'\\'):
                                     raise
 
-                    for s in np.arange(0, len(change_struct)):
+                    for s in range(len(change_struct)):
                         print('structure: ', change_struct[s])
                         #read a contour points for given structure
                         #M - 3D matrix filled with 1 insdie contour and 0 outside
@@ -172,31 +172,31 @@ class ResizeShape(object):
                         insertedZ=[] #list of contour slices alread inserted for the given ROI
 
                         # roudning new patient position to the defined precision
-                        for gz in range(0, len(new_gridZ)):
+                        for gz in range(len(new_gridZ)):
                             new_gridZ[gz] = round(new_gridZ[gz],self.round_factor)
-                        for n_s in np.arange(0, len(M)-1): # n_s slice number
+                        for n_s in range(len(M)-1): # n_s slice number
                             if M[n_s] != [] and M[n_s+1] != []: #if two consecutive slices not empty - interpolate
                                 if self.round_factor == 2:
                                     zi = np.linspace(old_gridZ[n_s], old_gridZ[n_s+1], sliceThick/0.01+1) #create an interpolation grid between those slicse
                                     #round interpolation grid accroding to specified precision
-                                    for gz in np.arange(0, len(zi)):
+                                    for gz in range(len(zi)):
                                         zi[gz] = round(zi[gz],self.round_factor)
                                     #interpolate, X list of x positions of the interpolated contour, Y list of y positions of the interpoated contour , interpolation type shape returns all the points in the structure
                                     X, Y = InterpolateROI().interpolate(self.interpolation_algorithm, M[n_s], M[n_s+1], np.linspace(0,1,sliceThick/0.01+1), 'shape')
                                 elif self.round_factor == 3 :
                                     zi = np.linspace(old_gridZ[n_s], old_gridZ[n_s+1], sliceThick/0.001+1) #create an interpolation grid between those slicse
                                     #round interpolation grid accroding to specified precision
-                                    for gz in np.arange(0, len(zi)):
+                                    for gz in range(len(zi)):
                                         zi[gz] = round(zi[gz],self.round_factor)
                                     #interpolate, X list of x positions of the interpolated contour, Y list of y positions of the interpoated contour , interpolation type shape returns all the points in the structure
                                     X, Y = InterpolateROI().interpolate(self.interpolation_algorithm, M[n_s], M[n_s+1], np.linspace(0,1,sliceThick/0.001+1), 'shape')
                                 #check which position in the interpolation grid correcpods to the new slice position
-                                for i in np.arange(0, len(zi)):
+                                for i in range(len(zi)):
                                     if zi[i] in new_gridZ and zi[i] not in insertedZ: #insertedZ gathers all slice positions which are alreay filled in case that slice position is on the ovelap of two slices from orignal
                                         ind = str(np.where(new_gridZ == zi[i])[0][0]) #slice position to save correct file name, also importat for LN dist
                                         file_n = open(mypath_save+'\\'+change_struct[s]+'\\'+name+'\\'+'slice_'+ind, 'w')
                                         insertedZ.append(zi[i])
-                                        for j in np.arange(0, len(X[i])): #save positions of all points inside structure in to columns for X and Y
+                                        for j in range(len(X[i])): #save positions of all points inside structure in to columns for X and Y
                                             file_n.write(str(X[i][j]+xmin)+'\t' +str(Y[i][j]+ymin))
                                             file_n.write('\n')
                                         file_n.close()

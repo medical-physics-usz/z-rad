@@ -32,18 +32,18 @@ class Matrix(object):
                     Ycontour = Ycontour_WPoints
 
                 # set minx, miny, minz, maxx, maxy, maxz in the matrix
-                for i in np.arange(0, len(Xcontour)):  # slices
+                for i in range(len(Xcontour)):  # slices
                     ymins = []
                     ymaxs = []
                     xmins = []
                     xmaxs = []
-                    for j in np.arange(0, len(Xcontour[i])):  # sub-structures in the slice
+                    for j in range(len(Xcontour[i])):  # sub-structures in the slice
                         if len(Ycontour[i][j]) != 0:
                             ymins.append(np.min(Ycontour[i][j]))
                             ymaxs.append(np.max(Ycontour[i][j]))
                             xmins.append(np.min(Xcontour[i][j]))
                             xmaxs.append(np.max(Xcontour[i][j]))
-                            for k in np.arange(0, len(Xcontour[i][j])):
+                            for k in range(len(Xcontour[i][j])):
                                 v.append(imap[i][Ycontour[i][j][k]][Xcontour[i][j][k]])
                     try:
                         lymin.append(np.min(ymins))
@@ -84,16 +84,16 @@ class Matrix(object):
                 # for the outlier correction, first remove values outside of HU range (for CT only) and then calccuate standard deviation
 
                 ind = np.where(np.isnan(np.array(v)))[0]
-                for j in np.arange(1, len(ind) + 1):
+                for j in range(1, len(ind) + 1):
                     v.pop(ind[-j])
 
                 if (HUmin != 'none' and rs_type != 0) or (cropStructure["crop"] and rs_type != 0):  # no parameter for outlier correction!
                     print("***** outlier correction for CT ********")
                     ind = np.where(np.array(v) < HUmin)[0]
-                    for j in np.arange(1, len(ind) + 1):
+                    for j in range(1, len(ind) + 1):
                         v.pop(ind[-j])
                     ind = np.where(np.array(v) > HUmax)[0]
-                    for j in np.arange(1, len(ind) + 1):
+                    for j in range(1, len(ind) + 1):
                         v.pop(ind[-j])
                 vmin = np.min(v)
                 vmax = np.max(v)
@@ -111,8 +111,8 @@ class Matrix(object):
 
             # placing nan in all places in the matrix
             m = np.zeros([ymax - ymin + 1, xmax - xmin + 1])  # creating the matrix to fill it with points of the structure, y rows, x columns
-            for im in np.arange(0, len(m)):
-                for jm in np.arange(0, len(m[im])):
+            for im in range(len(m)):
+                for jm in range(len(m[im])):
                     m[im][jm] = np.nan
 
             matrix = []  # matrix with discretizd values
@@ -123,7 +123,7 @@ class Matrix(object):
             if structure != 'none':  # if the structure to be anaylsed was defined
                 self.logger.info("Vmin, Vmax " + ", ".join(map(str, (vmin, vmax))))
 
-                for n in np.arange(0, len(Xcontour)):
+                for n in range(len(Xcontour)):
                     matrix.append(m.copy())
                     matrix_true.append(m.copy())
                     matrix_full.append(m.copy())
@@ -140,18 +140,18 @@ class Matrix(object):
                     n_bits = bits
                 self.logger.info('n bins, interval ' + ", ".join(map(str, (n_bits, interval))))
 
-                for i in np.arange(0, len(Xcontour)):  # slices
-                    for j in np.arange(0, len(Xcontour[i])):  # sub-structures in the slice
-                        for k in np.arange(0, len(Xcontour[i][j])):  # each point
+                for i in range(len(Xcontour)):  # slices
+                    for j in range(len(Xcontour[i])):  # sub-structures in the slice
+                        for k in range(len(Xcontour[i][j])):  # each point
                             try:
                                 matrix[i][Ycontour[i][j][k] - ymin][Xcontour[i][j][k] - xmin] = int((imap[i][Ycontour[i][j][k]][Xcontour[i][j][k]] - vmin) / interval)  # first row, second column, changing to bits channels as in co-ocurence matrix we have only the channels channels
                                 matrix_true[i][Ycontour[i][j][k] - ymin][Xcontour[i][j][k] - xmin] = imap[i][Ycontour[i][j][k]][Xcontour[i][j][k]]  # first row, second column, changing to bits channels as in co-ocurence matrix we have only the channels channels
                             except ValueError:  # in case of nan
                                 pass
 
-                for i in np.arange(0, len(imap)):  # slices
-                    for j in np.arange(ymin, ymax + 1):  # rows
-                        for k in np.arange(xmin, xmax + 1):  # columns
+                for i in range(len(imap)):  # slices
+                    for j in range(ymin, ymax + 1):  # rows
+                        for k in range(xmin, xmax + 1):  # columns
                             try:  # each point
                                 matrix_full[i][j - ymin][k - xmin] = int((imap[i][j][k] - vmin) / interval)  # first row, second column, changing to bits channels as in co-ocurence matrix we have only the channels channels
                             except ValueError:  # in case of nan
@@ -159,9 +159,9 @@ class Matrix(object):
 
                 # define the recurrence place
                 if Xcontour_Rec != []:
-                    for i in np.arange(0, len(Xcontour_Rec)):  # slices
-                        for j in np.arange(0, len(Xcontour_Rec[i])):  # sub-structures in the slice
-                            for k in np.arange(0, len(Xcontour_Rec[i][j])):  # each point
+                    for i in range(len(Xcontour_Rec)):  # slices
+                        for j in range(len(Xcontour_Rec[i])):  # sub-structures in the slice
+                            for k in range(len(Xcontour_Rec[i][j])):  # each point
                                 try:
                                     matrix_rec[i][Ycontour_Rec[i][j][k] - ymin][Xcontour_Rec[i][j][k] - xmin] = int((imap[i][Ycontour_Rec[i][j][k]][Xcontour_Rec[i][j][k]] - vmin) / interval)  # first row, second column, changing to bits channels as in co-ocurence matrix we have only the channels channels
                                 except ValueError:  # in case of nan
@@ -169,7 +169,7 @@ class Matrix(object):
 
             else:  # no structure defined
                 self.logger.info("Vmin, Vmax " + ", ".join(map(str, (vmin, vmax))))
-                for n in np.arange(0, len(imap)):
+                for n in range(len(imap)):
                     matrix.append(m.copy())
                     matrix_true.append(m.copy())
 
@@ -184,9 +184,9 @@ class Matrix(object):
                     n_bits = bits
                 self.logger.info('n bins, interval ' + ", ".join(map(str, (n_bits, interval))))
 
-                for i in np.arange(0, len(imap)):  # slices
-                    for j in np.arange(0, len(imap[i])):  # rows
-                        for k in np.arange(0, len(imap[i][j])):  # columns
+                for i in range(len(imap)):  # slices
+                    for j in range(len(imap[i])):  # rows
+                        for k in range(len(imap[i][j])):  # columns
                             try:  # each point
                                 matrix[i][j - ymin][k - xmin] = int((imap[i][j][k] - vmin) / interval)  # first row, second column, changing to bits channels as in co-ocurence matrix we have only the channels channels
                                 matrix_true[i][j - ymin][k - xmin] = imap[i][j][k]  # first row, second column, changing to bits channels as in co-ocurence matrix we have only the channels channels

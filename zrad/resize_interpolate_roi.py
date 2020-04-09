@@ -21,7 +21,7 @@ class InterpolateROI(object):
         rs = dc.read_file(rs)  # read RS file
         list_organs = []  # list of organs defined in the RS file
         print('structures in RS file:')
-        for j in np.arange(0, len(rs.StructureSetROISequence)):
+        for j in range(len(rs.StructureSetROISequence)):
             list_organs.append([rs.StructureSetROISequence[j].ROIName, rs.StructureSetROISequence[j].ROINumber])
             print(rs.StructureSetROISequence[j].ROIName)
 
@@ -30,10 +30,10 @@ class InterpolateROI(object):
         contours = []  # list with structure contours
 
         # search for organ I'm interested in
-        for i in np.arange(0, len(organs)):  # organs defined by user
-            for j in np.arange(0, len(list_organs)):  # organ in RS
+        for i in range(len(organs)):  # organs defined by user
+            for j in range(len(list_organs)):  # organ in RS
                 if list_organs[j][0] == organs[i]:  # if the same name
-                    for k in np.arange(0, len(rs.ROIContourSequence)):  # search by ROI number
+                    for k in range(len(rs.ROIContourSequence)):  # search by ROI number
                         if rs.ROIContourSequence[k].ReferencedROINumber == list_organs[j][1]:  # double check the ROI number
                             st_nr = k  # ROI number
                             try:
@@ -41,7 +41,7 @@ class InterpolateROI(object):
                                 # contours in dicom are saved as a list with sequence x1, y1, zi, x2, y2, zi, ... xn, yn, zi
                                 # where zi is the slice position
                                 # if there are sub-contours in the slice then these are two different sequences with the same zi
-                                for l in np.arange(0, len(rs.ROIContourSequence[k].ContourSequence)):
+                                for l in range(len(rs.ROIContourSequence[k].ContourSequence)):
                                     lista.append([round(
                                         float(rs.ROIContourSequence[k].ContourSequence[l].ContourData[2]),
                                         round_factor), rs.ROIContourSequence[k].ContourSequence[l].ContourData[::3],
@@ -49,7 +49,7 @@ class InterpolateROI(object):
                                 lista.sort()
                                 index = []
                                 lista = self.multiContour(lista)  # sub-contours in the slice
-                                for m in np.arange(0, len(lista)):
+                                for m in range(len(lista)):
                                     index.append(lista[m][0])
                                 print('z positions contour')
                                 print(index)
@@ -68,8 +68,8 @@ class InterpolateROI(object):
                                     print('difference in z position between slices normalized to slice spacing''')
                                     print(diff)
                                     dk = 0
-                                    for d in np.arange(0, len(diff)):
-                                        for di in np.arange(1, int(round(abs(diff[d]), 0))):  # if no empty slice in between then abs(int(round(diff[d],0))) = 1
+                                    for d in range(len(diff)):
+                                        for di in range(1, int(round(abs(diff[d]), 0))):  # if no empty slice in between then abs(int(round(diff[d],0))) = 1
                                             index.insert(d + dk + 1, index[d + dk] + diffS)  # if not add empty slices to index and lista
                                             lista.insert(d + dk + 1, [[], [[], []]])
                                             dk += 1
@@ -82,12 +82,12 @@ class InterpolateROI(object):
                                     print(indE)
                                     print(indB)
                                     if indE != 0:
-                                        for m in np.arange(0, abs(indE - 0)):
+                                        for m in range(abs(indE - 0)):
                                             lista.insert(0, [[], [[], []]])
                                     if indB != (len(slices) - 1):
-                                        for m in np.arange(0, abs(indB - (len(slices) - 1))):
+                                        for m in range(abs(indB - (len(slices) - 1))):
                                             lista.append([[], [[], []]])
-                                    for n in np.arange(0, len(lista)):
+                                    for n in range(len(lista)):
                                         lista[n] = lista[n][1:]
                                     contours.append(lista)  # list of contours for all user defined structures
                                 else:  # if only one slice of contour
@@ -95,12 +95,12 @@ class InterpolateROI(object):
                                     print('contour only in slice')
                                     print(ind)
                                     if ind != 0:
-                                        for m in np.arange(0, abs(ind - 0)):
+                                        for m in range(abs(ind - 0)):
                                             lista.insert(0, [[], [[], []]])
                                     if ind != (len(slices) - 1):
-                                        for m in np.arange(0, abs(ind - (len(slices) - 1))):
+                                        for m in range(abs(ind - (len(slices) - 1))):
                                             lista.append([[], [[], []]])
-                                    for n in np.arange(0, len(lista)):
+                                    for n in range(len(lista)):
                                         lista[n] = lista[n][1:]
                                     contours.append(lista)
                                 break
@@ -111,13 +111,13 @@ class InterpolateROI(object):
         contours = np.array(contours)
 
         # recalculate contour points from mm to pixels
-        for i in np.arange(0, len(contours)):  # contours
-            for j in np.arange(0, len(contours[i])):  # slice
-                for n in np.arange(0, len(contours[i][j])):  # number of contours per slice
+        for i in range(len(contours)):  # contours
+            for j in range(len(contours[i])):  # slice
+                for n in range(len(contours[i][j])):  # number of contours per slice
                     if contours[i][j][n][0] != []:
                         contours[i][j][n][0] = np.array(abs(contours[i][j][n][0] - x_ct) / xCTspace)
                         contours[i][j][n][1] = np.array(abs(contours[i][j][n][1] - y_ct) / yCTspace)
-                        for k in np.arange(0, len(contours[i][j][n][0])):
+                        for k in range(len(contours[i][j][n][0])):
                             contours[i][j][n][0][k] = int(round(contours[i][j][n][0][k], 0))
                             contours[i][j][n][1][k] = int(round(contours[i][j][n][1][k], 0))
                         contours[i][j][n][0] = np.array(contours[i][j][n][0], dtype=np.int)
@@ -127,9 +127,9 @@ class InterpolateROI(object):
         x_c_max = []
         y_c_min = []
         y_c_max = []
-        for i in np.arange(0, len(contours)):  # contours
-            for j in np.arange(0, len(contours[i])):  # slice
-                for n in np.arange(0, len(contours[i][j])):  # number of contours per slice
+        for i in range(len(contours)):  # contours
+            for j in range(len(contours[i])):  # slice
+                for n in range(len(contours[i][j])):  # number of contours per slice
                     if contours[i][j][n][0] != []:
                         x_c_min.append(np.min(contours[i][j][n][0]))
                         x_c_max.append(np.max(contours[i][j][n][0]))
@@ -171,10 +171,10 @@ class InterpolateROI(object):
         listka = []
         nr = 0
         kontur = []
-        for i in np.arange(0, len(lista)):
+        for i in range(len(lista)):
             if lista[i][0] not in listka:
                 m = [lista[i][0]]
-                for j in np.arange(0, counts[nr]):
+                for j in range(counts[nr]):
                     m.append([np.array(lista[i + j][1], dtype=np.float), np.array(lista[i + j][2], dtype=np.float)])
                     listka.append(lista[i][0])
                 kontur.append(m)
@@ -187,11 +187,11 @@ class InterpolateROI(object):
         cnt_all = []
         # print 'slices in image: ', l_IM
         # print 'slices in structure: ', len(segment)
-        for k in np.arange(0, l_IM):
+        for k in range(l_IM):
             cnt = []
-            for i in np.arange(0, len(segment[k])):
+            for i in range(len(segment[k])):
                 c = []
-                for j in np.arange(0, len(segment[k][i][0])):
+                for j in range(len(segment[k][i][0])):
                     c.append([segment[k][i][0][j], segment[k][i][1][j]])
                 cnt.append(c)
             if cnt == []:
@@ -199,12 +199,12 @@ class InterpolateROI(object):
             cnt_all.append(cnt)
 
         M = []
-        for k in tqdm(np.arange(0, l_IM)):
+        for k in tqdm(range(l_IM)):
             if cnt_all[k] != [[]]:
                 m = np.ones((ymax + 1 - ymin, xmax + 1 - xmin))  # initialize  the 2D matrix with 1
-                for n in np.arange(0, len(cnt_all[k])):  # sub-contours
-                    for i in np.arange(ymin, ymax + 1):
-                        for j in np.np.arange(xmin, xmax + 1):
+                for n in range(len(cnt_all[k])):  # sub-contours
+                    for i in range(ymin, ymax + 1):
+                        for j in range(xmin, xmax + 1):
                             m[i - ymin][j - xmin] = m[i - ymin][j - xmin] * cv2.pointPolygonTest(
                                 np.array(cnt_all[k][n]), (j, i),
                                 False)  # check if the point in inside the polygon defined by contour points, 0 - on contour, 1 - inside, -1 -outside
@@ -217,7 +217,7 @@ class InterpolateROI(object):
 
         # adjust if there is a contour only in one slice, add slice filled with -1 before and after
         ind = []
-        for k in np.arange(0, len(M)):
+        for k in range(len(M)):
             if M[k] != []:
                 ind.append(k)
 
@@ -256,8 +256,8 @@ class InterpolateROI(object):
 
         z = [0, 1]
         con_m = np.zeros((len(znew), len(im1), len(im1[0])))  # interpolated 3D matrix
-        for i in np.arange(0, len(im1)):  # interpolate each voxel in z direction
-            for j in np.arange(0, len(im1[0])):
+        for i in range(len(im1)):  # interpolate each voxel in z direction
+            for j in range(len(im1[0])):
                 f = interp1d(z, con[:, i, j], kind='linear')
                 con_m[:, i, j] = f(znew)
         del con
@@ -268,7 +268,7 @@ class InterpolateROI(object):
         Yfin = []
         # for shape return all the points in the structure
         if output_type == 'shape':
-            for n in np.arange(0, len(con_m)):
+            for n in range(len(con_m)):
                 indx = np.where(con_m[n] >= 0)[0]
                 indy = np.where(con_m[n] >= 0)[1]
 
@@ -277,7 +277,7 @@ class InterpolateROI(object):
             del con_m
         # for texture find polygon encompassing the structure
         elif output_type == 'texture':
-            for n in np.arange(0, len(con_m)):  # slice by  slice
+            for n in range(len(con_m)):  # slice by  slice
                 a = np.zeros((len(con_m[n]), len(con_m[n][0])), dtype=np.uint8)
                 a[np.where(con_m[n] >= 0)] = 1  # everything inside contour equal 1
                 try:
@@ -287,7 +287,7 @@ class InterpolateROI(object):
 
                 Xf = []
                 Yf = []
-                for i in np.arange(0, len(contour)):  # for substructures, like holes
+                for i in range(len(contour)):  # for substructures, like holes
                     Xf.append(contour[i][:, 0, 0])
                     Yf.append(contour[i][:, 0, 1])
                 del contour

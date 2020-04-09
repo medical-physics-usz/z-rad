@@ -18,7 +18,7 @@ class Export(object):
         calcGLDZM = True  
         calcNGLDM = True          
         
-        final_file = open(path_save+save_as+'.txt', 'w')
+        final_file = open(path_save+ "\\" + save_as+'.txt', 'w')
         #names of the texture parameters
         par_names = ['Mean', 'SD', 'COV', 'skewness', 'kurtosis', 'var', 'median', 'percentile10', 'percentile90', 'iqr', 'Hrange', 'mad', 'rmad', 'H_energy', 'H_entropy', 'rms', 'H_uniformity',
              'energy', 'entropy', 'contrast', 'correlation', 'homogenity', 'homogenity_n', 'idiff', 'idiff_n', 'variance', 'sum_average', 'sum_entropy', 'sum_variance', 'diff_entropy', 'diff_variance', 'IMC1', 'IMC2', 'MCC', 'joint_max',  'joint_average', 'diff_average', 'dissimilarity', 'inverse_variance', 'autocorrelation', 'clust_tendency', 'clust_shade', 'clust_prominence',
@@ -47,10 +47,10 @@ class Export(object):
         final_file.write('\t')
         final_file.write('\t')
         final_file.write('\t')
-        for i in arange(0, len(perf_names)):
-            for k in arange(0, len(wave_names)):
+        for i in range(len(perf_names)):
+            for k in range(len(wave_names)):
                 final_file.write(perf_names[i]+'_'+wave_names[k])
-                for j in arange(0, len(par_names)):
+                for j in range(len(par_names)):
                     final_file.write('\t')
         final_file.write('\n')
         final_file.write('patient')
@@ -63,9 +63,9 @@ class Export(object):
         final_file.write('\t')
         final_file.write('voxels')
         final_file.write('\t')
-        for i in arange(0, len(perf_names)):
-            for k in arange(0, len(wave_names)):
-                for j in arange(0, len(par_names)): 
+        for i in range(len(perf_names)):
+            for k in range(len(wave_names)):
+                for j in range(len(par_names)): 
                     final_file.write(par_names[j])
                     final_file.write('\t')
         final_file.write('\n')        
@@ -95,7 +95,7 @@ class Export(object):
             final[0][3] = temp
 
         if wv:
-            for i in arange(0, len(final)):
+            for i in range(len(final)):
                 final_file.write(str(final[i][0])) #patient
                 final_file.write('\t')
                 final_file.write(str(final[i][1])) #organ
@@ -106,15 +106,15 @@ class Export(object):
                 final_file.write('\t')
                 final_file.write(str(final[i][4])) #voxel list
                 final_file.write('\t')
-                for k in arange(0, len(perf_names)):
-                    for l in arange(0, len(wave_names)):
-                        for j in arange(0, len(final[i][3])):
+                for k in range(len(perf_names)):
+                    for l in range(len(wave_names)):
+                        for j in range(len(final[i][3])):
                             final_file.write(str(final[i][3][j][k*len(wave_names)+l])) #results for a specific texture parameter
                             final_file.write('\t')
                 final_file.write('\n')
         elif local:
             si = 0 #number of subvolume
-            for i in arange(0, len(final)):
+            for i in range(len(final)):
                 final_file.write(str(final[i][0]))
                 final_file.write('\t')
                 final_file.write(str(final[i][1][si]))
@@ -127,14 +127,14 @@ class Export(object):
                 final_file.write('\t')
                 final_file.write(str(final[i][5])) #voxels list
                 final_file.write('\t')
-                for k in arange(0, len(perf_names)):
-                    for j in arange(0, len(par_names)):
+                for k in range(len(perf_names)):
+                    for j in range(len(par_names)):
                         final_file.write(str(final[i][3][j][si])) #results for a specific texture parameter
                         final_file.write('\t')
                 final_file.write('\n')
                 si += 1
         elif wv == False:
-            for i in arange(0, len(final)):
+            for i in range(len(final)):
                 final_file.write(str(final[i][0])) #patient
                 final_file.write('\t')
                 final_file.write(str(final[i][1])) #organ
@@ -145,9 +145,9 @@ class Export(object):
                 final_file.write('\t')
                 final_file.write(str(final[i][4])) #voxel list
                 final_file.write('\t')
-                for k in arange(0, len(perf_names)):
-                    for l in arange(0, len(wave_names)):
-                        for j in arange(0, len(final[i][3])):
+                for k in range(len(perf_names)):
+                    for l in range(len(wave_names)):
+                        for j in range(len(final[i][3])):
                             final_file.write(str(final[i][3][j][k*len(wave_names)+l])) #results for a specific texture parameter
                             final_file.write('\t')
                 final_file.write('\n')

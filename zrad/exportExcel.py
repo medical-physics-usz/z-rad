@@ -13,9 +13,9 @@ class ExportExcel(object):
         else:
             shape = ''
         
-        texture = open(path_save+save_as+'.txt', 'r')
+        texture = open(path_save + "\\" + save_as+'.txt', 'r')
         
-        path = path_save+save_as+'.xlsx'
+        path = path_save + "\\" + save_as+'.xlsx'
         
         combine_matrix = self.createMatrix(shape, texture)
         combine_matrix = self.select(combine_matrix, shape)

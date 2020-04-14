@@ -46,7 +46,7 @@ class Shape(object):
             remove(path_results)
 
         fGTV = open(path_results, "w") #use "a" to append
-        fGTV.write("Name\tMC-Volume\tnonzero_Points\tMC-Surface\tClusters\tCompactness_1\tCompactness_2\tDispr.\tSphericity\tAsphericity\tA/V\tthickness_median\tthickness_SD\teuclidian_distance\tmajor_axis\tminor_axis\tleast_axis\telongation\tflatness" "\n")
+        fGTV.write("patient\tMC-Volume\tnonzero_Points\tMC-Surface\tClusters\tCompactness_1\tCompactness_2\tDispr.\tSphericity\tAsphericity\tA/V\tthickness_median\tthickness_SD\teuclidian_distance\tmajor_axis\tminor_axis\tleast_axis\telongation\tflatness" "\n")
 
         print('Start_0: ', datetime.now().strftime('%H:%M:%S'))
 

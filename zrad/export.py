@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 # import libraries
-from numpy import arange, array, float64
+from numpy import array, float64
 import sys
 from os import makedirs
 from os.path import isdir
@@ -37,22 +37,12 @@ class Export(object):
         par_names = par_names + app
             
         if wv:
-            wave_names = ['norm', 'HHH', 'HHL', 'HLH', 'HLL', 'LHH', 'LHL', 'LLH', 'LLL']
+            wave_names = ['Initial', 'HHH', 'HHL', 'HLH', 'HLL', 'LHH', 'LHL', 'LLH', 'LLL']
         else:
-            wave_names = ['norm']
+            wave_names = ['Initial']
                 
-        #write the header
-        final_file.write('\t')
-        final_file.write('\t')
-        final_file.write('\t')
-        final_file.write('\t')
-        final_file.write('\t')
-        for i in range(len(perf_names)):
-            for k in range(len(wave_names)):
-                final_file.write(perf_names[i]+'_'+wave_names[k])
-                for j in range(len(par_names)):
-                    final_file.write('\t')
-        final_file.write('\n')
+        # #write the header
+        
         final_file.write('patient')
         final_file.write('\t')
         final_file.write('organ')
@@ -66,11 +56,16 @@ class Export(object):
         for i in range(len(perf_names)):
             for k in range(len(wave_names)):
                 for j in range(len(par_names)): 
-                    final_file.write(par_names[j])
-                    final_file.write('\t')
+                    if len(perf_names) == 1:
+                        final_file.write(wave_names[k] + "_" + par_names[j])
+                    else:
+                        final_file.write(perf_names[i]+'_'+ wave_names[k] + "_" + par_names[j])
+                    if i+j+k < len(perf_names)+len(wave_names)+len(par_names)-3:
+                        final_file.write("\t")
+        
         final_file.write('\n')        
         sys.stdout.flush()
-        
+
         return final_file, wave_names, par_names
         
     def ExportResults(self, final, final_file, par_names, perf_names, wave_names, wv, local):

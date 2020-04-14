@@ -24,8 +24,7 @@ class ResizeShape(object):
     '''
 
     def __init__(self, inp_struct, inp_mypath_load, inp_mypath_save, image_type, low, high, inp_resolution, interpolation_type, cropStructure):
-        self.logger = logging.getLogger(__name__)
-        self.logger.info("Resize Shape")
+        self.logger = logging.getLogger("Resize_Shape")
         inp_resolution = float(inp_resolution)
         if inp_resolution < 1.: #set a round factor for slice position and resolution for shape calculation 1mm if texture resolution > 1mm and 0.1 if texture resolution < 1mm
             self.round_factor = 3
@@ -71,8 +70,8 @@ class ResizeShape(object):
 
         for name in self.lista_dir: #iterate through the patients
             try:
-                print('patient ', name)
-                mypath_file =self.mypath_load +name + '\\' #go to subfolder for given patient
+                self.logger.info('\nPatient ' + str(name))
+                mypath_file = self.mypath_load +name + '\\' #go to subfolder for given patient
                 mypath_save = self.mypath_s
 
                 onlyfiles = []
@@ -92,8 +91,8 @@ class ResizeShape(object):
 
                 CT = dc.read_file(mypath_file+onlyfiles[0]) #example image
                 # position in DICOM: pixel spacing = y,x,z in image position patient x,y,z
-                xCTspace=float(CT.PixelSpacing[1]) # XY resolution
-                yCTspace=float(CT.PixelSpacing[0]) # XY resolution
+                xCTspace = float(CT.PixelSpacing[1]) # XY resolution
+                yCTspace = float(CT.PixelSpacing[0]) # XY resolution
                 xct = float(CT.ImagePositionPatient[0]) # x position of top left corner
                 yct = float(CT.ImagePositionPatient[1]) # y position of top left corner
                 if self.cropStructure["ct_path"] != "":
@@ -107,11 +106,11 @@ class ResizeShape(object):
                 sliceThick = round(abs(slices[0]-slices[1]),self.round_factor)
                 #check slice sorting,for the interpolation funtcion one need increasing slice position
                 if slices[1]-slices[0] < 0:
-                    new_gridZ = range(slices[-1], slices[0]+sliceThick, self.resolution)
-                    old_gridZ = range(slices[-1], slices[0]+sliceThick, sliceThick)
+                    new_gridZ = np.arange(slices[-1], slices[0]+sliceThick, self.resolution)
+                    old_gridZ = np.arange(slices[-1], slices[0]+sliceThick, sliceThick)
                 else:
-                    new_gridZ = range(slices[0], slices[-1]+sliceThick, self.resolution)
-                    old_gridZ = range(slices[0], slices[-1]+sliceThick, sliceThick)
+                    new_gridZ = np.arange(slices[0], slices[-1]+sliceThick, self.resolution)
+                    old_gridZ = np.arange(slices[0], slices[-1]+sliceThick, sliceThick)
 
                 #check the length in case of rounding problems
                 if len(old_gridZ) != len(slices):
@@ -161,7 +160,7 @@ class ResizeShape(object):
                                     raise
 
                     for s in range(len(change_struct)):
-                        print('structure: ', change_struct[s])
+                        self.logger.info('structure: ' + change_struct[s])
                         #read a contour points for given structure
                         #M - 3D matrix filled with 1 insdie contour and 0 outside
                         #xmin - minimum value of x in the contour
@@ -177,19 +176,19 @@ class ResizeShape(object):
                         for n_s in range(len(M)-1): # n_s slice number
                             if M[n_s] != [] and M[n_s+1] != []: #if two consecutive slices not empty - interpolate
                                 if self.round_factor == 2:
-                                    zi = np.linspace(old_gridZ[n_s], old_gridZ[n_s+1], sliceThick/0.01+1) #create an interpolation grid between those slicse
+                                    zi = np.linspace(old_gridZ[n_s], old_gridZ[n_s+1], int(sliceThick/0.01)+1) #create an interpolation grid between those slicse
                                     #round interpolation grid accroding to specified precision
                                     for gz in range(len(zi)):
                                         zi[gz] = round(zi[gz],self.round_factor)
                                     #interpolate, X list of x positions of the interpolated contour, Y list of y positions of the interpoated contour , interpolation type shape returns all the points in the structure
-                                    X, Y = InterpolateROI().interpolate(self.interpolation_algorithm, M[n_s], M[n_s+1], np.linspace(0,1,sliceThick/0.01+1), 'shape')
+                                    X, Y = InterpolateROI().interpolate(self.interpolation_algorithm, M[n_s], M[n_s+1], np.linspace(0,1,int(sliceThick/0.01)+1), 'shape')
                                 elif self.round_factor == 3 :
-                                    zi = np.linspace(old_gridZ[n_s], old_gridZ[n_s+1], sliceThick/0.001+1) #create an interpolation grid between those slicse
+                                    zi = np.linspace(old_gridZ[n_s], old_gridZ[n_s+1], int(sliceThick/0.001)+1) #create an interpolation grid between those slicse
                                     #round interpolation grid accroding to specified precision
                                     for gz in range(len(zi)):
                                         zi[gz] = round(zi[gz],self.round_factor)
                                     #interpolate, X list of x positions of the interpolated contour, Y list of y positions of the interpoated contour , interpolation type shape returns all the points in the structure
-                                    X, Y = InterpolateROI().interpolate(self.interpolation_algorithm, M[n_s], M[n_s+1], np.linspace(0,1,sliceThick/0.001+1), 'shape')
+                                    X, Y = InterpolateROI().interpolate(self.interpolation_algorithm, M[n_s], M[n_s+1], np.linspace(0,1, int(sliceThick/0.001)+1), 'shape')
                                 #check which position in the interpolation grid correcpods to the new slice position
                                 for i in range(len(zi)):
                                     if zi[i] in new_gridZ and zi[i] not in insertedZ: #insertedZ gathers all slice positions which are alreay filled in case that slice position is on the ovelap of two slices from orignal

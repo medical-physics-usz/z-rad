@@ -30,7 +30,7 @@ class Radiomics(wx.Frame):
   
         self.defaultWindowsize = (1150,800)
         self.SetMinSize(self.defaultWindowsize)
-        logging.basicConfig(format='%(name)s: \t\t %(message)s', level=logging.INFO)
+        logging.basicConfig(format='%(name)-18s: %(message)s', level=logging.INFO)
         # filename = "zRad.log",
             
         self.logger = logging.getLogger("Main")

@@ -70,7 +70,8 @@ class ResizeShape(object):
 
         for name in self.lista_dir: #iterate through the patients
             try:
-                self.logger.info('\nPatient ' + str(name))
+                print("")
+                self.logger.info('Patient ' + str(name))
                 mypath_file = self.mypath_load +name + '\\' #go to subfolder for given patient
                 mypath_save = self.mypath_s
 

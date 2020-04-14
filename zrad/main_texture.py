@@ -26,9 +26,9 @@ class Radiomics(wx.Frame):
     """Main GUI class plus method OnCalculate to start radiomics calculation
         Parent of class Panel"""
     def __init__(self, *a, **b):
-        super(Radiomics, self).__init__(size=(1100,800), pos = (1,1), title='Z-Rad', *a, **b)
+        super(Radiomics, self).__init__(size=(1075,725), pos = (0, 0), title='Z-Rad', *a, **b)
   
-        self.defaultWindowsize = (1150,800)
+        self.defaultWindowsize = (1100,725)
         self.SetMinSize(self.defaultWindowsize)
         logging.basicConfig(format='%(name)-18s: %(message)s', level=logging.INFO)
         # filename = "zRad.log",

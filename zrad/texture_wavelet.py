@@ -11,7 +11,7 @@ import logging
 class Wavelet(object):
     """wavelet transform"""
     def __init__(self, m, path, im_name, name, dim, ctp):
-        self.logger = logging.getLogger(__name__)
+        self.logger = logging.getLogger("Wavelet")
         self.logger.info("Start: Wavelet Calculation")
         self.map = m
         self.dim = dim

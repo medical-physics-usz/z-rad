@@ -67,7 +67,7 @@ class Matrix(object):
                 ymax = np.max(lymax) + 2
                 xmin = np.min(lxmin) - 2
                 xmax = np.max(lxmax) + 2
-                print(ymin, ymax, xmin, xmax)
+                self.logger.info("ymin {}, ymax {}, xmax {}, xmin {}".format(ymin, ymax, xmin, xmax))
                 if xmin < 0:
                     xmin = 0
                 if xmax >= columns:
@@ -121,7 +121,7 @@ class Matrix(object):
             matrix_rec = []
 
             if structure != 'none':  # if the structure to be anaylsed was defined
-                self.logger.info("Vmin, Vmax " + ", ".join(map(str, (vmin, vmax))))
+                self.logger.info("Vmin, Vmax " + ", ".join(map(str, (round(vmin,3), round(vmax,3)))))
 
                 for n in range(len(Xcontour)):
                     matrix.append(m.copy())

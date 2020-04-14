@@ -46,10 +46,9 @@ class Structures(object):
         self.logger.debug("Structure set filename " + rs)
         self.rs = dc.read_file(rs)  # read RS file
         list_organs = []  # list of organs defined in the RS file
-        self.logger.info('structures in RS file: ')
         for j in range(len(self.rs.StructureSetROISequence)):  # find structure name and number
             list_organs.append([self.rs.StructureSetROISequence[j].ROIName, self.rs.StructureSetROISequence[j].ROINumber])
-            self.logger.info("Structures in Structure Set File: " + self.rs.StructureSetROISequence[j].ROIName)
+        self.logger.info("Structures in structure set file\t" + ", ".join(map(str, np.array(list_organs)[:,0])))
 
         organs = structure  # define the structure you're interested in
 
@@ -97,7 +96,7 @@ class Structures(object):
                                     # check for slices without contour in between other contour slices
                                     diff = abs(np.array(index[1:]) - np.array(index[:-1])) / diffS
                                     self.logger.info(
-                                        "difference in t position between slices normalized to slice spacing  " + ", ".join(
+                                        "difference in t position between slices normalized to slice spacing \n" + ", ".join(
                                             map(str, diff)))
                                     dk = 0
                                     for d in range(len(diff)):

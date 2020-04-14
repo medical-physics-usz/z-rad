@@ -43,7 +43,7 @@ class Texture(object):
     outlier – bool, correct for outliers
 '''
     def __init__(self, sb, maps, structure, columns, rows, xCTspace, slices, path, ImName, pixNr, binSize, modality, wv, localRadiomics, cropStructure, stop_calc, *cont):#Xc, Yc, XcW, YcW, HUmin, HUmax, outlier,  ):
-        self.logger = logging.getLogger(__name__)
+        self.logger = logging.getLogger("Texture")
         self.logger.info("Start: Texture Calculation")
         self.structure = structure
         self.xCTspace = xCTspace #image resolution

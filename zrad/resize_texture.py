@@ -26,6 +26,7 @@ class ResizeTexture(object):
     image_type – image modality
     begin – start number
     stop – stop number
+    dim - dimension for resizing
     """
 
     def __init__(self, inp_resolution, interpolation_type, inp_struct, inp_mypath_load, inp_mypath_save, image_type,
@@ -507,14 +508,15 @@ class ResizeTexture(object):
                             for n_s in range(len(M) - 1):  # n_s slice number
                                 if M[n_s] != [] and M[n_s + 1] != []:  # if two consecutive slices not empty - interpolate
                                     if self.round_factor == 2:
-                                        zi = np.linspace(old_gridZ[n_s], old_gridZ[n_s + 1], sliceThick / 0.01 + 1)  # create an interpolation grid between those slices
+                                        zi = np.linspace(old_gridZ[n_s], old_gridZ[n_s + 1], int(sliceThick / 0.01) + 1)  # create an interpolation grid between those slices
                                         # round interpolation grid according to specified precision
                                         for gz in range(len(zi)):
                                             zi[gz] = round(zi[gz], self.round_factor)
                                         # interpolate, X list of x positions of the interpolated contour, Y list of y positions of the interpolated contour , interpolation type  texture find polygon encompassing the sturcture
                                         X, Y = InterpolateROI().interpolate(self.interpolation_alg, M[n_s], M[n_s + 1], np.linspace(0, 1, int(sliceThick / 0.01) + 1), 'texture')
                                     elif self.round_factor == 3:
-                                        zi = np.linspace(old_gridZ[int(n_s)], old_gridZ[int(n_s + 1)], int(sliceThick / 0.001) + 1)  # create an interpolation grid between those slices
+                                        zi = np.linspace(old_gridZ[n_s], old_gridZ[n_s + 1], int(sliceThick / 0.001) + 1)  # create an interpolation grid between those slices
+
                                         # round interpolation grid according to specified precision
                                         for gz in range(len(zi)):
                                             zi[gz] = round(zi[gz], self.round_factor)

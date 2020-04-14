@@ -189,7 +189,9 @@ class ResizeShape(object):
                                     for gz in range(len(zi)):
                                         zi[gz] = round(zi[gz],self.round_factor)
                                     #interpolate, X list of x positions of the interpolated contour, Y list of y positions of the interpoated contour , interpolation type shape returns all the points in the structure
+
                                     X, Y = InterpolateROI().interpolate(self.interpolation_algorithm, M[n_s], M[n_s+1], np.linspace(0,1, int(sliceThick/0.001)+1), 'shape')
+
                                 #check which position in the interpolation grid correcpods to the new slice position
                                 for i in range(len(zi)):
                                     if zi[i] in new_gridZ and zi[i] not in insertedZ: #insertedZ gathers all slice positions which are alreay filled in case that slice position is on the ovelap of two slices from orignal

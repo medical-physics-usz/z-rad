@@ -30,7 +30,7 @@ class LymphNodes(object):
 
     def __init__(self, name_ln, name_sh, path_files_shape, path_save, path_save_dir, start, stop):
         final=[] # list with results
-        for ImName in np.arange(start, stop+1):
+        for ImName in range(start, stop+1):
             ImName = str(ImName)
             print('patient', ImName)
             tumorMass, ptVol, ptPoints = self.FindMassCenter(name_sh, path_files_shape, ImName) #calculates the tumor center of the mass
@@ -305,7 +305,7 @@ class LymphNodes(object):
             optClust = 1
         else:
             ch = [] # list of calinski_harabaz scores for different numbers of clusters
-            for i in np.arange(2,len(points)):
+            for i in range(2,len(points)):
                 kmeans_model = KMeans(n_clusters=i, random_state=1).fit(points)
                 labels = kmeans_model.labels_
                 ch.append((calinski_harabaz_score(points, labels),i))

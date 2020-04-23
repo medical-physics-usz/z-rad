@@ -37,9 +37,9 @@ class Export(object):
         par_names = par_names + app
             
         if wv:
-            wave_names = ['Initial', 'HHH', 'HHL', 'HLH', 'HLL', 'LHH', 'LHL', 'LLH', 'LLL']
+            wave_names = ['', 'HHH', 'HHL', 'HLH', 'HLL', 'LHH', 'LHL', 'LLH', 'LLL']
         else:
-            wave_names = ['Initial']
+            wave_names = ['']
                 
         # #write the header
         
@@ -56,10 +56,11 @@ class Export(object):
         for i in range(len(perf_names)):
             for k in range(len(wave_names)):
                 for j in range(len(par_names)): 
-                    if len(perf_names) == 1:
-                        final_file.write(wave_names[k] + "_" + par_names[j])
-                    else:
-                        final_file.write(perf_names[i]+'_'+ wave_names[k] + "_" + par_names[j])
+                    newFeatName = wave_names[k] + "_" + par_names[j]
+                    if len(perf_names) > 1:
+                        newFeatName = perf_names[i] + "_" + newFeatName
+                    newFeatName = newFeatName.lstrip("_")
+                    final_file.write(newFeatName)
                     if i+j+k < len(perf_names)+len(wave_names)+len(par_names)-3:
                         final_file.write("\t")
         

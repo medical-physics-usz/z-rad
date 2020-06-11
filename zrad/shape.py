@@ -1,24 +1,17 @@
 # -*- coding: utf-8 -*-
+
+# import libraries
 import numpy as np
 import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d.art3d import Poly3DCollection
-from mpl_toolkits.mplot3d import Axes3D
 import vtk
-import os.path
 from vtk import *
 from os import listdir, remove # managing files
 from os.path import isfile, join, exists
-##from mayavi import mlab
-#from mayavi.mlab import triangular_mesh
-from vtk.numpy_interface import dataset_adapter as dsa
 import scipy
 from scipy import spatial
 import scipy.ndimage as ndi
-#import mahotas
-import matplotlib.cm as cm
 import sys
 from datetime import datetime
-
 from sklearn.decomposition import PCA
 
 class Shape(object):
@@ -34,7 +27,7 @@ class Shape(object):
         path_results = inp_mypath_results #'F:\\HN PET data\\validation_shapePT.txt'
         self.path_load = inp_mypath_load+"\\"
         #nlist = [52,66,74,77, 88,108,109,115,122,129,141,147,175,184,187,214,228,233,245,260,265]
-        nlist =  [str(i) for i in np.arange(low, high+1)]#[4,5,13,20,32,35,47,48,54,59,60]
+        nlist =  [str(i) for i in range(low, high+1)]#[4,5,13,20,32,35,47,48,54,59,60]
 
         #maximum euclidian distance, one needs 
         scalefactor = 0.3 #0.4 #0.1 => 8 s /file, 0.2 => 10 s/file, 0.3 => 1 min/file, 0.4 => MemoryOverload
@@ -53,7 +46,7 @@ class Shape(object):
             remove(path_results)
 
         fGTV = open(path_results, "w") #use "a" to append
-        fGTV.write("Name\tMC-Volume\tnonzero_Points\tMC-Surface\tClusters\tCompactness_1\tCompactness_2\tDispr.\tSphericity\tAsphericity\tA/V\tthickness_median\tthickness_SD\teuclidian_distance\tmajor_axis\tminor_axis\tleast_axis\telongation\tflatness" "\n")
+        fGTV.write("patient\tMC-Volume\tnonzero_Points\tMC-Surface\tClusters\tCompactness_1\tCompactness_2\tDispr.\tSphericity\tAsphericity\tA/V\tthickness_median\tthickness_SD\teuclidian_distance\tmajor_axis\tminor_axis\tleast_axis\telongation\tflatness" "\n")
 
         print('Start_0: ', datetime.now().strftime('%H:%M:%S'))
 

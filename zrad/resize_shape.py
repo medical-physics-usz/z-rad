@@ -1,21 +1,15 @@
 # -*- coding: utf-8 -*-
-import os
-try:
-    import dicom as dc
-    from dicom.filereader import InvalidDicomError
-except:
-    import pydicom as dc
-    from pydicom.filereader import InvalidDicomError
+
+# import libraries
+import pydicom as dc
+from pydicom.filereader import InvalidDicomError
 import numpy as np
-from numpy import arange
 from os import path, makedirs, listdir
-from scipy.ndimage.morphology import distance_transform_edt
-from scipy.interpolate import interp1d
 from os.path import isfile, join
-import pylab as py
-import cv2
 from glob import glob
 import logging
+
+# own classes
 from resize_interpolate_roi import InterpolateROI
 
 class ResizeShape(object):
@@ -30,8 +24,7 @@ class ResizeShape(object):
     '''
 
     def __init__(self, inp_struct, inp_mypath_load, inp_mypath_save, image_type, low, high, inp_resolution, interpolation_type, cropStructure):
-        self.logger = logging.getLogger(__name__)
-        self.logger.info("Resize Shape")
+        self.logger = logging.getLogger("Resize_Shape")
         inp_resolution = float(inp_resolution)
         if inp_resolution < 1.: #set a round factor for slice position and resolution for shape calculation 1mm if texture resolution > 1mm and 0.1 if texture resolution < 1mm
             self.round_factor = 3
@@ -60,7 +53,7 @@ class ResizeShape(object):
         self.listDicomProblem = [] #cannot open as dicom
         self.wrongROI = [] #in case of key errors
 
-        self.lista_dir =  [str(i) for i in np.arange(low, high+1)] #list of directories to be analyzed
+        self.lista_dir =  [str(i) for i in range(low, high+1)] #list of directories to be analyzed
 
         self.resize()
 
@@ -77,8 +70,9 @@ class ResizeShape(object):
 
         for name in self.lista_dir: #iterate through the patients
             try:
-                print('patient ', name)
-                mypath_file =self.mypath_load +name + '\\' #go to subfolder for given patient
+                print("")
+                self.logger.info('Patient ' + str(name))
+                mypath_file = self.mypath_load +name + '\\' #go to subfolder for given patient
                 mypath_save = self.mypath_s
 
                 onlyfiles = []
@@ -92,14 +86,14 @@ class ResizeShape(object):
 
                 onlyfiles.sort() #sort and take only file names
                 slices = []
-                for i in arange(0, len(onlyfiles)):
+                for i in range(len(onlyfiles)):
                     slices.append(onlyfiles[i][0])
                     onlyfiles[i] = onlyfiles[i][1]
 
                 CT = dc.read_file(mypath_file+onlyfiles[0]) #example image
                 # position in DICOM: pixel spacing = y,x,z in image position patient x,y,z
-                xCTspace=float(CT.PixelSpacing[1]) # XY resolution
-                yCTspace=float(CT.PixelSpacing[0]) # XY resolution
+                xCTspace = float(CT.PixelSpacing[1]) # XY resolution
+                yCTspace = float(CT.PixelSpacing[0]) # XY resolution
                 xct = float(CT.ImagePositionPatient[0]) # x position of top left corner
                 yct = float(CT.ImagePositionPatient[1]) # y position of top left corner
                 if self.cropStructure["ct_path"] != "":
@@ -152,7 +146,7 @@ class ResizeShape(object):
 
                     list_organs = [] #ROI (name, number)
                     list_organs_names = [] #ROI names
-                    for j in arange(0, len(rs.StructureSetROISequence)):
+                    for j in range(len(rs.StructureSetROISequence)):
                         list_organs.append([rs.StructureSetROISequence[j].ROIName, rs.StructureSetROISequence[j].ROINumber])
                         list_organs_names.append(rs.StructureSetROISequence[j].ROIName)
 
@@ -166,8 +160,8 @@ class ResizeShape(object):
                                 if not path.isdir(mypath_save+'\\'+j+'\\'+name+'\\'):
                                     raise
 
-                    for s in arange(0, len(change_struct)):
-                        print('structure: ', change_struct[s])
+                    for s in range(len(change_struct)):
+                        self.logger.info('structure: ' + change_struct[s])
                         #read a contour points for given structure
                         #M - 3D matrix filled with 1 insdie contour and 0 outside
                         #xmin - minimum value of x in the contour
@@ -178,31 +172,33 @@ class ResizeShape(object):
                         insertedZ=[] #list of contour slices alread inserted for the given ROI
 
                         # roudning new patient position to the defined precision
-                        for gz in range(0, len(new_gridZ)):
+                        for gz in range(len(new_gridZ)):
                             new_gridZ[gz] = round(new_gridZ[gz],self.round_factor)
-                        for n_s in arange(0, len(M)-1): # n_s slice number
+                        for n_s in range(len(M)-1): # n_s slice number
                             if M[n_s] != [] and M[n_s+1] != []: #if two consecutive slices not empty - interpolate
                                 if self.round_factor == 2:
                                     zi = np.linspace(old_gridZ[n_s], old_gridZ[n_s+1], int(sliceThick/0.01)+1) #create an interpolation grid between those slicse
                                     #round interpolation grid accroding to specified precision
-                                    for gz in arange(0, len(zi)):
+                                    for gz in range(len(zi)):
                                         zi[gz] = round(zi[gz],self.round_factor)
                                     #interpolate, X list of x positions of the interpolated contour, Y list of y positions of the interpoated contour , interpolation type shape returns all the points in the structure
                                     X, Y = InterpolateROI().interpolate(self.interpolation_algorithm, M[n_s], M[n_s+1], np.linspace(0,1,int(sliceThick/0.01)+1), 'shape')
                                 elif self.round_factor == 3 :
                                     zi = np.linspace(old_gridZ[n_s], old_gridZ[n_s+1], int(sliceThick/0.001)+1) #create an interpolation grid between those slicse
                                     #round interpolation grid accroding to specified precision
-                                    for gz in arange(0, len(zi)):
+                                    for gz in range(len(zi)):
                                         zi[gz] = round(zi[gz],self.round_factor)
                                     #interpolate, X list of x positions of the interpolated contour, Y list of y positions of the interpoated contour , interpolation type shape returns all the points in the structure
-                                    X, Y = InterpolateROI().interpolate(self.interpolation_algorithm, M[n_s], M[n_s+1], np.linspace(0,1,int(sliceThick/0.001)+1), 'shape')
+
+                                    X, Y = InterpolateROI().interpolate(self.interpolation_algorithm, M[n_s], M[n_s+1], np.linspace(0,1, int(sliceThick/0.001)+1), 'shape')
+
                                 #check which position in the interpolation grid correcpods to the new slice position
-                                for i in arange(0, len(zi)):
+                                for i in range(len(zi)):
                                     if zi[i] in new_gridZ and zi[i] not in insertedZ: #insertedZ gathers all slice positions which are alreay filled in case that slice position is on the ovelap of two slices from orignal
                                         ind = str(np.where(new_gridZ == zi[i])[0][0]) #slice position to save correct file name, also importat for LN dist
                                         file_n = open(mypath_save+'\\'+change_struct[s]+'\\'+name+'\\'+'slice_'+ind, 'w')
                                         insertedZ.append(zi[i])
-                                        for j in arange(0, len(X[i])): #save positions of all points inside structure in to columns for X and Y
+                                        for j in range(len(X[i])): #save positions of all points inside structure in to columns for X and Y
                                             file_n.write(str(X[i][j]+xmin)+'\t' +str(Y[i][j]+ymin))
                                             file_n.write('\n')
                                         file_n.close()

@@ -1,19 +1,13 @@
 # -*- coding: utf-8 -*-
-"""
-Created on Tue Nov 14 14:59:51 2017
 
-@author: Marta Bogowicz
-"""
-
-try:
-    import pydicom as dc  # dicom library
-except ImportError:
-    import dicom as dc  # dicom library
+# import libraries
+import pydicom as dc  # dicom library
 from os import listdir, makedirs  # managing files
 from os.path import isfile, join, isdir
 from numpy import arange
 import logging
 
+# own classes
 from structure import Structures
 
 
@@ -39,8 +33,7 @@ class ReadImageStructure(object):
         self.ReadStucture(mypath_image, stucture, wv, local)
 
     def ReadImages(self, UID, mypath_image):
-        print('''reads and sorts images''')
-        # self.logger.info("Reading Images")
+        self.logger.info("Reading Images")
         onlyfiles = []
         self.listDicomProblem = []  # cannot open as dicom
         if 'CTP' in UID or 'IVIM' in UID:  # CTP and IVIM
@@ -53,9 +46,9 @@ class ReadImageStructure(object):
                         # hier müsste eine Fehlermeldung kommen, falls nicht!
                 of.sort()
                 onlyfiles.append(of)
-            for u in arange(0, len(UID)):
+            for u in arange(len(UID)):
                 s = []
-                for i in arange(0, len(onlyfiles[u])):
+                for i in arange(len(onlyfiles[u])):
                     s.append(onlyfiles[u][i][0])
                     onlyfiles[u][i] = onlyfiles[u][i][1]
             self.slices = s
@@ -70,7 +63,7 @@ class ReadImageStructure(object):
 
             onlyfiles.sort()  # sort and take only file names
             self.slices = []
-            for i in arange(0, len(onlyfiles)):
+            for i in arange(len(onlyfiles)):
                 self.slices.append(onlyfiles[i][0])
                 onlyfiles[i] = onlyfiles[i][1]
 

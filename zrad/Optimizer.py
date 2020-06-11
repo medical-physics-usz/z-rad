@@ -1,8 +1,9 @@
+# -*- coding: utf-8 -*-
+
+# import libraries
 import numpy as np
 import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
 import copy
-import vtk
 
 
 class NanOptimizer:
@@ -314,12 +315,12 @@ class NanOptimizer:
                     lst_grid = []
                     # print ("Start: " + str(Optimize2D.nan_img[x, y]))
                     print("START")
-                    print(np.arange(z, z_dim, 3))
-                    print(np.arange(y, y_dim, 3))
-                    print(np.arange(x, x_dim, 3))
-                    for slc in np.arange(z, z_dim, 3):
-                        for col in np.arange(x, x_dim, 3):
-                            for row in np.arange(y, y_dim, 3):
+                    print(range(z, z_dim, 3))
+                    print(range(y, y_dim, 3))
+                    print(range(x, x_dim, 3))
+                    for slc in range(z, z_dim, 3):
+                        for col in range(x, x_dim, 3):
+                            for row in range(y, y_dim, 3):
                                 for arr in NanOptimizer.img_indices[np.where(NanOptimizer.img_indices[:,0] == slc)]:# NanOptimizer.img_indices[range(len(NanOptimizer.img_indices))]:
                                     el = np.asarray([slc, row, col])
                                     if (el == arr).all():
@@ -399,8 +400,8 @@ class NanOptimizer:
             dic_slc_sum[z] = 0
             dic_opt[z] = []
             # print "NEW z: " + str(z)
-            # print np.arange(z, z_dim, 3)
-            for slc in np.arange(z, z_dim, 3):
+            # print range(z, z_dim, 3)
+            for slc in range(z, z_dim, 3):
                 for x in start_indices_x:
                     for y in start_indices_y:
 
@@ -408,8 +409,8 @@ class NanOptimizer:
                         nan_sum = 0
                         lst_grid = []
 
-                        for col in np.arange(x, x_dim, 3):
-                            for row in np.arange(y, y_dim, 3):
+                        for col in range(x, x_dim, 3):
+                            for row in range(y, y_dim, 3):
                                 for arr in NanOptimizer.img_indices[np.where(NanOptimizer.img_indices[:,0] == slc)]: #NanOptimizer.img_indices[range(len(NanOptimizer.img_indices))]:
                                     el = np.asarray([slc, row, col])
                                     if (el == arr).all():
@@ -489,8 +490,8 @@ class NanOptimizer:
 
     def gridding_2D(self):
 
-        #print np.arange(0, len(Optimize2D.raw_img[:, 0]), 3)
-        #print np.arange(0, len(Optimize2D.raw_img[0]), 3)
+        #print range(len(Optimize2D.raw_img[:, 0]), 3)
+        #print range(len(Optimize2D.raw_img[0]), 3)
 
         # scale image for better contrast
         temp = copy.deepcopy(NanOptimizer.nan_img)
@@ -515,8 +516,8 @@ class NanOptimizer:
                 nan_sum = 0
                 lst_grid = []
                 #print ("Start: " + str(Optimize2D.nan_img[x, y]))
-                for col in np.arange(y, len(NanOptimizer.raw_img[0]), 3):
-                    for row in np.arange(x, len(NanOptimizer.raw_img[:, 0]), 3):
+                for col in range(y, len(NanOptimizer.raw_img[0]), 3):
+                    for row in range(x, len(NanOptimizer.raw_img[:, 0]), 3):
                         for arr in NanOptimizer.img_indices[list(range(len(NanOptimizer.img_indices)))]:
                             el = np.asarray([row, col])
                             if (el == arr).all():
@@ -560,8 +561,8 @@ class NanOptimizer:
         # temp[not_one[:,0], not_one[:,1]] = 0
         # #temp[self.cont_ind[:,0], self.cont_ind[:,1]] = 1
         #
-        # for col in np.arange(y, len(NanOptimizer.raw_img[0]), 3):
-        #     for row in np.arange(x, len(NanOptimizer.raw_img[:, 0]), 3):
+        # for col in range(y, len(NanOptimizer.raw_img[0]), 3):
+        #     for row in range(x, len(NanOptimizer.raw_img[:, 0]), 3):
         #         for arr in NanOptimizer.img_indices[range(len(NanOptimizer.img_indices))]:
         #             el = np.asarray([row, col])
         #             if (el == arr).all():
@@ -637,7 +638,7 @@ class NanOptimizer:
         if dynamic == True:
             temp = []
             grid_positions = NanOptimizer.dic_grid
-            for i in np.arange(0, len(grid_positions)):
+            for i in range(len(grid_positions)):
                 if len(grid_positions[i]):
                     temp.append(list(grid_positions[i]))
                     new = copy.deepcopy(grid_positions[i])
@@ -653,7 +654,7 @@ class NanOptimizer:
             for key in list(NanOptimizer.dic_grid.keys()):
                 temp = []
                 grid_positions = NanOptimizer.dic_grid[key]
-                for i in np.arange(0, len(grid_positions)):
+                for i in range(len(grid_positions)):
                     if len(grid_positions[i]):
                         temp.append(list(grid_positions[i]))
                         new = copy.deepcopy(grid_positions[i])

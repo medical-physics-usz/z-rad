@@ -1,5 +1,7 @@
+# -*- coding: utf-8 -*-s
+
+# import libraries
 import numpy as np
-from numpy import arange
 import matplotlib
 import matplotlib.pyplot as plt
 from os import makedirs
@@ -37,8 +39,8 @@ class Intensity(object):
         """ calculate and plot the histogram """
         M1 = []  # take all values except of nan
         for m in M:
-            for i in arange(0, len(m)):
-                for j in arange(0, len(m[i])):
+            for i in range(len(m)):
+                for j in range(len(m[i])):
                     if np.isnan(m[i][j]):
                         pass
                     else:
@@ -127,10 +129,10 @@ class Intensity(object):
         # 3.3.13    robust mean absolute deviation
         temp = list(M1)
         ind1 = np.where(np.array(temp) < p10)[0]
-        for i in arange(1, len(ind1) + 1):
+        for i in range(1, len(ind1) + 1):
             temp.pop(ind1[-i])
         ind2 = np.where(np.array(temp) > p90)[0]
-        for i in arange(1, len(ind2) + 1):
+        for i in range(1, len(ind2) + 1):
             temp.pop(ind2[-i])
         self.rmad = np.sum(abs((np.array(temp) - np.mean(temp)))) / float(len(temp))
 
@@ -158,7 +160,7 @@ class Intensity(object):
         s = set(dM1)
         sl = list(s)
         w = []
-        for si in arange(0, len(sl)):
+        for si in range(len(sl)):
             i = np.where(dM1 == sl[si])[0]
             w.append(len(i))
         p = 1.0 * np.array(w) / np.sum(w)
@@ -171,7 +173,7 @@ class Intensity(object):
 
         g = list(set(dM1))
         p = []
-        for gi in arange(0, len(g)):
+        for gi in range(len(g)):
             ind = np.where(np.array(dM1) == g[gi])[0]
             p.append(len(ind) * 1.0 / len(dM1))
         self.H_uniformity = np.sum(np.array(p) ** 2)
@@ -289,10 +291,10 @@ class GLCM(object):
         glcm = np.zeros((len(directions), len(matrix), self.n_bits, self.n_bits))
         comatrix = np.zeros((len(directions), self.n_bits, self.n_bits))
         comatrix_merged = np.zeros((self.n_bits, self.n_bits))
-        for i in arange(0, len(matrix)):  # for every slice
-            for y in arange(0, len(matrix[i])):  # for every row in slice i
-                for x in arange(0, len(matrix[i][y])):  # for every column in row y of slice i
-                    for d in arange(0, len(directions)):  # 4 directions (0-3) in 2D
+        for i in range(len(matrix)):  # for every slice
+            for y in range(len(matrix[i])):  # for every row in slice i
+                for x in range(len(matrix[i][y])):  # for every column in row y of slice i
+                    for d in range(len(directions)):  # 4 directions (0-3) in 2D
                         if 0 <= i + directions[d][2] < len(matrix) and 0 <= y + directions[d][1] < len(matrix[0]) \
                                 and 0 <= x + directions[d][0] < len(matrix[0][0]):
                             # to check for index error
@@ -336,7 +338,7 @@ class GLCM(object):
         p_minus: cross diagonal probability per slice
         """
         # normalize matrix
-        for dd in arange(0, self.nrdirections):
+        for dd in range(self.nrdirections):
             if len(np.shape(glcm_matrix)) == 4:  # 4 d matrix (dir-slices-Ng-Ng)
                 matrix_t = glcm_matrix[dd]  # norm only one directional matrix at once
             else:
@@ -344,7 +346,7 @@ class GLCM(object):
             if len(np.shape(matrix_t)) == 2:  # expand dim for fully merged matrix
                 matrix_t = np.expand_dims(matrix_t, axis=0)
             norm_matrix = np.zeros(np.shape(matrix_t))
-            for i in arange(0, len(matrix_t)):
+            for i in range(len(matrix_t)):
                 counts = np.sum(matrix_t[i])  # sum of counts for each slice
                 if counts != 0:
                     norm_matrix[i] = matrix_t[i] / counts
@@ -353,9 +355,9 @@ class GLCM(object):
             # marginal probabilities for each slice
             p_minus = np.zeros((len(matrix_t), self.n_bits))
             p_plus = np.zeros((len(matrix_t), 2 * self.n_bits + 3))
-            for ax0 in arange(0, len(norm_matrix)):  # for each slice
-                for ax1 in arange(0, len(norm_matrix[ax0])):
-                    for ax2 in arange(0, len(norm_matrix[ax0][ax1])):
+            for ax0 in range(len(norm_matrix)):  # for each slice
+                for ax1 in range(len(norm_matrix[ax0])):
+                    for ax2 in range(len(norm_matrix[ax0][ax1])):
                         p_minus[ax0][abs(ax1 - ax2)] += norm_matrix[ax0][ax1][ax2]  # diagonal probability
                         p_plus[ax0][abs(ax1 + ax2) + 2] += norm_matrix[ax0][ax1][ax2]  # cross diagonal probability
             self.p_minus.append(p_minus)
@@ -382,27 +384,27 @@ class GLCM(object):
         self.featurename is a vector with the feature value for each matrix slice
         self.featurename_average is a number with the averaged feature value
         """
-        for dd in arange(0, self.nrdirections):
+        for dd in range(self.nrdirections):
             nrslices = len(self.norm_matrix[0])  # gives = 1 for glcm_mf, or slices, or directions
             matrix = self.norm_matrix[dd]  # only loops 4 times for glcm non merged
 
-            for x in arange(0, nrslices):  # matrix[x] is 2dimensional
+            for x in range(nrslices):  # matrix[x] is 2dimensional
                 # 3.6.1 Joint Maximum
                 self.joint_max.append(np.max(matrix[x]))
 
                 # 3.6.2 Joint Average
                 s = 0
-                for i in arange(0, len(matrix[x])):
+                for i in range(len(matrix[x])):
                     s += (i + 1) * np.sum(matrix[x][i])  # i+1 gray values starting from 1 not from 0
                 self.joint_average.append(s)
 
                 # 3.6.3 Joint variance
                 var = 0
                 miu = 0
-                for i in arange(0, len(matrix[x])):
+                for i in range(len(matrix[x])):
                     miu += (i + 1) * np.sum(matrix[x][i])  # i+1 gray values starting from 1 not from 0
                 ind = np.where(matrix[x] != 0)  # non-zero entries only to speed up calculation
-                for j in arange(0, len(ind[0])):
+                for j in range(len(ind[0])):
                     var += (ind[0][j] + 1 - miu) ** 2 * matrix[x][ind[0][j]][
                         ind[1][j]]  # i+1 gray values starting from 1 not from 0
                 if var == 0:
@@ -412,7 +414,7 @@ class GLCM(object):
                 # 3.6.4 joint entropy / entropy
                 entropy = 0
                 ind = np.where(matrix[x] != 0)  # non-zero entries only to speed up calculation
-                for j in arange(0, len(ind[0])):
+                for j in range(len(ind[0])):
                     s4 = (matrix[x][ind[0][j]][ind[1][j]]) * np.log2(matrix[x][ind[0][j]][ind[1][j]])
                     if np.isnan(s4):
                         pass
@@ -427,9 +429,9 @@ class GLCM(object):
                 # 3.6.6     difference variance
                 a = 0
                 v = 0
-                for k in arange(0, len(self.p_minus[dd][x])):
+                for k in range(len(self.p_minus[dd][x])):
                     a += k * self.p_minus[dd][x][k]
-                for k in arange(0, len(self.p_minus[dd][x])):
+                for k in range(len(self.p_minus[dd][x])):
                     v += (k - a) ** 2 * self.p_minus[dd][x][k]
                 self.diff_average.append(a)
                 self.diff_var.append(v)
@@ -438,7 +440,7 @@ class GLCM(object):
 
                 # 3.6.7     difference entropy
                 e = 0
-                for i in arange(0, len(self.p_minus[dd][x])):
+                for i in range(len(self.p_minus[dd][x])):
                     if self.p_minus[dd][x][i] != 0:
                         e += -self.p_minus[dd][x][i] * np.log2(self.p_minus[dd][x][i])
                 self.diff_entropy.append(e)
@@ -448,16 +450,16 @@ class GLCM(object):
                 # 3.6.9     sum variance
                 a = 0
                 v = 0
-                for k in arange(2, len(self.p_plus[dd][x])):
+                for k in range(2, len(self.p_plus[dd][x])):
                     a += k * self.p_plus[dd][x][k]
-                for k in arange(2, len(self.p_plus[dd][x])):
+                for k in range(2, len(self.p_plus[dd][x])):
                     v += (k - a) ** 2 * self.p_plus[dd][x][k]
                 self.sum_average.append(a)
                 self.sum_var.append(v)
 
                 # 3.6.10 sum entropy
                 e = 0
-                for i in arange(2, len(self.p_plus[dd][x])):
+                for i in range(2, len(self.p_plus[dd][x])):
                     if self.p_plus[dd][x][i] != 0:
                         e += -self.p_plus[dd][x][i] * np.log2(self.p_plus[dd][x][i])
                 self.sum_entropy.append(e)
@@ -465,7 +467,7 @@ class GLCM(object):
                 # 3.6.11 angular second moment // ENERGY
                 energy = 0
                 ind = np.where(matrix[x] != 0)  # non-zero entries only to speed up calculation
-                for j in arange(0, len(ind[0])):
+                for j in range(len(ind[0])):
                     energy += (matrix[x][ind[0][j]][ind[1][j]]) ** 2
                 self.angular_sec_moment.append(energy)
                 del ind
@@ -473,7 +475,7 @@ class GLCM(object):
                 # 3.6.12    contrast
                 contrast = 0
                 ind = np.where(matrix[x] != 0)  # non-zero entries only to speed up calculation
-                for j in arange(0, len(ind[0])):
+                for j in range(len(ind[0])):
                     contrast += ((ind[0][j] - ind[1][j]) ** 2) * matrix[x][ind[0][j]][ind[1][j]]
                 if contrast == 0:
                     contrast = np.nan
@@ -483,7 +485,7 @@ class GLCM(object):
                 # 3.6.13    dissimilarity
                 ds = 0
                 ind = np.where(np.array(matrix[x]) != 0)  # non-zero entries only to speed up calculation
-                for i in arange(0, len(ind[0])):
+                for i in range(len(ind[0])):
                     ds += abs(ind[0][i] - ind[1][i]) * matrix[x][ind[0][i]][ind[1][i]]
                 self.dissimilarity.append(ds)
                 del ind
@@ -493,7 +495,7 @@ class GLCM(object):
                 homo = 0
                 nhomo = 0
                 ind = np.where(matrix[x] != 0)  # non-zero entries only to speed up calculation
-                for j in arange(0, len(ind[0])):
+                for j in range(len(ind[0])):
                     homo += matrix[x][ind[0][j]][ind[1][j]] / (1 + abs(ind[0][j] - ind[1][j]))
                     nhomo += matrix[x][ind[0][j]][ind[1][j]] / (1 + abs(ind[0][j] - ind[1][j]) / float(len(matrix[x])))
                 if homo == 0:
@@ -509,7 +511,7 @@ class GLCM(object):
                 homo = 0
                 nhomo = 0
                 ind = np.where(matrix[x] != 0)  # non-zero entries only to speed up calculation
-                for j in arange(0, len(ind[0])):
+                for j in range(len(ind[0])):
                     homo += matrix[x][ind[0][j]][ind[1][j]] / (1 + (ind[0][j] - ind[1][j]) ** 2)
                     nhomo += matrix[x][ind[0][j]][ind[1][j]] / (
                                 1 + ((ind[0][j] - ind[1][j]) / float(len(matrix[x]))) ** 2)
@@ -521,22 +523,22 @@ class GLCM(object):
 
                 # 3.6.18    inverse variance
                 f = 0
-                for i in arange(0, len(matrix[x])):
-                    for j in arange(i + 1, len(matrix[x][0])):
+                for i in range(len(matrix[x])):
+                    for j in range(i + 1, len(matrix[x][0])):
                         f += matrix[x][i][j] / (i - j) ** 2
                 self.invers_var.append(2 * f)
 
                 # 3.6.19    correlation
                 mean = 0
-                for i in arange(0, len(matrix[x])):
+                for i in range(len(matrix[x])):
                     mean += (i + 1) * np.sum(matrix[x][i])  # i+1 gray values starting from 1 not from 0
                 std = 0
-                for i in arange(0, len(matrix[x])):
+                for i in range(len(matrix[x])):
                     std += ((i + 1 - mean) ** 2) * np.sum(matrix[x][i])  # i+1 gray values starting from 1 not from 0
                 std = np.sqrt(std)
                 ind = np.where(np.array(matrix[x]) != 0)  # non-zero entries only to speed up calculation
                 corr = 0
-                for i in arange(0, len(ind[0])):
+                for i in range(len(ind[0])):
                     corr += (ind[0][i] + 1) * (ind[1][i] + 1) * matrix[x][ind[0][i]][
                         ind[1][i]]  # i+1 gray values starting from 1 not from 0
                 corr = (corr - mean ** 2) / std ** 2
@@ -546,7 +548,7 @@ class GLCM(object):
                 # 3.6.20    autocorrelation
                 c = 0
                 ind = np.where(np.array(matrix[x]) != 0)  # non-zero entries only to speed up calculation
-                for i in arange(0, len(ind[0])):
+                for i in range(len(ind[0])):
                     c += (ind[0][i] + 1) * (ind[1][i] + 1) * matrix[x][ind[0][i]][
                         ind[1][i]]  # i+1 gray values starting from 1 not from 0
                 self.autocorrelation.append(c)
@@ -556,13 +558,13 @@ class GLCM(object):
                 # 3.6.22        cluster shade
                 # 3.6.23        cluster prominence
                 mean = 0
-                for i in arange(0, len(matrix[x])):
+                for i in range(len(matrix[x])):
                     mean += (i + 1) * np.sum(matrix[x][i])
                 clust_t = 0
                 clust_s = 0
                 clust_p = 0
                 ind = np.where(np.array(matrix[x]) != 0)  # non-zero entries only to speed up calculation
-                for i in arange(0, len(ind[0])):
+                for i in range(len(ind[0])):
                     clust_t += ((ind[0][i] + ind[1][i] + 2 - 2 * mean) ** 2) * matrix[x][ind[0][i]][
                         ind[1][i]]  # i+1 gray values starting from 1 not from 0
                     clust_s += ((ind[0][i] + ind[1][i] + 2 - 2 * mean) ** 3) * matrix[x][ind[0][i]][ind[1][i]]
@@ -578,17 +580,17 @@ class GLCM(object):
                 hxy = self.joint_entropy[
                     x + dd * nrslices]  # all values are appended. for second direction we need to "jump" over all slices of first direction
                 X = []
-                for i in arange(0, len(matrix[x])):
+                for i in range(len(matrix[x])):
                     X.append(np.sum(matrix[x][i]))
                 hxy1 = 0
                 hxy2 = 0
-                for i in arange(0, len(matrix[x])):
-                    for j in arange(0, len(matrix[x][i])):
+                for i in range(len(matrix[x])):
+                    for j in range(len(matrix[x][i])):
                         if X[i] * X[j] != 0:
                             hxy1 += -matrix[x][i][j] * np.log2(X[i] * X[j])
                             hxy2 += -X[i] * X[j] * np.log2(X[i] * X[j])
                 hx = 0
-                for i in arange(0, len(X)):
+                for i in range(len(X)):
                     if X[i] != 0:
                         hx += -X[i] * np.log2(X[i])
                 try:
@@ -606,12 +608,12 @@ class GLCM(object):
                 try:
                     Q = np.zeros((len(matrix[x]), len(matrix[x][0])))
                     X = []
-                    for i in arange(0, len(matrix[x])):
+                    for i in range(len(matrix[x])):
                         X.append(np.sum(matrix[x][i]))
 
-                    for i in arange(0, len(matrix[x])):
-                        for j in arange(0, len(matrix[x][i])):
-                            for k in arange(0, len(X)):
+                    for i in range(len(matrix[x])):
+                        for j in range(len(matrix[x][i])):
+                            for k in range(len(X)):
                                 if (X[i] * X[k]) != 0:
                                     Q[i][j] += matrix[x][i][k] * matrix[x][j][k] / (X[i] * X[k])
 
@@ -757,11 +759,11 @@ class GLRLM_GLSZM_GLDZM_NGLDM(object):
             # d) merge all
             glrlm_mf = np.zeros((self.n_bits, max_runlength))
             # 2D calculation - for every slice
-            for d in arange(0, len(self.directionvector)):
+            for d in range(len(self.directionvector)):
                 m = np.copy(self.matrix)
-                for z in arange(0, nr_slices):
-                    for y in arange(0, len(m[z])):  # for every row
-                        for x in arange(0, len(m[z][y])):  # for every column
+                for z in range(nr_slices):
+                    for y in range(len(m[z])):  # for every row
+                        for x in range(len(m[z][y])):  # for every column
                             grey_value1 = m[z][y][x]
                             if np.isnan(grey_value1):
                                 continue
@@ -807,7 +809,7 @@ class GLRLM_GLSZM_GLDZM_NGLDM(object):
             # for the closest nan voxel not a closest nan voxel from the original ROI
             dm = np.array(self.matrix).copy()
             (indz, indy, indx) = np.where(~np.isnan(self.matrix))
-            for i in arange(0, len(indz)):
+            for i in range(len(indz)):
                 dist = []  # vector of distances for one voxel
 #                # 3D implementation:
 # 3D implementation
@@ -852,14 +854,14 @@ class GLRLM_GLSZM_GLDZM_NGLDM(object):
             m.dtype = np.float
             Smax = 1  # maximal size
             Dmax = 1  # maximal distance
-            for i in arange(0, self.n_bits):
+            for i in range(self.n_bits):
                 GLSZM.append([0])
                 GLDZM.append([0])
             GLSZM_perslice = np.zeros((len(m), self.n_bits, Smax))
             GLDZM_perslice = np.zeros((len(m), self.n_bits, Dmax))
-            for k in arange(0, len(self.matrix)):
-                for i in arange(0, len(self.matrix[k])):
-                    for j in arange(0, len(self.matrix[k][i])):
+            for k in range(len(self.matrix)):
+                for i in range(len(self.matrix[k])):
+                    for j in range(len(self.matrix[k][i])):
                         if np.isnan(m[k][i][j]):  # skip nan values
                             pass
                         else:
@@ -874,7 +876,7 @@ class GLRLM_GLSZM_GLDZM_NGLDM(object):
                                 m[ni[0]][ni[1]][ni[2]] = np.nan
                             while len(points) != 0:  # LOOK FOR NEIGHBORS OF NEIGHBORS
                                 p = []
-                                for n in arange(0, len(points)):
+                                for n in range(len(points)):
                                     poin = self.neighbor(points[n][0], points[n][1], points[n][2], m, grey_value)
                                     for ni in poin:
                                         zone.append(ni)
@@ -884,8 +886,8 @@ class GLRLM_GLSZM_GLDZM_NGLDM(object):
                                 points = p
 
                             if size > Smax:  # check if matrix (max zone size) needs to be enlarged
-                                for s in arange(0, len(GLSZM)):
-                                    for si in arange(0, size - Smax):
+                                for s in range(len(GLSZM)):
+                                    for si in range(size - Smax):
                                         GLSZM[s].append(0)
                                 GLSZM_perslice = np.append(GLSZM_perslice,
                                                            np.zeros((len(self.matrix), len(GLSZM), size - Smax)),
@@ -903,8 +905,8 @@ class GLRLM_GLSZM_GLDZM_NGLDM(object):
                                 distance.append(dist_matrix[zi[0], zi[1], zi[2]])  # add coordinates to distance
                             min_distance = int(np.min(distance))  # find minimum distance
                             if min_distance > Dmax:
-                                for s in arange(0, len(GLDZM)):
-                                    for si in arange(0, min_distance - Dmax):
+                                for s in range(len(GLDZM)):
+                                    for si in range(min_distance - Dmax):
                                         GLDZM[s].append(0)
                                 GLDZM_perslice = np.append(GLDZM_perslice, np.zeros(
                                     (len(self.matrix), len(GLDZM), min_distance - Dmax)), axis=2)
@@ -915,7 +917,7 @@ class GLRLM_GLSZM_GLDZM_NGLDM(object):
                             GLDZM[grey_value][min_distance - 1] += 1
                             GLDZM_perslice[k][grey_value][min_distance - 1] += 1
 
-            for i in arange(0, len(GLSZM)):
+            for i in range(len(GLSZM)):
                 GLSZM[i] = np.array(GLSZM[i])
             GLSZM = np.array(GLSZM)  # no normalization according to IBSI /float(np.sum(GLSZM))
             norm_GLSZM = np.sum(GLSZM)
@@ -931,14 +933,14 @@ class GLRLM_GLSZM_GLDZM_NGLDM(object):
             '''neighborhood gray-level dependence matrix'''
             matrix = np.copy(self.matrix)
             s = []
-            for i in arange(0, self.n_bits):
+            for i in range(self.n_bits):
                 s.append([0])
             maxSize = 0
             ngldm_nonmerged = np.zeros((len(self.matrix), self.n_bits, 1))
-            for k in arange(0, len(matrix)):
-                for v in arange(0, self.n_bits):
+            for k in range(len(matrix)):
+                for v in range(self.n_bits):
                     index = np.where(matrix[k] == v)  # search for a value level
-                    for ind in arange(0, len(index[0])):
+                    for ind in range(len(index[0])):
                         temp = []
                         numerator = 0
                         # enable for 3D
@@ -965,15 +967,15 @@ class GLRLM_GLSZM_GLDZM_NGLDM(object):
                                 numerator += 1
 
                         ind_nan = np.where(np.isnan(np.array(temp)))[0]  # find nan neighbours
-                        for n in arange(1, len(ind_nan) + 1):  # remove nan neighbours
+                        for n in range(1, len(ind_nan) + 1):  # remove nan neighbours
                             temp.pop(ind_nan[-n])
                         numerator += len(ind_nan)
                         if numerator != 8:  # 8 would mean no neighbours in 2D
                             # in 3D:   numerator != 26:  # if it has neigbourhood
                             size = len(np.where(np.array(temp) == v)[0])  # neighbours with the same value
                             if size > maxSize:
-                                for gray in arange(0, len(s)):
-                                    for app in arange(maxSize, size):
+                                for gray in range(len(s)):
+                                    for app in range(maxSize, size):
                                         s[gray].append(0)
                                 ngldm_nonmerged = np.append(ngldm_nonmerged, np.zeros(
                                     (len(self.matrix), self.n_bits, size - maxSize)), axis=2)
@@ -990,9 +992,9 @@ class GLRLM_GLSZM_GLDZM_NGLDM(object):
     def neighbor(self, z, y, x, matrix, v):
         """search for neighbours with the same gray level in 2D"""
         points = []
-        for k in arange(0, 1):  # don't look for neighbors in z direction for 2D
-            for i in arange(-1, 2):
-                for j in arange(-1, 2):
+        for k in range(1):  # don't look for neighbors in z direction for 2D
+            for i in range(-1, 2):
+                for j in range(-1, 2):
                     try:
                         if matrix[z + k][y + i][x + j] == v and z + k >= 0 and y + i >= 0 and x + j >= 0:
                             points.append([z + k, y + i, x + j])
@@ -1024,10 +1026,10 @@ class GLRLM_GLSZM_GLDZM_NGLDM(object):
 
         nrdirection = len(matrix_t)
         nrslices = len(matrix_t[0])
-        for dd in arange(0, nrdirection):  # for all directions
+        for dd in range(nrdirection):  # for all directions
             matrix = matrix_t[dd]
 
-            for x in arange(0, nrslices):
+            for x in range(nrslices):
                 sum_elements = float(np.sum(matrix[x]))  # sum over all elements of glrlrm / glszm / gldzm...
 
                 if sum_elements == 0:
@@ -1046,60 +1048,60 @@ class GLRLM_GLSZM_GLDZM_NGLDM(object):
 
                 # 3.7.1     short runs emphasis // small zone emphasis
                 sse = 0
-                for i in arange(0, len(matrix[x])):
-                    for j in arange(0, len(matrix[x][i])):
+                for i in range(len(matrix[x])):
+                    for j in range(len(matrix[x][i])):
                         sse += matrix[x][i][j] / float(np.uint(j + 1) ** 2)  # place 0 in the list corresponds to size 1
                 self.shortSmall_x_emphasis.append(sse / sum_elements)
 
                 # 3.7.2     long runs emphasis // large zone emphasis
                 lse = 0
-                for i in arange(0, len(matrix[x])):
-                    for j in arange(0, len(matrix[x][i])):
+                for i in range(len(matrix[x])):
+                    for j in range(len(matrix[x][i])):
                         lse += matrix[x][i][j] * float(np.uint(j + 1) ** 2)  # place 0 in the list corresponds to size 1
                 self.longLarge_x_emphasis.append(lse / sum_elements)
 
                 # 3.7.3     low grey level run emphasis // lgl zone emphasis
                 lgse = 0
-                for i in arange(0, len(matrix[x])):  # grey value
-                    for j in arange(0, len(matrix[x][i])):  # run length
+                for i in range(len(matrix[x])):  # grey value
+                    for j in range(len(matrix[x][i])):  # run length
                         lgse += matrix[x][i][j] / float(np.uint(i + 1) ** 2)  # otherwise level 0 is not included
                 self.low_grey_level_x_emphasis.append(lgse / sum_elements)
 
                 # 3.7.4     high grey level run emphasis    //  hgl zone emphasis
                 hgse = 0
-                for i in arange(0, len(matrix[x])):
-                    for j in arange(0, len(matrix[x][i])):
+                for i in range(len(matrix[x])):
+                    for j in range(len(matrix[x][i])):
                         hgse += matrix[x][i][j] * float(np.uint(i + 1) ** 2)  # otherwise level 0 is not included
                 self.high_grey_level_x_emphasis.append(hgse / sum_elements)
 
                 # 3.7.5     short run low grey level emphasis   // small zone lgl emphasis
                 sslge = 0
-                for i in arange(0, len(matrix[x])):
-                    for j in arange(0, len(matrix[x][i])):
+                for i in range(len(matrix[x])):
+                    for j in range(len(matrix[x][i])):
                         sslge += matrix[x][i][j] / float((np.uint(j + 1) ** 2 * (i + 1) ** 2))
                         # otherwise level 0 is not included
                 self.shortSmall_x_low_grey_level_emphasis.append(sslge / sum_elements)
 
                 # 3.7.6
                 sshge = 0
-                for i in arange(0, len(matrix[x])):
-                    for j in arange(0, len(matrix[x][i])):
+                for i in range(len(matrix[x])):
+                    for j in range(len(matrix[x][i])):
                         sshge += matrix[x][i][j] * float((i + 1) ** 2) / float(
                             np.uint(j + 1) ** 2)  # otherwise level 0 is not included
                 self.shortSmall_x_high_grey_level_emphasis.append(sshge / sum_elements)
 
                 # 3.7.7     long run low grey level emphasis
                 lslge = 0
-                for i in arange(0, len(matrix[x])):
-                    for j in arange(0, len(matrix[x][i])):
+                for i in range(len(matrix[x])):
+                    for j in range(len(matrix[x][i])):
                         lslge += matrix[x][i][j] * float(np.uint(j + 1) ** 2) / float(
                             (i + 1) ** 2)  # otherwise level 0 is not included
                 self.longLarge_x_low_grey_level_emphasis.append(lslge / sum_elements)
 
                 # 3.7.8     long run high grey level emphasis   // large zone hgl emphasis
                 lshge = 0
-                for i in arange(0, len(matrix[x])):
-                    for j in arange(0, len(matrix[x][i])):
+                for i in range(len(matrix[x])):
+                    for j in range(len(matrix[x][i])):
                         lshge += matrix[x][i][j] * float(np.uint(j + 1) ** 2 * (i + 1) ** 2)
                         # otherwise level 0 is not included
                 self.longLarge_x_high_grey_level_emphasis.append(lshge / sum_elements)
@@ -1108,9 +1110,9 @@ class GLRLM_GLSZM_GLDZM_NGLDM(object):
                 # 3.7.10    # " normalised
                 var = 0
                 matrix_tt = matrix[x] / np.sqrt(sum_elements)
-                for m in arange(0, len(matrix[x])):
+                for m in range(len(matrix[x])):
                     s = 0
-                    for n in arange(0, len(matrix[x][m])):
+                    for n in range(len(matrix[x][m])):
                         s += matrix_tt[m][n]
                     var += s ** 2  # to avoid overflow error
                 self.grey_level_nonuniform.append(var)
@@ -1120,9 +1122,9 @@ class GLRLM_GLSZM_GLDZM_NGLDM(object):
                 # 3.7.12   norm run length non-uniformity   // normalised zone size non-uniformity
                 var = 0
                 matrix_temp = matrix[x] / np.sqrt(sum_elements)
-                for n in arange(0, len(matrix_temp[0])):
+                for n in range(len(matrix_temp[0])):
                     s = 0
-                    for m in arange(0, len(matrix_temp)):
+                    for m in range(len(matrix_temp)):
                         s += matrix_temp[m][n]
                     var += s ** 2  # to avoid overflow
                 self.x_lengthSize_nonuniform.append(var)
@@ -1130,7 +1132,7 @@ class GLRLM_GLSZM_GLDZM_NGLDM(object):
 
                 # 3.7.13    run percentage      // zone percentage
                 # nv = 0
-                # for j in arange(0, len(matrix[x][0])):  # loop over column
+                # for j in range(len(matrix[x][0])):  # loop over column
                 #     nv += (j + 1) * np.sum(matrix[x][:, j])    # sum over column, multiply with run length / zone size
                 # rpc = sum_elements / float(nv)
                 # self.x_percentage.append(rpc)
@@ -1138,8 +1140,8 @@ class GLRLM_GLSZM_GLDZM_NGLDM(object):
                 self.x_percentage.append(sum_elements / float(nv[x]))   # x chooses slice
                 # original
                 # nv = 0
-                # for i in arange(0, len(matrix[x])):
-                #     for j in arange(0, len(matrix[x][i])):
+                # for i in range(len(matrix[x])):
+                #     for j in range(len(matrix[x][i])):
                 #         nv += (j + 1) * matrix[x][i][j]
                 # rpc = sum_elements / float(nv)
                 # self.x_percentage.append(rpc)
@@ -1147,10 +1149,10 @@ class GLRLM_GLSZM_GLDZM_NGLDM(object):
                 # 3.7.14        grey level variance
                 pmatrix = matrix[x] / float(sum_elements)
                 miu = 0
-                for i in arange(0, len(matrix[x])):
+                for i in range(len(matrix[x])):
                     miu += (i + 1) * np.sum(pmatrix[i])
                 glv = 0
-                for i in arange(0, len(matrix[x])):
+                for i in range(len(matrix[x])):
                     glv += ((i + 1 - miu) ** 2) * np.sum(pmatrix[i])
                 self.grey_level_var.append(glv)
                 del pmatrix
@@ -1158,12 +1160,12 @@ class GLRLM_GLSZM_GLDZM_NGLDM(object):
                 # 3.7.15        ?????????????? check if it is right lsv = run length variance    // zone size variance
                 pmatrix = matrix[x] / float(sum_elements)
                 miu = 0
-                for i in arange(0, len(matrix[x])):
-                    for j in arange(0, len(matrix[x][i])):
+                for i in range(len(matrix[x])):
+                    for j in range(len(matrix[x][i])):
                         miu += (j + 1) * np.sum(pmatrix[i][j])
                 lsv = 0
-                for i in arange(0, len(matrix[x])):
-                    for j in arange(0, len(matrix[x][i])):
+                for i in range(len(matrix[x])):
+                    for j in range(len(matrix[x][i])):
                         lsv += ((j + 1 - miu) ** 2) * pmatrix[i][j]
                 self.x_lengthSize_var.append(lsv)
                 del pmatrix
@@ -1172,7 +1174,7 @@ class GLRLM_GLSZM_GLDZM_NGLDM(object):
                 pmatrix = matrix[x] / float(sum_elements)
                 ind = np.where(pmatrix != 0)
                 e = 0
-                for i in arange(0, len(ind[0])):
+                for i in range(len(ind[0])):
                     e += -pmatrix[ind[0][i]][ind[1][i]] * np.log2(pmatrix[ind[0][i]][ind[1][i]])
                 self.xsize_entropy.append(e)
 
@@ -1320,10 +1322,10 @@ class NGTDM(object):
             max_neighbours = 8
         else:
             max_neighbours = 26
-        for k in arange(0, nr_slices):
-            for v in arange(0, self.n_bits):  # for each grey level
+        for k in range(nr_slices):
+            for v in range(self.n_bits):  # for each grey level
                 index = np.where(matrix[k] == v)  # search for a value level
-                for ind in arange(0, len(index[0])):    # for each element of grey value v look at neighbors
+                for ind in range(len(index[0])):    # for each element of grey value v look at neighbors
                     temp = []
                     numerator = 0
                     # get values of all neighbours
@@ -1348,7 +1350,7 @@ class NGTDM(object):
                         else:
                             numerator += 1
                     ind_nan = np.where(np.isnan(np.array(temp)))[0]     # no nan values in neighborhood for calculation
-                    for n in arange(1, len(ind_nan) + 1):
+                    for n in range(1, len(ind_nan) + 1):
                         temp.pop(ind_nan[-n])
                     numerator += len(ind_nan)
                     if numerator != 26 and self.dim == "3D" or numerator != 8 and self.dim == "2D" or numerator != 8 and self.dim == "2D_singleSlice":
@@ -1381,7 +1383,7 @@ class NGTDM(object):
             s = np.expand_dims(s, axis=0)
             ni = np.expand_dims(ni, axis=0)
 
-        for x in arange(0, len(s)):  # len s = nr slices or =1 for 3d
+        for x in range(len(s)):  # len s = nr slices or =1 for 3d
             # 3.10.1 coarseness
             f = 0
             ind = np.where(np.array(ni[x]) != 0)[0]
@@ -1498,7 +1500,7 @@ class CMS_MTV(object):
             matrix = np.copy(self.matrix_v)
             # calculate center of mass shift for each slice. average results
             cms_2d = []
-            for s in arange(0, len(self.matrix)):
+            for s in range(len(self.matrix)):
                 ind = np.where(~np.isnan(matrix[s]))
                 ind_r = list(ind)
 
@@ -1569,7 +1571,7 @@ class CMS_MTV(object):
                 maxR = np.min([len(m), len(m[0]), len(m[0][0])])  # take min of all directions
 
             frac = []
-            for r in arange(2, maxR + 1):  # because log(1) = 0
+            for r in range(2, maxR + 1):  # because log(1) = 0
                 N = 0
                 if self.dim == "2D":  # in 2D several slices case, we want to iterate through each slice.
                     rz = 1
@@ -1577,16 +1579,16 @@ class CMS_MTV(object):
                 else:
                     rz = r
                     rzz = r
-                for z in arange(0, len(m), rz):  #
-                    for y in arange(0, len(m[0]), r):
-                        for x in arange(0, len(m[0][0]), r):
+                for z in range(len(m), rz):  #
+                    for y in range(len(m[0]), r):
+                        for x in range(len(m[0][0]), r):
                             m = np.array(m)
                             matrix = m[z:z + rzz, y:y + r, x:x + r]  # doesn't produce indexerror
                             ind = len(np.where(np.isnan(matrix))[0])
                             if ind < (r ** 3) and self.dim == "3D" or ind < (r**2) and self.dim != "3D":
                                 N += 1
                 frac.append(np.log(N))
-            x = np.log(arange(2, maxR + 1))
+            x = np.log(range(2, maxR + 1))
             xdata = np.transpose(x)
             x0 = np.array([0, 0])  # initial guess
             result = optimization.curve_fit(func_lin, xdata, frac, x0)

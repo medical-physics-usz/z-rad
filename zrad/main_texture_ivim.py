@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 '''read data and save texture parameters in txt file'''
-#import libraries
+
+# import libraries
 import pydicom as dc # dicom library
 import numpy as np # numerical computation 
 
-#own classes
-#import class to calculate texture parameters
+# own classes
 from texture import Texture
 from read import ReadImageStructure
 from export import Export

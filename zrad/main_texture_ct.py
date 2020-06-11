@@ -1,6 +1,6 @@
 # -*- coding: cp1252 -*-
 
-#import libraries
+# import libraries
 import pydicom as dc # dicom library
 import numpy as np
 import pandas as pd

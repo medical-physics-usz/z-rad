@@ -378,13 +378,14 @@ class Texture(object):
                     
                     #make the matrix_list and matrix_v_list with all the subregions to be analyzed
                 
-                try: #ValueError
+
+                for w in range(iterations_n):
                     #calulate features for original and transformed images or local centers if provided 
                     #feed in the list of maps to calculate
-                    for w in range(iterations_n):
+                    try: #ValueError #value error catch for each wavelet/local map
                         matrix = matrix_list[w]
                         matrix_v = matrix_v_list[w]    
-                        self.n_bits = int(n_bits_list[w])
+                        self.n_bits = n_bits_list[w]
                         interval = interval_list[w]
                         
                         try:
@@ -858,9 +859,9 @@ class Texture(object):
                             self.points.append(norm_points_list[0])
                             del matrix
                         
-                except ValueError:
-                    print(ValueError)
-                    self.stop_calculation('ValueError', [1])
+                    except ValueError:
+                        print(ValueError)
+                        self.stop_calculation('ValueError', [1])
 
             #except IndexError:#IndexError:
             #    matrix = []

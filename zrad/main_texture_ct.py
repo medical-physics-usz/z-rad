@@ -1,45 +1,42 @@
-# -*- coding: cp1252 -*-
+import logging
+import os
 
-# import libraries
-import pydicom as dc # dicom library
 import numpy as np
 import pandas as pd
+import pydicom as dc
+from tqdm import tqdm
 
-# own classes
-# import class to calculate texture parameters
-from texture import Texture
-from read import ReadImageStructure
 from export import Export
 from features2d import Features2D
-import logging
-from tqdm import tqdm
+from read import ReadImageStructure
+from texture import Texture
 
 
 class main_texture_ct(object):
     """Main class to handle CT images, reads images and structures, calls radiomics calculation and export class to export results
     Type: object
     Attributes:
-    sb � Status bar in the frame
-    path_image � path to the patients subfolders
-    path_save � path to save radiomics results
-    structure � list of structures to be analysed
+    sb - Status bar in the frame
+    path_image - path to the patients subfolders
+    path_save - path to save radiomics results
+    structure - list of structures to be analysed
     pixNr number of analyzed bins, if not specified  = none
-    binSize � bin size for the analysis, if not specified = none
-    l_ImName � list of patients subfolders (here are data to be analysed)
-    save_as � name of text files to save the radiomics results
-    Dim � string variable of value 2D or 3D for dimensionality of calculation
+    binSize - bin size for the analysis, if not specified = none
+    l_ImName - list of patients subfolders (here are data to be analysed)
+    save_as - name of text files to save the radiomics results
+    Dim - string variable of value 2D or 3D for dimensionality of calculation
     HUmin - HU range min
-    HUmax � HU range max
-    outlier � bool, correct for outliers
-    wv � bool, calculate wavelet
-    exportList � list of matrices/features to be calculated and exported
+    HUmax - HU range max
+    outlier - bool, correct for outliers
+    wv - bool, calculate wavelet
+    exportList - list of matrices/features to be calculated and exported
     """
 
     def __init__(self, sb, path_image, path_save, structure, pixNr, binSize, l_ImName, save_as, dim, HUmin, HUmax,
                  outlier_corr, wv, local, cropInput, exportList):
         self.logger = logging.getLogger(__name__)
         self.logger.info("Start")
-        final = []  # list with results
+
         image_modality = ['CT']
         dicomProblem = []
 
@@ -57,9 +54,9 @@ class main_texture_ct(object):
         for ImName in tqdm(l_ImName):
             self.logger.info("Patient " + ImName)
             try:
-                mypath_image = path_image + ImName + '\\'
-                CT_UID = ['1.2.840.10008.5.1.4.1.1.2', '1.2.840.10008.5.1.4.1.1.2.1',
-                          'CT Image Storage']  # CT and contrast-enhanced CT
+                mypath_image = path_image + ImName + os.sep
+                # CT and contrast-enhanced CT
+                CT_UID = ['1.2.840.10008.5.1.4.1.1.2', '1.2.840.10008.5.1.4.1.1.2.1', 'CT Image Storage']
                 read = ReadImageStructure(CT_UID, mypath_image, structure, wv, dim, local)
                 dicomProblem.append([ImName, read.listDicomProblem])
 
@@ -86,7 +83,7 @@ class main_texture_ct(object):
                     IM_matrix.append(np.array(a))
                 IM_matrix = np.array(IM_matrix)
 
-            except WindowsError:  # error if there is not directory
+            except OSError:  # error if there is not directory
                 continue
             except IndexError:  # empty folder
                 continue
@@ -100,11 +97,12 @@ class main_texture_ct(object):
             # median)
             stop_calc = ''  # in case something would be wrong with the image tags
             if dim == "2D" or dim == "2D_singleSlice":
-                dict_features = Features2D(dim, sb, [IM_matrix], read.structure_f, read.columns, read.rows, read.xCTspace, read.zCTspace,
-                                          read.slices, path_save, ImName, pixNr, binSize, image_modality, wv, local,
-                                          cropInput, stop_calc, read.Xcontour, read.Xcontour_W, read.Ycontour,
-                                          read.Ycontour_W, read.Xcontour_Rec, read.Ycontour_Rec, HUmin, HUmax,
-                                          outlier_corr).ret()
+                dict_features = Features2D(dim, sb, [IM_matrix], read.structure_f, read.columns, read.rows,
+                                           read.xCTspace, read.zCTspace,
+                                           read.slices, path_save, ImName, pixNr, binSize, image_modality, wv, local,
+                                           cropInput, stop_calc, read.Xcontour, read.Xcontour_W, read.Ycontour,
+                                           read.Ycontour_W, read.Xcontour_Rec, read.Ycontour_Rec, HUmin, HUmax,
+                                           outlier_corr).ret()
             else:
                 lista_results = Texture(sb, [IM_matrix], read.structure_f, read.columns, read.rows, read.xCTspace,
                                         read.slices, path_save, ImName, pixNr, binSize, image_modality, wv, local,
@@ -121,7 +119,8 @@ class main_texture_ct(object):
                 #     df_features_all = df_phantom
                 #     continue
                 dp_export = pd.DataFrame(dict_features, index=[ImName])
-                df_features_all = df_features_all.append(dp_export, sort=False)  # ignore index only if not defined before..., ignore_index=True) try sort=False
+                # ignore index only if not defined before..., ignore_index=True) try sort=False
+                df_features_all = df_features_all.append(dp_export, sort=False)
             else:
                 final = [[ImName, lista_results[2], lista_results[:2], lista_results[3:-1], lista_results[-1]]]
                 final_file = Export().ExportResults(final, final_file, par_names, image_modality, wave_names, wv, local)
@@ -139,7 +138,7 @@ class main_texture_ct(object):
                                "wv": wv}
             df_parameters = pd.DataFrame.from_dict(dict_parameters)
             # save excel sheet
-            with pd.ExcelWriter(path_save+"features_2D.xlsx") as writer:
+            with pd.ExcelWriter(path_save + "features_2D.xlsx") as writer:
                 df_features_all.to_excel(writer, sheet_name="Features")
                 df_parameters.to_excel(writer, sheet_name="Parameters")
         else:

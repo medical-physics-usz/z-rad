@@ -1,19 +1,16 @@
-# -*- coding: utf-8 -*-s
-
-# import libraries
+import logging
 import os
-import pydicom as dc
-from pydicom.filereader import InvalidDicomError
-import numpy as np
-from shutil import copyfile
+from glob import glob
 from os import path, makedirs, listdir, rmdir
 from os.path import isfile, join
-from scipy.interpolate import interp1d
-from glob import glob
-from tqdm import tqdm
-import logging
+from shutil import copyfile
 
-# own classes
+import numpy as np
+import pydicom as dc
+from pydicom.filereader import InvalidDicomError
+from scipy.interpolate import interp1d
+from tqdm import tqdm
+
 from resize_interpolate_roi import InterpolateROI
 
 
@@ -32,7 +29,7 @@ class ResizeTexture(object):
     def __init__(self, inp_resolution, interpolation_type, inp_struct, inp_mypath_load, inp_mypath_save, image_type,
                  begin, stop, cropInput, dim):
         self.logger = logging.getLogger("Resize_Texture")
-        self.interpolation_alg=interpolation_type
+        self.interpolation_alg = interpolation_type
         self.resolution = float(inp_resolution)
         if self.resolution < 1.:  # set a round factor for slice position
             self.round_factor = 3
@@ -42,8 +39,8 @@ class ResizeTexture(object):
         self.dim = dim
         self.list_structure = inp_struct
 
-        self.mypath_load = inp_mypath_load + "\\"
-        self.mypath_s = inp_mypath_save + "\\"
+        self.mypath_load = inp_mypath_load  # + os.sep
+        self.mypath_s = inp_mypath_save  # + os.sep
         self.UID = '2030'  # UID for new images
         self.image_type = image_type
 
@@ -52,7 +49,7 @@ class ResizeTexture(object):
 
         # if there were non dicom files save file
         if len(self.listDicomProblem) != 0:
-            config = open(self.mypath_s + '\\' + 'dicom_problem.txt', 'w')
+            config = open(self.mypath_s + os.sep + 'dicom_problem.txt', 'w')
             for i in self.listDicomProblem:
                 config.write(i + '\n')
             config.close()
@@ -68,8 +65,8 @@ class ResizeTexture(object):
         for name in tqdm(self.list_dir):
             try:
                 self.logger.info('Patient ' + str(name))
-                mypath_file = self.mypath_load + name + '\\'  # go to subfolder for given patient
-                mypath_save = self.mypath_s + name + '\\'  # create subfolder for given patient
+                mypath_file = self.mypath_load + name + os.sep  # go to subfolder for given patient
+                mypath_save = self.mypath_s + name + os.sep  # create subfolder for given patient
                 try:
                     makedirs(mypath_save)
                 except OSError:
@@ -90,8 +87,10 @@ class ResizeTexture(object):
 
                     for f in listdir(mypath_file):
                         try:
-                            if isfile(join(mypath_file, f)) and dc.read_file(mypath_file + f).SOPClassUID in UID_t:  # read only dicoms of certain modality
-                                onlyfiles.append((round(float(dc.read_file(mypath_file + '\\' + f).ImagePositionPatient[2]), self.round_factor), f))  # sort files by slice position
+                            # read only dicoms of certain modality
+                            if isfile(join(mypath_file, f)) and dc.read_file(mypath_file + f).SOPClassUID in UID_t:
+                                # sort files by slice position
+                                onlyfiles.append((round(float(dc.read_file(mypath_file + os.sep + f).ImagePositionPatient[2]), self.round_factor), f))
                         except InvalidDicomError:  # not a dicom file
                             self.listDicomProblem.append(name + ' ' + f)
                             pass
@@ -113,15 +112,19 @@ class ResizeTexture(object):
                     rows = CT.Rows  # number of rows
 
                     if self.cropStructure["ct_path"] == "":
-                        new_gridX = np.arange(round(xct, 10), round(xct + xCTspace * columns, 10), self.resolution)  # new grid of X for interpolation
-                        old_gridX = np.arange(round(xct, 10), round(xct + xCTspace * columns, 10), xCTspace)  # original grid of X
-                        new_gridY = np.arange(round(yct, 10), round(yct + yCTspace * rows, 10), self.resolution)  # new grid of Y for interpolation
-                        old_gridY = np.arange(round(yct, 10), round(yct + yCTspace * rows, 10), yCTspace)  # original grid of Y
+                        # new grid of X for interpolation
+                        new_gridX = np.arange(round(xct, 10), round(xct + xCTspace * columns, 10), self.resolution)
+                        # original grid of X
+                        old_gridX = np.arange(round(xct, 10), round(xct + xCTspace * columns, 10), xCTspace)
+                        # new grid of Y for interpolation
+                        new_gridY = np.arange(round(yct, 10), round(yct + yCTspace * rows, 10), self.resolution)
+                        # original grid of Y
+                        old_gridY = np.arange(round(yct, 10), round(yct + yCTspace * rows, 10), yCTspace)
 
                     elif self.cropStructure["ct_path"] != "":
 
                         self.logger.info("Start Shifting Matrix to adjust for Image Corner differences")
-                        CTfiles = glob(self.cropStructure["ct_path"] + "\\" + name + "\\*dcm")
+                        CTfiles = glob(self.cropStructure["ct_path"] + os.sep + name + os.sep + "*dcm")
                         cropCT = dc.read_file(CTfiles[0])  # take one ct slices to extract image origin
                         if "RTST" in cropCT.Modality:
                             cropCT = dc.read_file(CTfiles[1])
@@ -131,10 +134,14 @@ class ResizeTexture(object):
                         self.logger.info("y_ct_old" + str(yct))
                         self.logger.info("x_ct_new" + str(crop_corner_x))
                         self.logger.info("y_ct_new" + str(crop_corner_y))
-                        new_gridX = np.arange(round(crop_corner_x, 10), round(crop_corner_x + xCTspace * columns, 10), self.resolution)  # new grid of X for interpolation
-                        old_gridX = np.arange(round(xct, 10), round(xct + xCTspace * columns, 10), xCTspace)  # original grid of X
-                        new_gridY = np.arange(round(crop_corner_y, 10), round(crop_corner_y + yCTspace * rows, 10), self.resolution)  # new grid of Y for interpolation
-                        old_gridY = np.arange(round(yct, 10), round(yct + yCTspace * rows, 10), yCTspace)  # original grid of Y
+                        # new grid of X for interpolation
+                        new_gridX = np.arange(round(crop_corner_x, 10), round(crop_corner_x + xCTspace * columns, 10), self.resolution)
+                        # original grid of X
+                        old_gridX = np.arange(round(xct, 10), round(xct + xCTspace * columns, 10), xCTspace)
+                        # new grid of Y for interpolation
+                        new_gridY = np.arange(round(crop_corner_y, 10), round(crop_corner_y + yCTspace * rows, 10), self.resolution)
+                        # original grid of Y
+                        old_gridY = np.arange(round(yct, 10), round(yct + yCTspace * rows, 10), yCTspace)
 
                     self.logger.info("length of rows {} and columns {} in dicom".format(rows, columns))
                     self.logger.info("shape of old gridX " + str(old_gridX.shape))
@@ -167,9 +174,13 @@ class ResizeTexture(object):
                             data16 = np.array(np.fromstring(data, dtype=bits))  # converting to decimal
                             data16 = data16 * float(CT.RescaleSlope) + float(CT.RescaleIntercept)
                         else:
-                            data16 = np.array(np.fromstring(data, dtype=bits))  # converting to decimal, for CT no intercept as it is the same per image
+                            # converting to decimal, for CT no intercept as it is the same per image
+                            data16 = np.array(np.fromstring(data, dtype=bits))
                         # recalculating for rows x columns
-                        a = np.reshape(data16, (rows, columns))
+                        try:
+                            a = np.reshape(data16, (rows, columns))
+                        except ValueError:
+                            import pdb; pdb.set_trace()
                         del data
                         del data16
                         # interpolate XY
@@ -217,8 +228,8 @@ class ResizeTexture(object):
                         try:
                             for x in range(new_columns):
                                 for y in range(new_rows):
-                                    f = interp1d(old_gridZ, IM[:,y,x], kind=self.interpolation_alg, fill_value="extrapolate")
-                                    new_image[:,y,x]=f(new_gridZ)
+                                    f = interp1d(old_gridZ, IM[:, y, x], kind=self.interpolation_alg, fill_value="extrapolate")
+                                    new_image[:, y, x] = f(new_gridZ)
 
                         except ValueError:
                             if slices[1] - slices[0] < 0:
@@ -230,8 +241,8 @@ class ResizeTexture(object):
                                 old_gridZ = np.array(slices)
                             for x in range(new_columns):
                                 for y in range(new_rows):
-                                    f = interp1d(old_gridZ, IM[:,y,x], kind=self.interpolation_alg, fill_value="extrapolate")
-                                    new_image[:,y,x]=f(new_gridZ)
+                                    f = interp1d(old_gridZ, IM[:, y, x], kind=self.interpolation_alg, fill_value="extrapolate")
+                                    new_image[:, y, x] = f(new_gridZ)
 
                     # check if all dicom tags are valid
                     CT = dc.read_file(mypath_file + onlyfiles[0])
@@ -253,7 +264,8 @@ class ResizeTexture(object):
                         CT = dc.read_file(mypath_file + onlyfiles[im_nr])  # read file to be modified
                         for ki in invalid_tags:
                             del CT[ki]
-                        CT.FrameOfReferenceUID = CT.FrameOfReferenceUID[:-2] + self.UID  # change UID so it is treated as new image
+                        # change UID so it is treated as new image
+                        CT.FrameOfReferenceUID = CT.FrameOfReferenceUID[:-2] + self.UID
                         CT.SeriesInstanceUID = CT.SeriesInstanceUID[:-2] + self.UID
                         CT.SOPInstanceUID = CT.SOPInstanceUID[:-1] + self.UID + str(im)
                         CT.Columns = new_columns  # adapt columns
@@ -270,7 +282,8 @@ class ResizeTexture(object):
                                     CT.SliceLocation = str(new_gridZ[im])
                             except AttributeError:
                                 pass
-                            CT.ImagePositionPatient[2] = str(new_gridZ[im])  # adapt patient position tag for new z position of the image
+                            # adapt patient position tag for new z position of the image
+                            CT.ImagePositionPatient[2] = str(new_gridZ[im])
                         # for PET images, calculate new slope and intercept
                         if self.image_type == 'PET':
                             vmax = int(np.max(new_image[im]) + 1)
@@ -312,8 +325,9 @@ class ResizeTexture(object):
                             if not path.isdir(mypath_save):
                                 raise
 
-                        mypath_ivim = mypath_file + ivim_map + '\\'  # IVIM subtype
-                        onlyfiles = [f for f in listdir(mypath_ivim) if isfile(join(mypath_ivim, f))]  # read all files in
+                        mypath_ivim = mypath_file + ivim_map + os.sep  # IVIM subtype
+                        # read all files in
+                        onlyfiles = [f for f in listdir(mypath_ivim) if isfile(join(mypath_ivim, f))]
 
                         for i in range(len(onlyfiles)):
                             onlyfiles[i] = (float(dc.read_file(mypath_ivim + onlyfiles[i]).ImagePositionPatient[2]), onlyfiles[i])
@@ -331,10 +345,14 @@ class ResizeTexture(object):
                         yct = float(CT.ImagePositionPatient[1])  # y position of top left corner
                         columns = CT.Columns  # number of columns
                         rows = CT.Rows  # number of rows
-                        new_gridX = np.arange(xct, xct + xCTspace * columns, self.resolution)  # new grid of X for interpolation
-                        old_gridX = np.arange(xct, xct + xCTspace * columns, xCTspace)  # original grid of X
-                        new_gridY = np.arange(yct, yct + yCTspace * rows, self.resolution)  # new grid of Y for interpolation
-                        old_gridY = np.arange(yct, yct + yCTspace * rows, yCTspace)  # original grid of Y
+                        # new grid of X for interpolation
+                        new_gridX = np.arange(xct, xct + xCTspace * columns, self.resolution)
+                        # original grid of X
+                        old_gridX = np.arange(xct, xct + xCTspace * columns, xCTspace)
+                        # new grid of Y for interpolation
+                        new_gridY = np.arange(yct, yct + yCTspace * rows, self.resolution)
+                        # original grid of Y
+                        old_gridY = np.arange(yct, yct + yCTspace * rows, yCTspace)
 
                         if len(old_gridX) > columns:  # due to rounding
                             old_gridX = old_gridX[:-1]
@@ -394,13 +412,14 @@ class ResizeTexture(object):
                             self.logger.info('new grid Z ' + ", ".join(map(str, new_gridZ)))
                             self.logger.info('old grid Z '+ ", ".join(map(str, old_gridZ)))
 
-                            new_image = np.zeros((len(new_gridZ), new_rows, new_columns))  # matrix with zeros for the new image
+                            # matrix with zeros for the new image
+                            new_image = np.zeros((len(new_gridZ), new_rows, new_columns))
                             # interpolate in z direction
                             try:
                                 for x in range(new_columns):
                                     for y in range(new_rows):
                                         f = interp1d(old_gridZ, IM[:, y, x], kind=self.type_of_int, fill_value="extrapolate")
-                                        new_image[:, y, x]=f(new_gridZ)
+                                        new_image[:, y, x] = f(new_gridZ)
 
                             except ValueError:
                                 if slices[1] - slices[0] < 0:
@@ -417,9 +436,11 @@ class ResizeTexture(object):
                                         new_image[:,y,x]=f(new_gridZ)
                         # save interpolated images
                         for im in range(len(new_image)):
-                            im_nr = int(im * float(len(onlyfiles)) / len(new_image))  # choose an original dicom file to be modify
+                            # choose an original dicom file to be modify
+                            im_nr = int(im * float(len(onlyfiles)) / len(new_image))
                             CT = dc.read_file(mypath_ivim + onlyfiles[im_nr])  # read file to be modified
-                            CT.FrameOfReferenceUID = CT.FrameOfReferenceUID[:-2] + self.UID  # change UID so it is treated as new image
+                            # change UID so it is treated as new image
+                            CT.FrameOfReferenceUID = CT.FrameOfReferenceUID[:-2] + self.UID
                             CT.SeriesInstanceUID = CT.SeriesInstanceUID[:-2] + self.UID
                             CT.SOPInstanceUID = CT.SOPInstanceUID[:-1] + self.UID + str(im)
                             CT.Columns = new_columns  # adapt columns
@@ -436,12 +457,13 @@ class ResizeTexture(object):
                                         CT.SliceLocation = str(new_gridZ[im])
                                 except AttributeError:
                                     pass
-                                CT.ImagePositionPatient[2] = str(new_gridZ[im])  # adapt patient position tag for new z position of the image
+                                # adapt patient position tag for new z position of the image
+                                CT.ImagePositionPatient[2] = str(new_gridZ[im])
                             array = np.array(new_image[im], dtype=np.int16)
                             data = array.tostring()  # convert to string
                             CT.PixelData = data  # data pixel data to new image
 
-                            CT.save_as(mypath_save + ivim_map + '\\image' + str(im + 1) + '.dcm')  # save image
+                            CT.save_as(mypath_save + ivim_map + os.sep + 'image' + str(im + 1) + '.dcm')  # save image
                         del new_image
                         del CT
                         del onlyfiles
@@ -454,7 +476,8 @@ class ResizeTexture(object):
                 rs = []
                 for f in listdir(mypath_file):
                     try:
-                        if isfile(join(mypath_file, f)) and dc.read_file(mypath_file + f).SOPClassUID in RS_UID:  # read only dicoms of certain modality
+                        # read only dicoms of certain modality
+                        if isfile(join(mypath_file, f)) and dc.read_file(mypath_file + f).SOPClassUID in RS_UID:
                             rs.append(f)
                     except InvalidDicomError:  # not a dicom file
                         pass
@@ -506,25 +529,35 @@ class ResizeTexture(object):
                             for gz in range(len(new_gridZ)):
                                 new_gridZ[gz] = round(new_gridZ[gz], self.round_factor)
                             for n_s in range(len(M) - 1):  # n_s slice number
-                                if M[n_s] != [] and M[n_s + 1] != []:  # if two consecutive slices not empty - interpolate
+                                # if two consecutive slices not empty - interpolate
+                                if (M[n_s] != []) and (M[n_s + 1] != []):
                                     if self.round_factor == 2:
-                                        zi = np.linspace(old_gridZ[n_s], old_gridZ[n_s + 1], int(sliceThick / 0.01) + 1)  # create an interpolation grid between those slices
+                                        # create an interpolation grid between those slices
+                                        zi = np.linspace(old_gridZ[n_s], old_gridZ[n_s + 1], int(sliceThick / 0.01) + 1)
                                         # round interpolation grid according to specified precision
                                         for gz in range(len(zi)):
                                             zi[gz] = round(zi[gz], self.round_factor)
-                                        # interpolate, X list of x positions of the interpolated contour, Y list of y positions of the interpolated contour , interpolation type  texture find polygon encompassing the sturcture
+                                        # interpolate, X list of x positions of the interpolated contour, Y list of y
+                                        # positions of the interpolated contour , interpolation type  texture find
+                                        # polygon encompassing the sturcture
                                         X, Y = InterpolateROI().interpolate(self.interpolation_alg, M[n_s], M[n_s + 1], np.linspace(0, 1, int(sliceThick / 0.01) + 1), 'texture')
                                     elif self.round_factor == 3:
-                                        zi = np.linspace(old_gridZ[n_s], old_gridZ[n_s + 1], int(sliceThick / 0.001) + 1)  # create an interpolation grid between those slices
+                                        # create an interpolation grid between those slices
+                                        zi = np.linspace(old_gridZ[n_s], old_gridZ[n_s + 1], int(sliceThick / 0.001) + 1)
 
                                         # round interpolation grid according to specified precision
                                         for gz in range(len(zi)):
                                             zi[gz] = round(zi[gz], self.round_factor)
-                                        # interpolate, X list of x positions of the interpolated contour, Y list of y positions of the interpolated contour, interpolation type  texture find polygon encompassing the sturcture
+                                        # interpolate, X list of x positions of the interpolated contour, Y list of y
+                                        # positions of the interpolated contour, interpolation type  texture find
+                                        # polygon encompassing the sturcture
                                         X, Y = InterpolateROI().interpolate(self.interpolation_alg, M[n_s], M[n_s + 1], np.linspace(0, 1, int(sliceThick / 0.001) + 1), 'texture')
-                                    # check which position in the interpolation grid corresponds to the new slice position
+                                    # check which position in the interpolation grid corresponds to the new slice
+                                    # position
                                     for i in range(len(zi)):
-                                        if zi[i] in new_gridZ and zi[i] not in insertedZ:  # insertedZ gathers all slice positions which are already filled in case that slice position is on the ovelap of two slices from orignal
+                                        # insertedZ gathers all slice positions which are already filled in case that
+                                        # slice position is on the ovelap of two slices from orignal
+                                        if zi[i] in new_gridZ and zi[i] not in insertedZ:
                                             insertedZ.append(zi[i])
                                             for j in range(len(X[i])):  # substructures in the slice
                                                 l = np.zeros((3 * len(X[i][j])))
@@ -532,11 +565,15 @@ class ResizeTexture(object):
                                                 if self.cropStructure["ct_path"] != "":
                                                     xct = crop_corner_x
                                                     yct = crop_corner_y
-                                                l[::3] = (X[i][j] + xmin) * xCTspace + xct  # convert to the original coordinates in mm
-                                                l[1::3] = (Y[i][j] + ymin) * yCTspace + yct  # convert to the original coordinates in mm
-                                                l[2::3] = round(zi[i], self.round_factor)  # convert to the original coordinates in mm
+                                                # convert to the original coordinates in mm
+                                                l[::3] = (X[i][j] + xmin) * xCTspace + xct
+                                                # convert to the original coordinates in mm
+                                                l[1::3] = (Y[i][j] + ymin) * yCTspace + yct
+                                                # convert to the original coordinates in mm
+                                                l[2::3] = round(zi[i], self.round_factor)
                                                 l.round(self.round_factor)
-                                                li = [str(round(ci, self.round_factor)) for ci in l]  # convert to string
+                                                # convert to string
+                                                li = [str(round(ci, self.round_factor)) for ci in l]
                                                 contour.append(li)  # add to contour list
                                                 del l
                                                 del li
@@ -579,7 +616,8 @@ class ResizeTexture(object):
                             pass
 
                     # delete structures which were not resized
-                    # modify separately just to be sure that sorting is correct ROIContourSequence, RTROIObservationsSequence, StructureSetROISequence
+                    # modify separately just to be sure that sorting is correct ROIContourSequence,
+                    # RTROIObservationsSequence, StructureSetROISequence
                     # ROIContourSequence
                     nr_del = []
                     for i in range(len(rs.ROIContourSequence)):
@@ -607,7 +645,7 @@ class ResizeTexture(object):
 
                     rs.save_as(mypath_save + 'RS.00001.dcm')  # save modified RS file
 
-            except WindowsError:  # no path with data for the patient X
+            except OSError:  # no path with data for the patient X
                 rmdir(mypath_save)
                 pass
             except KeyError:  # problem with image
@@ -618,25 +656,25 @@ class ResizeTexture(object):
                 pass
 
         if len(wrongROI) != 0:
-            config = open(self.mypath_s + '\\' + 'key_error.txt', 'w')
+            config = open(self.mypath_s + os.sep + 'key_error.txt', 'w')
             for i in wrongROI:
                 config.write(i + '\n')
             config.close()
 
         if len(lista_voi) != 0:
-            config = open(self.mypath_s + '\\' + 'voi_problem.txt', 'w')
+            config = open(self.mypath_s + os.sep + 'voi_problem.txt', 'w')
             for i in lista_voi:
                 config.write(i + '\n')
             config.close()
 
         if len(emptyROI) != 0:
-            config = open(self.mypath_s + '\\' + 'empty_roi.txt', 'w')
+            config = open(self.mypath_s + os.sep + 'empty_roi.txt', 'w')
             for i in emptyROI:
                 config.write(i + '\n')
             config.close()
 
         if len(error) != 0:
-            config = open(self.mypath_s + '\\' + 'unrecognized error.txt', 'w')
+            config = open(self.mypath_s + os.sep + 'unrecognized error.txt', 'w')
             for i in error:
                 config.write(i + '\n')
             config.close()

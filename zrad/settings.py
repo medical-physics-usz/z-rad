@@ -1,22 +1,20 @@
-# -*- coding: utf-8 -*-
-
-# import libraries
 import wx
+
 
 class Set(wx.Frame):
     def __init__(self, *args, **kwargs):
-        super(Set, self).__init__(*args, **kwargs) 
-            
+        super(Set, self).__init__(*args, **kwargs)
+
         self.InitUI()
-        
-    def InitUI(self):    
 
-        self.panel = wx.Panel(self, size=(300,300))
-        self.panel.SetBackgroundColour('#8AB9F1') #kolor tła
+    def InitUI(self):
 
-        l = wx.ComboBox(self, id = 100, choices=['PC', 'lenovo'])
-        b = wx.Button(self, -1, label = 'OK')
-         
+        self.panel = wx.Panel(self, size=(300, 300))
+        self.panel.SetBackgroundColour('#8AB9F1')
+
+        l = wx.ComboBox(self, id=100, choices=['PC', 'lenovo'])
+        b = wx.Button(self, -1, label='OK')
+
         self.SetTitle('Settings')
 
         self.panel.vbox = wx.BoxSizer(wx.VERTICAL)
@@ -34,7 +32,7 @@ class Set(wx.Frame):
         self.SetSizer(self.panel.vbox)
 
         self.panel.Layout()
-        
+
         self.Show()
 
     def Return(self, evt):
@@ -46,10 +44,3 @@ class Set(wx.Frame):
         else:
             h = 30
         self.h = h
-
-
-##ex = wx.App()
-##Set(None)
-##ex.MainLoop()    
-
- 

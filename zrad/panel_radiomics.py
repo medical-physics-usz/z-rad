@@ -1,8 +1,8 @@
-# -*- coding: utf-8 -*-s
+import os
 
-# import libraries
 import wx
 import wx.lib.scrolledpanel as scrolled
+
 
 class panelRadiomics(scrolled.ScrolledPanel):
     def __init__(self, parent, id=-1, size=(800, 400), *a, **b):
@@ -29,17 +29,18 @@ class panelRadiomics(scrolled.ScrolledPanel):
         self.gs_3 = wx.FlexGridSizer(cols=3, vgap=5, hgap=10)  # grid size with 3 columns
 
         st_path = wx.StaticText(self, label='Load')
-        tc_path = wx.TextCtrl(self, id=107, size=(900, h), value="",
-                              style=wx.TE_PROCESS_ENTER)  # path to resized images
+        # path to resized images
+        tc_path = wx.TextCtrl(self, id=107, size=(900, h), value="", style=wx.TE_PROCESS_ENTER)
         btn_load_path = wx.Button(self, -1, label='Search')  # button to open dialog box
         st_pref = wx.StaticText(self, label='Prefix')
-        tc_pref = wx.TextCtrl(self, id=108, size=(400, h), value="",
-                              style=wx.TE_PROCESS_ENTER)  # prefix in the name of patients folders for example HN, goes to HN_X
+        # prefix in the name of patients folders for example HN, goes to HN_X
+        tc_pref = wx.TextCtrl(self, id=108, size=(400, h), value="", style=wx.TE_PROCESS_ENTER)
         st_range_l = wx.StaticText(self, label='Start')
-        tc_range_l = wx.TextCtrl(self, id=109, size=(400, h), value="",
-                                 style=wx.TE_PROCESS_ENTER)  # patient number start
+        # patient number start
+        tc_range_l = wx.TextCtrl(self, id=109, size=(400, h), value="", style=wx.TE_PROCESS_ENTER)
         st_range_u = wx.StaticText(self, label='Stop')
-        tc_range_u = wx.TextCtrl(self, id=110, size=(400, h), value="", style=wx.TE_PROCESS_ENTER)  # patient number end
+        # patient number end
+        tc_range_u = wx.TextCtrl(self, id=110, size=(400, h), value="", style=wx.TE_PROCESS_ENTER)
 
         # fill grid sizer
         self.gs_3.AddMany([st_path, tc_path, btn_load_path,
@@ -64,8 +65,8 @@ class panelRadiomics(scrolled.ScrolledPanel):
         tc_saver = wx.TextCtrl(self, id=102, size=(857, h), value="", style=wx.TE_PROCESS_ENTER)  # path to save results
         btn_load_saver = wx.Button(self, -1, label='Search')
         st_saveas = wx.StaticText(self, label='Save as')
-        tc_saveas = wx.TextCtrl(self, id=103, size=(400, h), value="",
-                                style=wx.TE_PROCESS_ENTER)  # name of the text file to save texture results
+        # name of the text file to save texture results
+        tc_saveas = wx.TextCtrl(self, id=103, size=(400, h), value="", style=wx.TE_PROCESS_ENTER)
 
         self.gs_1.AddMany([st_saver, tc_saver, btn_load_saver,
                            st_saveas, tc_saveas, wx.StaticText(self, label='')])
@@ -92,30 +93,30 @@ class panelRadiomics(scrolled.ScrolledPanel):
         st_bin = wx.StaticText(self, label='Bins No')
         st_size = wx.StaticText(self, label='Bin size')
         tc_bin = wx.TextCtrl(self, id=1051, size=(200, h), value="", style=wx.TE_PROCESS_ENTER)  # size of the bin
-        tc_size = wx.TextCtrl(self, id=1052, size=(200, h), value="",
-                              style=wx.TE_PROCESS_ENTER)  # number of bins for discretization
+        # number of bins for discretization
+        tc_size = wx.TextCtrl(self, id=1052, size=(200, h), value="", style=wx.TE_PROCESS_ENTER)
         st_dim = wx.StaticText(self, label='Dimension')
-        rb_dim2 = wx.RadioButton(self, id=1061, label='2D several slices',
-                                 style=wx.RB_GROUP)  # 2D analysis, radiobutton - only one option from the group can be selected
+        # 2D analysis, radiobutton - only one option from the group can be selected
+        rb_dim2 = wx.RadioButton(self, id=1061, label='2D several slices', style=wx.RB_GROUP)
         rb_dim2single = wx.RadioButton(self, id=10611, label='2D single slice')
         rb_dim3 = wx.RadioButton(self, id=1062, label="3D volume")  # 3D analysis
         st_wv = wx.StaticText(self, label='Wavelet transform ')
-        rb_wvT = wx.RadioButton(self, id=1071, label='On',
-                                style=wx.RB_GROUP)  # wavelet on, radiobutton - only one option from the group can be selected
+        # wavelet on, radiobutton - only one option from the group can be selected
+        rb_wvT = wx.RadioButton(self, id=1071, label='On', style=wx.RB_GROUP)
         rb_wvF = wx.RadioButton(self, id=1072, label="Off")  # wavelet off
         st_s = wx.StaticText(self, label='Shape ')
-        rb_sT = wx.RadioButton(self, id=1081, label='On',
-                               style=wx.RB_GROUP)  # shape on, radiobutton - only one option from the group can be selected
+        # shape on, radiobutton - only one option from the group can be selected
+        rb_sT = wx.RadioButton(self, id=1081, label='On', style=wx.RB_GROUP)
         rb_sF = wx.RadioButton(self, id=1082, label="Off")  # shape off
         st_name_shape = wx.StaticText(self, label='Structure name shape ')
         tc_name_shape = wx.TextCtrl(self, id=1083, size=(200, h), value="", style=wx.TE_PROCESS_ENTER)
         st_LN = wx.StaticText(self, label='Lymph nodes ')
-        rb_LNT = wx.RadioButton(self, id=1091, label='On',
-                                style=wx.RB_GROUP)  # analysis of distribution of LN around PT on, radiobutton - only one option from the group can be selected
+        # analysis of distribution of LN around PT on, radiobutton - only one option from the group can be selected
+        rb_LNT = wx.RadioButton(self, id=1091, label='On', style=wx.RB_GROUP)
         rb_LNF = wx.RadioButton(self, id=1092, label="Off")  # analysis of distribution of LN around PT off
         st_name_LN = wx.StaticText(self, label='Name lymph node structure ')
-        tc_name_LN = wx.TextCtrl(self, id=1093, size=(200, h), value="",
-                                 style=wx.TE_PROCESS_ENTER)  # name of LN structure to be analysed, for example g_LN will search for g_LN_X
+        # name of LN structure to be analysed, for example g_LN will search for g_LN_X
+        tc_name_LN = wx.TextCtrl(self, id=1093, size=(200, h), value="", style=wx.TE_PROCESS_ENTER)
 
         # fill grid sizer
         self.gs_2.AddMany([st_name, tc_name, wx.StaticText(self, label=''), wx.StaticText(self, label=''),
@@ -175,20 +176,20 @@ class panelRadiomics(scrolled.ScrolledPanel):
         self.gs_6 = wx.FlexGridSizer(cols=5, vgap=2.5, hgap=10)
         rb_pet = wx.RadioButton(self, id=130, label='PET')
         st_suv = wx.StaticText(self, label='SUV correction')
-        rb_yes = wx.CheckBox(self, id=131, label='yes')  # SUV correciton on
-        rb_no = wx.CheckBox(self, id=132, label='no')  # SUV correciton off
+        rb_yes = wx.CheckBox(self, id=131, label='yes')  # SUV correction on
+        rb_no = wx.CheckBox(self, id=132, label='no')  # SUV correction off
 
         crop_text = wx.StaticText(self, label='Use CT Structure')  # crop PET structure to CT structure set HU range
-        crop_yes = wx.CheckBox(self, id=133, label='yes')  # SUV correciton on
-        crop_no = wx.CheckBox(self, id=134, label='no')  # SUV correciton on
+        crop_yes = wx.CheckBox(self, id=133, label='yes')  # SUV correction on
+        crop_no = wx.CheckBox(self, id=134, label='no')  # SUV correction on
 
         crop_st_humin = wx.StaticText(self, label='HU min')
         crop_tc_humin = wx.TextCtrl(self, id=135, size=(200, h), value='', style=wx.TE_PROCESS_ENTER)  # HU range min
         crop_st_humax = wx.StaticText(self, label='HU max')
         crop_tc_humax = wx.TextCtrl(self, id=136, size=(200, h), value='', style=wx.TE_PROCESS_ENTER)  # HU range max
         crop_ctpathlabel = wx.StaticText(self, label='CT Path')
-        crop_ctpath = wx.TextCtrl(self, id=137, size=(400, h), value="",
-                                  style=wx.TE_PROCESS_ENTER)  # path to resized images
+        # path to resized images
+        crop_ctpath = wx.TextCtrl(self, id=137, size=(400, h), value="", style=wx.TE_PROCESS_ENTER)
         crop_btn_load_path = wx.Button(self, -1, label='Search')  # button to open dialog box
         self.gs_6.AddMany(
             [rb_pet, wx.StaticText(self, label=''), wx.StaticText(self, label=''), wx.StaticText(self, label=''),
@@ -227,8 +228,8 @@ class panelRadiomics(scrolled.ScrolledPanel):
         self.gs_8 = wx.FlexGridSizer(cols=4, vgap=5, hgap=10)
         rb_mr = wx.RadioButton(self, id=150, label='MR')
         st_stan = wx.StaticText(self, label='ROI for standardization')
-        tc_struct1 = wx.TextCtrl(self, id=151, size=(200, h), value='',
-                                 style=wx.TE_PROCESS_ENTER)  # names of structures for linaer function fitting to normalize MR
+        # names of structures for linaer function fitting to normalize MR
+        tc_struct1 = wx.TextCtrl(self, id=151, size=(200, h), value='', style=wx.TE_PROCESS_ENTER)
         tc_struct2 = wx.TextCtrl(self, id=152, size=(200, h), value='', style=wx.TE_PROCESS_ENTER)
 
         self.gs_8.AddMany(
@@ -275,7 +276,8 @@ class panelRadiomics(scrolled.ScrolledPanel):
         self.vbox.Add(h11box, flag=wx.RIGHT)
         self.vbox.Add((-1, 10))
 
-        self.Bind(wx.EVT_BUTTON, self.parent.OnCalculate, btn_calculate)  # EVT_BUTTON when button named btn_calculate was clicked bind with method self.parent.OnCalculate
+        # EVT_BUTTON when button named btn_calculate was clicked bind with method self.parent.OnCalculate
+        self.Bind(wx.EVT_BUTTON, self.parent.OnCalculate, btn_calculate)
         self.Bind(wx.EVT_BUTTON, self.OnOpenP, btn_load_path)
         self.Bind(wx.EVT_BUTTON, self.OnOpenP_crop, crop_btn_load_path)
         self.Bind(wx.EVT_BUTTON, self.OnOpenSR, btn_load_saver)
@@ -288,8 +290,8 @@ class panelRadiomics(scrolled.ScrolledPanel):
         """method called by parent to fill the text boxes with save settings
         l - list of elements read from a text file"""
         # ids of the boxes to be filled
-        ids = [107, 108, 109, 110, 102, 103, 104, 1051, 1052, 1061, 10611, 1062, 1071, 1072, 1081, 1082, 1083, 1091, 1092,
-               1093, 120, 125, 126, 127, 130, 131, 132, 133, 135, 136, 137, 140, 141, 142, 150, 151, 152, 160]
+        ids = [107, 108, 109, 110, 102, 103, 104, 1051, 1052, 1061, 10611, 1062, 1071, 1072, 1081, 1082, 1083, 1091,
+               1092, 1093, 120, 125, 126, 127, 130, 131, 132, 133, 135, 136, 137, 140, 141, 142, 150, 151, 152, 160]
 
         for i in range(len(l)):
             try:
@@ -321,8 +323,8 @@ class panelRadiomics(scrolled.ScrolledPanel):
         """save the last used settings"""
         l = []
 
-        ids = [107, 108, 109, 110, 102, 103, 104, 1051, 1052, 1061, 10611, 1062, 1071, 1072, 1081, 1082, 1083, 1091, 1092,
-               1093, 120, 125, 126, 127, 130, 131, 132, 133, 135, 136, 137, 140, 141, 142, 150, 151, 152, 160]
+        ids = [107, 108, 109, 110, 102, 103, 104, 1051, 1052, 1061, 10611, 1062, 1071, 1072, 1081, 1082, 1083, 1091,
+               1092, 1093, 120, 125, 126, 127, 130, 131, 132, 133, 135, 136, 137, 140, 141, 142, 150, 151, 152, 160]
         for i in ids:
             l.append(self.FindWindowById(i).GetValue())
         return l
@@ -341,18 +343,18 @@ class panelRadiomics(scrolled.ScrolledPanel):
         fop = wx.DirDialog(self, style=wx.DD_DEFAULT_STYLE)
         fop.SetPath(self.FindWindowById(107).GetValue())
         if fop.ShowModal() == wx.ID_OK:
-            self.FindWindowById(107).SetValue(fop.GetPath() + '\\')
+            self.FindWindowById(107).SetValue(fop.GetPath() + os.sep)
 
     def OnOpenP_crop(self, evt):  # need and event as an argument
         """dialog box to find path with the resized data"""
         fop = wx.DirDialog(self, style=wx.DD_DEFAULT_STYLE)
         fop.SetPath(self.FindWindowById(138).GetValue())
         if fop.ShowModal() == wx.ID_OK:
-            self.FindWindowById(138).SetValue(fop.GetPath() + '\\')
+            self.FindWindowById(138).SetValue(fop.GetPath() + os.sep)
 
     def OnOpenSR(self, evt):  # need and event as an argument
         """dialog box to define path to save results"""
         fop = wx.DirDialog(self, style=wx.DD_DEFAULT_STYLE)
         fop.SetPath(self.FindWindowById(102).GetValue())
         if fop.ShowModal() == wx.ID_OK:
-            self.FindWindowById(102).SetValue(fop.GetPath() + '\\')
+            self.FindWindowById(102).SetValue(fop.GetPath() + os.sep)

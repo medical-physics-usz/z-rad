@@ -1,15 +1,16 @@
-# -*- coding: utf-8 -*-s
-
-# import libraries
-import pywt
-from numpy import sqrt, arange, array, zeros, where, floor, isnan, nan
-import matplotlib.pyplot as plt
+import logging
+import os
 from os import makedirs
 from os.path import isdir
-import logging
+
+import matplotlib.pyplot as plt
+import pywt
+from numpy import sqrt, array, zeros, where, floor, isnan, nan
+
 
 class Wavelet(object):
     """wavelet transform"""
+
     def __init__(self, m, path, im_name, name, dim, ctp):
         self.logger = logging.getLogger("Wavelet")
         self.logger.info("Start: Wavelet Calculation")
@@ -30,7 +31,7 @@ class Wavelet(object):
                         if [z, y, x] not in cnt:
                             mean += m[z][y][x]
                             licz += 1.
-            mean = mean/licz
+            mean = mean / licz
             for i in range(len(ind[0])):
                 self.map[ind[0][i]][ind[1][i]][ind[2][i]] = mean
 
@@ -63,54 +64,54 @@ class Wavelet(object):
                 self.LLH = LLH
                 self.LLL = LLL
             else:
-                self.HHH = HHH/(2.*sqrt(2))
-                self.HHL = HHL/(2.*sqrt(2))
-                self.HLH = HLH/(2.*sqrt(2))
-                self.HLL = HLL/(2.*sqrt(2))
-                self.LHH = LHH/(2.*sqrt(2))
-                self.LHL = LHL/(2.*sqrt(2))
-                self.LLH = LLH/(2.*sqrt(2))
-                self.LLL = LLL/(2.*sqrt(2))
+                self.HHH = HHH / (2. * sqrt(2))
+                self.HHL = HHL / (2. * sqrt(2))
+                self.HLH = HLH / (2. * sqrt(2))
+                self.HLL = HLL / (2. * sqrt(2))
+                self.LHH = LHH / (2. * sqrt(2))
+                self.LHL = LHL / (2. * sqrt(2))
+                self.LLH = LLH / (2. * sqrt(2))
+                self.LLL = LLL / (2. * sqrt(2))
 
             k = 1
             try:
-                makedirs(path+'\\wavelet\\'+name+'\\')
+                makedirs(path + os.sep + 'wavelet' + os.sep + name + os.sep)
             except OSError:
-                if not isdir(path+'\\wavelet\\'+name+'\\'):
+                if not isdir(path + os.sep + 'wavelet' + os.sep + name + os.sep):
                     raise
             # if not ctp:
-               # for i in range(len(self.map), 2):
-               #     plt.figure()
-               #     plt.subplot(331)
-               #     plt.imshow(self.map[i], cmap=plt.get_cmap('Greys_r'))
-               #     plt.title('original')
-               #     plt.subplot(332)
-               #     plt.imshow(self.HHH[k], cmap=plt.get_cmap('Greys_r'))
-               #     plt.title('HHH')
-               #     plt.subplot(333)
-               #     plt.imshow(self.HHL[k], cmap=plt.get_cmap('Greys_r'))
-               #     plt.title('HHL')
-               #     plt.subplot(334)
-               #     plt.imshow(self.HLH[k], cmap=plt.get_cmap('Greys_r'))
-               #     plt.title('HLH')
-               #     plt.subplot(335)
-               #     plt.imshow(self.HLL[k], cmap=plt.get_cmap('Greys_r'))
-               #     plt.title('HLL')
-               #     plt.subplot(336)
-               #     plt.imshow(self.LHH[k], cmap=plt.get_cmap('Greys_r'))
-               #     plt.title('LHH')
-               #     plt.subplot(337)
-               #     plt.imshow(self.LHL[k], cmap=plt.get_cmap('Greys_r'))
-               #     plt.title('LHL')
-               #     plt.subplot(338)
-               #     plt.imshow(self.LLH[k], cmap=plt.get_cmap('Greys_r'))
-               #     plt.title('LLH')
-               #     plt.subplot(339)
-               #     plt.imshow(self.LLL[k], cmap=plt.get_cmap('Greys_r'))
-               #     plt.title('LLL')
-               #     plt.savefig(path+'\\wavelet\\'+name+'\\'+im_name+'_'+str(k)+'.png')
-               #     plt.close()
-               #     k+=1
+            # for i in range(len(self.map), 2):
+            #     plt.figure()
+            #     plt.subplot(331)
+            #     plt.imshow(self.map[i], cmap=plt.get_cmap('Greys_r'))
+            #     plt.title('original')
+            #     plt.subplot(332)
+            #     plt.imshow(self.HHH[k], cmap=plt.get_cmap('Greys_r'))
+            #     plt.title('HHH')
+            #     plt.subplot(333)
+            #     plt.imshow(self.HHL[k], cmap=plt.get_cmap('Greys_r'))
+            #     plt.title('HHL')
+            #     plt.subplot(334)
+            #     plt.imshow(self.HLH[k], cmap=plt.get_cmap('Greys_r'))
+            #     plt.title('HLH')
+            #     plt.subplot(335)
+            #     plt.imshow(self.HLL[k], cmap=plt.get_cmap('Greys_r'))
+            #     plt.title('HLL')
+            #     plt.subplot(336)
+            #     plt.imshow(self.LHH[k], cmap=plt.get_cmap('Greys_r'))
+            #     plt.title('LHH')
+            #     plt.subplot(337)
+            #     plt.imshow(self.LHL[k], cmap=plt.get_cmap('Greys_r'))
+            #     plt.title('LHL')
+            #     plt.subplot(338)
+            #     plt.imshow(self.LLH[k], cmap=plt.get_cmap('Greys_r'))
+            #     plt.title('LLH')
+            #     plt.subplot(339)
+            #     plt.imshow(self.LLL[k], cmap=plt.get_cmap('Greys_r'))
+            #     plt.title('LLL')
+            #     plt.savefig(path+'\\wavelet\\'+name+'\\'+im_name+'_'+str(k)+'.png')
+            #     plt.close()
+            #     k+=1
             if ctp:  # if ctp
                 for i in range(len(self.map), 2):
                     plt.figure()
@@ -132,7 +133,7 @@ class Wavelet(object):
                     plt.imshow(self.LLH[k], vmin=-1, vmax=5, cmap=plt.get_cmap('Greys_r'))
                     plt.subplot(339)
                     plt.imshow(self.LLL[k], vmin=0, vmax=10, cmap=plt.get_cmap('Greys_r'))
-                    plt.savefig(path + '\\wavelet\\' + name + '\\' + perf + '_' + str(k) + '.png')
+                    plt.savefig(path + os.sep + 'wavelet' + os.sep + name + os.sep + perf + '_' + str(k) + '.png')
                     plt.close()
                     k += 1
 
@@ -144,16 +145,16 @@ class Wavelet(object):
                 import sys
                 sys.exit("Error message: check implementation in texture_wavelet.py line 141")
 
-            self.HH = HH/2
-            self.HL = HL/2
-            self.LH = LH/2
-            self.LL = LL/2
+            self.HH = HH / 2
+            self.HL = HL / 2
+            self.LH = LH / 2
+            self.LL = LL / 2
             k = 0
 
             try:
-                makedirs(path+'\\wavelet\\2D_'+name+'\\')
+                makedirs(path + os.sep + 'wavelet' + os.sep + '2D_' + name + os.sep)
             except OSError:
-                if not isdir(path+'\\wavelet\\2D_'+name+'\\'):
+                if not isdir(path + os.sep + 'wavelet' + os.sep + '2D_' + name + os.sep):
                     raise
 
             # for i in range(len(self.map), 2):
@@ -202,17 +203,17 @@ class Wavelet(object):
         L = array(L)
 
         # y direction
-        hh = zeros((len(a), int(floor((len(a[0])+5)/2.)), int(floor((len(a[0][0])+5)/2.))))
-        hl = zeros((len(a), int(floor((len(a[0])+5)/2.)), int(floor((len(a[0][0])+5)/2.))))
-        lh = zeros((len(a), int(floor((len(a[0])+5)/2.)), int(floor((len(a[0][0])+5)/2.))))
-        ll = zeros((len(a), int(floor((len(a[0])+5)/2.)), int(floor((len(a[0][0])+5)/2.))))
+        hh = zeros((len(a), int(floor((len(a[0]) + 5) / 2.)), int(floor((len(a[0][0]) + 5) / 2.))))
+        hl = zeros((len(a), int(floor((len(a[0]) + 5) / 2.)), int(floor((len(a[0][0]) + 5) / 2.))))
+        lh = zeros((len(a), int(floor((len(a[0]) + 5) / 2.)), int(floor((len(a[0][0]) + 5) / 2.))))
+        ll = zeros((len(a), int(floor((len(a[0]) + 5) / 2.)), int(floor((len(a[0][0]) + 5) / 2.))))
 
         for z in range(len(a)):
             for i in range(len(H[z][0])):  # calculate wavelets over all columns
                 cA, cD = pywt.dwt(H[z][:, i], 'coif1')  # for detailed coeff. from x direction
                 hh[z][:, i] = cD  # xy
                 hl[z][:, i] = cA
-                
+
         for z in range(len(a)):
             for i in range(len(L[z][0])):
                 cA, cD = pywt.dwt(L[z][:, i], 'coif1')
@@ -224,21 +225,29 @@ class Wavelet(object):
             return hh, hl, lh, ll
 
         # z direction
-        hhh = zeros((int(floor((len(a)+5)/2.)), int(floor((len(a[0])+5)/2.)), int(floor((len(a[0][0])+5)/2.))))
-        hhl = zeros((int(floor((len(a)+5)/2.)), int(floor((len(a[0])+5)/2.)), int(floor((len(a[0][0])+5)/2.))))
-        hlh = zeros((int(floor((len(a)+5)/2.)), int(floor((len(a[0])+5)/2.)), int(floor((len(a[0][0])+5)/2.))))
-        hll = zeros((int(floor((len(a)+5)/2.)), int(floor((len(a[0])+5)/2.)), int(floor((len(a[0][0])+5)/2.))))
-        lhh = zeros((int(floor((len(a)+5)/2.)), int(floor((len(a[0])+5)/2.)), int(floor((len(a[0][0])+5)/2.))))
-        lhl = zeros((int(floor((len(a)+5)/2.)), int(floor((len(a[0])+5)/2.)), int(floor((len(a[0][0])+5)/2.))))
-        llh = zeros((int(floor((len(a)+5)/2.)), int(floor((len(a[0])+5)/2.)), int(floor((len(a[0][0])+5)/2.))))
-        lll = zeros((int(floor((len(a)+5)/2.)), int(floor((len(a[0])+5)/2.)), int(floor((len(a[0][0])+5)/2.))))
+        hhh = zeros(
+            (int(floor((len(a) + 5) / 2.)), int(floor((len(a[0]) + 5) / 2.)), int(floor((len(a[0][0]) + 5) / 2.))))
+        hhl = zeros(
+            (int(floor((len(a) + 5) / 2.)), int(floor((len(a[0]) + 5) / 2.)), int(floor((len(a[0][0]) + 5) / 2.))))
+        hlh = zeros(
+            (int(floor((len(a) + 5) / 2.)), int(floor((len(a[0]) + 5) / 2.)), int(floor((len(a[0][0]) + 5) / 2.))))
+        hll = zeros(
+            (int(floor((len(a) + 5) / 2.)), int(floor((len(a[0]) + 5) / 2.)), int(floor((len(a[0][0]) + 5) / 2.))))
+        lhh = zeros(
+            (int(floor((len(a) + 5) / 2.)), int(floor((len(a[0]) + 5) / 2.)), int(floor((len(a[0][0]) + 5) / 2.))))
+        lhl = zeros(
+            (int(floor((len(a) + 5) / 2.)), int(floor((len(a[0]) + 5) / 2.)), int(floor((len(a[0][0]) + 5) / 2.))))
+        llh = zeros(
+            (int(floor((len(a) + 5) / 2.)), int(floor((len(a[0]) + 5) / 2.)), int(floor((len(a[0][0]) + 5) / 2.))))
+        lll = zeros(
+            (int(floor((len(a) + 5) / 2.)), int(floor((len(a[0]) + 5) / 2.)), int(floor((len(a[0][0]) + 5) / 2.))))
 
         for y in range(len(hh[0])):
             for x in range(len(hh[0][y])):
                 cA, cD = pywt.dwt(hh[:, y, x], 'coif1')
                 hhh[:, y, x] = cD
                 hhl[:, y, x] = cA
-                
+
         for y in range(len(hl[0])):
             for x in range(len(hl[0][y])):
                 cA, cD = pywt.dwt(hl[:, y, x], 'coif1')

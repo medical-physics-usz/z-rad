@@ -1,8 +1,6 @@
-# -*- coding: utf-8 -*-
-
-# import libraries
-import numpy as np
 import logging
+
+import numpy as np
 
 
 class Matrix(object):
@@ -81,13 +79,15 @@ class Matrix(object):
                 del lxmin
                 del lxmax
 
-                # for the outlier correction, first remove values outside of HU range (for CT only) and then calccuate standard deviation
+                # for the outlier correction, first remove values outside of HU range (for CT only) and then calccuate
+                # standard deviation
 
                 ind = np.where(np.isnan(np.array(v)))[0]
                 for j in range(1, len(ind) + 1):
                     v.pop(ind[-j])
 
-                if (HUmin != 'none' and rs_type != 0) or (cropStructure["crop"] and rs_type != 0):  # no parameter for outlier correction!
+                # no parameter for outlier correction!
+                if (HUmin != 'none' and rs_type != 0) or (cropStructure["crop"] and rs_type != 0):
                     print("***** outlier correction for CT ********")
                     ind = np.where(np.array(v) < HUmin)[0]
                     for j in range(1, len(ind) + 1):
@@ -110,7 +110,8 @@ class Matrix(object):
                 vmax = np.nanmax(imap)
 
             # placing nan in all places in the matrix
-            m = np.zeros([ymax - ymin + 1, xmax - xmin + 1])  # creating the matrix to fill it with points of the structure, y rows, x columns
+            # creating the matrix to fill it with points of the structure, y rows, x columns
+            m = np.zeros([ymax - ymin + 1, xmax - xmin + 1])
             for im in range(len(m)):
                 for jm in range(len(m[im])):
                     m[im][jm] = np.nan
@@ -121,7 +122,7 @@ class Matrix(object):
             matrix_rec = []
 
             if structure != 'none':  # if the structure to be anaylsed was defined
-                self.logger.info("Vmin, Vmax " + ", ".join(map(str, (round(vmin,3), round(vmax,3)))))
+                self.logger.info("Vmin, Vmax " + ", ".join(map(str, (round(vmin, 3), round(vmax, 3)))))
 
                 for n in range(len(Xcontour)):
                     matrix.append(m.copy())
@@ -131,11 +132,12 @@ class Matrix(object):
 
                 if bits == '':  # fixed bin defined
                     if map_name == 'MTT':
-                        interval = binSize * 10  # as the range of relative MTT is normally much grater than range of BV and BF
+                        # as the range of relative MTT is normally much grater than range of BV and BF
+                        interval = binSize * 10
                     else:
                         interval = binSize
-                    n_bits = int((vmax-vmin)//interval+1)  # calcuate corresponding number of bins
-                else: #fixed number of bin defined
+                    n_bits = int((vmax - vmin) // interval + 1)  # calculate corresponding number of bins
+                else:  # fixed number of bin defined
                     interval = round((vmax-vmin)/(bits-1), 2)
                     n_bits = bits
                 self.logger.info('n bins, interval ' + ", ".join(map(str, (n_bits, interval))))
@@ -144,8 +146,13 @@ class Matrix(object):
                     for j in range(len(Xcontour[i])):  # sub-structures in the slice
                         for k in range(len(Xcontour[i][j])):  # each point
                             try:
-                                matrix[i][Ycontour[i][j][k] - ymin][Xcontour[i][j][k] - xmin] = int((imap[i][Ycontour[i][j][k]][Xcontour[i][j][k]] - vmin) / interval)  # first row, second column, changing to bits channels as in co-ocurence matrix we have only the channels channels
-                                matrix_true[i][Ycontour[i][j][k] - ymin][Xcontour[i][j][k] - xmin] = imap[i][Ycontour[i][j][k]][Xcontour[i][j][k]]  # first row, second column, changing to bits channels as in co-ocurence matrix we have only the channels channels
+                                # first row, second column, changing to bits channels as in co-ocurence matrix we have
+                                # only the channels channels
+                                matrix[i][Ycontour[i][j][k] - ymin][Xcontour[i][j][k] - xmin] = int(
+                                    (imap[i][Ycontour[i][j][k]][Xcontour[i][j][k]] - vmin) / interval)
+                                # first row, second column, changing to bits channels as in co-ocurence matrix we have
+                                # only the channels channels
+                                matrix_true[i][Ycontour[i][j][k] - ymin][Xcontour[i][j][k] - xmin] = imap[i][Ycontour[i][j][k]][Xcontour[i][j][k]]
                             except ValueError:  # in case of nan
                                 pass
 
@@ -153,17 +160,22 @@ class Matrix(object):
                     for j in range(ymin, ymax + 1):  # rows
                         for k in range(xmin, xmax + 1):  # columns
                             try:  # each point
-                                matrix_full[i][j - ymin][k - xmin] = int((imap[i][j][k] - vmin) / interval)  # first row, second column, changing to bits channels as in co-ocurence matrix we have only the channels channels
+                                # first row, second column, changing to bits channels as in co-ocurence matrix we have
+                                # only the channels channels
+                                matrix_full[i][j - ymin][k - xmin] = int((imap[i][j][k] - vmin) / interval)
                             except ValueError:  # in case of nan
                                 pass
 
                 # define the recurrence place
-                if Xcontour_Rec != []:
+                if Xcontour_Rec:
                     for i in range(len(Xcontour_Rec)):  # slices
                         for j in range(len(Xcontour_Rec[i])):  # sub-structures in the slice
                             for k in range(len(Xcontour_Rec[i][j])):  # each point
                                 try:
-                                    matrix_rec[i][Ycontour_Rec[i][j][k] - ymin][Xcontour_Rec[i][j][k] - xmin] = int((imap[i][Ycontour_Rec[i][j][k]][Xcontour_Rec[i][j][k]] - vmin) / interval)  # first row, second column, changing to bits channels as in co-ocurence matrix we have only the channels channels
+                                    # first row, second column, changing to bits channels as in co-ocurence matrix we
+                                    # have only the channels channels
+                                    matrix_rec[i][Ycontour_Rec[i][j][k] - ymin][Xcontour_Rec[i][j][k] - xmin] = int(
+                                        (imap[i][Ycontour_Rec[i][j][k]][Xcontour_Rec[i][j][k]] - vmin) / interval)
                                 except ValueError:  # in case of nan
                                     pass
 
@@ -175,12 +187,13 @@ class Matrix(object):
 
                 if bits == '':  # fixed bin defined
                     if map_name == 'MTT':
-                        interval = binSize * 10  # as the range of relative MTT is normally much grater than range of BV and BF
+                        # as the range of relative MTT is normally much grater than range of BV and BF
+                        interval = binSize * 10
                     else:
                         interval = binSize
-                    n_bits = int((vmax-vmin)//interval + 1)  # calcuate corresponding number of bins
-                else: #fixed number of bin defined
-                    interval = round((vmax-vmin)/(bits-1),2)
+                    n_bits = int((vmax-vmin)//interval + 1)  # calculate corresponding number of bins
+                else:  # fixed number of bin defined
+                    interval = round((vmax-vmin)/(bits-1), 2)
                     n_bits = bits
                 self.logger.info('n bins, interval ' + ", ".join(map(str, (n_bits, interval))))
 
@@ -188,8 +201,12 @@ class Matrix(object):
                     for j in range(len(imap[i])):  # rows
                         for k in range(len(imap[i][j])):  # columns
                             try:  # each point
-                                matrix[i][j - ymin][k - xmin] = int((imap[i][j][k] - vmin) / interval)  # first row, second column, changing to bits channels as in co-ocurence matrix we have only the channels channels
-                                matrix_true[i][j - ymin][k - xmin] = imap[i][j][k]  # first row, second column, changing to bits channels as in co-ocurence matrix we have only the channels channels
+                                # first row, second column, changing to bits channels as in co-occurrence matrix we have
+                                # only the channels channels
+                                matrix[i][j - ymin][k - xmin] = int((imap[i][j][k] - vmin) / interval)
+                                # first row, second column, changing to bits channels as in co-occurrence matrix we have
+                                # only the channels channels
+                                matrix_true[i][j - ymin][k - xmin] = imap[i][j][k]
                             except ValueError:  # in case of nan
                                 pass
 

@@ -1,23 +1,17 @@
-# -*- coding: utf-8 -*-
-
 """feature calculation for slices in 2D"""
-# import libraries
-# from numpy.core._multiarray_umath import ndarray
-import numpy as np
-import matplotlib
-import matplotlib.pyplot as plt       # i changed py.cm.jet in saveImage to =plt.get_cmap('jet') with importing this
-# import scipy.optimize as optimization
-# import cv2
+import logging
+import os
+from collections import OrderedDict
+from datetime import datetime
 from os import makedirs
 from os.path import isdir
-from datetime import datetime
 
-# own classes
+import matplotlib
+import matplotlib.pyplot as plt
+
+from ROImatrix import Matrix
 from texture_intensity_2D import Intensity, GLCM, GLRLM_GLSZM_GLDZM_NGLDM, NGTDM, CMS_MTV
 from texture_wavelet import Wavelet
-from ROImatrix import Matrix
-import logging
-from collections import OrderedDict
 
 
 class Features2D(object):
@@ -46,8 +40,8 @@ class Features2D(object):
     Humax – HU range max
     outlier – bool, correct for outliers"""
 
-    def __init__(self, dim, sb, maps, structure, columns, rows, xCTspace, zCTspace, slices, path, ImName, pixNr, binSize, modality, wv,
-                 localRadiomics, cropStructure, stop_calc, *cont):  # Xc, Yc, XcW, YcW, HUmin, HUmax, outlier,  ):
+    def __init__(self, dim, sb, maps, structure, columns, rows, xCTspace, zCTspace, slices, path, ImName, pixNr,
+                 binSize, modality, wv, localRadiomics, cropStructure, stop_calc, *cont):
         self.logger = logging.getLogger(__name__)
         self.logger.info("Start: Texture Calculation")
         self.structure = structure
@@ -104,7 +98,10 @@ class Features2D(object):
                         ctp = False
                     else:
                         ctp = True
-                    wave_list = Wavelet(maps[i], path, modality[i], ImName + '_' + pixNr, dim, ctp).Return()  # order of transformed images: original, LLL, HHH, HHL, HLH, HLL, LHH, LHL, LLH or for 2D: original, LL, HH, HL, LH
+                    # order of transformed images:
+                    # original, LLL, HHH, HHL, HLH, HLL, LHH, LHL, LLH
+                    # for 2D: original, LL, HH, HL, LH
+                    wave_list = Wavelet(maps[i], path, modality[i], ImName + '_' + pixNr, dim, ctp).Return()
                     # else:  # !!!!!!!!!!!!! CTP isn't adapted yet for 2D !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
                     #     wave_list = WaveletCTP(maps[i], path, modality[i], ImName + '_' + pixNr).Return()
                     sb.SetStatusText(ImName + ' wave done ' + str(datetime.now().strftime('%H:%M:%S')))
@@ -142,15 +139,15 @@ class Features2D(object):
                     for i in range(len(cropStructure["data"])):
                         # wavelet transform
                         if wv:
-                            wave_list_ct = Wavelet(cropStructure["data"][i], path, "CT", ImName + '_' + pixNr, dim, False).Return()  # order of transformed images: original, LLL, HHH, HHL, HLH, HLL, LHH, LHL, LLH
+                            # order of transformed images: original, LLL, HHH, HHL, HLH, HLL, LHH, LHL, LLH
+                            wave_list_ct = Wavelet(cropStructure["data"][i], path, "CT", ImName + '_' + pixNr, dim, False).Return()
                             sb.SetStatusText(ImName + ' wave done ' + str(datetime.now().strftime('%H:%M:%S')))
                             if dim == "2D" or dim == "2D_singleSlice":
                                 rs_type = [1, 2, 0, 0, 0]
                                 method_wv = ["", "LL_", "HH_", "HL_", "LH_"]  # "" for original
                             elif dim == "3D":
                                 rs_type = [1, 2, 0, 0, 0, 0, 0, 0, 0]  # structure type, structure resolution
-                                method_wv = ["", "LLL_", "HHH_", "HHL_", "HLH_", "HLL_", "LHH_", "LHL_",
-                                             "LLH_"]  # "" for original
+                                method_wv = ["", "LLL_", "HHH_", "HHL_", "HLH_", "HLL_", "LHH_", "LHL_", "LLH_"]  # "" for original
                         else:
                             rs_type = [1]
                             wave_list_ct = [cropStructure["data"][i]]
@@ -210,7 +207,7 @@ class Features2D(object):
                     # call NaN optimizer
 
                     iterations_n = len(centers)  # to define how many time the radiomics need to be calculated
-                    method_wv = []*iterations_n  # suggestion only..  how to name different centers?
+                    method_wv = [] * iterations_n  # suggestion only..  how to name different centers?
                     self.structure = []  # list to collect info if the subvolume belongs to the tumor or to the recurrence
 
                     # to have list with n_bits and intervals for each centers (it will be the same number for eachcenter, but it is done for compability with wavelet)
@@ -252,7 +249,7 @@ class Features2D(object):
                         # interval = 1
                         matrix = matrix_list[w]
                         matrix_v = matrix_v_list[w]
-                        self.n_bits = int(n_bits_list[w])   # i added int here
+                        self.n_bits = int(n_bits_list[w])  # i added int here
                         interval = interval_list[w]
 
                         try:
@@ -282,7 +279,8 @@ class Features2D(object):
 
                         if more_than_one_pix:
                             i_feature.feature_calculation(interval)
-                            self.dict_features = i_feature.return_features(self.dict_features, m_wv)  # save new features in dict
+                            self.dict_features = i_feature.return_features(self.dict_features,
+                                                                           m_wv)  # save new features in dict
                             try:
                                 sb.SetStatusText(ImName + ' hist done ' + str(datetime.now().strftime('%H:%M:%S')))
                                 self.logger.info(ImName + ' hist done ' + str(datetime.now().strftime('%H:%M:%S')))
@@ -389,7 +387,8 @@ class Features2D(object):
                             glszm_m1.feature_calculation("2)", glszm)
                             self.dict_features = glszm_m1.return_features(self.dict_features, "", m_wv)
                             if dim != "2D_singleSlice":
-                                glszm_m2 = GLRLM_GLSZM_GLDZM_NGLDM("GLSZM-merged", matrix, "GLSZM", self.n_bits, lista_t_2d)
+                                glszm_m2 = GLRLM_GLSZM_GLDZM_NGLDM("GLSZM-merged", matrix, "GLSZM", self.n_bits,
+                                                                   lista_t_2d)
                                 glszm_m2.feature_calculation("4)", glszm_m)
                                 self.dict_features = glszm_m2.return_features(self.dict_features, "m", m_wv)
                                 del glszm_m2
@@ -398,7 +397,8 @@ class Features2D(object):
                             gldzm_m1.feature_calculation("2)", gldzm)
                             self.dict_features = gldzm_m1.return_features(self.dict_features, "", m_wv)
                             if dim != "2D_singleSlice":
-                                gldzm_m2 = GLRLM_GLSZM_GLDZM_NGLDM("GLDZM-merged", matrix, "GLDZM", self.n_bits, lista_t_2d)
+                                gldzm_m2 = GLRLM_GLSZM_GLDZM_NGLDM("GLDZM-merged", matrix, "GLDZM", self.n_bits,
+                                                                   lista_t_2d)
                                 gldzm_m2.feature_calculation("4)", gldzm_m)
                                 self.dict_features = gldzm_m2.return_features(self.dict_features, "m", m_wv)
                                 del gldzm_m2
@@ -446,7 +446,8 @@ class Features2D(object):
                             ngldm_1.feature_calculation("2)", ngldm)
                             self.dict_features = ngldm_1.return_features(self.dict_features, "", m_wv)
                             if dim != "2D_singleSlice":
-                                ngldm_2 = GLRLM_GLSZM_GLDZM_NGLDM("NGLDM-merged", matrix, "NGLDM", self.n_bits, lista_t_2d)
+                                ngldm_2 = GLRLM_GLSZM_GLDZM_NGLDM("NGLDM-merged", matrix, "NGLDM", self.n_bits,
+                                                                  lista_t_2d)
                                 ngldm_2.feature_calculation("4)", ngldm_m)
                                 self.dict_features = ngldm_2.return_features(self.dict_features, "m", m_wv)
                                 del ngldm_2
@@ -457,7 +458,8 @@ class Features2D(object):
                             # Other features:
                             # -------------------------------------------------------------------------------------------
                             # get center mass shift and metabolic tumor volume features
-                            self.dict_features = CMS_MTV(matrix, path, pixNr, ImName, matrix_v, self.xCTspace, self.zCTspace,
+                            self.dict_features = CMS_MTV(matrix, path, pixNr, ImName, matrix_v, self.xCTspace,
+                                                         self.zCTspace,
                                                          self.structure, dim).return_features(self.dict_features, m_wv)
 
                             try:
@@ -502,11 +504,11 @@ class Features2D(object):
         except UnboundLocalError:
             pass
         try:
-            makedirs(path + ImName + '\\')
+            makedirs(path + ImName + os.sep)
         except OSError:
-            if not isdir(path + ImName + '\\'):
+            if not isdir(path + ImName + os.sep):
                 raise
-        fig.savefig(path + ImName + '\\' + name + '_' + self.structure + '_' + pixNr + '_' + str(j + 1) + '.png')
+        fig.savefig(path + ImName + os.sep + name + '_' + self.structure + '_' + pixNr + '_' + str(j + 1) + '.png')
         plt.close()
         del fig
 
@@ -519,12 +521,12 @@ class Features2D(object):
                 im = axes.imshow(matrix[j], cmap=plt.get_cmap('Greys'), vmin=0, vmax=self.n_bits)
             except IndexError:
                 pass
-        axes = fig.add_subplot(5, 5, 25)        # I inserted this two lines by one tab
+        axes = fig.add_subplot(5, 5, 25)  # I inserted this two lines by one tab
         try:
             fig.colorbar(im)
         except UnboundLocalError:
             pass
         fig.savefig(
-            path + ImName + '\\black_' + name + '_' + self.structure + '_' + pixNr + '_' + str(j + 1) + '.png')
+            path + ImName + os.sep + 'black_' + name + '_' + self.structure + '_' + pixNr + '_' + str(j + 1) + '.png')
         plt.close()
         del fig

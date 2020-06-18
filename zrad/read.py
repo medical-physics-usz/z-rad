@@ -1,18 +1,17 @@
-# -*- coding: utf-8 -*-
-
-# import libraries
-import pydicom as dc  # dicom library
-from os import listdir, makedirs  # managing files
-from os.path import isfile, join, isdir
-from numpy import arange
 import logging
+import os
+from os import listdir
+from os.path import isfile, join
 
-# own classes
+import pydicom as dc
+from numpy import arange
+
 from structure import Structures
 
 
 class ReadImageStructure(object):
-    """reads certain modality dicom files in a given folder, provides list of files, number of rows, number of columns, pixel spacing, position of the left top corner (x,y), patient position;
+    """reads certain modality dicom files in a given folder, provides list of files, number of rows, number of columns,
+    pixel spacing, position of the left top corner (x,y), patient position;
     contour points (x,y) also for wavelets
     Type: object
     Attributes:
@@ -20,7 +19,8 @@ class ReadImageStructure(object):
     mypath_image – path where images are saved
     structure – list of structures to be analysed
     wv – bool, calculate wavelet
-    *modality - optional argument, list of prefixes in the functional maps for example for CTP modality = ['BV', 'MTT', 'BF']
+    *modality - optional argument, list of prefixes in the functional maps for example for CTP modality = ['BV', 'MTT',
+    'BF']
     """
 
     def __init__(self, UID, mypath_image, stucture, wv, dim, local, *modality):
@@ -42,7 +42,7 @@ class ReadImageStructure(object):
                 of = []
                 for f in listdir(mypath_image):
                     if isfile(join(mypath_image, f)) and f[:len(self.modality[u])] == self.modality[u]:
-                        of.append((round(float(dc.read_file(mypath_image + '\\' + f).ImagePositionPatient[2]), 3), f))
+                        of.append((round(float(dc.read_file(mypath_image + os.sep + f).ImagePositionPatient[2]), 3), f))
                         # hier müsste eine Fehlermeldung kommen, falls nicht!
                 of.sort()
                 onlyfiles.append(of)
@@ -55,8 +55,10 @@ class ReadImageStructure(object):
         else:  # CT or PET
             for f in listdir(mypath_image):
                 try:
-                    if isfile(join(mypath_image, f)) and dc.read_file(mypath_image + f).SOPClassUID in UID:  # read only dicoms of certain modality
-                        onlyfiles.append((round(float(dc.read_file(mypath_image + '\\' + f).ImagePositionPatient[2]), 3), f))  # sort files by slice position
+                    # read only dicoms of certain modality
+                    if isfile(join(mypath_image, f)) and dc.read_file(mypath_image + f).SOPClassUID in UID:
+                        # sort files by slice position
+                        onlyfiles.append((round(float(dc.read_file(mypath_image + os.sep + f).ImagePositionPatient[2]), 3), f))
                 except 'InvalidDicomError':  # not a dicom file
                     self.listDicomProblem.append(f)
                     pass
@@ -67,7 +69,7 @@ class ReadImageStructure(object):
                 self.slices.append(onlyfiles[i][0])
                 onlyfiles[i] = onlyfiles[i][1]
 
-        IM = dc.read_file(mypath_image + '\\' + onlyfiles[0])
+        IM = dc.read_file(mypath_image + os.sep + onlyfiles[0])
 
         self.rows = IM.Rows
         self.columns = IM.Columns
@@ -80,22 +82,23 @@ class ReadImageStructure(object):
         del IM
 
     def ReadStucture(self, mypath_image, structure, wv, local):
+        """reading RS file"""
         self.logger.info("Reading StructureSet")
         self.logger.info("Selected Structure " + " ".join(structure))
-        '''reading RS file'''
+
         RS_UID = ['1.2.840.10008.5.1.4.1.1.481.3', 'RT Structure Set Storage']  # structure set
-        rs = [f for f in listdir(mypath_image) if isfile(join(mypath_image, f)) and dc.read_file(mypath_image + f).SOPClassUID in RS_UID][0]  # take only the first RS file you found
+        # take only the first RS file you found
+        rs = [f for f in listdir(mypath_image) if isfile(join(mypath_image, f)) and dc.read_file(mypath_image + f).SOPClassUID in RS_UID][0]
 
         self.rs = mypath_image + rs
         self.logger.info("StructureSet File" + self.rs)
-        struct = Structures(self.rs, structure, self.slices, self.x_ct, self.y_ct, self.xCTspace, len(self.slices), wv,self.dim, local)
+        struct = Structures(self.rs, structure, self.slices, self.x_ct, self.y_ct, self.xCTspace, len(self.slices), wv,
+                            self.dim, local)
         self.Xcontour = struct.Xcontour
         self.Xcontour_W = struct.Xcontour_W
         self.Ycontour = struct.Ycontour
         self.Ycontour_W = struct.Ycontour_W
         self.slices_w = struct.slices_w
-
         self.Xcontour_Rec = struct.Xcontour_Rec
         self.Ycontour_Rec = struct.Ycontour_Rec
-
         self.structure_f = struct.organs

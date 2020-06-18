@@ -1,0 +1,12 @@
+pydicom
+numpy
+xlsxwriter
+matplotlib
+scipy
+vtk
+scikit-learn
+wxpython
+pandas
+tqdm
+opencv-python
+pywavelets

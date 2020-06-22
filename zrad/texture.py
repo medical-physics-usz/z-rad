@@ -53,7 +53,7 @@ class Texture(object):
         self.columns = columns  # columns
         self.rows = rows
         self.slices = slices  # slice location
-        self.mean = []  # list of texture parameters in the final verion contains [mean BF, mean MTT, mean BV]
+        self.mean = []  # list of texture parameters in the final version contains [mean BF, mean MTT, mean BV]
         self.std = []
         self.cov = []
         self.skewness = []
@@ -495,8 +495,8 @@ class Texture(object):
                                        [1, 1, 0], [1, -1, 0], [1, 1, 1], [1, 1, -1], [1, -1, 1], [1, -1, -1]]
                             list_CO_merged = []
                             for c in lista_t:
-                                co_matrix, co_matrix_non_normalized, p_plus, p_minus = self.coMatrix(matrix,
-                                                                                                     c)  # p_plus, p_minus - marginale probabilities
+                                # p_plus, p_minus - marginal probabilities
+                                co_matrix, co_matrix_non_normalized, p_plus, p_minus = self.coMatrix(matrix, c)
                                 list_CO_merged.append(co_matrix_non_normalized)
                                 energy_t.append(self.fun_energy(co_matrix))
                                 ent = self.fun_entropy(co_matrix)
@@ -532,7 +532,7 @@ class Texture(object):
                                 clust_s_t.append(clust2)
                                 clust_p_t.append(clust3)
                                 del co_matrix
-                            # take avarege over all directions
+                            # take average over all directions
                             energy = np.mean(energy_t)
                             entropy = np.mean(entropy_t)
                             contrast = np.mean(contrast_t)
@@ -550,7 +550,7 @@ class Texture(object):
                             IMC1 = np.mean(IMC1_t)
                             IMC2 = np.mean(IMC2_t)
                             try:
-                                MCC = np.mean(MCC_t)
+                                MCC = np.mean(MCC_t, np.float)
                             except TypeError:  # see MCC function
                                 MCC = np.nan
                             joint_max = np.mean(joint_max_t)
@@ -877,18 +877,18 @@ class Texture(object):
                             self.clust_t.append(round(clust_t, 3))
                             self.clust_s.append(round(clust_s, 3))
                             self.clust_p.append(round(clust_p, 3))
-                            #NGTDM
-                            self.coarseness.append(round(coarseness,4))
+                            # NGTDM
+                            self.coarseness.append(round(coarseness, 4))
                             try:
-                                self.neighContrast.append(round(neighContrast,4))
+                                self.neighContrast.append(round(neighContrast, 4))
                             except TypeError:
                                 self.neighContrast.append('nan')
                             try:
-                                self.busyness.append(round(busyness,4))
+                                self.busyness.append(round(busyness, 4))
                             except TypeError:
                                 self.busyness.append('nan')
-                            self.complexity.append(round(complexity,4))
-                            self.strength.append(round(strength,4))
+                            self.complexity.append(round(complexity, 4))
+                            self.strength.append(round(strength, 4))
                             try:
                                 self.frac_dim.append(round(frac, 3))
                             except TypeError:
@@ -1176,12 +1176,12 @@ class Texture(object):
         return m
 
     def fun_percentile(self, M1, px):  # 3.1.7, 3.1.8
-        '''px percentile for example 75'''
+        """px percentile for example 75"""
         p = np.percentile(M1, px)
         return p
 
     def fun_interqR(self, M1):  # 3.1.10
-        '''interquartile range'''
+        """interquartile range"""
         irq = self.fun_percentile(M1, 75) - self.fun_percentile(M1, 25)
         return irq
 
@@ -1190,12 +1190,12 @@ class Texture(object):
         return r
 
     def fun_mad(self, M1):  # 3.1.12
-        '''mean absolute diviation'''
+        """mean absolute diviation"""
         mad = np.sum(abs((np.array(M1) - np.mean(M1)))) / float(len(M1))
         return mad
 
     def fun_rmad(self, M1, p10, p90):  # 3.1.13
-        '''robust meand absolute deivation'''
+        """robust meand absolute deivation"""
         temp = list(M1)
         ind1 = np.where(np.array(temp) < p10)[0]
         for i in range(1, len(ind1) + 1):
@@ -1211,7 +1211,7 @@ class Texture(object):
         return e
 
     def fun_H_entropy(self, M1, interval):  # 3.1.16
-        '''interval - bin size'''
+        """interval - bin size"""
         vmin = np.min(M1)
         dM1 = ((M1 - vmin) // interval) + 1
 
@@ -1227,12 +1227,12 @@ class Texture(object):
         return e
 
     def fun_rms(self, M1):  # 3.1.15
-        '''root mea square'''
+        """root mea square"""
         rms = np.sqrt(np.sum(M1 ** 2) / len(M1))
         return rms
 
     def fun_H_uniformity(self, M1, interval):  # 3.1.17
-        '''interval - bin size'''
+        """interval - bin size"""
         vmin = np.min(M1)
         dM1 = ((M1 - vmin) // interval) + 1
 
@@ -1451,14 +1451,15 @@ class Texture(object):
                     for k in range(len(X)):
                         if (X[i] * X[k]) != 0:
                             Q[i][j] += coM[i][k] * coM[j][k] / (X[i] * X[k])
-            l = np.linalg.eigvals(Q)
-            l.sort()
+            l_arr = np.linalg.eigvals(Q)
+            l_arr.sort()
             try:
-                return l[-2] ** 0.5
+                mcc_t = l_arr[-2] ** 0.5
             except IndexError:  # due to not sufficient number of bits in wavelet transform
                 return ''
         except np.linalg.linalg.LinAlgError:
-            return np.nan
+            mcc_t = np.nan
+        return mcc_t
 
     def fun_joint_max(self, coM):  # 3.3.1
         return np.max(coM)
@@ -1917,7 +1918,7 @@ class Texture(object):
         return GLSZM, norm_GLSZM, GLDZM, norm_GLDZM
 
     def neighbor(self, z, y, x, matrix, v):
-        '''search for neighbours with the same gray level'''
+        """search for neighbours with the same gray level"""
         points = []
         for k in range(-1, 2):
             for i in range(-1, 2):

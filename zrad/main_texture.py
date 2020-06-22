@@ -93,14 +93,12 @@ class Radiomics(wx.Frame):
         """Initialize radiomics calculaiton"""
 
         path_save, save_as, structure, pixNr, binSize, path_image, n_pref, start, stop = self.panelRadiomics.read()
-        path_save += os.sep
-        path_image += os.sep
         self.logger.info("Start: Calculate Radiomics")
         # self.logger.info( "Structures found", ', '.join(structure))
         MyInfo('Test done!')
         '''path_save - save results in, path
         save_as - name of text file to save radiomics
-        structure - analysed studctures, later converted to list with ',' separation
+        structure - analysed structures, later converted to list with ',' separation
         pixNr - number of bin
         binSize - fixed bin size
         path_image - path to images
@@ -195,26 +193,21 @@ class Radiomics(wx.Frame):
             main_texture_ivim(self.GetStatusBar(), path_image, path_save, structure, pixNr, binSize, l_ImName, save_as,
                               dim, wv, self.local, cropStructure, exportList)
 
-        name_shape_pt = ""
-        if self.panelRadiomics.FindWindowById(1081).GetValue():  # calculate shape
-            name_shape_pt = self.panelRadiomics.FindWindowById(1083).GetValue()  # name of ROI defined as PT for shape
-            path_files_shape = path_image + os.sep + 'resized_1mm' + os.sep + name_shape_pt + os.sep
-            inp_mypath_results = path_save + os.sep + 'shape_' + name_shape_pt + '_' + str(start) + '_' + str(stop - 1) + '.txt'
-            Shape(path_files_shape, inp_mypath_results, start, stop)
+        calc_shape = self.panelRadiomics.FindWindowById(1081).GetValue()
+        name_shape_pts = self.panelRadiomics.FindWindowById(1083).GetValue()  # name of ROIs defined for shape
+        if calc_shape:  # calculate shape
+            name_shape_pt_list = name_shape_pts.split(',')
+            Shape(path_image, path_save, save_as, name_shape_pt_list, start, stop)
+            ExportExcel(calc_shape, path_save, save_as)
 
         # calculate results for LN
-
         if self.panelRadiomics.FindWindowById(1091).GetValue():
-            name_ln = self.panelRadiomics.FindWindowById(
-                1093).GetValue()  # name of ROI defined as LN for shape, for example g_LN, searches for g_LN_X
-            name_shape_pt = self.panelRadiomics.FindWindowById(1083).GetValue()  # name of ROI defined as PT for shape
+            # name of ROI defined as LN for shape, for example g_LN, searches for g_LN_X
+            name_ln = self.panelRadiomics.FindWindowById(1093).GetValue()
+            name_shape_pt = name_shape_pts  # name of ROI defined as PT for shape
             path_files_shape = path_image + os.sep + 'resized_1mm' + os.sep
             inp_mypath_results = path_save + os.sep + 'LN_' + '_' + str(start) + '_' + str(stop - 1) + '.txt'
             LymphNodes(name_ln, name_shape_pt, path_files_shape, inp_mypath_results, path_save, start, stop)
-
-        ifshape = self.panelRadiomics.FindWindowById(1081).GetValue()
-        if dim == "3D":
-            ExportExcel(ifshape, path_save, name_shape_pt, start, stop, save_as)
 
         MyInfo('Radiomics done')
 
@@ -268,17 +261,13 @@ class Radiomics(wx.Frame):
     def OnOProgramie(self, evt):
         """info"""
         description = """"""
-
         licence = """"""
-
         info = AboutDialogInfo()
-
         info.SetName('Z-Rad')
-        info.SetVersion('7.2')
+        info.SetVersion('7.2.0')
         info.SetDescription(description)
         info.SetCopyright('(C) 2017-2020 USZ Radiomics Team')
         info.SetLicence(licence)
-
         AboutBox(info)
 
 

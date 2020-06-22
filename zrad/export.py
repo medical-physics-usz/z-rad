@@ -1,4 +1,3 @@
-import os
 import sys
 from os import makedirs
 from os.path import isdir
@@ -14,11 +13,9 @@ class Export(object):
             if not isdir(path_save):
                 raise
 
-                # for now fixed
         calcGLDZM = True
         calcNGLDM = True
-
-        final_file = open(path_save + os.sep + save_as + '.txt', 'w')
+        final_file = open(path_save + 'texture_' + save_as + '.txt', 'w')
         # names of the texture parameters
         par_names = ['Mean', 'SD', 'COV', 'skewness', 'kurtosis', 'var', 'median', 'percentile10', 'percentile90',
                      'iqr', 'Hrange', 'mad', 'rmad', 'H_energy', 'H_entropy', 'rms', 'H_uniformity',

@@ -177,10 +177,7 @@ class ResizeTexture(object):
                             # converting to decimal, for CT no intercept as it is the same per image
                             data16 = np.array(np.fromstring(data, dtype=bits))
                         # recalculating for rows x columns
-                        try:
-                            a = np.reshape(data16, (rows, columns))
-                        except ValueError:
-                            import pdb; pdb.set_trace()
+                        a = np.reshape(data16, (rows, columns))
                         del data
                         del data16
                         # interpolate XY

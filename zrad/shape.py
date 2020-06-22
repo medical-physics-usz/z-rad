@@ -6,6 +6,7 @@ from os.path import isfile, join, exists
 
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 import scipy
 import scipy.ndimage as ndi
 import vtk
@@ -23,70 +24,81 @@ class Shape(object):
     high - stop number
     """
 
-    def __init__(self, inp_mypath_load, inp_mypath_results, low, high):
-        path_results = inp_mypath_results
-        self.path_load = inp_mypath_load + os.sep
-        nlist = [str(i) for i in range(low, high + 1)]
+    def __init__(self, path_image, path_save, save_as, rois, low, high):
+        nlist = [str(i) for i in range(low, high)]
 
         # maximum euclidian distance, one needs
         scalefactor = 0.3  # 0.4 #0.1 => 8 s /file, 0.2 => 10 s/file, 0.3 => 1 min/file, 0.4 => MemoryOverload
-
-        # in which resoltuion files were saved
-        ind_f = inp_mypath_load[:-1].rfind(os.sep)  # get into one folder up
-        path_set = inp_mypath_load[:ind_f + 1]
-        f = open(path_set + 'shape_resolution.txt', 'r')
-        savedResolution = float(f.readlines()[0])
-        f.close()
-        del ind_f
-        del path_set
-
+        path_results = path_save + 'shape_' + save_as + '.csv'
         # calculate parameters of all GTVs
         if exists(path_results):
             remove(path_results)
 
-        fGTV = open(path_results, "w")  # use "a" to append
-        fGTV.write(
-            "patient\tMC-Volume\tnonzero_Points\tMC-Surface\tClusters\tCompactness_1\tCompactness_2\tDispr.\tSphericity\tAsphericity\tA/V\tthickness_median\tthickness_SD\teuclidian_distance\tmajor_axis\tminor_axis\tleast_axis\telongation\tflatness" "\n")
-
         print('Start_0: ', datetime.now().strftime('%H:%M:%S'))
+        df_results = pd.DataFrame()
+        i = 0
+        for roi_name in rois:
+            print('ROI: {}'.format(roi_name))
+            self.path_load = path_image + 'resized_1mm' + os.sep + roi_name + os.sep
+            # in which resolution files were saved
+            ind_f = self.path_load[:-1].rfind(os.sep)  # get into one folder up
+            path_set = self.path_load[:ind_f + 1]
+            f = open(path_set + 'shape_resolution.txt', 'r')
+            savedResolution = float(f.readlines()[0])
+            f.close()
+            del ind_f
+            del path_set
 
-        for nn in nlist:
-            try:
-                if exists(self.path_load + nn) and not listdir(self.path_load + nn) == []:
-                    print('processing: ', nn + ', start: ', datetime.now().strftime('%H:%M:%S'))
-                    pic3d, pnz, extent = self.fill(nn)
-                    num_cluster = self.clust(pic3d, 0)
-                    dst_median, dst_std, dst_mean = self.thickness(nn, pic3d, 0)
-                    vtkvol, vtksur, comp1, comp2, ar, dispr, spher, aspher, AtoV = self.marching_cubes(pic3d, extent, 0, len(pnz[0]))
+            for nn in nlist:
+                print('Patient: {}'.format(nn))
+                try:
+                    if exists(self.path_load + nn) and not listdir(self.path_load + nn) == []:
+                        print('processing: ', nn + ', start: ', datetime.now().strftime('%H:%M:%S'))
+                        pic3d, pnz, extent = self.fill(nn)
+                        num_cluster = self.clust(pic3d, 0)
+                        dst_median, dst_std, dst_mean = self.thickness(nn, pic3d, 0)
+                        vtkvol, vtksur, comp1, comp2, ar, dispr, spher, aspher, AtoV = self.marching_cubes(pic3d, extent, 0, len(pnz[0]))
 
-                    maxeucl = self.maxeuclid(pic3d, scalefactor)
-                    major_axis, minor_axis, least_axis, elong, flat = self.PCA_analysis(
-                        pnz)  # for big structures self.PCA_analysis(pic3d, scalefactor)
-                    if savedResolution != 1.0:  # to adapt for the resolution of readin points
-                        vtkvol = 0.001 * vtkvol
-                        vtksur = 0.01 * vtksur
-                        dst_median = 0.1 * dst_median
-                        dst_std = 0.1 * dst_std
-                        maxeucl = 0.1 * maxeucl
-                        major_axis = 0.1 * major_axis
-                        minor_axis = 0.1 * minor_axis
-                        least_axis = 0.1 * least_axis
+                        maxeucl = self.maxeuclid(pic3d, scalefactor)
+                        major_axis, minor_axis, least_axis, elong, flat = self.PCA_analysis(
+                            pnz)  # for big structures self.PCA_analysis(pic3d, scalefactor)
+                        if savedResolution != 1.0:  # to adapt for the resolution of readin points
+                            vtkvol = 0.001 * vtkvol
+                            vtksur = 0.01 * vtksur
+                            dst_median = 0.1 * dst_median
+                            dst_std = 0.1 * dst_std
+                            maxeucl = 0.1 * maxeucl
+                            major_axis = 0.1 * major_axis
+                            minor_axis = 0.1 * minor_axis
+                            least_axis = 0.1 * least_axis
 
-                    fGTV.write(nn + "\t" + str(vtkvol) + "\t" + str(len(pnz[0])) + "\t" + str(vtksur) + "\t" + str(
-                        num_cluster) + "\t" + str(comp1) + "\t" + str(comp2) + "\t" + str(dispr) + "\t" + str(
-                        spher) + "\t" + str(aspher) + "\t" + str(AtoV) + '\t')
-                    fGTV.write(str(dst_median) + '\t' + str(dst_std) + '\t')
-                    fGTV.write(str(maxeucl) + '\t')
-                    fGTV.write(str(major_axis) + '\t' + str(minor_axis) + '\t' + str(least_axis) + '\t' + str(
-                        elong) + '\t' + str(flat) + '\t')
-                    fGTV.write("\n")
-                    sys.stdout.flush()
-                else:
-                    print('directory %s does not exist or is empty' % (nn))
-            except OSError:
-                pass
+                        df_results.loc[i, 'patient'] = nn
+                        df_results.loc[i, 'organ'] = roi_name
+                        df_results.loc[i, 'MC-Volume'] = vtkvol
+                        df_results.loc[i, 'nonzero_Points'] = len(pnz[0])
+                        df_results.loc[i, 'MC-Surface'] = vtksur
+                        df_results.loc[i, 'Clusters'] = num_cluster
+                        df_results.loc[i, 'Compactness_1'] = comp1
+                        df_results.loc[i, 'Compactness_2'] = comp2
+                        df_results.loc[i, 'Dispr.'] = dispr
+                        df_results.loc[i, 'Sphericity'] = spher
+                        df_results.loc[i, 'Asphericity'] = aspher
+                        df_results.loc[i, 'A/V'] = AtoV
+                        df_results.loc[i, 'thickness_median'] = dst_median
+                        df_results.loc[i, 'thickness_SD'] = dst_std
+                        df_results.loc[i, 'euclidian_distance'] = maxeucl
+                        df_results.loc[i, 'major_axis'] = major_axis
+                        df_results.loc[i, 'minor_axis'] = minor_axis
+                        df_results.loc[i, 'least_axis'] = least_axis
+                        df_results.loc[i, 'elongation'] = elong
+                        df_results.loc[i, 'flatness'] = flat
 
-        fGTV.close()
+                        df_results.to_csv(path_results)
+                        i += 1
+                    else:
+                        print('directory %s does not exist or is empty' % nn)
+                except OSError:
+                    pass
 
     def fill(self, fname):
         # Start with empty 3d-array of zeros

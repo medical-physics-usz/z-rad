@@ -167,7 +167,7 @@ class Matrix(object):
                                 pass
 
                 # define the recurrence place
-                if Xcontour_Rec:
+                if Xcontour_Rec != []:
                     for i in range(len(Xcontour_Rec)):  # slices
                         for j in range(len(Xcontour_Rec[i])):  # sub-structures in the slice
                             for k in range(len(Xcontour_Rec[i][j])):  # each point

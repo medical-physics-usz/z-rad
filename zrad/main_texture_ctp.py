@@ -184,7 +184,7 @@ class main_texture_ctp(object):
     def remove_points(self, M, p):
         """insert NaN in the place of the outliers"""
         for i in p:
-            if i:
+            if i != []:
                 for j in i:
                     for k in range(len(j[0])):
                         M[j[0][k]][j[1][k]][j[2][k]] = np.nan

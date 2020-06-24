@@ -110,7 +110,7 @@ class InterpolateROI(object):
         for i in range(len(contours)):  # contours
             for j in range(len(contours[i])):  # slice
                 for n in range(len(contours[i][j])):  # number of contours per slice
-                    if contours[i][j][n][0]:
+                    if contours[i][j][n][0] != []:
                         contours[i][j][n][0] = np.array(abs(contours[i][j][n][0] - x_ct) / xCTspace)
                         contours[i][j][n][1] = np.array(abs(contours[i][j][n][1] - y_ct) / yCTspace)
                         for k in range(len(contours[i][j][n][0])):
@@ -126,7 +126,7 @@ class InterpolateROI(object):
         for i in range(len(contours)):  # contours
             for j in range(len(contours[i])):  # slice
                 for n in range(len(contours[i][j])):  # number of contours per slice
-                    if contours[i][j][n][0]:
+                    if contours[i][j][n][0] != []:
                         x_c_min.append(np.min(contours[i][j][n][0]))
                         x_c_max.append(np.max(contours[i][j][n][0]))
                         y_c_min.append(np.min(contours[i][j][n][1]))
@@ -209,7 +209,7 @@ class InterpolateROI(object):
         # adjust if there is a contour only in one slice, add slice filled with -1 before and after
         ind = []
         for k in range(len(M)):
-            if M[k]:
+            if M[k] != []:
                 ind.append(k)
 
         if len(ind) == 1:

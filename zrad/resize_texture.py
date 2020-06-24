@@ -264,6 +264,9 @@ class ResizeTexture(object):
                         CT = dc.read_file(mypath_file + onlyfiles[im_nr])  # read file to be modified
                         for ki in invalid_tags:
                             del CT[ki]
+
+                        # to save information about used interpolation
+                        CT.SeriesDescription = self.interpolation_alg
                         # change UID so it is treated as new image
                         CT.FrameOfReferenceUID = CT.FrameOfReferenceUID[:-2] + self.UID
                         CT.SeriesInstanceUID = CT.SeriesInstanceUID[:-2] + self.UID

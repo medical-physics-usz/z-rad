@@ -140,6 +140,14 @@ class Radiomics(wx.Frame):
         # to be adapted 
         exportList = []
         cropStructure = {"crop": False, "ct_path": ""}
+        
+        #save parameters of calcultion
+        dict_parameters = {'path': path_image,
+                           "structure": structure,
+                            "pixelNr": pixNr,
+                            "bin_size": binSize,
+                            "Dimension": dim,
+                            "wv": wv}
 
         # modality
         if self.panelRadiomics.FindWindowById(120).GetValue():  # CT
@@ -152,6 +160,11 @@ class Radiomics(wx.Frame):
                 hu_max = 'none'
                 self.panelRadiomics.FindWindowById(125).SetValue('none')
                 self.panelRadiomics.FindWindowById(126).SetValue('none')
+
+            dict_parameters["image_modality"] = 'CT'
+            dict_parameters["HUmin"] = hu_min
+            dict_parameters["HUmax"] = hu_max
+            dict_parameters["outlier_corr"] = outlier_corr
             main_texture_ct(self.GetStatusBar(), path_image, path_save, structure, pixNr, binSize, l_ImName, save_as,
                             dim, hu_min, hu_max, outlier_corr, wv, self.local, cropStructure, exportList)
 
@@ -174,22 +187,33 @@ class Radiomics(wx.Frame):
                 if ct_path == "":
                     print("Error: No CT Path provided!")
                     raise
+
             cropStructure = {"crop": cropArg, "hu_min": ct_hu_min, "hu_max": ct_hu_max, "ct_path": ct_path}
+            dict_parameters["image_modality"] = 'PET'
+            dict_parameters['SUV'] = SUV
+            dict_parameters['CT corrected'] = cropArg
+            dict_parameters["HUmin"] = ct_hu_min
+            dict_parameters["HUmax"] = ct_hu_max
             main_texture_pet(self.GetStatusBar(), path_image, path_save, structure, pixNr, binSize, l_ImName, save_as,
                              dim, SUV, wv, self.local, cropStructure, exportList)
 
         elif self.panelRadiomics.FindWindowById(140).GetValue():  # CTP
             outlier_corr = self.panelRadiomics.FindWindowById(141).GetValue()
+            dict_parameters["image_modality"] = 'CTP'
+            dict_parameters["outlier_corr"] = outlier_corr
             main_texture_ctp(self.GetStatusBar(), path_image, path_save, structure, pixNr, binSize, l_ImName, save_as,
                              dim, outlier_corr, wv, self.local, cropStructure, exportList)
 
         elif self.panelRadiomics.FindWindowById(150).GetValue():  # MR
             struct_norm1 = self.panelRadiomics.FindWindowById(151).GetValue()
             struct_norm2 = self.panelRadiomics.FindWindowById(152).GetValue()
+            dict_parameters["image_modality"] = 'MR'
+            dict_parameters['normalization'] = struct_norm1 + ' ' + struct_norm2
             main_texture_mr(self.GetStatusBar(), path_image, path_save, structure, pixNr, binSize, l_ImName, save_as,
                             dim, struct_norm1, struct_norm2, wv, self.local, cropStructure, exportList)
 
         elif self.panelRadiomics.FindWindowById(160).GetValue():  # IVIM
+            dict_parameters["image_modality"] = 'IVIM'
             main_texture_ivim(self.GetStatusBar(), path_image, path_save, structure, pixNr, binSize, l_ImName, save_as,
                               dim, wv, self.local, cropStructure, exportList)
 
@@ -197,8 +221,10 @@ class Radiomics(wx.Frame):
         name_shape_pts = self.panelRadiomics.FindWindowById(1083).GetValue()  # name of ROIs defined for shape
         if calc_shape:  # calculate shape
             name_shape_pt_list = name_shape_pts.split(',')
+            dict_parameters['shape structure'] = name_shape_pt_list
             Shape(path_image, path_save, save_as, name_shape_pt_list, start, stop)
-            ExportExcel(calc_shape, path_save, save_as)
+            if dim == "3D":
+                ExportExcel(calc_shape, path_save, save_as, dict_parameters)
 
         # calculate results for LN
         if self.panelRadiomics.FindWindowById(1091).GetValue():

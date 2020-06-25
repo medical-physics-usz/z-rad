@@ -7,7 +7,7 @@ import pandas as pd
 class ExportExcel(object):
     """combines the txt files for texture and shape into one excel file"""
 
-    def __init__(self, ifshape, path_save, save_as):
+    def __init__(self, ifshape, path_save, save_as, dict_parameters):
         if ifshape:
             shape = pd.read_csv(path_save + 'shape_' + save_as + '.csv', index_col=0)
         else:
@@ -19,8 +19,12 @@ class ExportExcel(object):
             df = texture
         df = self.cleanup(df)
         df = self.reorder(df)
+
         path = path_save + os.sep + save_as + '.xlsx'
-        df.to_excel(path, sheet_name='radiomics')
+        df_parameters = pd.DataFrame.from_dict(dict_parameters)
+        with pd.ExcelWriter(path) as writer:
+            df.to_excel(writer, index=True, header=True, sheet_name="radiomics")
+            df_parameters.to_excel(writer, index=False, header=True, sheet_name="parameters")
 
     def cleanup(self, df):
         # change MCC features to real numbers

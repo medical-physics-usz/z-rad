@@ -137,10 +137,9 @@ class Matrix(object):
                     n_bits = int((vmax-vmin)//interval+1)  # calcuate corresponding number of bins
                 else: #fixed number of bin defined
                     interval = round((vmax-vmin)/(bits-1), 2)
-                    if vmin + bits*interval < vmax:
-                        interval = round((vmax-vmin)/(bits-1.), 3) # problems with rounding, for example the number 0.1249 would be rounderd to 0.12
-                        interval = round(interval, 2)
-                        if vmin + bits*interval < vmax:
+                    if vmin + (bits-1)*interval < vmax:
+                        interval = interval+0.01 # problems with rounding, for example the number 0.1249 would be rounderd to 0.12
+                        if vmin + (bits-1)*interval < vmax:
                             MyException('Problem with rounding precision, increase rounding precision of the interval in ROImatrix')
                             raise StopIteration
                     n_bits = bits
@@ -186,11 +185,10 @@ class Matrix(object):
                         interval = binSize
                     n_bits = int((vmax-vmin)//interval + 1)  # calcuate corresponding number of bins
                 else: #fixed number of bin defined
-                    interval = round((vmax-vmin)/(bits-1),2)
-                    if vmin + bits*interval < vmax:
-                        interval = round((vmax-vmin)/(bits-1.), 3) # problems with rounding, for example the number 0.1249 would be rounderd to 0.12
-                        interval = round(interval, 2)
-                        if vmin + bits*interval < vmax:
+                    interval = round((vmax-vmin)/(bits-1), 2)
+                    if vmin + (bits-1)*interval < vmax:
+                        interval = interval+0.01 # problems with rounding, for example the number 0.1249 would be rounderd to 0.12
+                        if vmin + (bits-1)*interval < vmax:
                             MyException('Problem with rounding precision, increase rounding precision of the interval in ROImatrix')
                             raise StopIteration
                     n_bits = bits

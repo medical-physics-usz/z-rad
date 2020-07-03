@@ -142,6 +142,8 @@ class Matrix(object):
                         if vmin + (bits-1)*interval < vmax:
                             MyException('Problem with rounding precision, increase rounding precision of the interval in ROImatrix')
                             raise StopIteration
+                    if interval == 0: #in case the image is homogenous after the filtering
+                        interval = 0.01 
                     n_bits = bits
                 self.logger.info('n bins, interval ' + ", ".join(map(str, (n_bits, interval))))
 
@@ -191,6 +193,8 @@ class Matrix(object):
                         if vmin + (bits-1)*interval < vmax:
                             MyException('Problem with rounding precision, increase rounding precision of the interval in ROImatrix')
                             raise StopIteration
+                    if interval == 0: #in case the image is homogenous after the filtering
+                        interval = 0.01 
                     n_bits = bits
                 self.logger.info('n bins, interval ' + ", ".join(map(str, (n_bits, interval))))
 

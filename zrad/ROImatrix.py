@@ -2,6 +2,8 @@ import logging
 
 import numpy as np
 
+from exception import MyException
+
 
 class Matrix(object):
     def __init__(self, imap, rs_type, structure, map_name, XcontourPoints, YcontourPoints, Xcontour_WPoints,
@@ -139,6 +141,13 @@ class Matrix(object):
                     n_bits = int((vmax - vmin) // interval + 1)  # calculate corresponding number of bins
                 else:  # fixed number of bin defined
                     interval = round((vmax-vmin)/(bits-1), 2)
+                    if vmin + (bits-1)*interval < vmax:
+                        interval = interval+0.01 # problems with rounding, for example the number 0.1249 would be rounderd to 0.12
+                        if vmin + (bits-1)*interval < vmax:
+                            MyException('Problem with rounding precision, increase rounding precision of the interval in ROImatrix')
+                            raise StopIteration
+                    if interval == 0: #in case the image is homogenous after the filtering
+                        interval = 0.01 
                     n_bits = bits
                 self.logger.info('n bins, interval ' + ", ".join(map(str, (n_bits, interval))))
 
@@ -172,7 +181,7 @@ class Matrix(object):
                         for j in range(len(Xcontour_Rec[i])):  # sub-structures in the slice
                             for k in range(len(Xcontour_Rec[i][j])):  # each point
                                 try:
-                                    # first row, second column, changing to bits channels as in co-ocurence matrix we
+                                    # first row, second column, changing to bits channels as in co-occurence matrix we
                                     # have only the channels channels
                                     matrix_rec[i][Ycontour_Rec[i][j][k] - ymin][Xcontour_Rec[i][j][k] - xmin] = int(
                                         (imap[i][Ycontour_Rec[i][j][k]][Xcontour_Rec[i][j][k]] - vmin) / interval)
@@ -191,9 +200,19 @@ class Matrix(object):
                         interval = binSize * 10
                     else:
                         interval = binSize
-                    n_bits = int((vmax-vmin)//interval + 1)  # calculate corresponding number of bins
+
+                    n_bits = int((vmax-vmin) // interval + 1)  # calculate corresponding number of bins
                 else:  # fixed number of bin defined
-                    interval = round((vmax-vmin)/(bits-1), 2)
+                    interval = round((vmax - vmin) / (bits - 1), 2)
+                    if vmin + (bits - 1) * interval < vmax:
+                        # problems with rounding, for example the number 0.1249 would be rounded to 0.12
+                        interval = interval + 0.01
+                        if vmin + (bits-1) * interval < vmax:
+                            MyException('Problem with rounding precision, increase rounding precision of the interval in ROImatrix')
+                            raise StopIteration
+                    if interval == 0:  # in case the image is homogenous after the filtering
+                        interval = 0.01 
+
                     n_bits = bits
                 self.logger.info('n bins, interval ' + ", ".join(map(str, (n_bits, interval))))
 

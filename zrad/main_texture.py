@@ -25,7 +25,7 @@ class Radiomics(wx.Frame):
         Parent of class Panel"""
 
     def __init__(self, *a, **b):
-        super(Radiomics, self).__init__(size=(1075, 725), pos=(0, 0), title='Z-Rad', *a, **b)
+        super(Radiomics, self).__init__(size=(1075, 725), pos=(100, 100), title='Z-Rad', *a, **b)
 
         self.defaultWindowsize = (1100, 725)
         self.SetMinSize(self.defaultWindowsize)
@@ -38,7 +38,7 @@ class Radiomics(wx.Frame):
 
     def InitUI(self):
         self.local = False  # ATTENTION!: if you set True, be aware that you calculate Radiomics in 3D only.
-        self.panelHeight = 20  # height of boxes in GUI, 20 for PC and 40 for lenovo laptop
+        self.panelHeight = 24  # height of boxes in GUI, 20 for PC and 40 for lenovo laptop
         self.p = wx.Panel(self, size=self.defaultWindowsize)
         self.nb = wx.Notebook(self.p, size=self.defaultWindowsize)
         self.nb.panelHeight = self.panelHeight
@@ -69,8 +69,8 @@ class Radiomics(wx.Frame):
         for i in config:
             l.append(i)
             # self.logger.debug("list of config " + i )
-        self.panelResize.fill(l[:14])  # use the saved configuration
-        self.panelRadiomics.fill(l[14:])
+        self.panelResize.fill(l[:15])  # use the saved configuration
+        self.panelRadiomics.fill(l[15:])
         del l
         config.close()
 
@@ -90,7 +90,7 @@ class Radiomics(wx.Frame):
         self.panelRadiomics.Refresh()
 
     def OnCalculate(self, evt):
-        """Initialize radiomics calculaiton"""
+        """Initialize radiomics calculation"""
 
         path_save, save_as, structure, pixNr, binSize, path_image, n_pref, start, stop = self.panelRadiomics.read()
         self.logger.info("Start: Calculate Radiomics")
@@ -137,11 +137,14 @@ class Radiomics(wx.Frame):
         else:
             l_ImName = [str(i) for i in arange(start, stop)]  # subfolders that you want to analyze
 
-        # to be adapted 
+        # no. parallel jobs
+        n_jobs = int(self.panelRadiomics.FindWindowById(170).GetValue())
+
+        # to be adapted
         exportList = []
         cropStructure = {"crop": False, "ct_path": ""}
         
-        #save parameters of calcultion
+        # save parameters of calculation
         dict_parameters = {'path': path_image,
                            "structure": structure,
                             "pixelNr": pixNr,
@@ -166,7 +169,7 @@ class Radiomics(wx.Frame):
             dict_parameters["HUmax"] = hu_max
             dict_parameters["outlier_corr"] = outlier_corr
             main_texture_ct(self.GetStatusBar(), path_image, path_save, structure, pixNr, binSize, l_ImName, save_as,
-                            dim, hu_min, hu_max, outlier_corr, wv, self.local, cropStructure, exportList)
+                            dim, hu_min, hu_max, outlier_corr, wv, self.local, cropStructure, exportList, n_jobs)
 
         elif self.panelRadiomics.FindWindowById(130).GetValue():  # PET
             SUV = self.panelRadiomics.FindWindowById(131).GetValue()
@@ -195,7 +198,7 @@ class Radiomics(wx.Frame):
             dict_parameters["HUmin"] = ct_hu_min
             dict_parameters["HUmax"] = ct_hu_max
             main_texture_pet(self.GetStatusBar(), path_image, path_save, structure, pixNr, binSize, l_ImName, save_as,
-                             dim, SUV, wv, self.local, cropStructure, exportList)
+                             dim, SUV, wv, self.local, cropStructure, exportList, n_jobs)
 
         elif self.panelRadiomics.FindWindowById(140).GetValue():  # CTP
             outlier_corr = self.panelRadiomics.FindWindowById(141).GetValue()

@@ -8,17 +8,15 @@ class ExportExcel(object):
     """combines the txt files for texture and shape into one excel file"""
 
     def __init__(self, ifshape, path_save, save_as, dict_parameters):
-        if ifshape:
-            shape = pd.read_csv(path_save + 'shape_' + save_as + '.csv', index_col=0)
-        else:
-            shape = ''
         texture = pd.read_csv(path_save + 'texture_' + save_as + '.txt', sep="\t", header=0, index_col=False)
         if ifshape:
+            shape = pd.read_csv(path_save + 'shape_' + save_as + '.csv', index_col=0)
             df = shape.merge(texture, on=['patient', 'organ'], how='outer')
         else:
             df = texture
         df = self.cleanup(df)
         df = self.reorder(df)
+        df = df.sort_values(['patient', 'organ'])
 
         path = path_save + os.sep + save_as + '.xlsx'
         df_parameters = pd.DataFrame.from_dict(dict_parameters)

@@ -1,36 +1,38 @@
 import logging
 import os
+from functools import reduce
 from glob import glob
 from os import path, makedirs, listdir
 from os.path import isfile, join
 
 import numpy as np
 import pydicom as dc
+from joblib import Parallel, delayed
 from pydicom.filereader import InvalidDicomError
 
 from resize_interpolate_roi import InterpolateROI
 
 
 class ResizeShape(object):
-    '''Class to resize listed structures to a resolution (1mm for texture resultion > 1mm and 0.1 mm for texture resultion <1mm) and saved the results as text files in subfolder resize_1mm
-    inp_resolution – resolution defined by user for texture calcualtion
+    """Class to resize listed structures to a resolution (1mm for texture resolution > 1mm and 0.1 mm for texture resolution <1mm) and saved the results as text files in subfolder resize_1mm
+    inp_resolution – resolution defined by user for texture calculation
     inp_struct – list of structure names to be resized
     inp_mypath_load – path with the data to be resized
     inp_mypath_save – path to save resized data
     image_type – image modality
     begin – start number
     stop – stop number
-    '''
+    """
 
     def __init__(self, inp_struct, inp_mypath_load, inp_mypath_save, image_type, low, high, inp_resolution,
-                 interpolation_type, cropStructure):
+                 interpolation_type, cropStructure, n_jobs):
         self.logger = logging.getLogger("Resize_Shape")
         inp_resolution = float(inp_resolution)
         # set a round factor for slice position and resolution for shape calculation 1mm if texture resolution > 1mm and
         # 0.1 if texture resolution < 1mm
         if inp_resolution < 1.:
             self.round_factor = 3
-            self.resolution = 0.1  # finer resolution for the shape calcaultion if texture is below 1 mm
+            self.resolution = 0.1  # finer resolution for the shape calculation if texture is below 1 mm
         else:
             self.round_factor = 3
             self.resolution = 1.0
@@ -46,18 +48,13 @@ class ResizeShape(object):
         f = open(inp_mypath_save + 'shape_resolution.txt', 'w')
         f.write(str(self.resolution))
         f.close()
-
-        self.list_structure = [
-            inp_struct]  # sturucture to be resized, placed in a list due to similarities with texture resizing
-
+        # structure to be resized, placed in a list due to similarities with texture resizing
+        self.list_structure = [inp_struct]
         self.mypath_load = inp_mypath_load
         self.mypath_s = inp_mypath_save
         self.image_type = image_type
-        self.listDicomProblem = []  # cannot open as dicom
-        self.wrongROI = []  # in case of key errors
-
         self.lista_dir = [str(i) for i in range(low, high + 1)]  # list of directories to be analyzed
-
+        self.n_jobs = n_jobs
         self.resize()
 
     def resize(self):
@@ -71,7 +68,10 @@ class ResizeShape(object):
         elif self.image_type == 'MR':
             UID_t = ['1.2.840.10008.5.1.4.1.1.4']
 
-        for name in self.lista_dir:  # iterate through the patients
+        def parfor(name):
+            wrong_roi_this = []
+            dcm_problems_this = []
+
             try:
                 print("")
                 self.logger.info('Patient ' + str(name))
@@ -82,11 +82,13 @@ class ResizeShape(object):
                 for f in listdir(mypath_file):
                     try:
                         # read only dicoms of certain modality
-                        if isfile(join(mypath_file,f)) and dc.read_file(mypath_file+f).SOPClassUID in UID_t:
+                        if isfile(join(mypath_file, f)) and dc.read_file(mypath_file + f).SOPClassUID in UID_t:
                             # sort files by slice position
-                            onlyfiles.append((round(float(dc.read_file(mypath_file+'\\'+f).ImagePositionPatient[2]), self.round_factor), f))
+                            onlyfiles.append((round(
+                                float(dc.read_file(mypath_file + os.sep + f).ImagePositionPatient[2]),
+                                self.round_factor), f))
                     except InvalidDicomError:  # not a dicom file
-                        self.listDicomProblem.append(name+'   '+f)
+                        dcm_problems_this.append(name + '   ' + f)
                         pass
 
                 onlyfiles.sort()  # sort and take only file names
@@ -110,7 +112,7 @@ class ResizeShape(object):
                     yct = float(cropCT.ImagePositionPatient[1])  # y position of top left corner
                 # define z interpolation grid
                 sliceThick = round(abs(slices[0] - slices[1]), self.round_factor)
-                # check slice sorting,for the interpolation funtcion one need increasing slice position
+                # check slice sorting,for the interpolation function one need increasing slice position
                 if slices[1] - slices[0] < 0:
                     new_gridZ = np.arange(slices[-1], slices[0] + sliceThick, self.resolution)
                     old_gridZ = np.arange(slices[-1], slices[0] + sliceThick, sliceThick)
@@ -136,7 +138,7 @@ class ResizeShape(object):
                 for f in listdir(mypath_file):
                     try:
                         # read only dicoms of certain modality
-                        if isfile(join(mypath_file, f)) and dc.read_file(mypath_file+f).SOPClassUID in RS_UID:
+                        if isfile(join(mypath_file, f)) and dc.read_file(mypath_file + f).SOPClassUID in RS_UID:
                             rs.append(f)
                     except InvalidDicomError:  # not a dicom file
                         pass
@@ -192,24 +194,30 @@ class ResizeShape(object):
                                         sliceThick / 0.01) + 1)  # create an interpolation grid between those slice
                                     # round interpolation grid accroding to specified precision
                                     for gz in range(len(zi)):
-                                        zi[gz] = round(zi[gz],self.round_factor)
+                                        zi[gz] = round(zi[gz], self.round_factor)
                                     # interpolate, X list of x positions of the interpolated contour,
                                     # Y list of y positions of the interpoated contour , interpolation type shape
                                     # returns all the points in the structure
-                                    X, Y = InterpolateROI().interpolate(self.interpolation_algorithm, M[n_s], M[n_s+1], np.linspace(0, 1, int(sliceThick/0.01)+1), 'shape')
+                                    X, Y = InterpolateROI().interpolate(self.interpolation_algorithm, M[n_s],
+                                                                        M[n_s + 1],
+                                                                        np.linspace(0, 1, int(sliceThick / 0.01) + 1),
+                                                                        'shape')
                                 elif self.round_factor == 3:
                                     # create an interpolation grid between those slicse
-                                    zi = np.linspace(old_gridZ[n_s], old_gridZ[n_s+1], int(sliceThick/0.001)+1)
-                                    # round interpolation grid accroding to specified precision
+                                    zi = np.linspace(old_gridZ[n_s], old_gridZ[n_s + 1], int(sliceThick / 0.001) + 1)
+                                    # round interpolation grid according to specified precision
                                     for gz in range(len(zi)):
                                         zi[gz] = round(zi[gz], self.round_factor)
                                     # interpolate, X list of x positions of the interpolated contour,
-                                    # Y list of y positions of the interpoated contour,
+                                    # Y list of y positions of the interpolated contour,
                                     # interpolation type shape returns all the points in the structure
 
-                                    X, Y = InterpolateROI().interpolate(self.interpolation_algorithm, M[n_s], M[n_s+1], np.linspace(0,1, int(sliceThick/0.001)+1), 'shape')
+                                    X, Y = InterpolateROI().interpolate(self.interpolation_algorithm, M[n_s],
+                                                                        M[n_s + 1],
+                                                                        np.linspace(0, 1, int(sliceThick / 0.001) + 1),
+                                                                        'shape')
 
-                                # check which position in the interpolation grid correcpods to the new slice position
+                                # check which position in the interpolation grid corresponds to the new slice position
                                 for i in range(len(zi)):
                                     # insertedZ gathers all slice positions which are already filled in case that slice
                                     # position is on the overlap of two slices from original
@@ -228,19 +236,29 @@ class ResizeShape(object):
             except OSError:  # no path with data for the patient X
                 pass
             except KeyError:
-                self.wrongROI.append(name)  # problem with image
+                wrong_roi_this.append(name)  # problem with image
                 pass
             except IndexError:
                 pass
-        #
-        if len(self.wrongROI) != 0:
+
+            return {'wrong_roi': wrong_roi_this, 'dcm_problems': dcm_problems_this}
+
+        out = Parallel(n_jobs=self.n_jobs, verbose=20)(delayed(parfor)(name) for name in self.lista_dir)
+
+        if len(out) > 1:
+            wrong_roi = reduce(lambda e1, e2: e1+e2, [e['wrong_roi'] for e in out])
+            dcm_problems = reduce(lambda e1, e2: e1+e2, [e['dcm_problems'] for e in out])
+        else:
+            wrong_roi = out['wrong_roi']
+            dcm_problems = out['dcm_problems']
+        if len(wrong_roi) != 0:
             config = open(self.mypath_s + os.sep + self.list_structure[0] + '_key_error.txt', 'w')
-            for i in self.wrongROI:
+            for i in wrong_roi:
                 config.write(i + '\n')
             config.close()
 
-        if len(self.listDicomProblem) != 0:
+        if len(dcm_problems) != 0:
             config = open(self.mypath_s + os.sep + 'dicom_file_error.txt', 'w')
-            for i in self.listDicomProblem:
+            for i in dcm_problems:
                 config.write(i + '\n')
             config.close()

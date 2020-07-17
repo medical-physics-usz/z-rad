@@ -1,3 +1,4 @@
+import multiprocessing
 import os
 
 import wx
@@ -15,7 +16,6 @@ class panelResize(scrolled.ScrolledPanel):
         self.parent = parent  # class Radiomics from main_texture.py is a parent
         self.maxWidth = 800  # width and height of the panel
         self.maxHeight = 400
-
         self.InitUI()
 
     def InitUI(self):
@@ -24,43 +24,51 @@ class panelResize(scrolled.ScrolledPanel):
 
         h = self.parent.panelHeight  # height of a text box, 20 for PC, 40 for lenovo laptop
         self.SetBackgroundColour('#8AB9F1')  # background color
-
         # creatignngoxes containing elements of the panel, vbox - vertical box, hbox - horizontal box
         self.vbox = wx.BoxSizer(wx.VERTICAL)
         self.vbox.Add((-1, 20))
-
         self.gs_01 = wx.FlexGridSizer(cols=4, vgap=5, hgap=10)  # grid sizes is a box with 3 columns
+
         # elements I want to put the the grid sizer
         st_org = wx.StaticText(self, label='Original data')  # static text
         # text box, id is important as I use i later for reading elements from the boxes
         tc_org = wx.TextCtrl(self, id=1001, size=(600, h), value="", style=wx.TE_PROCESS_ENTER)
         # tc_org- directory with original images
         btn_load_org = wx.Button(self, -1, label='Search')  # button to search
-        st_save_resized = wx.StaticText(self, label='Save resized files')
         # directory to save resized images
+        st_save_resized = wx.StaticText(self, label='Save resized files')
         tc_save_resized = wx.TextCtrl(self, id=1002, size=(600, h), value="", style=wx.TE_PROCESS_ENTER)
         btn_load_resized = wx.Button(self, -1, label='Search')
-        st_name = wx.StaticText(self, label='Structure name')
         # structures to be resized separated by coma ','
+        st_name = wx.StaticText(self, label='Structure name')
         tc_name = wx.TextCtrl(self, id=1003, size=(600, h), value="", style=wx.TE_PROCESS_ENTER)
-        st_reso = wx.StaticText(self, label='Resolution for texture calculation [mm]')
+
         # resolution for texture calculation
+        st_reso = wx.StaticText(self, label='Resolution for texture calculation [mm]')
         tc_reso = wx.TextCtrl(self, id=1004, size=(100, h), value="", style=wx.TE_PROCESS_ENTER)
 
-        int_type = wx.StaticText(self, label='Interpolation (default = linear):')
-        # Type of Interpolation used -- read only drop down menu to avoid errors
-        inte_type = wx.ComboBox(self, id=1015, size=(100, 2*h), value='linear', choices=['linear', 'nearest', 'cubic'],
+        # interpolation type
+        int_type = wx.StaticText(self, label='Interpolation')
+        inte_type = wx.ComboBox(self, id=1015, size=(100, 1.25 * h), value='linear', choices=['linear', 'nearest', 'cubic'],
                                 style=wx.CB_READONLY)
-        # inte_type=wx.Choice(self, id=1015, pos, size=(100, h), n, choices[], style)
+
+        # imaging modality
         st_type = wx.StaticText(self, label='Image type')
-        tc_type = wx.ComboBox(self, id=1005, size=(100, 2 * h), value="", choices=['CT', 'PET', 'MR', 'IVIM'],
+        tc_type = wx.ComboBox(self, id=1005, size=(100, 1.25 * h), value="", choices=['CT', 'PET', 'MR', 'IVIM'],
                               style=wx.CB_READONLY)  # modality type
-        st_start = wx.StaticText(self, label='Start')
+
         # patient number to start
+        st_start = wx.StaticText(self, label='Start')
         tc_start = wx.TextCtrl(self, id=1006, size=(100, h), value="", style=wx.TE_PROCESS_ENTER)
-        st_stop = wx.StaticText(self, label='Stop')
         # patient number to stop
+        st_stop = wx.StaticText(self, label='Stop')
         tc_stop = wx.TextCtrl(self, id=1007, size=(100, h), value="", style=wx.TE_PROCESS_ENTER)
+
+        # Number of CPU cores used for parallelization
+        n_jobs_st = wx.StaticText(self, label='No. parallel jobs')
+        n_jobs_cb = wx.ComboBox(self, id=1016, size=(100, 1.25 * h), value='1',
+                                choices=[str(e) for e in range(1, multiprocessing.cpu_count()+1)],
+                                style=wx.CB_READONLY)
 
         cb_cropStructure = wx.CheckBox(self, id=1012, label='Use CT Structure')
         st_cropStructure = wx.StaticText(self, label='     CT Path')  # static text
@@ -69,14 +77,12 @@ class panelResize(scrolled.ScrolledPanel):
         # tc_org- directory with original images
         btn_cropStructure = wx.Button(self, -1, label='Search')  # button to search
 
-        # cb_texture = wx.CheckBox(self, id=1008, label='Resize texture')
         cb_texture = wx.StaticText(self, id=1008, label='Resize texture')
         cb_texture_none = wx.RadioButton(self, id=10081, label='no texture resizing', style=wx.RB_GROUP)
         cb_texture_dim2 = wx.RadioButton(self, id=10082, label='2D')  # only one option can be selected
         cb_texture_dim3 = wx.RadioButton(self, id=10083, label='3D')
 
         cb_shape = wx.CheckBox(self, id=1009, label='Resize shape')
-
         btn_resize = wx.Button(self, id=1010, label='Resize')
         btn_check = wx.Button(self, id=1011, label='Check')
 
@@ -86,9 +92,10 @@ class panelResize(scrolled.ScrolledPanel):
                             st_name, tc_name, wx.StaticText(self, label=''), wx.StaticText(self, label=''),
                             st_reso, tc_reso, wx.StaticText(self, label=''), wx.StaticText(self, label=''),
                             int_type, inte_type, wx.StaticText(self, label=''), wx.StaticText(self, label=''),
-                            st_type, tc_type, wx.StaticText(self, label=''), wx.StaticText(self, label=''),  ##
+                            st_type, tc_type, wx.StaticText(self, label=''), wx.StaticText(self, label=''),
                             st_start, tc_start, wx.StaticText(self, label=''), wx.StaticText(self, label=''),
                             st_stop, tc_stop, wx.StaticText(self, label=''), wx.StaticText(self, label=''),
+                            n_jobs_st, n_jobs_cb, wx.StaticText(self, label=''), wx.StaticText(self, label=''),
                             cb_texture, cb_texture_dim2, wx.StaticText(self, label=''), wx.StaticText(self, label=''),
                             wx.StaticText(self, label=''), cb_texture_dim3, wx.StaticText(self, label=''),
                             wx.StaticText(self, label=''),
@@ -171,8 +178,10 @@ class panelResize(scrolled.ScrolledPanel):
         image_type = self.FindWindowById(1005).GetValue()
         begin = int(self.FindWindowById(1006).GetValue())
         stop = int(self.FindWindowById(1007).GetValue())
+        n_jobs = int(self.FindWindowById(1016).GetValue())
         cropArg = bool(self.FindWindowById(1012).GetValue())
         ct_path = self.FindWindowById(1013).GetValue()
+
         if not cropArg:
             cropInput = {"crop": cropArg, "ct_path": ""}
         else:
@@ -197,7 +206,7 @@ class panelResize(scrolled.ScrolledPanel):
             print(interpolation_type)
             # resize images and structure to the resolution of texture
             ResizeTexture(inp_resolution, interpolation_type, list_structure, inp_mypath_load, inp_mypath_save,
-                          image_type, begin, stop, cropInput, dimension_resize)
+                          image_type, begin, stop, cropInput, dimension_resize, n_jobs)
 
         if self.FindWindowById(1009).GetValue():  # if resizing to shape resolution selected
             inp_mypath_save_shape = inp_mypath_save + os.sep + 'resized_1mm' + os.sep
@@ -206,7 +215,7 @@ class panelResize(scrolled.ScrolledPanel):
                 # resize the structure to the resolution of shape, default 1mm unless resolution of texture smaller than
                 # 1mm then 0.1 mm
                 ResizeShape(shape_struct, inp_mypath_load, inp_mypath_save_shape, image_type, begin, stop,
-                            inp_resolution, 'linear', cropInput)
+                            inp_resolution, 'linear', cropInput, n_jobs)
 
         MyInfo('Resize done')  # show info box
 
@@ -232,7 +241,7 @@ class panelResize(scrolled.ScrolledPanel):
         l - list of elements read from a text file"""
         # ids of field to fill # if adjust number of ids then also adjust in main_texture in
         # self.panelResize.fill(l[:11])
-        ids = [1001, 1002, 1003, 1004, 1015, 1005, 1006, 1007, 10081, 10082, 10083, 1009, 1012, 1013]
+        ids = [1001, 1002, 1003, 1004, 1015, 1005, 1006, 1007, 1016, 10081, 10082, 10083, 1009, 1012, 1013]
 
         for i in range(len(l)):
             try:
@@ -263,7 +272,7 @@ class panelResize(scrolled.ScrolledPanel):
     def save(self):
         """save the last used settings"""
         l = []
-        ids = [1001, 1002, 1003, 1004, 1015, 1005, 1006, 1007, 10081, 10082, 10083, 1009, 1012, 1013]
+        ids = [1001, 1002, 1003, 1004, 1015, 1005, 1006, 1007, 1016, 10081, 10082, 10083, 1009, 1012, 1013]
         for i in ids:
             l.append(self.FindWindowById(i).GetValue())
         return l

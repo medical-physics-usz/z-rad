@@ -29,7 +29,6 @@ class Structures(object):
         self.len_IM = len_IM
         self.wv = wv
         self.dim = dim
-
         self.Xcontour_W = []
         self.Ycontour_W = []
         self.slices_w = []
@@ -37,7 +36,6 @@ class Structures(object):
         self.Ycontour = []
         self.Xcontour_Rec = []
         self.Ycontour_Rec = []
-
         self.find(rs, structure, local)
 
     def find(self, rs, structure, local):
@@ -173,7 +171,6 @@ class Structures(object):
             self.Xcontour_W = 'one slice'
             self.Ycontour_W = 'one slice'
         else:  # continue, recalculate contour points from mm to pixels
-            print(self.x_ct, self.xCTspace)
             for i in range(len(self.contours)):  # contours
                 for j in range(len(self.contours[i])):  # slice
                     for n in range(len(self.contours[i][j])):  # number of contours per slice

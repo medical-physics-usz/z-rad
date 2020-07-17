@@ -16,7 +16,6 @@ from texture_wavelet import Wavelet
 
 class Features2D(object):
     """Calculate texture, intensity, fractal dim and center of the mass shift
-    sb – status bar
     maps – list of images to analyze, for CT it is one element list with 3D matrix, for perfusion it is a 3 elements list with 3D matrices for BF, MTT, BV
     structure – name of analyzed structure, used for naming the output files
     columns – number of columns in the image
@@ -40,7 +39,7 @@ class Features2D(object):
     Humax – HU range max
     outlier – bool, correct for outliers"""
 
-    def __init__(self, dim, sb, maps, structure, columns, rows, xCTspace, zCTspace, slices, path, ImName, pixNr,
+    def __init__(self, dim, maps, structure, columns, rows, xCTspace, zCTspace, slices, path, ImName, pixNr,
                  binSize, modality, wv, localRadiomics, cropStructure, stop_calc, *cont):
         self.logger = logging.getLogger(__name__)
         self.logger.info("Start: Texture Calculation")
@@ -104,7 +103,6 @@ class Features2D(object):
                     wave_list = Wavelet(maps[i], path, modality[i], ImName + '_' + pixNr, dim, ctp).Return()
                     # else:  # !!!!!!!!!!!!! CTP isn't adapted yet for 2D !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
                     #     wave_list = WaveletCTP(maps[i], path, modality[i], ImName + '_' + pixNr).Return()
-                    sb.SetStatusText(ImName + ' wave done ' + str(datetime.now().strftime('%H:%M:%S')))
                     if dim == "2D" or dim == "2D_singleSlice":
                         rs_type = [1, 2, 0, 0, 0]
                         method_wv = ["", "LL_", "HH_", "HL_", "LH_"]  # "" for original
@@ -141,7 +139,6 @@ class Features2D(object):
                         if wv:
                             # order of transformed images: original, LLL, HHH, HHL, HLH, HLL, LHH, LHL, LLH
                             wave_list_ct = Wavelet(cropStructure["data"][i], path, "CT", ImName + '_' + pixNr, dim, False).Return()
-                            sb.SetStatusText(ImName + ' wave done ' + str(datetime.now().strftime('%H:%M:%S')))
                             if dim == "2D" or dim == "2D_singleSlice":
                                 rs_type = [1, 2, 0, 0, 0]
                                 method_wv = ["", "LL_", "HH_", "HL_", "LH_"]  # "" for original
@@ -252,11 +249,6 @@ class Features2D(object):
                         self.n_bits = int(n_bits_list[w])  # i added int here
                         interval = interval_list[w]
 
-                        try:
-                            sb.SetStatusText(ImName + ' matrix done ' + str(datetime.now().strftime('%H:%M:%S')))
-                        except AttributeError:
-                            print('attributeerrror')
-                            pass
                         if rs_type[w] == 1:  # save only for the original image
                             self.saveImage(path, modality[i], matrix, ImName, pixNr)
                         more_than_one_pix = True
@@ -279,13 +271,9 @@ class Features2D(object):
 
                         if more_than_one_pix:
                             i_feature.feature_calculation(interval)
-                            self.dict_features = i_feature.return_features(self.dict_features,
-                                                                           m_wv)  # save new features in dict
-                            try:
-                                sb.SetStatusText(ImName + ' hist done ' + str(datetime.now().strftime('%H:%M:%S')))
-                                self.logger.info(ImName + ' hist done ' + str(datetime.now().strftime('%H:%M:%S')))
-                            except AttributeError:  # if no GUI
-                                pass
+                            # save new features in dict
+                            self.dict_features = i_feature.return_features(self.dict_features, m_wv)
+                            self.logger.info(ImName + ' hist done ' + str(datetime.now().strftime('%H:%M:%S')))
 
                             # directions in COM in 3D:
                             # lista_t = [[0, 0, 1], [0, 1, 0], [1, 0, 0], [0, 1, 1], [0, 1, -1], [1, 0, 1], [1, 0, -1],
@@ -331,11 +319,7 @@ class Features2D(object):
                             # glcm_3d = GLCM("GLCM_3d all merged", matrix, lista_t, self.n_bits)
                             # glcm_3d.norm_marginal_calculation(comatrix_merged)
                             # glcm_3d.glcm_feature_calculation()
-                            try:
-                                sb.SetStatusText(ImName + ' COM done ' + str(datetime.now().strftime('%H:%M:%S')))
-                                self.logger.info(ImName + ' COM done ' + str(datetime.now().strftime('%H:%M:%S')))
-                            except AttributeError:  # if no GUI
-                                pass
+                            self.logger.info(ImName + ' COM done ' + str(datetime.now().strftime('%H:%M:%S')))
 
                             # GLRLM - 3.7 (grey level run length based features)
                             # ------------------------------------------------------------------------------------------
@@ -406,12 +390,6 @@ class Features2D(object):
                             del glszm, gldzm, glszm_m, gldzm_m
                             del glszm_m1, gldzm_m1
                             self.logger.info(ImName + ' GLSZM done ' + str(datetime.now().strftime('%H:%M:%S')))
-
-                            try:
-                                sb.SetStatusText(ImName + ' GLSZM done ' + str(datetime.now().strftime('%H:%M:%S')))
-                                self.logger.info(ImName + ' GLSZM done ' + str(datetime.now().strftime('%H:%M:%S')))
-                            except AttributeError:  # if no GUI
-                                pass
                             self.logger.info(ImName + ' GLDZM done ' + str(datetime.now().strftime('%H:%M:%S')))
 
                             # NGTDM - 3.10 (neighbourhood grey tone difference based features) -
@@ -430,11 +408,8 @@ class Features2D(object):
                             # ngtdm3D.ngtdm_matrix_calculation()
                             # ngtdm3D.feature_calculation("")  # method 3
                             del ngtdm2D
-                            try:
-                                sb.SetStatusText(ImName + ' NGTDM done ' + str(datetime.now().strftime('%H:%M:%S')))
-                                self.logger.info(ImName + ' NGTDM done ' + str(datetime.now().strftime('%H:%M:%S')))
-                            except AttributeError:  # if no GUI
-                                pass
+
+                            self.logger.info(ImName + ' NGTDM done ' + str(datetime.now().strftime('%H:%M:%S')))
 
                             # NGLDM - 3.11 (neighbouring grey level dependence based features)
                             # ------------------------------------------------------------------------------------------
@@ -462,11 +437,7 @@ class Features2D(object):
                                                          self.zCTspace,
                                                          self.structure, dim).return_features(self.dict_features, m_wv)
 
-                            try:
-                                sb.SetStatusText(ImName + ' fractal done ' + str(datetime.now().strftime('%H:%M:%S')))
-                                self.logger.info(ImName + ' fractal done ' + str(datetime.now().strftime('%H:%M:%S')))
-                            except AttributeError:
-                                pass
+                            self.logger.info(ImName + ' fractal done ' + str(datetime.now().strftime('%H:%M:%S')))
                             del matrix
 
                 except ValueError:

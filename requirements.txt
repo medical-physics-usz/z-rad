@@ -7,6 +7,6 @@ vtk
 scikit-learn
 wxpython
 pandas
-tqdm
+joblib
 opencv-python
 pywavelets

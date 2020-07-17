@@ -1,6 +1,7 @@
 """calculated the co matrix in 3D in all possible directions and average the results"""
 import logging
 import os
+import warnings
 from datetime import datetime
 from os import makedirs
 from os.path import isdir
@@ -16,7 +17,6 @@ from texture_wavelet import Wavelet
 
 class Texture(object):
     """Calculate texture, intensity, fractal dim and center of the mass shift
-    sb – status bar 
     maps – list of images to analyze, for CT it is one element list with 3D matrix, for perfusion it is a 3 elements
     list with 3D matrices for BF, MTT, BV
     structure – name of analyzed structure, used for naming the output files
@@ -45,7 +45,7 @@ class Texture(object):
     """
 
     # Xc, Yc, XcW, YcW, HUmin, HUmax, outlier,  ):
-    def __init__(self, sb, maps, structure, columns, rows, xCTspace, slices, path, ImName, pixNr, binSize, modality, wv, localRadiomics, cropStructure, stop_calc, *cont):
+    def __init__(self, maps, structure, columns, rows, xCTspace, slices, path, ImName, pixNr, binSize, modality, wv, localRadiomics, cropStructure, stop_calc, *cont):
         self.logger = logging.getLogger("Texture")
         self.logger.info("Start: Texture Calculation")
         self.structure = structure
@@ -277,7 +277,6 @@ class Texture(object):
                     else:
                         ctp = True
                         wave_list = Wavelet(maps[i], path, modality[i], ImName + '_' + pixNr, "3D", ctp).Return()
-                    sb.SetStatusText(ImName + ' wave done ' + str(datetime.now().strftime('%H:%M:%S')))
                     rs_type = [1, 2, 0, 0, 0, 0, 0, 0, 0]  # structure type, structure resolution
                     iterations_n = len(wave_list)
                 else:
@@ -315,7 +314,6 @@ class Texture(object):
                             # original, LLL, HHH, HHL, HLH, HLL, LHH, LHL, LLH
                             wave_list_ct = Wavelet(cropStructure["data"][i], path, "CT", ImName + '_' + pixNr, "3D",
                                                    False).Return()
-                            sb.SetStatusText(ImName + ' wave done ' + str(datetime.now().strftime('%H:%M:%S')))
                             rs_type = [1, 2, 0, 0, 0, 0, 0, 0, 0]  # structure type, structure resolution
                             iterations_n = len(wave_list_ct)
                         else:
@@ -405,11 +403,6 @@ class Texture(object):
                         self.n_bits = n_bits_list[w]
                         interval = interval_list[w]
 
-                        try:
-                            sb.SetStatusText(ImName + ' matrix done ' + str(datetime.now().strftime('%H:%M:%S')))
-                        except AttributeError:
-                            print('attributeerrror')
-                            pass
                         if rs_type[w] == 1:  # save only for the original image
                             self.saveImage(path, modality[i], matrix, ImName, pixNr)
                         more_than_one_pix = True
@@ -448,12 +441,7 @@ class Texture(object):
                             rms = self.fun_rms(histogram)
                             H_uniformity = self.fun_H_uniformity(histogram, interval)
                             del histogram
-                            try:
-                                sb.SetStatusText(ImName + ' hist done ' + str(datetime.now().strftime('%H:%M:%S')))
-                                self.logger.info(ImName + ' hist done ' + str(datetime.now().strftime('%H:%M:%S')))
-                            except AttributeError:  # if no GUI
-                                pass
-
+                            self.logger.info(ImName + ' hist done ' + str(datetime.now().strftime('%H:%M:%S')))
                             self.cms.append(self.centerMassShift(matrix_v, self.xCTspace))
                             mtv = self.metabolicTumorVolume(matrix_v, self.xCTspace)
                             self.mtv2.append(mtv[0])
@@ -600,11 +588,7 @@ class Texture(object):
                             self.COM_clust_s.append(clust2)
                             self.COM_clust_p.append(clust3)
                             del CO_merged
-                            try:
-                                sb.SetStatusText(ImName + ' COM done ' + str(datetime.now().strftime('%H:%M:%S')))
-                                self.logger.info(ImName + ' COM done ' + str(datetime.now().strftime('%H:%M:%S')))
-                            except AttributeError:  # if no GUI
-                                pass
+                            self.logger.info(ImName + ' COM done ' + str(datetime.now().strftime('%H:%M:%S')))
 
                             # neighborhood matrix
                             neighMatrix, neighMatrixNorm = self.M3(matrix)
@@ -615,11 +599,7 @@ class Texture(object):
                             strength = self.fun_strength(neighMatrix, neighMatrixNorm, matrix)
                             del neighMatrix
                             del neighMatrixNorm
-                            try:
-                                sb.SetStatusText(ImName + ' NGTDM done ' + str(datetime.now().strftime('%H:%M:%S')))
-                                self.logger.info(ImName + ' NGTDM done ' + str(datetime.now().strftime('%H:%M:%S')))
-                            except AttributeError:  # if no GUI
-                                pass
+                            self.logger.info(ImName + ' NGTDM done ' + str(datetime.now().strftime('%H:%M:%S')))
 
                             # gray level run length matrix
                             len_intensity_t = []
@@ -757,11 +737,6 @@ class Texture(object):
                             del GLSZM
                             self.logger.info(ImName + ' GLSZM done ' + str(datetime.now().strftime('%H:%M:%S')))
 
-                            try:
-                                sb.SetStatusText(ImName + ' GLSZM done ' + str(datetime.now().strftime('%H:%M:%S')))
-                                self.logger.info(ImName + ' GLSZM done ' + str(datetime.now().strftime('%H:%M:%S')))
-                            except AttributeError:  # if no GUI
-                                pass
                             # GLDZM
                             if norm_GLDZM == 0:
                                 self.returnNan(
@@ -823,11 +798,7 @@ class Texture(object):
                             del NGLDM
 
                             frac = self.fractal(matrix, path, pixNr, ImName)
-                            try:
-                                sb.SetStatusText(ImName + ' fractal done ' + str(datetime.now().strftime('%H:%M:%S')))
-                                self.logger.info(ImName + ' fractal done ' + str(datetime.now().strftime('%H:%M:%S')))
-                            except AttributeError:
-                                pass
+                            self.logger.info(ImName + ' fractal done ' + str(datetime.now().strftime('%H:%M:%S')))
 
                             # add to the results
                             self.mean.append(round(mean, 3))
@@ -1354,7 +1325,9 @@ class Texture(object):
         for i in range(len(ind[0])):
             corr += (ind[0][i] + 1) * (ind[1][i] + 1) * coM[ind[0][i]][
                 ind[1][i]]  # i+1 gray values starting from 1 not from 0
-        corr = (corr - mean ** 2) / std ** 2
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            corr = (corr - mean ** 2) / std ** 2
         return corr
 
     def fun_homogenity(self, coM):  # 3.3.16 and 3.3.17
@@ -2216,7 +2189,9 @@ class Texture(object):
         percent = [0.2, 0.3, 0.4, 0.5, 0.6, 0.7]
         mtv = []
         for p in percent:
-            ind = np.where(matrix > p * vmax)
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                ind = np.where(matrix > p * vmax)
             if len(ind) != 3:
                 mtv.append['']
             else:

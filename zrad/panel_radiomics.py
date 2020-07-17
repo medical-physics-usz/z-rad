@@ -1,3 +1,4 @@
+import multiprocessing
 import os
 
 import wx
@@ -28,25 +29,32 @@ class panelRadiomics(scrolled.ScrolledPanel):
 
         self.gs_3 = wx.FlexGridSizer(cols=3, vgap=5, hgap=10)  # grid size with 3 columns
 
-        st_path = wx.StaticText(self, label='Load')
         # path to resized images
+        st_path = wx.StaticText(self, label='Load')
         tc_path = wx.TextCtrl(self, id=107, size=(900, h), value="", style=wx.TE_PROCESS_ENTER)
         btn_load_path = wx.Button(self, -1, label='Search')  # button to open dialog box
-        st_pref = wx.StaticText(self, label='Prefix')
         # prefix in the name of patients folders for example HN, goes to HN_X
+        st_pref = wx.StaticText(self, label='Prefix')
         tc_pref = wx.TextCtrl(self, id=108, size=(400, h), value="", style=wx.TE_PROCESS_ENTER)
-        st_range_l = wx.StaticText(self, label='Start')
         # patient number start
+        st_range_l = wx.StaticText(self, label='Start')
         tc_range_l = wx.TextCtrl(self, id=109, size=(400, h), value="", style=wx.TE_PROCESS_ENTER)
-        st_range_u = wx.StaticText(self, label='Stop')
         # patient number end
+        st_range_u = wx.StaticText(self, label='Stop')
         tc_range_u = wx.TextCtrl(self, id=110, size=(400, h), value="", style=wx.TE_PROCESS_ENTER)
+        # Number of CPU cores used for parallelization
+        n_jobs_st = wx.StaticText(self, label='No. parallel jobs')
+        n_jobs_cb = wx.ComboBox(self, id=170, size=(100, 1.25 * h), value='1',
+                                choices=[str(e) for e in range(1, multiprocessing.cpu_count() + 1)],
+                                style=wx.CB_READONLY)
 
         # fill grid sizer
         self.gs_3.AddMany([st_path, tc_path, btn_load_path,
                            st_pref, tc_pref, wx.StaticText(self, label=''),
                            st_range_l, tc_range_l, wx.StaticText(self, label=''),
-                           st_range_u, tc_range_u, wx.StaticText(self, label='')])
+                           st_range_u, tc_range_u, wx.StaticText(self, label=''),
+                           n_jobs_st, n_jobs_cb, wx.StaticText(self, label=''),
+                           ])
 
         h3box = wx.BoxSizer(wx.HORIZONTAL)
         h3box.Add((10, 10))
@@ -291,7 +299,7 @@ class panelRadiomics(scrolled.ScrolledPanel):
         l - list of elements read from a text file"""
         # ids of the boxes to be filled
         ids = [107, 108, 109, 110, 102, 103, 104, 1051, 1052, 1061, 10611, 1062, 1071, 1072, 1081, 1082, 1083, 1091,
-               1092, 1093, 120, 125, 126, 127, 130, 131, 132, 133, 135, 136, 137, 140, 141, 142, 150, 151, 152, 160]
+               1092, 1093, 120, 125, 126, 127, 130, 131, 132, 133, 135, 136, 137, 140, 141, 142, 150, 151, 152, 160, 170]
 
         for i in range(len(l)):
             try:
@@ -324,7 +332,7 @@ class panelRadiomics(scrolled.ScrolledPanel):
         l = []
 
         ids = [107, 108, 109, 110, 102, 103, 104, 1051, 1052, 1061, 10611, 1062, 1071, 1072, 1081, 1082, 1083, 1091,
-               1092, 1093, 120, 125, 126, 127, 130, 131, 132, 133, 135, 136, 137, 140, 141, 142, 150, 151, 152, 160]
+               1092, 1093, 120, 125, 126, 127, 130, 131, 132, 133, 135, 136, 137, 140, 141, 142, 150, 151, 152, 160, 170]
         for i in ids:
             l.append(self.FindWindowById(i).GetValue())
         return l

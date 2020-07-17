@@ -5,7 +5,6 @@ import numpy as np
 import pydicom as dc
 from scipy.interpolate import interp1d
 from scipy.ndimage.morphology import distance_transform_edt
-from tqdm import tqdm
 
 
 class InterpolateROI(object):
@@ -191,7 +190,7 @@ class InterpolateROI(object):
             cnt_all.append(cnt)
 
         M = []
-        for k in tqdm(range(l_IM)):
+        for k in range(l_IM):
             if cnt_all[k] != [[]]:
                 m = np.ones((ymax + 1 - ymin, xmax + 1 - xmin))  # initialize  the 2D matrix with 1
                 for n in range(len(cnt_all[k])):  # sub-contours

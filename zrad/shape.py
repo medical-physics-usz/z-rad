@@ -59,8 +59,16 @@ class Shape(object):
                     dst_median,dst_std,dst_mean = self.thickness(nn,pic3d,0)
                     vtkvol, vtksur, comp1, comp2, ar, dispr, spher, aspher, AtoV = self.marching_cubes(pic3d,extent,0, len(pnz[0]))
                     
-                    maxeucl = self.maxeuclid(pic3d,scalefactor)
-                    major_axis, minor_axis, least_axis, elong, flat = self.PCA_analysis(pnz)#for big structres self.PCA_analysis(pic3d, scalefactor)
+                    if vtkvol == 0 or vtksur == 0: #if volume or surface returned by marching cubes is 0
+                        maxeucl = np.nan
+                        major_axis = np.nan
+                        minor_axis = np.nan
+                        least_axis = np.nan
+                        elong = np.nan
+                        flat = np.nan
+                    else:
+                        maxeucl = self.maxeuclid(pic3d,scalefactor)
+                        major_axis, minor_axis, least_axis, elong, flat = self.PCA_analysis(pnz)#for big structres self.PCA_analysis(pic3d, scalefactor)
                     if savedResolution != 1.0: #to adapt for the resolution of readin points
                         vtkvol = 0.001*vtkvol
                         vtksur = 0.01*vtksur
@@ -249,14 +257,22 @@ class Shape(object):
 ##        vol = vtkvol
 ##        vtkvol = pnz
 ##        vtksur = vtksur*100
-        
-        comp1 = vtkvol/(np.pi**(1/2.)*vtksur**(3/2.))	#Parameter Nr. 15
-        comp2 = 36*np.pi*vtkvol**2./(vtksur**3.)		#Parameter Nr. 16
-        ar = (vtkvol/(4/3.*np.pi))**(1/3.)			#Radius of equiv. sphere
-        dispr = vtksur/(4.*np.pi*ar**2.)			#Parameter Nr. 18
-        spher = np.pi**(1/3.)*(6.*vtkvol)**(2./3.)/vtksur	#Parameter Nr. 19
-        aspher = (vtksur**3/(36 *np.pi*vtkvol**2))**(1./3)-1
-        AtoV = vtksur/vtkvol				#Parameter Nr. 21
+        if vtkvol == 0 or vtksur == 0: #if volume or surface returned by marching cubes is 0
+            comp1 = np.nan	#Parameter Nr. 15
+            comp2 = np.nan	#Parameter Nr. 16
+            ar = np.nan		#Radius of equiv. sphere
+            dispr = np.nan		#Parameter Nr. 18
+            spher = np.nan	#Parameter Nr. 19
+            aspher = np.nan
+            AtoV = np.nan			#Parameter Nr. 21
+        else:
+            comp1 = vtkvol/(np.pi**(1/2.)*vtksur**(3/2.))	#Parameter Nr. 15
+            comp2 = 36*np.pi*vtkvol**2./(vtksur**3.)		#Parameter Nr. 16
+            ar = (vtkvol/(4/3.*np.pi))**(1/3.)			#Radius of equiv. sphere
+            dispr = vtksur/(4.*np.pi*ar**2.)			#Parameter Nr. 18
+            spher = np.pi**(1/3.)*(6.*vtkvol)**(2./3.)/vtksur	#Parameter Nr. 19
+            aspher = (vtksur**3/(36 *np.pi*vtkvol**2))**(1./3)-1
+            AtoV = vtksur/vtkvol				#Parameter Nr. 21
 
 ##        vtkvol = vol*1000
         

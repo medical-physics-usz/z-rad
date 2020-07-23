@@ -28,7 +28,7 @@ class ExportExcel(object):
         # change MCC features to real numbers
         MCC_features = df.columns[df.columns.str.contains("MCC")]
         for iMCC in MCC_features:
-            df[iMCC] = df.loc[:, iMCC].apply(complex).apply(np.real)
+            df[iMCC] = df.loc[:, iMCC].apply(lambda x: complex(x).real)
 
         # clean up shape
         delShape = ["nonzero_Points", "Clusters"]

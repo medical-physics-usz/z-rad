@@ -2,7 +2,6 @@ import logging
 import os
 from functools import reduce
 from glob import glob
-from itertools import chain
 from os import path, makedirs, listdir, rmdir
 from os.path import isfile, join
 from shutil import copyfile

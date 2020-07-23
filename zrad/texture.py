@@ -874,7 +874,7 @@ class Texture(object):
     def stop_calculation(self, info, rs_type):
         """returns empty string and error type bt does not stop the calculation"""
         for i in range(len(rs_type)):
-            self.structure = info
+            # self.structure = info
             self.mean.append('')
             self.std.append('')
             self.cov.append('')

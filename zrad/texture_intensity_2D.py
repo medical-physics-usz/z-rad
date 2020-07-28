@@ -52,15 +52,15 @@ class Intensity(object):
             fig.text(0.5, 0.95, ImName + ' ' + name)
             plt.hist(M1)
             try:
-                makedirs(path + 'histogram'+os.sep)
+                makedirs(path + 'histogram' + os.sep)
             except OSError:
-                if not isdir(path + 'histogram'+os.sep):
+                if not isdir(path + 'histogram' + os.sep):
                     raise
         except ValueError:
             pass
 
         fig.savefig(
-            path + 'histogram'+os.sep + name + '_' + ImName + '_' + structure + '_' + pixNr + '_' + str(w) + '.png')
+            path + 'histogram' + os.sep + name + '_' + ImName + '_' + structure + '_' + pixNr + '_' + str(w) + '.png')
         plt.close()
         self.histogram = M1
 
@@ -1599,11 +1599,11 @@ class CMS_MTV(object):
             plt.xlabel('ln(r)')
             plt.ylabel('ln(N(r))')
             plt.legend()
-            # print path+'fractals'+os.sep+ImName+'.png'
+            # print path + 'fractals' + os.sep + ImName + '.png'
             try:
-                makedirs(path + 'fractals'+os.sep)
+                makedirs(path + 'fractals' + os.sep)
             except OSError:
-                if not isdir(path + 'fractals'+os.sep):
+                if not isdir(path + 'fractals' + os.sep):
                     raise
             plt.savefig(path + 'fractals' + os.sep + ImName + '_' + self.structure + '_' + pixNr + '.png')
             plt.close()

@@ -4,7 +4,7 @@ from os.path import isdir
 
 import numpy as np
 import pydicom as dc
-import pylab as py
+import matplotlib.pyplot as plt
 import scipy.stats as st
 
 from export import Export
@@ -141,17 +141,17 @@ class main_texture_ctp(object):
         """
 
         x = np.array(x, dtype=np.float64)
-        py.figure(figsize=(20, 20))
-        py.subplot(121)
-        n, bins, patches = py.hist(x, N_bins, normed=True, facecolor='green', alpha=0.75)
+        plt.figure(figsize=(20, 20))
+        plt.subplot(121)
+        n, bins, patches = plt.hist(x, N_bins, normed=True, facecolor='green', alpha=0.75)
 
         bincenters = 0.5 * (bins[1:] + bins[:-1])
 
         y = st.norm.pdf(bincenters, loc=np.mean(x), scale=np.std(np.array(x)))
 
-        py.plot(bincenters, y, 'r--', linewidth=1, label='std: ' + str(round(np.std(x), 2)))
-        py.plot([np.mean(x) + 3 * np.std(x), np.mean(x) + 3 * np.std(x)], [0, 0.1], 'b--')
-        py.plot([np.mean(x) - 3 * np.std(x), np.mean(x) - 3 * np.std(x)], [0, 0.1], 'b--')
+        plt.plot(bincenters, y, 'r--', linewidth=1, label='std: ' + str(round(np.std(x), 2)))
+        plt.plot([np.mean(x) + 3 * np.std(x), np.mean(x) + 3 * np.std(x)], [0, 0.1], 'b--')
+        plt.plot([np.mean(x) - 3 * np.std(x), np.mean(x) - 3 * np.std(x)], [0, 0.1], 'b--')
         # check which values are outside the range of 3 sigma
         ind1 = np.where(np.array(x) > (np.mean(x) + 3 * np.std(x)))[0]
         ind2 = np.where(np.array(x) < (np.mean(x) - 3 * np.std(x)))[0]
@@ -165,20 +165,20 @@ class main_texture_ctp(object):
         leg = str(len(v) * 100. / len(x))
         for i in v:  # remove outlier from data vector
             x.remove(i)
-        py.legend()
+        plt.legend()
         # plot a histogram after the removal
-        py.subplot(122)
-        n, bins, patches = py.hist(x, N_bins, normed=True, facecolor='green', alpha=0.75,
+        plt.subplot(122)
+        n, bins, patches = plt.hist(x, N_bins, normed=True, facecolor='green', alpha=0.75,
                                    label='removed points: ' + leg)
-        py.legend()
+        plt.legend()
         # save the figure
         try:
             makedirs(path + 'gauss' + os.sep)
         except OSError:
             if not isdir(path + 'gauss' + os.sep):
                 raise
-        py.savefig(path + 'gauss' + os.sep + 'hist_' + name + '_' + ImName + '.png')
-        py.close()
+        plt.savefig(path + 'gauss' + os.sep + 'hist_' + name + '_' + ImName + '.png')
+        plt.close()
         return v  # retruns outliers values
 
     def remove_points(self, M, p):

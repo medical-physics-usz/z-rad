@@ -4,7 +4,7 @@ from os.path import isfile, join, isdir
 
 import matplotlib
 import numpy as np
-import pylab as py
+import matplotlib.pyplot as plt
 import vtk
 from scipy.sparse.csgraph import minimum_spanning_tree
 from scipy.spatial import Delaunay
@@ -268,19 +268,19 @@ class LymphNodes(object):
         print('dist ', distanceDistribution)
         matplotlib.rcParams.update({'font.size': 12})
         try:
-            fig = py.figure(200, figsize=(15, 15))
+            fig = plt.figure(200, figsize=(15, 15))
             if len(distanceDistribution) == 1:
-                py.hist(distanceDistribution, bins=[distanceDistribution[0] - 0.1, distanceDistribution[0] + 0.1])
+                plt.hist(distanceDistribution, bins=[distanceDistribution[0] - 0.1, distanceDistribution[0] + 0.1])
             else:
-                py.hist(distanceDistribution)
-            py.title(nr)
+                plt.hist(distanceDistribution)
+            plt.title(nr)
             try:
                 makedirs(path + os.sep + 'LN_PT_min_distance_distribution' + os.sep)
             except OSError:
                 if not isdir(path + os.sep + 'LN_PT_min_distance_distribution' + os.sep):
                     raise
             fig.savefig(path + os.sep + 'LN_PT_min_distance_distribution' + os.sep + nr + '.png')
-            py.close()
+            plt.close()
         except ValueError:  # if distanceDistribtuion is empty
             pass
 
@@ -324,16 +324,16 @@ class LymphNodes(object):
             optClust = limitedCH[-1][1]  # take the smallest value of CH
 
             ch = np.array(ch)
-            fig = py.figure(300, figsize=(15, 15))
-            py.plot(ch[:, 1], ch[:, 0], 'o')
-            py.title(nr)
+            fig = plt.figure(300, figsize=(15, 15))
+            plt.plot(ch[:, 1], ch[:, 0], 'o')
+            plt.title(nr)
             try:
                 makedirs(path + os.sep + 'LN_PT_clustering' + os.sep)
             except OSError:
                 if not isdir(path + os.sep + 'LN_PT_clustering' + os.sep):
                     raise
             fig.savefig(path + os.sep + 'LN_PT_clustering' + os.sep + nr + '.png')
-            py.close()
+            plt.close()
 
         return optClust
 

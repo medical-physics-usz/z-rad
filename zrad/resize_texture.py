@@ -39,9 +39,12 @@ class ResizeTexture(object):
         self.cropStructure = cropInput
         self.dim = dim
         self.list_structure = inp_struct
-
-        self.mypath_load = inp_mypath_load  # + os.sep
-        self.mypath_s = inp_mypath_save  # + os.sep
+        if inp_mypath_load[-1] != os.sep:
+            inp_mypath_load += os.sep
+        self.mypath_load = inp_mypath_load
+        if inp_mypath_save[-1] != os.sep:
+            inp_mypath_save += os.sep
+        self.mypath_s = inp_mypath_save
         self.UID = '2030'  # UID for new images
         self.image_type = image_type
 

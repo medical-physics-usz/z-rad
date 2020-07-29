@@ -249,8 +249,8 @@ class ResizeShape(object):
             wrong_roi = reduce(lambda e1, e2: e1+e2, [e['wrong_roi'] for e in out])
             dcm_problems = reduce(lambda e1, e2: e1+e2, [e['dcm_problems'] for e in out])
         else:
-            wrong_roi = out['wrong_roi']
-            dcm_problems = out['dcm_problems']
+            wrong_roi = out[0]['wrong_roi']
+            dcm_problems = out[0]['dcm_problems']
         if len(wrong_roi) != 0:
             config = open(self.mypath_s + os.sep + self.list_structure[0] + '_key_error.txt', 'w')
             for i in wrong_roi:

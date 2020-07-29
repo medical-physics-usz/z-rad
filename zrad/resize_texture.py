@@ -688,9 +688,9 @@ class ResizeTexture(object):
             list_voi = reduce(lambda e1, e2: e1+e2, [e['list_voi'] for e in out])
             empty_roi = reduce(lambda e1, e2: e1+e2, [e['empty_roi'] for e in out])
         else:
-            wrong_roi = out['wrong_roi']
-            list_voi = out['list_voi']
-            empty_roi = out['empty_roi']
+            wrong_roi = out[0]['wrong_roi']
+            list_voi = out[0]['list_voi']
+            empty_roi = out[0]['empty_roi']
         if len(wrong_roi) != 0:
             config = open(self.mypath_s + os.sep + 'key_error.txt', 'w')
             for i in wrong_roi:

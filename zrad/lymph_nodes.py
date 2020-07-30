@@ -37,8 +37,8 @@ class LymphNodes(object):
             if tumorMass == "":  # no such a file or directory
                 final.append((ImName, "", "", "", "", "", "", "", "", ""))
                 continue
-            listLnMass, listLnVol, listLnPoints = self.FindLN(name_ln, path_files_shape,
-                                                              ImName)  # returs list of lm center of the mass, volumes and all LN points
+            # returns list of lm center of the mass, volumes and all LN points
+            listLnMass, listLnVol, listLnPoints = self.FindLN(name_ln, path_files_shape, ImName)
             if len(listLnMass) == 0:  # if no LN
                 final.append((ImName, "", "", "", "", "", "", "", "", ""))
                 continue
@@ -68,8 +68,7 @@ class LymphNodes(object):
             # what slices are in the files
             l_slices = []
             for z in files:
-                l_slices.append(int(z[
-                                    6:]))  # files are called slice_X where X is a slice number, so l_slice is a list containing slice numbers.
+                l_slices.append(int(z[6:]))  # files are called slice_X where X is a slice number, so l_slice is a list containing slice numbers.
             width = 1000  # everythng is resized to 1mm so tzpically 700 voxels would be enough
             print(max(l_slices))
             pic3d = np.zeros([max(l_slices) + 10, width, width], dtype=np.uint8)
@@ -117,7 +116,7 @@ class LymphNodes(object):
             dataImporter.SetDataSpacing(1, 1, 1)
             dataImporter.SetDataExtent(extent)
             dataImporter.SetWholeExtent(extent)
-            isoSurface = vtkMarchingCubes()
+            isoSurface = vtk.vtkMarchingCubes()
             isoSurface.SetInputConnection(dataImporter.GetOutputPort())
             isoSurface.SetValue(0, 1)
 
@@ -135,10 +134,10 @@ class LymphNodes(object):
 
         return MassCenter, volume, ind  # ind - all the points
 
-    def FindLN(self, name_ln, path_files_shape, ImName):  # returs list of lm center of the mass
-        """iterate thorugh all LN folders and find their center of mass"""
+    def FindLN(self, name_ln, path_files_shape, ImName):  # returns list of lm center of the mass
+        """iterate through all LN folders and find their center of mass"""
         onlydirs = [f for f in listdir(path_files_shape) if f.startswith(name_ln) and isdir(
-            join(path_files_shape, f))]  # find only folder correpsonding to lymph nodes
+            join(path_files_shape, f))]  # find only folder corresponding to lymph nodes
         listLnMass = []
         listLnPoints = []
         listLnVol = []
@@ -172,7 +171,7 @@ class LymphNodes(object):
         return largestDist, meanDist, sumDist, distance
 
     def WeightDist(self, sumDist, listLnMass):
-        """sum of PT and LN distaces noramlized by the sum of distances between the LN"""
+        """sum of PT and LN distances normalized by the sum of distances between the LN"""
         listSumDist = []
         if len(listLnMass) > 1:  # if more than one LN
             for mainLN in listLnMass:  # distances between LNs
@@ -201,7 +200,7 @@ class LymphNodes(object):
         return dist
 
     def VolWeightedDist(self, distances, listLnVol, ptVol):
-        """distance between LN and PT weighted by LN volume and additionaly normalized by the PT volume"""
+        """distance between LN and PT weighted by LN volume and additionally normalized by the PT volume"""
         wDist = np.array(distances) * np.array(listLnVol)
         volLargestWeightedDist = np.max(wDist)
         volMeanWeightedDist = np.mean(wDist)

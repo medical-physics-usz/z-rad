@@ -9,7 +9,9 @@ import pydicom as dc
 class Structures(object):
     """Class to extract each point in the image grid which belongs to the defined ROI
     rs - to the structure set including structure set name
-    structure – list of organs to be analyzed, always choose first existing organ for this list, for example [GTV_art, GTV], if GTV_art  is not defined in the rs then choose GTV, if GTV not defined then /AttributeError with a message: missing structure
+    structure – list of organs to be analyzed, always choose first existing organ for this list, for example [GTV_art,
+    GTV], if GTV_art  is not defined in the rs then choose GTV, if GTV not defined then /AttributeError with a message:
+    missing structure
     slices – list of positions of slice in z
     x_ct - x coordinate of image top left corner
     y_ct – y coordinate of image top left corner
@@ -17,7 +19,7 @@ class Structures(object):
     position – patient position on the table for example HFS (head first supine)
     len_IM – number of slices
     wv - bool, calculate wavelet, to see if we need contours in wavelet space
-        """
+    """
 
     def __init__(self, rs, structure, slices, x_ct, y_ct, xCTspace, len_IM, wv, dim, local):
         self.logger = logging.getLogger(__name__)
@@ -372,10 +374,11 @@ class Structures(object):
             # raise ValueError
 
     def multiContour(self, lista):
-        """account for multicontours in one slice,
-        checks z positions in each sublist of the list and if the have the same z then creates a new sublist
+        """Account for multicontours in one slice,
+        checks z positions in each sublist of the list and if the have the same z then creates a new sublist,
         for example input l = [[z1, [x1, x2],[y1,y2]], [z1, [x3, x4, x5],[y3, y4, y5]], [z2, [x1, x2],[y1,y2]]] - 3 contours on 2 slices
-        output l = [[z1, [[x1, x2],[y1,y2]], [[x3, x4, x5],[y3, y4, y5]]], [z2, [[x1, x2],[y1,y2]]]]"""
+        output l = [[z1, [[x1, x2],[y1,y2]], [[x3, x4, x5],[y3, y4, y5]]], [z2, [[x1, x2],[y1,y2]]]]
+        """
 
         listap = []
         lista_nr = []
@@ -405,7 +408,8 @@ class Structures(object):
         segment - contour points
         nr_slices: self.len_IM.
         If points calculated for wavelets in 3D, slices are reduced, therefore,
-        int(np.floor((self.len_IM + 5) / 2.)) must be used as input for nr_slices!"""
+        int(np.floor((self.len_IM + 5) / 2.)) must be used as input for nr_slices!
+        """
         cnt_all = []
         # print 'slices in image: ', self.len_IM
         # print 'slices in structure: ', len(segment)

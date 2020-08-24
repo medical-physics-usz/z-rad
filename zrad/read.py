@@ -10,7 +10,7 @@ from structure import Structures
 
 
 class ReadImageStructure(object):
-    """reads certain modality dicom files in a given folder, provides list of files, number of rows, number of columns,
+    """Reads certain modality dicom files in a given folder, provides list of files, number of rows, number of columns,
     pixel spacing, position of the left top corner (x,y), patient position;
     contour points (x,y) also for wavelets
     Type: object
@@ -23,14 +23,14 @@ class ReadImageStructure(object):
     'BF']
     """
 
-    def __init__(self, UID, mypath_image, stucture, wv, dim, local, *modality):
+    def __init__(self, UID, mypath_image, structure, wv, dim, local, *modality):
         self.logger = logging.getLogger(__name__)
         self.logger.info("Start")
         if 'CTP' in UID or 'IVIM' in UID:
             self.modality = modality
         self.dim = dim
         self.ReadImages(UID, mypath_image)
-        self.ReadStucture(mypath_image, stucture, wv, local)
+        self.ReadStucture(mypath_image, structure, wv, local)
 
     def ReadImages(self, UID, mypath_image):
         self.logger.info("Reading Images")

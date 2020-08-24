@@ -213,7 +213,7 @@ class Radiomics(wx.Frame):
             dict_parameters["image_modality"] = 'MR'
             dict_parameters['normalization'] = struct_norm1 + ' ' + struct_norm2
             main_texture_mr(self.GetStatusBar(), path_image, path_save, structure, pixNr, binSize, l_ImName, save_as,
-                            dim, struct_norm1, struct_norm2, wv, self.local, cropStructure, exportList)
+                            dim, struct_norm1, struct_norm2, wv, self.local, cropStructure, exportList, n_jobs)
 
         elif self.panelRadiomics.FindWindowById(160).GetValue():  # IVIM
             dict_parameters["image_modality"] = 'IVIM'

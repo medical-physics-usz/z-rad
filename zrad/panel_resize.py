@@ -209,7 +209,7 @@ class panelResize(scrolled.ScrolledPanel):
                           image_type, begin, stop, cropInput, dimension_resize, n_jobs)
 
         if self.FindWindowById(1009).GetValue():  # if resizing to shape resolution selected
-            inp_mypath_save_shape = inp_mypath_save + os.sep + 'resized_1mm' + os.sep
+            inp_mypath_save_shape = inp_mypath_save + 'resized_1mm' + os.sep
 
             for shape_struct in list_structure:
                 # resize the structure to the resolution of shape, default 1mm unless resolution of texture smaller than

@@ -33,71 +33,76 @@ class main_texture_mr(object):
     exportList - list of matrices/features to be calculated and exported
     """
 
-    def __init__(self, sb, path_image, path_save, structure, pixNr, binSize, l_ImName, save_as, dim, struct_norm1,
+    def __init__(self, sb, path_image, path_save, structures, pixNr, binSize, l_ImName, save_as, dim, struct_norm1,
                  struct_norm2, wv, local, cropStructure, exportList, n_jobs):
         self.logger = logging.getLogger(__name__)
         self.logger.info("Start")
         self.n_jobs = n_jobs
         image_modality = ['MR']
         dicomProblem = []
+        MR_UID = ['1.2.840.10008.5.1.4.1.1.4']  # MR
 
         def parfor(ImName):
             self.logger.info("Patient " + ImName)
+            mypath_image = path_image + ImName + os.sep
             to_return_3d = list()
-            try:
-                mypath_image = path_image + ImName + os.sep
-                MR_UID = ['1.2.840.10008.5.1.4.1.1.4']  # MR
 
-                read = ReadImageStructure(MR_UID, mypath_image, structure, wv, dim, local)
-                dicomProblem.append([ImName, read.listDicomProblem])
+            for structure in structures:
+                try:
+                    read = ReadImageStructure(MR_UID, mypath_image, [structure], wv, dim, local)
+                    dicomProblem.append([ImName, read.listDicomProblem])
 
-                # MR intensities normalization
-                if struct_norm1 != '':
-                    norm_slope, norm_inter = self.normalization(struct_norm1, struct_norm2, read, mypath_image)
-                else:
-                    norm_slope = 1  # to allow for calculation with no normalization
-                    norm_inter = 0
+                    # MR intensities normalization
+                    if struct_norm1 != '':
+                        norm_slope, norm_inter = self.normalization(struct_norm1, struct_norm2, read, mypath_image)
+                    else:
+                        norm_slope = 1  # to allow for calculation with no normalization
+                        norm_inter = 0
 
-                bitsRead = str(dc.read_file(mypath_image + read.onlyfiles[1]).BitsAllocated)
-                sign = int(dc.read_file(mypath_image + read.onlyfiles[1]).PixelRepresentation)
-                if sign == 1:
-                    bitsRead = 'int' + bitsRead
-                elif sign == 0:
-                    bitsRead = 'uint' + bitsRead
+                    bitsRead = str(dc.read_file(mypath_image + read.onlyfiles[1]).BitsAllocated)
+                    sign = int(dc.read_file(mypath_image + read.onlyfiles[1]).PixelRepresentation)
+                    if sign == 1:
+                        bitsRead = 'int' + bitsRead
+                    elif sign == 0:
+                        bitsRead = 'uint' + bitsRead
 
-                IM_matrix = []  # list containing the images matrix
-                for f in read.onlyfiles:
-                    data = dc.read_file(mypath_image + f).PixelData
-                    data16 = np.array(np.fromstring(data, dtype=bitsRead))  # converting to decimal
-                    data16 = data16 * norm_slope + norm_inter
-                    # recalculating for rows x columns
-                    a = []
-                    for j in range(read.rows):
-                        a.append(data16[j * read.columns:(j + 1) * read.columns])
-                    a = np.array(a)
-                    IM_matrix.append(np.array(a))
-                IM_matrix = np.array(IM_matrix)
+                    IM_matrix = []  # list containing the images matrix
+                    for f in read.onlyfiles:
+                        data = dc.read_file(mypath_image + f).PixelData
+                        data16 = np.array(np.fromstring(data, dtype=bitsRead))  # converting to decimal
+                        data16 = data16 * norm_slope + norm_inter
+                        # recalculating for rows x columns
+                        a = []
+                        for j in range(read.rows):
+                            a.append(data16[j * read.columns:(j + 1) * read.columns])
+                        a = np.array(a)
+                        IM_matrix.append(np.array(a))
+                    IM_matrix = np.array(IM_matrix)
 
-            except OSError:  # error if there is not directory
-                return
-            except IndexError:  # empty folder
-                return
+                except OSError:  # error if there is not directory
+                    import pdb
+                    pdb.set_trace()
+                    continue
+                except IndexError:  # empty folder
+                    import pdb
+                    pdb.set_trace()
+                    continue
 
-                # Texture(arguments).ret() -> function for texture calculation
-                # arguments: image, structure name, image corner x, image corner x, columns, pixelSpacing, HFS or FFS, structure file, list of slice positions, patient number, path to save the textutre maps, map name (eg. AIF1), pixel discretization, site
-                # function returns: number of removed points, minimum values, maximum values, structre used for calculations, mean,std, cov, skewness, kurtosis, enenrgy, entropy, contrast, corrrelation, homogenity, coarseness, neighContrast, busyness, complexity, intensity varation, size variation, fractal dimension, number of points used in the calculations, histogram (values bigger/smaller than median)
-            stop_calc = ''  # in case something would be wrong with the image tags
-            if dim == '3D':
-                lista_results = Texture([IM_matrix], read.structure_f, read.columns, read.rows, read.xCTspace,
-                                        read.slices, path_save, ImName, pixNr, binSize, image_modality, wv, local,
-                                        cropStructure, stop_calc, read.Xcontour, read.Xcontour_W, read.Ycontour,
-                                        read.Ycontour_W, read.Xcontour_Rec, read.Ycontour_Rec).ret()
+                    # Texture(arguments).ret() -> function for texture calculation
+                    # arguments: image, structure name, image corner x, image corner x, columns, pixelSpacing, HFS or FFS, structure file, list of slice positions, patient number, path to save the textutre maps, map name (eg. AIF1), pixel discretization, site
+                    # function returns: number of removed points, minimum values, maximum values, structre used for calculations, mean,std, cov, skewness, kurtosis, enenrgy, entropy, contrast, corrrelation, homogenity, coarseness, neighContrast, busyness, complexity, intensity varation, size variation, fractal dimension, number of points used in the calculations, histogram (values bigger/smaller than median)
+                stop_calc = ''  # in case something would be wrong with the image tags
+                if dim == '3D':
+                    lista_results = Texture([IM_matrix], read.structure_f, read.columns, read.rows, read.xCTspace,
+                                            read.slices, path_save, ImName, pixNr, binSize, image_modality, wv, local,
+                                            cropStructure, stop_calc, read.Xcontour, read.Xcontour_W, read.Ycontour,
+                                            read.Ycontour_W, read.Xcontour_Rec, read.Ycontour_Rec).ret()
 
-            #                elif dim == '2D': #not working
-            #                    lista_results = Texture2D(sb,IM_matrix, structure, x_ct,y_ct, columns, rows, xCTspace, patientPos, rs, slices, path_save, ImName, pixNr, prefix).ret()
+                #                elif dim == '2D': #not working
+                #                    lista_results = Texture2D(sb,IM_matrix, structure, x_ct,y_ct, columns, rows, xCTspace, patientPos, rs, slices, path_save, ImName, pixNr, prefix).ret()
 
-            features_3d = [[ImName, lista_results[2], lista_results[:2], lista_results[3:-1], lista_results[-1]]]
-            to_return_3d.append(features_3d)
+                features_3d = [[ImName, lista_results[2], lista_results[:2], lista_results[3:-1], lista_results[-1]]]
+                to_return_3d.append(features_3d)
             return to_return_3d
 
         out = Parallel(n_jobs=self.n_jobs, verbose=20)(delayed(parfor)(ImName) for ImName in l_ImName)

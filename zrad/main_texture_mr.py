@@ -80,12 +80,8 @@ class main_texture_mr(object):
                     IM_matrix = np.array(IM_matrix)
 
                 except OSError:  # error if there is not directory
-                    import pdb
-                    pdb.set_trace()
                     continue
                 except IndexError:  # empty folder
-                    import pdb
-                    pdb.set_trace()
                     continue
 
                     # Texture(arguments).ret() -> function for texture calculation

@@ -16,7 +16,7 @@ class ExportExcel(object):
             df = texture
         df = self.cleanup(df)
         df = self.reorder(df)
-        df = df.sort_values(['patient', 'organ'])
+        df = df.sort_values(['patient', 'organ']).reset_index(drop=True)
 
         path = path_save + os.sep + save_as + '.xlsx'
         df_parameters = pd.DataFrame.from_dict(dict_parameters)

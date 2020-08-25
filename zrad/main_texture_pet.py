@@ -185,7 +185,7 @@ class main_texture_pet(object):
                     stop_calc = 'activity 0'
                 elif np.isnan(weight):
                     stop_calc = 'undefined weight'
-                lista_results = Texture(sb, [IM_matrix], read.structure_f, read.columns, read.rows, read.xCTspace,
+                lista_results = Texture([IM_matrix], read.structure_f, read.columns, read.rows, read.xCTspace,
                                         read.slices, path_save, ImName, pixNr, binSize, image_modality, wv, local,
                                         cropStructure, stop_calc, read.Xcontour, read.Xcontour_W, read.Ycontour,
                                         read.Ycontour_W, read.Xcontour_Rec, read.Ycontour_Rec).ret()

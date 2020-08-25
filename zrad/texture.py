@@ -537,10 +537,7 @@ class Texture(object):
                             diff_variance = np.mean(diff_variance_t)
                             IMC1 = np.mean(IMC1_t)
                             IMC2 = np.mean(IMC2_t)
-                            try:
-                                MCC = np.mean(MCC_t, np.float)
-                            except TypeError:  # see MCC function
-                                MCC = np.nan
+                            MCC = np.mean(MCC_t)
                             joint_max = np.mean(joint_max_t)
                             joint_average = np.mean(joint_average_t)
                             diff_ave = np.mean(diff_ave_t)
@@ -1426,13 +1423,10 @@ class Texture(object):
                             Q[i][j] += coM[i][k] * coM[j][k] / (X[i] * X[k])
             l_arr = np.linalg.eigvals(Q)
             l_arr.sort()
-            try:
-                mcc_t = l_arr[-2] ** 0.5
-            except IndexError:  # due to not sufficient number of bits in wavelet transform
-                return ''
-        except np.linalg.linalg.LinAlgError:
+            mcc_t = l_arr[-2] ** 0.5
+        except (IndexError, np.linalg.linalg.LinAlgError):
             mcc_t = np.nan
-        return mcc_t
+        return complex(mcc_t).real
 
     def fun_joint_max(self, coM):  # 3.3.1
         return np.max(coM)

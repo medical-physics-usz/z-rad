@@ -25,11 +25,6 @@ class ExportExcel(object):
             df_parameters.to_excel(writer, index=False, header=True, sheet_name="parameters")
 
     def cleanup(self, df):
-        # change MCC features to real numbers
-        MCC_features = df.columns[df.columns.str.contains("MCC")]
-        for iMCC in MCC_features:
-            df[iMCC] = df.loc[:, iMCC].apply(lambda x: complex(x).real)
-
         # clean up shape
         delShape = ["nonzero_Points", "Clusters"]
         df = df.iloc[:, ~df.columns.str.contains('|'.join(delShape))]

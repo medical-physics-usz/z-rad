@@ -53,6 +53,6 @@ class ExportExcel(object):
         df.insert(26, 'MTV50%', df.pop("MTV50%"))
         df.insert(27, 'MTV60%', df.pop("MTV60%"))
         df.insert(28, 'MTV70%', df.pop("MTV70%"))
-        df.insert(29, 'vmin', df.pop("vmin"))
-        df.insert(30, 'vmax', df.pop("vmax"))
+        df.insert(28, 'vmin', df.pop("vmin"))
+        df.insert(28, 'vmax', df.pop("vmax"))
         return df

@@ -49,7 +49,7 @@ class ResizeShape(object):
         f.write(str(self.resolution))
         f.close()
         # structure to be resized, placed in a list due to similarities with texture resizing
-        self.list_structure = [inp_struct]
+        self.list_structure = inp_struct
         self.mypath_load = inp_mypath_load
         self.mypath_s = inp_mypath_save
         self.image_type = image_type

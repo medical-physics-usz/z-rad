@@ -196,26 +196,23 @@ class panelResize(scrolled.ScrolledPanel):
         for i in range(len(list_structure)):
             list_structure[i] = list_structure[i].strip()
 
-        if self.FindWindowById(10082).GetValue() or self.FindWindowById(
-                10083).GetValue():  # if resizing to texture resolution selected
+        # if resizing to texture resolution selected
+        if self.FindWindowById(10082).GetValue() or self.FindWindowById(10083).GetValue():
             if self.FindWindowById(10082).GetValue():  # if 2D chosen
                 dimension_resize = "2D"
             else:
                 dimension_resize = "3D"
 
-            print(interpolation_type)
             # resize images and structure to the resolution of texture
             ResizeTexture(inp_resolution, interpolation_type, list_structure, inp_mypath_load, inp_mypath_save,
                           image_type, begin, stop, cropInput, dimension_resize, n_jobs)
 
         if self.FindWindowById(1009).GetValue():  # if resizing to shape resolution selected
             inp_mypath_save_shape = inp_mypath_save + 'resized_1mm' + os.sep
-
-            for shape_struct in list_structure:
-                # resize the structure to the resolution of shape, default 1mm unless resolution of texture smaller than
-                # 1mm then 0.1 mm
-                ResizeShape(shape_struct, inp_mypath_load, inp_mypath_save_shape, image_type, begin, stop,
-                            inp_resolution, 'linear', cropInput, n_jobs)
+            # resize the structure to the resolution of shape, default 1mm unless resolution of texture smaller than
+            # 1mm then 0.1 mm
+            ResizeShape(list_structure, inp_mypath_load, inp_mypath_save_shape, image_type, begin, stop,
+                        inp_resolution, 'linear', cropInput, n_jobs)
 
         MyInfo('Resize done')  # show info box
 

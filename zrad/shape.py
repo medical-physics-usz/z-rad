@@ -10,8 +10,12 @@ import pandas as pd
 import scipy
 import scipy.ndimage as ndi
 import vtk
+from joblib import Parallel, delayed
 from scipy import spatial
 from sklearn.decomposition import PCA
+from tqdm import tqdm
+
+from utils import tqdm_joblib
 
 
 class Shape(object):
@@ -24,7 +28,7 @@ class Shape(object):
     high - stop number
     """
 
-    def __init__(self, path_image, path_save, save_as, rois, low, high):
+    def __init__(self, path_image, path_save, save_as, rois, low, high, n_jobs):
         nlist = [str(i) for i in range(low, high)]
 
         # maximum euclidian distance, one needs
@@ -34,26 +38,30 @@ class Shape(object):
         if exists(path_results):
             remove(path_results)
 
-        print('Start_0: ', datetime.now().strftime('%H:%M:%S'))
-        df_results = pd.DataFrame()
-        i = 0
-        for roi_name in rois:
-            print('ROI: {}'.format(roi_name))
-            self.path_load = path_image + 'resized_1mm' + os.sep + roi_name + os.sep
-            # in which resolution files were saved
-            ind_f = self.path_load[:-1].rfind(os.sep)  # get into one folder up
-            path_set = self.path_load[:ind_f + 1]
-            f = open(path_set + 'shape_resolution.txt', 'r')
-            savedResolution = float(f.readlines()[0])
-            f.close()
-            del ind_f
-            del path_set
+        # print('Start_0: ', datetime.now().strftime('%H:%M:%S'))
 
-            for nn in nlist:
-                print('Patient: {}'.format(nn))
+        # for nn in nlist:
+        def parfor(nn):
+            # df_results = pd.DataFrame()
+            pat_results = []
+            i = 0
+            for roi_name in rois:
+                roi_results = {}
+                # print('ROI: {}'.format(roi_name))
+                self.path_load = path_image + 'resized_1mm' + os.sep + roi_name + os.sep
+                # in which resolution files were saved
+                ind_f = self.path_load[:-1].rfind(os.sep)  # get into one folder up
+                path_set = self.path_load[:ind_f + 1]
+                f = open(path_set + 'shape_resolution.txt', 'r')
+                savedResolution = float(f.readlines()[0])
+                f.close()
+                del ind_f
+                del path_set
+
+                # print('Patient: {}'.format(nn))
                 try:
                     if exists(self.path_load + nn) and not listdir(self.path_load + nn) == []:
-                        print('processing: ', nn + ', start: ', datetime.now().strftime('%H:%M:%S'))
+                        # print('processing: ', nn + ', start: ', datetime.now().strftime('%H:%M:%S'))
                         pic3d, pnz, extent = self.fill(nn)
                         num_cluster = self.clust(pic3d, 0)
                         dst_median, dst_std, dst_mean = self.thickness(nn, pic3d, 0)
@@ -81,33 +89,38 @@ class Shape(object):
                             minor_axis = 0.1 * minor_axis
                             least_axis = 0.1 * least_axis
 
-                        df_results.loc[i, 'patient'] = nn
-                        df_results.loc[i, 'organ'] = roi_name
-                        df_results.loc[i, 'MC-Volume'] = vtkvol
-                        df_results.loc[i, 'nonzero_Points'] = len(pnz[0])
-                        df_results.loc[i, 'MC-Surface'] = vtksur
-                        df_results.loc[i, 'Clusters'] = num_cluster
-                        df_results.loc[i, 'Compactness_1'] = comp1
-                        df_results.loc[i, 'Compactness_2'] = comp2
-                        df_results.loc[i, 'Dispr.'] = dispr
-                        df_results.loc[i, 'Sphericity'] = spher
-                        df_results.loc[i, 'Asphericity'] = aspher
-                        df_results.loc[i, 'A/V'] = AtoV
-                        df_results.loc[i, 'thickness_median'] = dst_median
-                        df_results.loc[i, 'thickness_SD'] = dst_std
-                        df_results.loc[i, 'euclidian_distance'] = maxeucl
-                        df_results.loc[i, 'major_axis'] = major_axis
-                        df_results.loc[i, 'minor_axis'] = minor_axis
-                        df_results.loc[i, 'least_axis'] = least_axis
-                        df_results.loc[i, 'elongation'] = elong
-                        df_results.loc[i, 'flatness'] = flat
-
-                        df_results.to_csv(path_results)
-                        i += 1
-                    else:
-                        print('directory %s does not exist or is empty' % nn)
+                        roi_results['patient'] = nn
+                        roi_results['organ'] = roi_name
+                        roi_results['MC-Volume'] = vtkvol
+                        roi_results['nonzero_Points'] = len(pnz[0])
+                        roi_results['MC-Surface'] = vtksur
+                        roi_results['Clusters'] = num_cluster
+                        roi_results['Compactness_1'] = comp1
+                        roi_results['Compactness_2'] = comp2
+                        roi_results['Dispr.'] = dispr
+                        roi_results['Sphericity'] = spher
+                        roi_results['Asphericity'] = aspher
+                        roi_results['A/V'] = AtoV
+                        roi_results['thickness_median'] = dst_median
+                        roi_results['thickness_SD'] = dst_std
+                        roi_results['euclidian_distance'] = maxeucl
+                        roi_results['major_axis'] = major_axis
+                        roi_results['minor_axis'] = minor_axis
+                        roi_results['least_axis'] = least_axis
+                        roi_results['elongation'] = elong
+                        roi_results['flatness'] = flat
+                        pat_results.append(roi_results)
+                    # else:
+                    #     print('directory %s does not exist or is empty' % nn)
                 except OSError:
                     pass
+            return pat_results
+
+        with tqdm_joblib(tqdm(desc="Extracting shape features", total=len(nlist))):
+            out = Parallel(n_jobs=n_jobs)(delayed(parfor)(name) for name in nlist)
+        list_results = [roi_results for sublist in out for roi_results in sublist]
+        df_results = pd.DataFrame(list_results)
+        df_results.to_csv(path_results)
 
     def fill(self, fname):
         # Start with empty 3d-array of zeros
@@ -156,7 +169,7 @@ class Shape(object):
         pic3d[3]
         pnz = np.nonzero(pic3d)
 
-        print('Number of nonzero points = ', len(pnz[0]))
+        # print('Number of nonzero points = ', len(pnz[0]))
         # extent for vtk - analysis:
         extent = (0, zma - zmi - 1, 0, yma - ymi - 1, 0, xma - xmi - 1)
         return pic3d, pnz, extent
@@ -179,14 +192,14 @@ class Shape(object):
             D = spatial.distance.pdist(np.transpose(pnzs), 'euclidean')  # creates the condensed distance matrix
             maxeucl = np.max(D)
             #
-        print('Longest euclidean distance = ', np.round(maxeucl))
+        # print('Longest euclidean distance = ', np.round(maxeucl))
         sys.stdout.flush()
         return maxeucl
 
     def clust(self, vol, rend):  # Number of Clusters
         s = ndi.generate_binary_structure(3, 3)
         la, num_features = ndi.label(vol, structure=s)  # la = labeled_array
-        print("Number of Clusters:", num_features)
+        # print("Number of Clusters:", num_features)
 
         # Coloring of the Clusters
         ##    la1 = la>0 #
@@ -235,7 +248,7 @@ class Shape(object):
 
     def marching_cubes(self, vol, extent, rend, pnz):
         dataImporter = vtk.vtkImageImport()
-        data_string = vol.tostring()
+        data_string = vol.tobytes()
 
         dataImporter.CopyImportVoidPointer(data_string, len(data_string))
         dataImporter.SetDataScalarTypeToUnsignedChar()
@@ -283,7 +296,7 @@ class Shape(object):
         #    print'Number of Non-Zero points = ',len(pnz[0])
         #    print "VTK-MC-Surface = ",vtksur
 
-        print((vtkvol, vtksur, comp1, comp2, ar, dispr, spher, AtoV))
+        # print((vtkvol, vtksur, comp1, comp2, ar, dispr, spher, AtoV))
         sys.stdout.flush()
 
         # 3d-Render-Block
@@ -312,7 +325,7 @@ class Shape(object):
             renWin = vtk.vtkRenderWindow()
             renWin.AddRenderer(ren)
             renWin.SetWindowName("IsoSurface/MarchingCubes")
-            renWin.SetSize(700, 700);
+            renWin.SetSize(700, 700)
             iren = vtk.vtkRenderWindowInteractor()
             iren.SetRenderWindow(renWin)
             iren.Initialize()
@@ -340,7 +353,7 @@ class Shape(object):
         least_axis = 4 * eigen_value[0] ** 0.5
         elong = minor_axis / major_axis
         flat = least_axis / major_axis
-        print('axis', major_axis, minor_axis, least_axis)
+        # print('axis', major_axis, minor_axis, least_axis)
         return major_axis, minor_axis, least_axis, elong, flat
 
     ###################

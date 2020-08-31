@@ -225,7 +225,7 @@ class Radiomics(wx.Frame):
         if calc_shape:  # calculate shape
             name_shape_pt_list = name_shape_pts.split(',')
             dict_parameters['shape structure'] = name_shape_pt_list
-            Shape(path_image, path_save, save_as, name_shape_pt_list, start, stop)
+            Shape(path_image, path_save, save_as, name_shape_pt_list, start, stop, n_jobs)
             if dim == "3D":
                 ExportExcel(calc_shape, path_save, save_as, dict_parameters)
 

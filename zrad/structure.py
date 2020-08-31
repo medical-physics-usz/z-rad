@@ -159,7 +159,7 @@ class Structures(object):
                     self.organs = organs[0]
                 else:
                     if self.dim != "2D_singleSlice":
-                        self.contours = np.array(self.contours)
+                        self.contours = np.array(self.contours, dtype=object)
                     self.organs = organs[-1]
             except IndexError:
                 #            info = "Check structure names" #for Lucas
@@ -369,7 +369,7 @@ class Structures(object):
             except ValueError:  # ValueError
                 self.Xcontour_W = ''
                 self.Ycontour_W = ''
-                self.logger.warn('too small structure')
+                self.logger.warning('too small structure')
                 pass
             # raise ValueError
 

@@ -261,7 +261,7 @@ class Texture(object):
             self.HUmax = 'none'
             self.outlier_correction = False
 
-        print(stop_calc)
+        # print(stop_calc)
         if self.Xcontour == 'one slice':  # don't calculate, contour onl on one slice
             self.stop_calculation('one slice', rs_type)
         elif stop_calc != '':  # stop calculation if image file contains wrong tags, eg activity = 0 in PET file
@@ -351,7 +351,7 @@ class Texture(object):
                         self.vmax.append(ROImatrix.vmax)
                         HUmask = CT_ROImatrix.HUmask
 
-                    print("------------- end: created HU mask was used for PET structure --------------")
+                    # print("------------- end: created HU mask was used for PET structure --------------")
                     del wave_list_ct
                 else:
                     self.logger.info("Normal Mode, no cropping")
@@ -412,7 +412,7 @@ class Texture(object):
                             histogram = self.fun_histogram(matrix_v, modality[i], ImName, pixNr, path, w)
                         except IndexError:
                             self.stop_calculation('only one voxel', [0])
-                            print('one voxel')
+                            # print('one voxel')
                             more_than_one_pix = False
                         if self.n_bits == 'values out of range':
                             more_than_one_pix = False
@@ -865,7 +865,7 @@ class Texture(object):
                             del matrix
 
                     except ValueError:
-                        print(ValueError)
+                        # print(ValueError)
                         self.stop_calculation('ValueError', [1])
 
     def stop_calculation(self, info, rs_type):
@@ -1537,21 +1537,19 @@ class Texture(object):
         return f
 
     def fun_busyness(self, s, Ni, matrix):  # 3.6.3
-        try:
-            nom = 0
-            denom = 0
-            ind = np.where(np.array(Ni) != 0)[0]
-            for i in ind:
-                nom += s[i] * Ni[i] / np.sum(Ni)
-                for j in ind:
-                    denom += abs(float((i + 1) * Ni[i]) / (np.sum(Ni)) - float((j + 1) * Ni[j]) / (
-                        np.sum(Ni)))  # to adapt i = [1:Ng]
-            if nom / denom == 0:
-                return np.nan
-            else:
-                return nom / denom  # don't divide by 2 to adapt for the oncoray
-        except ZeroDivisionError:
+        nom = 0
+        denom = 0
+        ind = np.where(np.array(Ni) != 0)[0]
+        for i in ind:
+            nom += s[i] * Ni[i] / np.sum(Ni)
+            for j in ind:  # to adapt i = [1:Ng]
+                denom += abs(float((i + 1) * Ni[i]) / (np.sum(Ni)) - float((j + 1) * Ni[j]) / (np.sum(Ni)))
+        if denom == 0:
             return ''
+        elif nom / denom == 0:
+            return np.nan
+        else:
+            return nom / denom  # don't divide by 2 to adapt for the oncoray
 
     def fun_contrastM3(self, s, Ni, matrix):  # 3.6.2.
         try:
@@ -1591,9 +1589,10 @@ class Texture(object):
             for j in ind:
                 s1 += ((float(Ni[i]) + float(Ni[j])) / np.sum(Ni)) * (i - j) ** 2
         s2 = np.sum(s)
-        s = s1 / s2
         if s2 == 0:
             s = 0
+        else:
+            s = s1 / s2
         return s
 
     def M4L(self, matrix, di, direction):
@@ -1619,70 +1618,76 @@ class Texture(object):
         planes['[1, -1, 1]'] = self.M4L_choose_plane([1, -1, 1], matrix)
         planes['[1, -1, -1]'] = self.M4L_choose_plane([1, -1, -1], matrix)
 
-        seeds = planes[str(di)]  # plane used as the begining of the rays
+        seeds = planes[str(di)]  # plane used as the beginning of the rays
 
         vector_len = max([len(matrix), len(matrix[0]), len(matrix[0][0]),
                           int(np.sqrt(len(matrix) ** 2 + len(matrix[0]) ** 2)) + 1,
                           int(np.sqrt(len(matrix) ** 2 + len(matrix[0][0]) ** 2)) + 1,
                           int(np.sqrt(len(matrix[0][0]) ** 2 + len(matrix[0]) ** 2)) + 1])
-        v = np.arange(0, vector_len)
-
-        Vx = []  # coordinates of the vectors to extract
-        Vy = []
-        Vz = []
-
-        vm = []  # vecotr with gray values to calculate the matrix
+        v = np.arange(vector_len)
 
         # rays from the plane
         vm = self.M4L_ray(matrix, seeds, di, v, shiftX=0, shiftY=0, shiftZ=0)
-        if np.ndim(vm) != 1:  # #to account for different dimensions
-            nan_list = [np.nan for inan in range(np.ndim(vm) + 1)]
+        ndim = np.asarray(vm, dtype=object).ndim
+        if ndim != 1:  # #to account for different dimensions
+            nan_list = [np.nan] * (ndim + 1)
             vm.append(nan_list)
 
         # move the plane to account for diagonal crossings
+        vm = np.array(vm, dtype=object)
         if np.sum(di) != 1 or di[0] * di[1] * di[2] != 0:
-            v = np.arange(0, vector_len + 1)
+            v = np.arange(vector_len + 1)
             if di[2] == -1:
                 # to account for different dimensions
                 new_vm = self.M4L_ray(matrix, seeds, di, v, shiftX=1, shiftY=0, shiftZ=0)
-                if np.ndim(new_vm) != 1:
-                    nan_list = [np.nan for inan in range(np.ndim(new_vm) + 1)]
+                ndim = np.asarray(new_vm, dtype=object).ndim
+                if ndim != 1:
+                    nan_list = [np.nan] * (ndim + 1)
                     new_vm.append(nan_list)
+                new_vm = np.array(new_vm, dtype=object)
                 vm = np.concatenate((vm, new_vm))
             else:
                 new_vm = self.M4L_ray(matrix, seeds, di, v, shiftX=-1, shiftY=0, shiftZ=0)
-                if np.ndim(new_vm) != 1:
-                    nan_list = [np.nan for inan in range(np.ndim(new_vm) + 1)]
+                ndim = np.asarray(new_vm, dtype=object).ndim
+                if ndim != 1:
+                    nan_list = [np.nan] * (ndim + 1)
                     new_vm.append(nan_list)
+                new_vm = np.array(new_vm, dtype=object)
                 vm = np.concatenate((vm, new_vm))
             if di in direction[5:]:
                 new_vm = self.M4L_ray(matrix, seeds, di, v, shiftX=0, shiftY=0, shiftZ=-1)
-                if np.ndim(new_vm) != 1:
-                    nan_list = [np.nan for inan in range(np.ndim(new_vm) + 1)]
+                ndim = np.asarray(new_vm, dtype=object).ndim
+                if ndim != 1:
+                    nan_list = [np.nan] * (ndim + 1)
                     new_vm.append(nan_list)
+                new_vm = np.array(new_vm, dtype=object)
                 vm = np.concatenate((vm, new_vm))
             if di in direction[9:]:
                 if di[2] == -1:
                     new_vm = self.M4L_ray(matrix, seeds, di, v, shiftX=1, shiftY=0, shiftZ=-1)
-                    if np.ndim(new_vm) != 1:
-                        nan_list = [np.nan for inan in range(np.ndim(new_vm) + 1)]
+                    ndim = np.asarray(new_vm, dtype=object).ndim
+                    if ndim != 1:
+                        nan_list = [np.nan] * (ndim + 1)
                         new_vm.append(nan_list)
+                    new_vm = np.array(new_vm, dtype=object)
                     vm = np.concatenate((vm, new_vm))
                 else:
                     new_vm = self.M4L_ray(matrix, seeds, di, v, shiftX=-1, shiftY=0, shiftZ=-1)
-                    if np.ndim(new_vm) != 1:
-                        nan_list = [np.nan for inan in range(np.ndim(new_vm) + 1)]
+                    ndim = np.asarray(new_vm, dtype=object).ndim
+                    if ndim != 1:
+                        nan_list = [np.nan] * (ndim + 1)
                         new_vm.append(nan_list)
+                    new_vm = np.array(new_vm, dtype=object)
                     vm = np.concatenate((vm, new_vm))
 
         GLRLM, Smax = self.M4L_fill(vm, GLRLM, Smax, int(np.nanmin(matrix)), int(np.nanmax(matrix)))
-
         GLRLM = np.array(GLRLM)
         GLRLM.astype(np.float)
+
         return GLRLM, float(np.sum(GLRLM))
 
     def M4L_fill(self, v, M, Smax, vmin, vmax):
-        v = np.array(v)  # matrix of the vector with gray values
+        v = np.array(v, dtype=object)  # matrix of the vector with gray values
         for g in range(vmin, vmax + 1):  # g - gray values in the vector
             for vi in range(len(v)):  # vi - single vector
                 ind = np.where(np.array(v[vi]) == g)[0]  # where in this vector is g

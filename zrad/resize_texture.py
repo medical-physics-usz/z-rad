@@ -11,8 +11,10 @@ import pydicom as dc
 from joblib import Parallel, delayed
 from pydicom.filereader import InvalidDicomError
 from scipy.interpolate import interp1d
+from tqdm import tqdm
 
 from resize_interpolate_roi import InterpolateROI
+from utils import tqdm_joblib
 
 
 class ResizeTexture(object):
@@ -441,7 +443,6 @@ class ResizeTexture(object):
                                     slices_r.reverse()
                                     old_gridZ = np.array(slices_r)
                                 else:
-                                    print('tu')
                                     old_gridZ = np.array(slices)
                                 for x in range(new_columns):
                                     for y in range(new_rows):
@@ -681,7 +682,8 @@ class ResizeTexture(object):
 
             return {'wrong_roi': wrong_roi_this, 'list_voi': list_voi_this, 'empty_roi': empty_roi_this}
 
-        out = Parallel(n_jobs=self.n_jobs, verbose=20)(delayed(parfor)(name) for name in self.list_dir)
+        with tqdm_joblib(tqdm(desc="Resizing texture", total=len(self.list_dir))):
+            out = Parallel(n_jobs=self.n_jobs)(delayed(parfor)(name) for name in self.list_dir)
 
         if len(out) > 1:
             wrong_roi = reduce(lambda e1, e2: e1+e2, [e['wrong_roi'] for e in out])

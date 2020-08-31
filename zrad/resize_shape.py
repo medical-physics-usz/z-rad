@@ -9,12 +9,15 @@ import numpy as np
 import pydicom as dc
 from joblib import Parallel, delayed
 from pydicom.filereader import InvalidDicomError
+from tqdm import tqdm
 
 from resize_interpolate_roi import InterpolateROI
+from utils import tqdm_joblib
 
 
 class ResizeShape(object):
-    """Class to resize listed structures to a resolution (1mm for texture resolution > 1mm and 0.1 mm for texture resolution <1mm) and saved the results as text files in subfolder resize_1mm
+    """Class to resize listed structures to a resolution (1mm for texture resolution > 1mm
+    and 0.1 mm for texture resolution <1mm) and saved the results as text files in subfolder resize_1mm
     inp_resolution – resolution defined by user for texture calculation
     inp_struct – list of structure names to be resized
     inp_mypath_load – path with the data to be resized
@@ -53,7 +56,7 @@ class ResizeShape(object):
         self.mypath_load = inp_mypath_load
         self.mypath_s = inp_mypath_save
         self.image_type = image_type
-        self.lista_dir = [str(i) for i in range(low, high + 1)]  # list of directories to be analyzed
+        self.list_dir = [str(i) for i in range(low, high + 1)]  # list of directories to be analyzed
         self.n_jobs = n_jobs
         self.resize()
 
@@ -73,7 +76,6 @@ class ResizeShape(object):
             dcm_problems_this = []
 
             try:
-                print("")
                 self.logger.info('Patient ' + str(name))
                 mypath_file = self.mypath_load + name + os.sep  # go to subfolder for given patient
                 mypath_save = self.mypath_s
@@ -159,7 +161,7 @@ class ResizeShape(object):
                             [rs.StructureSetROISequence[j].ROIName, rs.StructureSetROISequence[j].ROINumber])
                         list_organs_names.append(rs.StructureSetROISequence[j].ROIName)
 
-                    # check if structure avaiable in RS and add to list
+                    # check if structure available in RS and add to list
                     # (the list if only due to similarity with texture)
                     change_struct = []
                     for j in self.list_structure:
@@ -192,11 +194,11 @@ class ResizeShape(object):
                                 if self.round_factor == 2:
                                     zi = np.linspace(old_gridZ[n_s], old_gridZ[n_s + 1], int(
                                         sliceThick / 0.01) + 1)  # create an interpolation grid between those slice
-                                    # round interpolation grid accroding to specified precision
+                                    # round interpolation grid according to specified precision
                                     for gz in range(len(zi)):
                                         zi[gz] = round(zi[gz], self.round_factor)
                                     # interpolate, X list of x positions of the interpolated contour,
-                                    # Y list of y positions of the interpoated contour , interpolation type shape
+                                    # Y list of y positions of the interpolated contour , interpolation type shape
                                     # returns all the points in the structure
                                     X, Y = InterpolateROI().interpolate(self.interpolation_algorithm, M[n_s],
                                                                         M[n_s + 1],
@@ -243,7 +245,8 @@ class ResizeShape(object):
 
             return {'wrong_roi': wrong_roi_this, 'dcm_problems': dcm_problems_this}
 
-        out = Parallel(n_jobs=self.n_jobs, verbose=20)(delayed(parfor)(name) for name in self.lista_dir)
+        with tqdm_joblib(tqdm(desc="Resizing shape", total=len(self.list_dir))):
+            out = Parallel(n_jobs=self.n_jobs)(delayed(parfor)(name) for name in self.list_dir)
 
         if len(out) > 1:
             wrong_roi = reduce(lambda e1, e2: e1+e2, [e['wrong_roi'] for e in out])

@@ -4,12 +4,14 @@ import os
 import numpy as np
 import pandas as pd
 import pydicom as dc
+from joblib import Parallel, delayed
+from tqdm import tqdm
 
 from export import Export
 from features2d import Features2D
 from read import ReadImageStructure
 from texture import Texture
-from joblib import Parallel, delayed
+from utils import tqdm_joblib
 
 
 class main_texture_ct(object):
@@ -72,7 +74,7 @@ class main_texture_ct(object):
                     IM_matrix = []  # list containing the images matrix
                     for f in read.onlyfiles:
                         data = dc.read_file(mypath_image + f).PixelData
-                        data16 = np.array(np.fromstring(data, dtype=bitsRead))  # converting to decimal
+                        data16 = np.array(np.frombuffer(data, dtype=bitsRead))  # converting to decimal
                         data16 = data16 * slope + inter
                         # recalculating for rows x columns
                         a = np.reshape(data16, (read.rows, read.columns))
@@ -113,7 +115,8 @@ class main_texture_ct(object):
                 to_return = to_return_3d
             return to_return
 
-        out = Parallel(n_jobs=self.n_jobs, verbose=20)(delayed(parfor)(ImName) for ImName in l_ImName)
+        with tqdm_joblib(tqdm(desc="Extracting intensity and texture features", total=len(l_ImName))):
+            out = Parallel(n_jobs=self.n_jobs)(delayed(parfor)(ImName) for ImName in l_ImName)
 
         if dim == "2D" or dim == "2D_singleSlice":
             df_features_all = out

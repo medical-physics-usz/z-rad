@@ -103,7 +103,7 @@ class InterpolateROI(object):
                                 self.logger.info('no contours for: ' + organs[i])
 
         # recalculating for pixels the points into pixels
-        contours = np.array(contours)
+        contours = np.array(contours, dtype=object)
 
         # recalculate contour points from mm to pixels
         for i in range(len(contours)):  # contours
@@ -203,7 +203,7 @@ class InterpolateROI(object):
                 M.append(m)
             else:
                 M.append([])
-        M = np.array(M)
+        M = np.array(M, dtype=object)
 
         # adjust if there is a contour only in one slice, add slice filled with -1 before and after
         ind = []

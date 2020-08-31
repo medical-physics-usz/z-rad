@@ -10,7 +10,10 @@ from scipy.sparse.csgraph import minimum_spanning_tree
 from scipy.spatial import Delaunay
 from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
-from sklearn.metrics import calinski_harabaz_score
+try:
+    from sklearn.metrics import calinski_harabaz_score
+except ImportError:
+    from sklearn.metrics import calinski_harabasz_score
 
 
 class LymphNodes(object):

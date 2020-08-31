@@ -181,7 +181,7 @@ class panelRadiomics(scrolled.ScrolledPanel):
         self.vbox.Add(h5box, flag=wx.LEFT)
         self.vbox.Add((-1, 10))
 
-        self.gs_6 = wx.FlexGridSizer(cols=5, vgap=2.5, hgap=10)
+        self.gs_6 = wx.FlexGridSizer(cols=5, vgap=3, hgap=10)
         rb_pet = wx.RadioButton(self, id=130, label='PET')
         st_suv = wx.StaticText(self, label='SUV correction')
         rb_yes = wx.CheckBox(self, id=131, label='yes')  # SUV correction on

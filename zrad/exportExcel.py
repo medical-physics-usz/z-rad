@@ -28,9 +28,10 @@ class ExportExcel(object):
         # clean up shape
         delShape = ["nonzero_Points", "Clusters"]
         df = df.iloc[:, ~df.columns.str.contains('|'.join(delShape))]
-
+        pd.options.mode.chained_assignment = None  # default='warn'
         for featName in ['voxels', 'vmin', 'vmax']:
             df[featName] = df[featName].apply(lambda x: float(x[1:len(x)].split(",")[0]) if isinstance(x, str) else np.nan)
+        pd.options.mode.chained_assignment = 'warn'
 
         # clean up texture
         wavelet_types = ['HHH', 'HHL', 'HLH', 'HLL', 'LHH', 'LHL', 'LLH', 'LLL']

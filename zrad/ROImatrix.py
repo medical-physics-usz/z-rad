@@ -320,7 +320,7 @@ class Matrix(object):
             self.vmax = vmax
 
         except ValueError:
-            print('roi value')
+            # print('roi value')
             if structure != 'none' and Xcontour == '':
                 self.n_bits = 'too small contour'
             else:
@@ -335,7 +335,7 @@ class Matrix(object):
             self.vmin = 0
             self.vmax = 0
         except IndexError:
-            print('roi index')
+            # print('roi index')
             if HUmask == []:
                 self.n_bits = 'values out of range'
             self.matrix = []

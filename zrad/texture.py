@@ -1136,7 +1136,8 @@ class Texture(object):
         nom = nom / float(len(M1))
         denom = denom / float(len(M1))
         denom = np.sqrt(denom ** 3)
-        s = nom / denom
+        with np.errstate(divide='ignore', invalid='ignore'):
+            s = nom / denom
         return s
 
     def fun_median(self, M1):  # 3.1.5
@@ -1171,7 +1172,8 @@ class Texture(object):
         ind2 = np.where(np.array(temp) > p90)[0]
         for i in range(1, len(ind2) + 1):
             temp.pop(ind2[-i])
-        mad = np.sum(abs((np.array(temp) - np.mean(temp)))) / float(len(temp))
+        with np.errstate(divide='ignore', invalid='ignore'):
+            mad = np.sum(abs((np.array(temp) - np.mean(temp)))) / float(len(temp))
         return mad
 
     def fun_H_energy(self, M1):  # 3.1.14
@@ -1221,7 +1223,8 @@ class Texture(object):
             denom += (i - miu) ** 2
         nom = nom / float(len(M1))
         denom = (denom / float(len(M1))) ** 2
-        k = (nom / denom) - 3
+        with np.errstate(divide='ignore', invalid='ignore'):
+            k = (nom / denom) - 3
         return k
 
     def coMatrix(self, M, trans):
@@ -1266,7 +1269,8 @@ class Texture(object):
         CO_merged = list_CO_merged[0]
         for i in range(1, len(list_CO_merged)):
             CO_merged += list_CO_merged[i]
-        CO_merged = CO_merged / float(np.sum(CO_merged))
+        with np.errstate(divide='ignore', invalid='ignore'):
+            CO_merged = CO_merged / float(np.sum(CO_merged))
 
         p_minus_merged = np.zeros(self.n_bits)
         p_plus_merged = np.zeros(2 * self.n_bits + 3)

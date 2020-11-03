@@ -369,7 +369,7 @@ class Structures(object):
             except ValueError:  # ValueError
                 self.Xcontour_W = ''
                 self.Ycontour_W = ''
-                self.logger.warning('too small structure')
+                # self.logger.warning('too small structure')
                 pass
             # raise ValueError
 

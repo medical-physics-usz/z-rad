@@ -91,7 +91,7 @@ class main_texture_pet(object):
                             else:
                                 weight = np.nan
                             self.logger.info('weight' + str(weight))
-                            print(activity / weight)
+                            # print(activity / weight)
                         except AttributeError:
                             stop_calc = 'attribute to calc SUV missing'
                             activity = np.nan

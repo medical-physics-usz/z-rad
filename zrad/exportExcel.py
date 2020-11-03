@@ -30,7 +30,7 @@ class ExportExcel(object):
         df = df.iloc[:, ~df.columns.str.contains('|'.join(delShape))]
         pd.options.mode.chained_assignment = None  # default='warn'
         for featName in ['voxels', 'vmin', 'vmax']:
-            df[featName] = df[featName].apply(lambda x: float(x[1:len(x)].split(",")[0]) if isinstance(x, str) else np.nan)
+            df[featName] = df[featName].apply(lambda x: eval(x)[0] if isinstance(x, str) and eval(x) else '')
         pd.options.mode.chained_assignment = 'warn'
 
         # clean up texture

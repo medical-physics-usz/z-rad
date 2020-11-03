@@ -5,10 +5,12 @@ import numpy as np
 import pandas as pd
 import pydicom as dc
 from joblib import Parallel, delayed
+from tqdm import tqdm
 
 from export import Export
 from read import ReadImageStructure
 from texture import Texture
+from utils import tqdm_joblib
 
 
 class main_texture_pet(object):
@@ -196,7 +198,8 @@ class main_texture_pet(object):
 
             return to_return_3d
 
-        out = Parallel(n_jobs=self.n_jobs, verbose=20)(delayed(parfor)(ImName) for ImName in l_ImName)
+        with tqdm_joblib(tqdm(desc="Extracting intensity and texture features", total=len(l_ImName))):
+            out = Parallel(n_jobs=self.n_jobs)(delayed(parfor)(ImName) for ImName in l_ImName)
 
         final_file, wave_names, par_names = Export().Preset(exportList, wv, local, path_save, save_as,
                                                             image_modality, path_image)

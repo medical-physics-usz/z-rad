@@ -44,7 +44,6 @@ class Shape(object):
         def parfor(nn):
             # df_results = pd.DataFrame()
             pat_results = []
-            i = 0
             for roi_name in rois:
                 roi_results = {}
                 # print('ROI: {}'.format(roi_name))

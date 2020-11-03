@@ -84,10 +84,6 @@ class Export(object):
         return final_file, wave_names, par_names
 
     def ExportResults(self, final, final_file, par_names, perf_names, wave_names, wv, local):
-        # for now fixed
-        calcGLDZM = True
-        calcNGLDM = True
-
         # write the results
         # results are save as follow
         # one line corresponds to one patient

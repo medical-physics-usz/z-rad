@@ -1,25 +1,24 @@
-# -*- coding: utf-8 -*-
-'''calculated the co matirxin 3D in all possible directions and average the results'''
-
-# import libraries
-import numpy as np
-import matplotlib
-import matplotlib.pyplot as plt
-import scipy.optimize as optimization
+"""calculated the co matrix in 3D in all possible directions and average the results"""
+import logging
+import os
+import warnings
+from datetime import datetime
 from os import makedirs
 from os.path import isdir
-from datetime import datetime
-import logging
 
-# own classes
-from texture_wavelet import Wavelet
+import matplotlib
+import matplotlib.pyplot as plt
+import numpy as np
+import scipy.optimize as optimization
+
 from ROImatrix import Matrix
+from texture_wavelet import Wavelet
 
 
 class Texture(object):
-    '''Calculate texture, intenisty, fractal dim and center of the mass shift
-    sb – status bar 
-    maps – list of images to analyze, for CT it is one element list with 3D matrix, for perfusion it is a 3 elements list with 3D matrices for BF, MTT, BV
+    """Calculate texture, intensity, fractal dim and center of the mass shift
+    maps – list of images to analyze, for CT it is one element list with 3D matrix, for perfusion it is a 3 elements
+    list with 3D matrices for BF, MTT, BV
     structure – name of analyzed structure, used for naming the output files
     columns – number of columns in the image
     rows – number of rows in the image
@@ -31,8 +30,10 @@ class Texture(object):
     binSize – bin size for the analysis, if not specified = none
     modality – string, name of modality to customize things like HU range.
     wv – bool, calculate wavelet  
-    cropStructure - {'hu_min': 'none', 'hu_max': 'none', 'ct_path': '', 'crop': False}, if no CT-based cropping on PET data
-    stop_calc - string, stop calculation if image tag was incorrect, eg activty PET = 0; stop_calc=='' continue, stop_calc != '' break and save info in the excel file
+    cropStructure - {'hu_min': 'none', 'hu_max': 'none', 'ct_path': '', 'crop': False}, if no CT-based cropping on PET
+    data
+    stop_calc - string, stop calculation if image tag was incorrect, eg activty PET = 0; stop_calc=='' continue,
+    stop_calc != '' break and save info in the excel file
     *cont – list of additional variables:
     Xc – structure points in X, list of slices, per slice list of substructures
     Yc - structure points in Y, list of slices, per slice list of substructures
@@ -41,16 +42,18 @@ class Texture(object):
     HUmin – HU range min
     Humax – HU range max
     outlier – bool, correct for outliers
-'''
-    def __init__(self, sb, maps, structure, columns, rows, xCTspace, slices, path, ImName, pixNr, binSize, modality, wv, localRadiomics, cropStructure, stop_calc, *cont):#Xc, Yc, XcW, YcW, HUmin, HUmax, outlier,  ):
+    """
+
+    # Xc, Yc, XcW, YcW, HUmin, HUmax, outlier,  ):
+    def __init__(self, maps, structure, columns, rows, xCTspace, slices, path, ImName, pixNr, binSize, modality, wv, localRadiomics, cropStructure, stop_calc, *cont):
         self.logger = logging.getLogger("Texture")
         self.logger.info("Start: Texture Calculation")
         self.structure = structure
-        self.xCTspace = xCTspace #image resolution
-        self.columns = columns #columns
+        self.xCTspace = xCTspace  # image resolution
+        self.columns = columns  # columns
         self.rows = rows
-        self.slices = slices #slice location
-        self.mean = [] #list of texture parameters in the final verion contains [mean BF, mean MTT, mean BV]
+        self.slices = slices  # slice location
+        self.mean = []  # list of texture parameters in the final version contains [mean BF, mean MTT, mean BV]
         self.std = []
         self.cov = []
         self.skewness = []
@@ -67,7 +70,7 @@ class Texture(object):
         self.H_entropy = []
         self.rms = []
         self.H_uniformity = []
-        #co
+        # co
         self.energy = []
         self.entropy = []
         self.contrast = []
@@ -94,7 +97,7 @@ class Texture(object):
         self.clust_t = []
         self.clust_s = []
         self.clust_p = []
-        #co merged
+        # co merged
         self.COM_energy = []
         self.COM_entropy = []
         self.COM_contrast = []
@@ -121,13 +124,13 @@ class Texture(object):
         self.COM_clust_t = []
         self.COM_clust_s = []
         self.COM_clust_p = []
-        #ngtdm
+        # ngtdm
         self.coarseness = []
         self.neighContrast = []
         self.busyness = []
         self.complexity = []
         self.strength = []
-        #glrlm
+        # glrlm
         self.len_intensity = []
         self.len_intensity_n = []
         self.len_size = []
@@ -144,7 +147,7 @@ class Texture(object):
         self.len_glv = []
         self.len_lsv = []
         self.len_size_entropy = []
-        #glrlm merged
+        # glrlm merged
         self.M_len_intensity = []
         self.M_len_intensity_n = []
         self.M_len_size = []
@@ -161,7 +164,7 @@ class Texture(object):
         self.M_len_glv = []
         self.M_len_lsv = []
         self.M_len_size_entropy = []
-        #glszm
+        # glszm
         self.intensity = []
         self.intensity_n = []
         self.size = []
@@ -178,7 +181,7 @@ class Texture(object):
         self.glv = []
         self.lsv = []
         self.size_entropy = []
-        #GLDZM
+        # GLDZM
         self.GLDZM_intensity = []
         self.GLDZM_intensity_n = []
         self.GLDZM_size = []
@@ -195,7 +198,7 @@ class Texture(object):
         self.GLDZM_glv = []
         self.GLDZM_lsv = []
         self.GLDZM_size_entropy = []
-        #NGLDM
+        # NGLDM
         self.NGLDM_intensity = []
         self.NGLDM_intensity_n = []
         self.NGLDM_size = []
@@ -221,98 +224,97 @@ class Texture(object):
         self.mtv4 = []
         self.mtv5 = []
         self.mtv6 = []
-        self.mtv7 = [] #metabolic tumor volume
-        
+        self.mtv7 = []  # metabolic tumor volume
+
         try:
             self.bits = int(pixNr)
-        except ValueError: #must be an int
-            self.bits= pixNr
+        except ValueError:  # must be an int
+            self.bits = pixNr
         try:
             self.binSize = float(binSize)
-        except ValueError: # must be a float
+        except ValueError:  # must be a float
             self.binSize = binSize
 
         self.vmin = []
         self.vmax = []
-        rs_type = [1, 0, 0, 0, 0, 0, 0, 0, 2] #structure type, structure resolution, transformed or non-transformed
-        
-        if structure != 'none': #take contour points
-            self.Xcontour = cont[0] #Xc
-            self.Xcontour_W = cont[1]#XcW
-            self.Ycontour = cont[2]#Yc
-            self.Ycontour_W = cont[3]#YcW
+        rs_type = [1, 0, 0, 0, 0, 0, 0, 0, 2]  # structure type, structure resolution, transformed or non-transformed
+
+        if structure != 'none':  # take contour points
+            self.Xcontour = cont[0]  # Xc
+            self.Xcontour_W = cont[1]  # XcW
+            self.Ycontour = cont[2]  # Yc
+            self.Ycontour_W = cont[3]  # YcW
         else:
             self.Xcontour = ''
-        
-        self.Xcontour_Rec = cont[4] 
-        self.Ycontour_Rec = cont[5]     
-            
-        #take modality specific parameters
+
+        self.Xcontour_Rec = cont[4]
+        self.Ycontour_Rec = cont[5]
+
+        # take modality specific parameters
         if 'CT' in modality:
             self.HUmin = cont[6]
             self.HUmax = cont[7]
             self.outlier_correction = cont[8]
-        
+
         else:
             self.HUmin = 'none'
             self.HUmax = 'none'
             self.outlier_correction = False
-            
-        
-        print(stop_calc)
-        if self.Xcontour == 'one slice': #don't calculate, contour onl on one slice
-            self.stop_calculation('one slice', rs_type)
-        elif stop_calc != '' : #stop calculation if image file contains wrong tags, eg activity = 0 in PET file
-            self.stop_calculation(stop_calc, rs_type)
-        else: 
 
-            for i in range(len(maps)): #iterate through different map type for example for CTP: BV, BF, MTT
-                #wavelet transform
-                
+        # print(stop_calc)
+        if self.Xcontour == 'one slice':  # don't calculate, contour onl on one slice
+            self.stop_calculation('one slice', rs_type)
+        elif stop_calc != '':  # stop calculation if image file contains wrong tags, eg activity = 0 in PET file
+            self.stop_calculation(stop_calc, rs_type)
+        else:
+            for i in range(len(maps)):  # iterate through different map type for example for CTP: BV, BF, MTT
+                # wavelet transform
                 if wv:
                     if 'BV' not in modality:
                         ctp = False
-                        wave_list = Wavelet(maps[i], path, modality[i], ImName+'_'+pixNr, "3D", ctp).Return()  # order of trandformed images: original, LLL, HHH, HHL, HLH, HLL, LHH, LHL, LLH
+                        # order of transformed images: original, LLL, HHH, HHL, HLH, HLL, LHH, LHL, LLH
+                        wave_list = Wavelet(maps[i], path, modality[i], ImName + '_' + pixNr, "3D", ctp).Return()
                     else:
                         ctp = True
-                        wave_list = Wavelet(maps[i], path, modality[i], ImName+'_'+pixNr, "3D", ctp).Return()
-                    sb.SetStatusText(ImName +' wave done ' +str(datetime.now().strftime('%H:%M:%S')))
-                    rs_type = [1, 2, 0, 0, 0, 0, 0, 0, 0] #structure type, structure resolution
+                        wave_list = Wavelet(maps[i], path, modality[i], ImName + '_' + pixNr, "3D", ctp).Return()
+                    rs_type = [1, 2, 0, 0, 0, 0, 0, 0, 0]  # structure type, structure resolution
                     iterations_n = len(wave_list)
                 else:
                     rs_type = [1]
                     wave_list = [maps[i]]
                     iterations_n = len(wave_list)
-                    
 
-                #extract tumor only from the images, saves results as a list analog to wave_list
-                #matrix - contains only the discretized pixels in the structre
-                #interval - one bin
-                #norm_points - how many points are used for the calculations
-                #matrix_v - contains only the pixels in the structre, original values
-                #matrix - contains only the discretized pixels in the structre region plus two voxels neighborhood (used in the local radiomics)
+                # extract tumor only from the images, saves results as a list analog to wave_list
+                # matrix - contains only the discretized pixels in the structre
+                # interval - one bin
+                # norm_points - how many points are used for the calculations
+                # matrix_v - contains only the pixels in the structre, original values
+                # matrix - contains only the discretized pixels in the structre region plus two voxels neighborhood
+                # (used in the local radiomics)
 
-                matrix_list = [] 
-                interval_list = [] 
-                norm_points_list = [] 
-                matrix_v_list = [] 
-                matrix_full_list = []              
-                n_bits_list = []   
+                matrix_list = []
+                interval_list = []
+                norm_points_list = []
+                matrix_v_list = []
+                matrix_full_list = []
+                n_bits_list = []
                 self.vmin = []
                 self.vmax = []
-                HUmask = [] #a mask for ROI postprocessing on wavelet maps
+                HUmask = []  # a mask for ROI postprocessing on wavelet maps
             
-                if "PET" in modality and cropStructure["crop"] == True:
+                if "PET" in modality and cropStructure["crop"]:
                     self.logger.info("PET and Crop = True")
                     self.logger.info("Start: create HU mask from CT structure")
                     wave_list_ct = []
-#                   ### CT initialize ###
-                    for i in range(len(cropStructure["data"])): 
-                        #wavelet transform
+                    # CT initialize
+                    for i in range(len(cropStructure["data"])):
+                        # wavelet transform
                         if wv:
-                            wave_list_ct = Wavelet(cropStructure["data"][i], path, "CT", ImName+'_'+pixNr, "3D", False).Return()  # False -> no ctp. order of trandformed images: original, LLL, HHH, HHL, HLH, HLL, LHH, LHL, LLH
-                            sb.SetStatusText(ImName +' wave done ' + str(datetime.now().strftime('%H:%M:%S')))
-                            rs_type = [1, 2, 0, 0, 0, 0, 0, 0, 0] #structure type, structure resolution
+                            # False -> no ctp. order of transformed images:
+                            # original, LLL, HHH, HHL, HLH, HLL, LHH, LHL, LLH
+                            wave_list_ct = Wavelet(cropStructure["data"][i], path, "CT", ImName + '_' + pixNr, "3D",
+                                                   False).Return()
+                            rs_type = [1, 2, 0, 0, 0, 0, 0, 0, 0]  # structure type, structure resolution
                             iterations_n = len(wave_list_ct)
                         else:
                             rs_type = [1]
@@ -325,10 +327,21 @@ class Texture(object):
                     for w in range(len(wave_list)):
                         self.logger.debug("RS-Type " + str(rs_type[w]))
                         self.logger.debug("Intialize CT Matrix")
-                        CT_ROImatrix = Matrix(wave_list_ct[w], rs_type[w], structure, ["CT"], cropStructure["readCT"].Xcontour, cropStructure["readCT"].Ycontour, cropStructure["readCT"].Xcontour_W, cropStructure["readCT"].Ycontour_W, cropStructure["readCT"].Xcontour_Rec, cropStructure["readCT"].Ycontour_Rec, cropStructure["readCT"].columns, cropStructure["readCT"].rows, cropStructure["hu_min"],  cropStructure["hu_max"],  0,  0, False, HUmask, cropStructure)
+                        CT_ROImatrix = Matrix(wave_list_ct[w], rs_type[w], structure, ["CT"],
+                                              cropStructure["readCT"].Xcontour, cropStructure["readCT"].Ycontour,
+                                              cropStructure["readCT"].Xcontour_W, cropStructure["readCT"].Ycontour_W,
+                                              cropStructure["readCT"].Xcontour_Rec,
+                                              cropStructure["readCT"].Ycontour_Rec, cropStructure["readCT"].columns,
+                                              cropStructure["readCT"].rows, cropStructure["hu_min"],
+                                              cropStructure["hu_max"], 0, 0, False, HUmask, cropStructure)
                         self.logger.debug("Intialize PET Matrix")
-                        ROImatrix = Matrix(wave_list[w], rs_type[w], structure, modality[i], cropStructure["readCT"].Xcontour, cropStructure["readCT"].Ycontour, cropStructure["readCT"].Xcontour_W, cropStructure["readCT"].Ycontour_W, cropStructure["readCT"].Xcontour_Rec, cropStructure["readCT"].Ycontour_Rec, self.columns, self.rows, self.HUmin, self.HUmax, self.binSize, self.bits, self.outlier_correction, CT_ROImatrix.HUmask, cropStructure)
-                        matrix_list.append(ROImatrix.matrix) 
+                        ROImatrix = Matrix(wave_list[w], rs_type[w], structure, modality[i],
+                                           cropStructure["readCT"].Xcontour, cropStructure["readCT"].Ycontour,
+                                           cropStructure["readCT"].Xcontour_W, cropStructure["readCT"].Ycontour_W,
+                                           cropStructure["readCT"].Xcontour_Rec, cropStructure["readCT"].Ycontour_Rec,
+                                           self.columns, self.rows, self.HUmin, self.HUmax, self.binSize, self.bits,
+                                           self.outlier_correction, CT_ROImatrix.HUmask, cropStructure)
+                        matrix_list.append(ROImatrix.matrix)
                         interval_list.append(ROImatrix.interval)
                         norm_points_list.append(ROImatrix.norm_points)
                         matrix_v_list.append(ROImatrix.matrix_true)
@@ -338,13 +351,16 @@ class Texture(object):
                         self.vmax.append(ROImatrix.vmax)
                         HUmask = CT_ROImatrix.HUmask
 
-                    print("------------- end: created HU mask was used for PET structure --------------")
+                    # print("------------- end: created HU mask was used for PET structure --------------")
                     del wave_list_ct
                 else:
                     self.logger.info("Normal Mode, no cropping")
                     for w in range(len(wave_list)):
-                        ROImatrix = Matrix(wave_list[w], rs_type[w], structure, modality[i], self.Xcontour, self.Ycontour, self.Xcontour_W, self.Ycontour_W, self.Xcontour_Rec, self.Ycontour_Rec, self.columns, self.rows, self.HUmin, self.HUmax, self.binSize, self.bits, self.outlier_correction, HUmask, cropStructure)
-                        matrix_list.append(ROImatrix.matrix) #tumor matrix
+                        ROImatrix = Matrix(wave_list[w], rs_type[w], structure, modality[i], self.Xcontour,
+                                           self.Ycontour, self.Xcontour_W, self.Ycontour_W, self.Xcontour_Rec,
+                                           self.Ycontour_Rec, self.columns, self.rows, self.HUmin, self.HUmax,
+                                           self.binSize, self.bits, self.outlier_correction, HUmask, cropStructure)
+                        matrix_list.append(ROImatrix.matrix)  # tumor matrix
                         interval_list.append(ROImatrix.interval)
                         norm_points_list.append(ROImatrix.norm_points)
                         matrix_v_list.append(ROImatrix.matrix_true)
@@ -352,20 +368,20 @@ class Texture(object):
                         n_bits_list.append(ROImatrix.n_bits)
                         self.vmin.append(ROImatrix.vmin)
                         self.vmax.append(ROImatrix.vmax)
-                        HUmask = ROImatrix.HUmask # mask is returned in that for loop used for LLL...
-                        
-                
+                        HUmask = ROImatrix.HUmask  # mask is returned in that for loop used for LLL...
 
                 del wave_list
-                
+
                 if localRadiomics:
                     self.logger.info("Start: Local Radiomics")
-                    #call NaN optimizer   
-                    
-                    iterations_n = len(centers) #to define how many time the radiomics need to be calculated
-                    self.structure = [] #list to collect info if the subvolume belongs to the tumor or to the recurrence
-                    
-                    #to have list with n_bits and intervals for each centers (it will be the same number for eachcenter, but it is done for compability with wavelet)
+                    # call NaN optimizer
+
+                    iterations_n = len(centers)  # to define how many time the radiomics need to be calculated
+                    # list to collect info if the subvolume belongs to the tumor or to the recurrence
+                    self.structure = []
+
+                    # to have list with n_bits and intervals for each centers (it will be the same number for
+                    # eachcenter, but it is done for compability with wavelet)
                     n_bits_temp = []
                     interval_list_temp = []
                     for c in len(centers):
@@ -375,34 +391,28 @@ class Texture(object):
                     interval_list = interval_list_temp
                     del n_bits_temp
                     del interval_list_temp
-                    
-                    #make the matrix_list and matrix_v_list with all the subregions to be analyzed
-                
+
+                    # make the matrix_list and matrix_v_list with all the subregions to be analyzed
 
                 for w in range(iterations_n):
-                    #calulate features for original and transformed images or local centers if provided 
-                    #feed in the list of maps to calculate
-                    try: #ValueError #value error catch for each wavelet/local map
+                    # calculate features for original and transformed images or local centers if provided
+                    # feed in the list of maps to calculate
+                    try:  # ValueError #value error catch for each wavelet/local map
                         matrix = matrix_list[w]
-                        matrix_v = matrix_v_list[w]    
+                        matrix_v = matrix_v_list[w]
                         self.n_bits = n_bits_list[w]
                         interval = interval_list[w]
-                        
-                        try:
-                            sb.SetStatusText(ImName +' matrix done '+ str(datetime.now().strftime('%H:%M:%S')))
-                        except AttributeError:
-                            print('attributeerrror')
-                            pass
-                        if rs_type[w]==1: #save only for the original image
+
+                        if rs_type[w] == 1:  # save only for the original image
                             self.saveImage(path, modality[i], matrix, ImName, pixNr)
                         more_than_one_pix = True
-                        
+
                         try:
-                        #histogram
+                            # histogram
                             histogram = self.fun_histogram(matrix_v, modality[i], ImName, pixNr, path, w)
                         except IndexError:
                             self.stop_calculation('only one voxel', [0])
-                            print('one voxel')
+                            # print('one voxel')
                             more_than_one_pix = False
                         if self.n_bits == 'values out of range':
                             more_than_one_pix = False
@@ -410,7 +420,7 @@ class Texture(object):
                         elif self.n_bits == 'too small contour':
                             more_than_one_pix = False
                             self.stop_calculation('too small contour', [0])
-                            
+
                         if more_than_one_pix:
                             histogram = np.array(histogram)
                             mean = self.fun_mean(histogram)
@@ -431,12 +441,7 @@ class Texture(object):
                             rms = self.fun_rms(histogram)
                             H_uniformity = self.fun_H_uniformity(histogram, interval)
                             del histogram
-                            try:
-                                sb.SetStatusText(ImName +' hist done '+str(datetime.now().strftime('%H:%M:%S')))
-                                self.logger.info( ImName +' hist done '+str(datetime.now().strftime('%H:%M:%S')))
-                            except AttributeError: #if no GUI
-                                pass
-                            
+                            self.logger.info(ImName + ' hist done ' + str(datetime.now().strftime('%H:%M:%S')))
                             self.cms.append(self.centerMassShift(matrix_v, self.xCTspace))
                             mtv = self.metabolicTumorVolume(matrix_v, self.xCTspace)
                             self.mtv2.append(mtv[0])
@@ -445,12 +450,12 @@ class Texture(object):
                             self.mtv5.append(mtv[3])
                             self.mtv6.append(mtv[4])
                             self.mtv7.append(mtv[5])
-                            
-                            #coocurence matrix
-                            energy_t=[]
-                            entropy_t=[]
-                            contrast_t=[]
-                            correlation_t =[]
+
+                            # coocurence matrix
+                            energy_t = []
+                            entropy_t = []
+                            contrast_t = []
+                            correlation_t = []
                             homogenity_t = []
                             homogenity_n_t = []
                             idiff_t = []
@@ -473,11 +478,13 @@ class Texture(object):
                             clust_t_t = []
                             clust_s_t = []
                             clust_p_t = []
-                            #directions in COM
-                            lista_t = [[0,0,1], [0,1,0], [1,0,0], [0,1,1],[0,1,-1],[1,0,1],[1,0,-1],[1,1,0],[1,-1,0],[1,1,1],[1,1,-1],[1,-1,1],[1,-1,-1]]
+                            # directions in COM
+                            lista_t = [[0, 0, 1], [0, 1, 0], [1, 0, 0], [0, 1, 1], [0, 1, -1], [1, 0, 1], [1, 0, -1],
+                                       [1, 1, 0], [1, -1, 0], [1, 1, 1], [1, 1, -1], [1, -1, 1], [1, -1, -1]]
                             list_CO_merged = []
                             for c in lista_t:
-                                co_matrix, co_matrix_non_normalized, p_plus, p_minus = self.coMatrix(matrix, c) #p_plus, p_minus - marginale probabilities
+                                # p_plus, p_minus - marginal probabilities
+                                co_matrix, co_matrix_non_normalized, p_plus, p_minus = self.coMatrix(matrix, c)
                                 list_CO_merged.append(co_matrix_non_normalized)
                                 energy_t.append(self.fun_energy(co_matrix))
                                 ent = self.fun_entropy(co_matrix)
@@ -513,7 +520,7 @@ class Texture(object):
                                 clust_s_t.append(clust2)
                                 clust_p_t.append(clust3)
                                 del co_matrix
-                            #take avarege over all directions
+                            # take average over all directions
                             energy = np.mean(energy_t)
                             entropy = np.mean(entropy_t)
                             contrast = np.mean(contrast_t)
@@ -530,10 +537,7 @@ class Texture(object):
                             diff_variance = np.mean(diff_variance_t)
                             IMC1 = np.mean(IMC1_t)
                             IMC2 = np.mean(IMC2_t)
-                            try:
-                                MCC = np.mean(MCC_t)
-                            except TypeError:  # see MCC function
-                                MCC = np.nan
+                            MCC = np.mean(MCC_t)
                             joint_max = np.mean(joint_max_t)
                             joint_average = np.mean(joint_average_t)
                             diff_ave = np.mean(diff_ave_t)
@@ -543,7 +547,7 @@ class Texture(object):
                             clust_t = np.mean(clust_t_t)
                             clust_s = np.mean(clust_s_t)
                             clust_p = np.mean(clust_p_t)
-                            
+
                             # merged COM
                             CO_merged, p_plus_merged, p_minus_merged = self.merge_COM(list_CO_merged)
                             del list_CO_merged
@@ -581,14 +585,10 @@ class Texture(object):
                             self.COM_clust_s.append(clust2)
                             self.COM_clust_p.append(clust3)
                             del CO_merged
-                            try:
-                                sb.SetStatusText(ImName +' COM done '+ str(datetime.now().strftime('%H:%M:%S')))
-                                self.logger.info( ImName +' COM done '+ str(datetime.now().strftime('%H:%M:%S')))
-                            except AttributeError: #if no GUI
-                                pass
-                            
-                            #neighborhood matrix
-                            neighMatrix, neighMatrixNorm  = self.M3(matrix)
+                            self.logger.info(ImName + ' COM done ' + str(datetime.now().strftime('%H:%M:%S')))
+
+                            # neighborhood matrix
+                            neighMatrix, neighMatrixNorm = self.M3(matrix)
                             coarseness = self.fun_coarseness(neighMatrix, neighMatrixNorm, matrix)
                             neighContrast = self.fun_contrastM3(neighMatrix, neighMatrixNorm, matrix)
                             busyness = self.fun_busyness(neighMatrix, neighMatrixNorm, matrix)
@@ -596,12 +596,8 @@ class Texture(object):
                             strength = self.fun_strength(neighMatrix, neighMatrixNorm, matrix)
                             del neighMatrix
                             del neighMatrixNorm
-                            try:
-                                sb.SetStatusText(ImName +' NGTDM done ' + str(datetime.now().strftime('%H:%M:%S')))
-                                self.logger.info( ImName +' NGTDM done ' + str(datetime.now().strftime('%H:%M:%S')))
-                            except AttributeError: #if no GUI
-                                pass
-                            
+                            self.logger.info(ImName + ' NGTDM done ' + str(datetime.now().strftime('%H:%M:%S')))
+
                             # gray level run length matrix
                             len_intensity_t = []
                             len_intensity_n_t = []
@@ -621,10 +617,13 @@ class Texture(object):
                             len_size_entropy_t = []
                             list_GLRLM_merged = []
                             for c in lista_t:
-                                GLRLM, GLRLM_norm = self.M4L(matrix, c, lista_t) #norm - sum over all entries
+                                GLRLM, GLRLM_norm = self.M4L(matrix, c, lista_t)  # norm - sum over all entries
                                 list_GLRLM_merged.append(GLRLM)
-                                if GLRLM_norm == 0: 
-                                    len_intensity_t,len_intensity_n_t,len_size_t,len_size_n_t,len_sse_t,len_lse_t,len_lgse_t,len_hgse_t,len_sslge_t,len_sshge_t,len_lslge_t,len_lshge_t,len_rpc_t,  len_glv_t, len_lsv_t, len_size_entropy_t = self.returnNan([len_intensity_t,len_intensity_n_t,len_size_t,len_size_n_t,len_sse_t,len_lse_t,len_lgse_t,len_hgse_t,len_sslge_t,len_sshge_t,len_lslge_t,len_lshge_t,len_rpc_t,  len_glv_t, len_lsv_t, len_size_entropy_t])
+                                if GLRLM_norm == 0:
+                                    len_intensity_t, len_intensity_n_t, len_size_t, len_size_n_t, len_sse_t, len_lse_t, len_lgse_t, len_hgse_t, len_sslge_t, len_sshge_t, len_lslge_t, len_lshge_t, len_rpc_t, len_glv_t, len_lsv_t, len_size_entropy_t = self.returnNan(
+                                        [len_intensity_t, len_intensity_n_t, len_size_t, len_size_n_t, len_sse_t,
+                                         len_lse_t, len_lgse_t, len_hgse_t, len_sslge_t, len_sshge_t, len_lslge_t,
+                                         len_lshge_t, len_rpc_t, len_glv_t, len_lsv_t, len_size_entropy_t])
                                 else:
                                     int_var, int_var_n = self.intensityVariability(GLRLM, GLRLM_norm)
                                     len_intensity_t.append(int_var)
@@ -664,7 +663,11 @@ class Texture(object):
                             # GLRLM merged
                             GLRLM_merged, norm_GLRLM_merged = self.merge_GLRLM(list_GLRLM_merged)
                             if norm_GLRLM_merged == 0:
-                                self.returnNan([self.M_len_intensity, self.M_len_intensity_n, self.M_len_size,self.M_len_size_n, self.M_len_sse, self.M_len_lse, self.M_len_lgse,self.M_len_hgse, self.M_len_sslge,   self.M_len_sshge,self.M_len_lslge,self.M_len_lshge,self.M_len_rpc,self.M_len_glv,self.M_len_lsv, self.M_len_size_entropy])
+                                self.returnNan(
+                                    [self.M_len_intensity, self.M_len_intensity_n, self.M_len_size, self.M_len_size_n,
+                                     self.M_len_sse, self.M_len_lse, self.M_len_lgse, self.M_len_hgse, self.M_len_sslge,
+                                     self.M_len_sshge, self.M_len_lslge, self.M_len_lshge, self.M_len_rpc,
+                                     self.M_len_glv, self.M_len_lsv, self.M_len_size_entropy])
                             else:
                                 int_var, int_var_n = self.intensityVariability(GLRLM_merged, norm_GLRLM_merged)
                                 self.M_len_intensity.append(int_var)
@@ -684,15 +687,18 @@ class Texture(object):
                                 self.M_len_glv.append(self.fun_GLvar(GLRLM_merged, norm_GLRLM_merged))
                                 self.M_len_lsv.append(self.fun_LSvar(GLRLM_merged, norm_GLRLM_merged))
                                 self.M_len_size_entropy.append(self.fun_size_ent(GLRLM_merged, norm_GLRLM_merged))
-                            self.logger.info(ImName +' GLRLM ' + str(datetime.now().strftime('%H:%M:%S')))
+                            self.logger.info(ImName + ' GLRLM ' + str(datetime.now().strftime('%H:%M:%S')))
 
-                            
                             # gray level size zone matrix and gray level distane zone matrix
                             dist_matrix = self.distanceMatrix(matrix)
-                            GLSZM, norm_GLSZM, GLDZM, norm_GLDZM = self.M4(matrix, dist_matrix) #norm - sum over all entries
-                            #GLSZM
+                            # norm - sum over all entries
+                            GLSZM, norm_GLSZM, GLDZM, norm_GLDZM = self.M4(matrix, dist_matrix)
+                            # GLSZM
                             if norm_GLSZM == 0:
-                                self.returnNan([self.intensity, self.intensity_n, self.size, self.size_n,self.sse,self.lse,  self.lgse, self.hgse,self.sslge, self.sshge, self.lslge, self.lshge, self.rpc, self.glv, self.lsv,self.size_entropy])
+                                self.returnNan(
+                                    [self.intensity, self.intensity_n, self.size, self.size_n, self.sse, self.lse,
+                                     self.lgse, self.hgse, self.sslge, self.sshge, self.lslge, self.lshge, self.rpc,
+                                     self.glv, self.lsv, self.size_entropy])
                             else:
                                 intensity, intensity_n = self.intensityVariability(GLSZM, norm_GLSZM)
                                 size, size_n = self.sizeVariability(GLSZM, norm_GLSZM)
@@ -726,16 +732,15 @@ class Texture(object):
                                 self.lsv.append(round(lsv, 3))
                                 self.size_entropy.append(round(size_entropy, 3))
                             del GLSZM
-                            self.logger.info(ImName +' GLSZM done '+ str(datetime.now().strftime('%H:%M:%S')))
-                            
-                            try:
-                                sb.SetStatusText(ImName +' GLSZM done '+ str(datetime.now().strftime('%H:%M:%S')))
-                                self.logger.info( ImName +' GLSZM done '+ str(datetime.now().strftime('%H:%M:%S')))
-                            except AttributeError: #if no GUI
-                                pass
+                            self.logger.info(ImName + ' GLSZM done ' + str(datetime.now().strftime('%H:%M:%S')))
+
                             # GLDZM
                             if norm_GLDZM == 0:
-                                self.returnNan([self.GLDZM_intensity,self.GLDZM_intensity_n,self.GLDZM_size,self.GLDZM_size_n, self.GLDZM_sse,self.GLDZM_lse, self.GLDZM_lgse,self.GLDZM_hgse,self.GLDZM_sslge,self.GLDZM_sshge, self.GLDZM_lslge,self.GLDZM_lshge,self.GLDZM_rpc,self.GLDZM_glv,self.GLDZM_lsv,self.GLDZM_size_entropy])
+                                self.returnNan(
+                                    [self.GLDZM_intensity, self.GLDZM_intensity_n, self.GLDZM_size, self.GLDZM_size_n,
+                                     self.GLDZM_sse, self.GLDZM_lse, self.GLDZM_lgse, self.GLDZM_hgse, self.GLDZM_sslge,
+                                     self.GLDZM_sshge, self.GLDZM_lslge, self.GLDZM_lshge, self.GLDZM_rpc,
+                                     self.GLDZM_glv, self.GLDZM_lsv, self.GLDZM_size_entropy])
                             else:
                                 intensity, intensity_n = self.intensityVariability(GLDZM, norm_GLDZM)
                                 self.GLDZM_intensity.append(intensity)
@@ -756,12 +761,16 @@ class Texture(object):
                                 self.GLDZM_lsv.append(self.fun_LSvar(GLDZM, norm_GLDZM))
                                 self.GLDZM_size_entropy.append(self.fun_size_ent(GLDZM, norm_GLDZM))
                             del GLDZM
-                            self.logger.info(ImName +' GLDZM done '+ str(datetime.now().strftime('%H:%M:%S')))
-                            
+                            self.logger.info(ImName + ' GLDZM done ' + str(datetime.now().strftime('%H:%M:%S')))
+
                             # NGLDM
-                            NGLDM, norm_NGLDM = self.NGLDM(matrix) #norm - sum over all entries
+                            NGLDM, norm_NGLDM = self.NGLDM(matrix)  # norm - sum over all entries
                             if norm_NGLDM == 0:
-                                self.returnNan([self.NGLDM_intensity, self.NGLDM_intensity_n,self.NGLDM_size, self.NGLDM_size_n, self.NGLDM_sse,  self.NGLDM_lse, self.NGLDM_lgse, self.NGLDM_hgse,   self.NGLDM_sslge, self.NGLDM_sshge, self.NGLDM_lslge, self.NGLDM_lshge, self.NGLDM_glv,self.NGLDM_lsv, self.NGLDM_size_entropy,self.NGLDM_energy])
+                                self.returnNan(
+                                    [self.NGLDM_intensity, self.NGLDM_intensity_n, self.NGLDM_size, self.NGLDM_size_n,
+                                     self.NGLDM_sse, self.NGLDM_lse, self.NGLDM_lgse, self.NGLDM_hgse, self.NGLDM_sslge,
+                                     self.NGLDM_sshge, self.NGLDM_lslge, self.NGLDM_lshge, self.NGLDM_glv,
+                                     self.NGLDM_lsv, self.NGLDM_size_entropy, self.NGLDM_energy])
                             else:
                                 intensity, intensity_n = self.intensityVariability(NGLDM, norm_NGLDM)
                                 self.NGLDM_intensity.append(intensity)
@@ -782,17 +791,13 @@ class Texture(object):
                                 self.NGLDM_lsv.append(self.fun_LSvar(NGLDM, norm_NGLDM))
                                 self.NGLDM_size_entropy.append(self.fun_size_ent(NGLDM, norm_NGLDM))
                                 self.NGLDM_energy.append(self.fun_NGLDM_energy(NGLDM, norm_NGLDM))
-                            self.logger.info( ImName +' NGLDM done '+ str(datetime.now().strftime('%H:%M:%S')))
+                            self.logger.info(ImName + ' NGLDM done ' + str(datetime.now().strftime('%H:%M:%S')))
                             del NGLDM
-                            
+
                             frac = self.fractal(matrix, path, pixNr, ImName)
-                            try:
-                                sb.SetStatusText(ImName +' fractal done ' + str(datetime.now().strftime('%H:%M:%S')))
-                                self.logger.info(ImName +' fractal done ' + str(datetime.now().strftime('%H:%M:%S')))
-                            except AttributeError:
-                                pass
-                            
-                            #add to the results
+                            self.logger.info(ImName + ' fractal done ' + str(datetime.now().strftime('%H:%M:%S')))
+
+                            # add to the results
                             self.mean.append(round(mean, 3))
                             self.std.append(round(std, 3))
                             self.cov.append(round(cov, 3))
@@ -840,38 +845,33 @@ class Texture(object):
                             self.clust_t.append(round(clust_t, 3))
                             self.clust_s.append(round(clust_s, 3))
                             self.clust_p.append(round(clust_p, 3))
-                            #NGTDM
-                            self.coarseness.append(round(coarseness,4))
+                            # NGTDM
+                            self.coarseness.append(round(coarseness, 4))
                             try:
-                                self.neighContrast.append(round(neighContrast,4))
+                                self.neighContrast.append(round(neighContrast, 4))
                             except TypeError:
                                 self.neighContrast.append('nan')
                             try:
-                                self.busyness.append(round(busyness,4))
+                                self.busyness.append(round(busyness, 4))
                             except TypeError:
                                 self.busyness.append('nan')
-                            self.complexity.append(round(complexity,4))
-                            self.strength.append(round(strength,4))
+                            self.complexity.append(round(complexity, 4))
+                            self.strength.append(round(strength, 4))
                             try:
                                 self.frac_dim.append(round(frac, 3))
                             except TypeError:
                                 self.frac_dim.append('nan')
                             self.points.append(norm_points_list[0])
                             del matrix
-                        
+
                     except ValueError:
-                        print(ValueError)
+                        # print(ValueError)
                         self.stop_calculation('ValueError', [1])
 
-            #except IndexError:#IndexError:
-            #    matrix = []
-            #    print IndexError
-            #    self.stop_calculation('IndexError', rs_type)
-
     def stop_calculation(self, info, rs_type):
-        '''returns empty string and error type bt does not stop the calculation'''
+        """returns empty string and error type bt does not stop the calculation"""
         for i in range(len(rs_type)):
-            self.structure = info
+            # self.structure = info
             self.mean.append('')
             self.std.append('')
             self.cov.append('')
@@ -1035,17 +1035,18 @@ class Texture(object):
             self.mtv5.append('')
             self.mtv6.append('')
             self.mtv7.append('')
-    
+
     def returnNan(self, mylist):
-        '''appends nan to list of variable
-        used for example if the normalization factor equal 0 -> zerodivisionerror'''
+        """appends nan to list of variable
+        used for example if the normalization factor equal 0 -> zerodivisionerror"""
         for i in mylist:
             i.append(np.nan)
         return mylist
 
     def ret(self):
-        '''return function'''
-        return (self.vmin, self.vmax, self.structure, self.mean, self.std, self.cov, self.skewness, self.kurtosis, self.var,
+        """return function"""
+        return (
+        self.vmin, self.vmax, self.structure, self.mean, self.std, self.cov, self.skewness, self.kurtosis, self.var,
         self.median, self.percentile10, self.percentile90, self.iqr, self.range, self.mad, self.rmad, self.H_energy,
         self.H_entropy, self.rms, self.H_uniformity,
         self.energy, self.entropy, self.contrast, self.correlation, self.homogenity, self.homogenity_n, self.idiff,
@@ -1072,12 +1073,11 @@ class Texture(object):
         self.NGLDM_intensity, self.NGLDM_intensity_n, self.NGLDM_size, self.NGLDM_size_n, self.NGLDM_sse,
         self.NGLDM_lse, self.NGLDM_lgse, self.NGLDM_hgse, self.NGLDM_sslge, self.NGLDM_sshge, self.NGLDM_lslge,
         self.NGLDM_lshge, self.NGLDM_glv, self.NGLDM_lsv, self.NGLDM_size_entropy, self.NGLDM_energy,
-        self.frac_dim, self.cms, self.mtv2, self.mtv3,self.mtv4,self.mtv5,self.mtv6,self.mtv7, self.points)
-
+        self.frac_dim, self.cms, self.mtv2, self.mtv3, self.mtv4, self.mtv5, self.mtv6, self.mtv7, self.points)
 
     def fun_histogram(self, M, name, ImName, pixNr, path, w):
-        ''' calcuate and plot the histogram'''
-        M1=[] # take all values except of nan
+        """Calcuate and plot the histogram"""
+        M1 = []  # take all values except of nan
         for m in M:
             for i in range(len(m)):
                 for j in range(len(m[i])):
@@ -1085,26 +1085,27 @@ class Texture(object):
                         pass
                     else:
                         M1.append(m[i][j])
-                        
+
         matplotlib.rcParams.update({'font.size': 24})
 
         fig = plt.figure(300, figsize=(20, 20))
         try:
-            fig.text(0.5, 0.95, ImName+' '+name)
+            fig.text(0.5, 0.95, ImName + ' ' + name)
             plt.hist(M1)
             try:
-                makedirs(path+'histogram\\')
+                makedirs(path + 'histogram' + os.sep)
             except OSError:
-                if not isdir(path+'histogram\\'):
+                if not isdir(path + 'histogram' + os.sep):
                     raise
-        except ValueError: 
+        except ValueError:
             pass
-        
-        fig.savefig(path+'histogram\\'+name+'_'+ImName+'_'+self.structure+'_'+pixNr+'_'+str(w)+'.png')
+
+        fig.savefig(path + 'histogram' + os.sep + name + '_' + ImName + '_' + self.structure + '_' + pixNr + '_' + str(
+            w) + '.png')
         plt.close()
         return M1
 
-    def fun_mean(self, M1): #3.1.1
+    def fun_mean(self, M1):  # 3.1.1
         m = np.mean(M1)
         return m
 
@@ -1112,73 +1113,75 @@ class Texture(object):
         s = np.std(M1)
         return s
 
-    def fun_var(self, M1): #3.1.2
-        v = np.std(M1)**2
+    def fun_var(self, M1):  # 3.1.2
+        v = np.std(M1) ** 2
         return v
 
     def fun_COV(self, M1):
-        '''coefficient of variation'''
+        """coefficient of variation"""
         miu = np.mean(M1)
         cov = 0
         for i in M1:
-            cov+=(i-miu)**2
-        cov=np.sqrt(cov/float(len(M1)))/miu
+            cov += (i - miu) ** 2
+        cov = np.sqrt(cov / float(len(M1))) / miu
         return cov
 
-    def fun_skewness(self, M1): #3.1.3
+    def fun_skewness(self, M1):  # 3.1.3
         miu = np.mean(M1)
         nom = 0
-        denom =0
+        denom = 0
         for i in M1:
-            nom+=(i-miu)**3
-            denom+=(i-miu)**2
-        nom=nom/float(len(M1))
-        denom=denom/float(len(M1))
-        denom = np.sqrt(denom**3)
-        s=nom/denom
+            nom += (i - miu) ** 3
+            denom += (i - miu) ** 2
+        nom = nom / float(len(M1))
+        denom = denom / float(len(M1))
+        denom = np.sqrt(denom ** 3)
+        with np.errstate(divide='ignore', invalid='ignore'):
+            s = nom / denom
         return s
 
-    def fun_median(self, M1): #3.1.5
+    def fun_median(self, M1):  # 3.1.5
         m = np.median(M1)
         return m
 
-    def fun_percentile(self, M1, px): #3.1.7, 3.1.8
-        '''px percentile for example 75'''
+    def fun_percentile(self, M1, px):  # 3.1.7, 3.1.8
+        """px percentile for example 75"""
         p = np.percentile(M1, px)
         return p
 
-    def fun_interqR(self, M1): #3.1.10
-        '''interquartile range'''
+    def fun_interqR(self, M1):  # 3.1.10
+        """interquartile range"""
         irq = self.fun_percentile(M1, 75) - self.fun_percentile(M1, 25)
         return irq
 
-    def fun_range(self, M1): #3.1.11
+    def fun_range(self, M1):  # 3.1.11
         r = np.max(M1) - np.min(M1)
         return r
 
-    def fun_mad(self, M1): #3.1.12
-        '''mean absolute diviation'''
-        mad = np.sum(abs((np.array(M1)-np.mean(M1))))/float(len(M1))
+    def fun_mad(self, M1):  # 3.1.12
+        """mean absolute diviation"""
+        mad = np.sum(abs((np.array(M1) - np.mean(M1)))) / float(len(M1))
         return mad
 
-    def fun_rmad(self, M1, p10, p90): #3.1.13
-        '''robust meand absolute deivation'''
+    def fun_rmad(self, M1, p10, p90):  # 3.1.13
+        """robust meand absolute deivation"""
         temp = list(M1)
-        ind1 = np.where(np.array(temp)<p10)[0]
-        for i in range(1, len(ind1)+1):
+        ind1 = np.where(np.array(temp) < p10)[0]
+        for i in range(1, len(ind1) + 1):
             temp.pop(ind1[-i])
-        ind2 = np.where(np.array(temp)>p90)[0]
-        for i in range(1, len(ind2)+1):
+        ind2 = np.where(np.array(temp) > p90)[0]
+        for i in range(1, len(ind2) + 1):
             temp.pop(ind2[-i])
-        mad = np.sum(abs((np.array(temp)-np.mean(temp))))/float(len(temp))
+        with np.errstate(divide='ignore', invalid='ignore'):
+            mad = np.sum(abs((np.array(temp) - np.mean(temp)))) / float(len(temp))
         return mad
 
-    def fun_H_energy(self, M1): #3.1.14
-        e = np.sum(M1**2)
+    def fun_H_energy(self, M1):  # 3.1.14
+        e = np.sum(M1 ** 2)
         return e
 
-    def fun_H_entropy(self, M1, interval): #3.1.16
-        '''interval - bin size'''
+    def fun_H_entropy(self, M1, interval):  # 3.1.16
+        """interval - bin size"""
         vmin = np.min(M1)
         dM1 = ((M1 - vmin) // interval) + 1
 
@@ -1193,13 +1196,13 @@ class Texture(object):
         e = -np.sum(p * np.log2(p))
         return e
 
-    def fun_rms(self, M1): #3.1.15
-        '''root mea square'''
-        rms = np.sqrt(np.sum(M1**2)/len(M1))
+    def fun_rms(self, M1):  # 3.1.15
+        """root mea square"""
+        rms = np.sqrt(np.sum(M1 ** 2) / len(M1))
         return rms
 
-    def fun_H_uniformity(self, M1, interval): #3.1.17
-        '''interval - bin size'''
+    def fun_H_uniformity(self, M1, interval):  # 3.1.17
+        """interval - bin size"""
         vmin = np.min(M1)
         dM1 = ((M1 - vmin) // interval) + 1
 
@@ -1211,27 +1214,30 @@ class Texture(object):
         u = np.sum(np.array(p) ** 2)
         return u
 
-    def fun_kurtosis(self, M1): #3.1.4
+    def fun_kurtosis(self, M1):  # 3.1.4
         miu = np.mean(M1)
         nom = 0
-        denom =0
+        denom = 0
         for i in M1:
-            nom+=(i-miu)**4
-            denom+=(i-miu)**2
-        nom=nom/float(len(M1))
-        denom=(denom/float(len(M1)))**2
-        k=(nom/denom)-3
+            nom += (i - miu) ** 4
+            denom += (i - miu) ** 2
+        nom = nom / float(len(M1))
+        denom = (denom / float(len(M1))) ** 2
+        with np.errstate(divide='ignore', invalid='ignore'):
+            k = (nom / denom) - 3
         return k
 
     def coMatrix(self, M, trans):
-        '''Calculate the 2D co-occurence matrix from 3D structure matrix '''
-        '''trans correponds to translation vector'''
+        """Calculate the 2D co-occurence matrix from 3D structure matrix
+        trans correponds to translation vector"""
         coMatrix = np.zeros((self.n_bits, self.n_bits))
         norm = 0
         for i in range(len(M)):
             for y in range(len(M[i])):
                 for x in range(len(M[i][y])):
-                    if i + trans[2] >= 0 and y + trans[1] >= 0 and x + trans[0] >= 0 and i + trans[2] < len(M) and y + trans[1] < len(M[0]) and x + trans[0] < len(M[0][0]): #to check for indexerror
+                    # to check for indexerror
+                    if i + trans[2] >= 0 and y + trans[1] >= 0 and x + trans[0] >= 0 and i + trans[2] < len(M) and y + \
+                            trans[1] < len(M[0]) and x + trans[0] < len(M[0][0]):
                         value1 = M[i][y][x]  # value in the structure matrix
                         value2 = M[i + trans[2]][y + trans[1]][x + trans[0]]
                         if not np.isnan(value1) and not np.isnan(value2):
@@ -1247,24 +1253,24 @@ class Texture(object):
         if norm != 0:
             coMatrixN = coMatrix / norm
         else:
-            coMatrixN = np.zeros(shape = coMatrix.shape)
+            coMatrixN = np.zeros(shape=coMatrix.shape)
             coMatrixN[:] = np.nan
-        #marignal probabilites
+        # marignal probabilites
         p_minus = np.zeros(self.n_bits)
         p_plus = np.zeros(2 * self.n_bits + 3)
         for i in range(len(coMatrixN)):
             for j in range(len(coMatrixN[i])):
                 p_minus[abs(i - j)] += coMatrixN[i][j]
                 p_plus[abs(i + j) + 2] += coMatrixN[i][j]
-
         return coMatrixN, coMatrix, p_plus, p_minus
 
     def merge_COM(self, list_CO_merged):
-        '''Merge GLCM from all directions and calculate average'''
+        """Merge GLCM from all directions and calculate average"""
         CO_merged = list_CO_merged[0]
         for i in range(1, len(list_CO_merged)):
             CO_merged += list_CO_merged[i]
-        CO_merged = CO_merged / float(np.sum(CO_merged))
+        with np.errstate(divide='ignore', invalid='ignore'):
+            CO_merged = CO_merged / float(np.sum(CO_merged))
 
         p_minus_merged = np.zeros(self.n_bits)
         p_plus_merged = np.zeros(2 * self.n_bits + 3)
@@ -1272,32 +1278,31 @@ class Texture(object):
             for j in range(len(CO_merged[i])):
                 p_minus_merged[abs(i - j)] += CO_merged[i][j]
                 p_plus_merged[abs(i + j) + 2] += CO_merged[i][j]
-
         return CO_merged, p_plus_merged, p_minus_merged
 
     def fun_energy(self, coM):  # 3.3.11
         energy = 0
-        ind = np.where(coM != 0) #non-zero entries only to speed up calculation
+        ind = np.where(coM != 0)  # non-zero entries only to speed up calculation
         for j in range(len(ind[0])):
             energy += (coM[ind[0][j]][ind[1][j]]) ** 2
         return energy
 
     def fun_entropy(self, coM):  # 3.3.4
         entropy = 0
-        ind = np.where(coM != 0) #non-zero entries only to speed up calculation
+        ind = np.where(coM != 0)  # non-zero entries only to speed up calculation
         for j in range(len(ind[0])):
             s = (coM[ind[0][j]][ind[1][j]]) * np.log2(coM[ind[0][j]][ind[1][j]])
             if np.isnan(s):
                 pass
             else:
                 entropy += -s
-        if entropy == 0: #if empty matrix
+        if entropy == 0:  # if empty matrix
             entropy = np.nan
         return entropy
 
     def fun_contrast(self, coM):  # 3.3.12
         contrast = 0
-        ind = np.where(coM != 0) #non-zero entries only to speed up calculation
+        ind = np.where(coM != 0)  # non-zero entries only to speed up calculation
         for j in range(len(ind[0])):
             contrast += ((ind[0][j] - ind[1][j]) ** 2) * coM[ind[0][j]][ind[1][j]]
         if contrast == 0:
@@ -1305,27 +1310,31 @@ class Texture(object):
         return contrast
 
     def fun_correlation(self, coM):  # 3.3.19
-        '''symmetrical matrix'''
+        """Symmetrical matrix"""
         mean = 0
         for i in range(len(coM)):
-            mean += (i + 1) * np.sum(coM[i]) #i+1 gray values starting from 1 not from 0
+            mean += (i + 1) * np.sum(coM[i])  # i+1 gray values starting from 1 not from 0
 
         std = 0
         for i in range(len(coM)):
-            std += ((i + 1 - mean) ** 2) * np.sum(coM[i]) #i+1 gray values starting from 1 not from 0
+            std += ((i + 1 - mean) ** 2) * np.sum(coM[i])  # i+1 gray values starting from 1 not from 0
         std = np.sqrt(std)
 
-        ind = np.where(np.array(coM) != 0) #non-zero entries only to speed up calculation#non-zero entries only to speed up calculation
+        ind = np.where(np.array(
+            coM) != 0)  # non-zero entries only to speed up calculation#non-zero entries only to speed up calculation
         corr = 0
         for i in range(len(ind[0])):
-            corr += (ind[0][i] + 1) * (ind[1][i] + 1) * coM[ind[0][i]][ind[1][i]] #i+1 gray values starting from 1 not from 0
-        corr = (corr - mean ** 2) / std ** 2
+            corr += (ind[0][i] + 1) * (ind[1][i] + 1) * coM[ind[0][i]][
+                ind[1][i]]  # i+1 gray values starting from 1 not from 0
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            corr = (corr - mean ** 2) / std ** 2
         return corr
 
     def fun_homogenity(self, coM):  # 3.3.16 and 3.3.17
         homo = 0
         nhomo = 0
-        ind = np.where(coM != 0) #non-zero entries only to speed up calculation
+        ind = np.where(coM != 0)  # non-zero entries only to speed up calculation
         for j in range(len(ind[0])):
             homo += coM[ind[0][j]][ind[1][j]] / (1 + (ind[0][j] - ind[1][j]) ** 2)
             nhomo += coM[ind[0][j]][ind[1][j]] / (1 + ((ind[0][j] - ind[1][j]) / float(len(coM))) ** 2)
@@ -1336,7 +1345,7 @@ class Texture(object):
     def fun_inverse_diff(self, coM):  # 3.3.14 and 3.3.15
         homo = 0
         nhomo = 0
-        ind = np.where(coM != 0) #non-zero entries only to speed up calculation
+        ind = np.where(coM != 0)  # non-zero entries only to speed up calculation
         for j in range(len(ind[0])):
             homo += coM[ind[0][j]][ind[1][j]] / (1 + abs(ind[0][j] - ind[1][j]))
             nhomo += coM[ind[0][j]][ind[1][j]] / (1 + abs(ind[0][j] - ind[1][j]) / float(len(coM)))
@@ -1344,14 +1353,14 @@ class Texture(object):
             homo = np.nan
         return homo, nhomo
 
-    def fun_variance(self, coM): #3.3.3
+    def fun_variance(self, coM):  # 3.3.3
         var = 0
         miu = 0
         for i in range(len(coM)):
-            miu += (i + 1) * np.sum(coM[i]) #i+1 gray values starting from 1 not from 0
-        ind = np.where(coM != 0) #non-zero entries only to speed up calculation
+            miu += (i + 1) * np.sum(coM[i])  # i+1 gray values starting from 1 not from 0
+        ind = np.where(coM != 0)  # non-zero entries only to speed up calculation
         for j in range(len(ind[0])):
-            var += (ind[0][j] + 1 - miu) ** 2 * coM[ind[0][j]][ind[1][j]] #i+1 gray values starting from 1 not from 0
+            var += (ind[0][j] + 1 - miu) ** 2 * coM[ind[0][j]][ind[1][j]]  # i+1 gray values starting from 1 not from 0
         if var == 0:
             var = np.nan
         return var
@@ -1361,10 +1370,8 @@ class Texture(object):
         v = 0
         for k in range(2, len(p_plus)):
             a += k * p_plus[k]
-
         for k in range(2, len(p_plus)):
             v += (k - a) ** 2 * p_plus[k]
-
         return a, v
 
     def fun_sum_entropy(self, p_plus):  # 3.3.10
@@ -1376,20 +1383,16 @@ class Texture(object):
 
     def fun_diff_entropy(self, p_minus):  # 3.3.7
         e = 0
-
         for i in range(len(p_minus)):
             if p_minus[i] != 0:
                 e += -p_minus[i] * np.log2(p_minus[i])
-
         return e
 
     def fun_IMC(self, coM, entropy):  # 3.3.24 and 3.3.25
         hxy = entropy
-
         X = []
         for i in range(len(coM)):
             X.append(np.sum(coM[i]))
-
         hxy1 = 0
         hxy2 = 0
         for i in range(len(coM)):
@@ -1397,22 +1400,18 @@ class Texture(object):
                 if X[i] * X[j] != 0:
                     hxy1 += -coM[i][j] * np.log2(X[i] * X[j])
                     hxy2 += -X[i] * X[j] * np.log2(X[i] * X[j])
-
         hx = 0
         for i in range(len(X)):
             if X[i] != 0:
                 hx += -X[i] * np.log2(X[i])
-
         try:
             f12 = (hxy - hxy1) / hx
         except ZeroDivisionError:
             f12 = np.nan
-
         if hxy > hxy2:
             f13 = 0
         else:
             f13 = np.sqrt(1 - np.exp(-2 * (hxy2 - hxy)))
-
         return f12, f13
 
     def fun_MCC(self, coM):
@@ -1421,22 +1420,17 @@ class Texture(object):
             X = []
             for i in range(len(coM)):
                 X.append(np.sum(coM[i]))
-
             for i in range(len(coM)):
                 for j in range(len(coM[i])):
                     for k in range(len(X)):
                         if (X[i] * X[k]) != 0:
                             Q[i][j] += coM[i][k] * coM[j][k] / (X[i] * X[k])
-
-            l = np.linalg.eigvals(Q)
-
-            l.sort()
-            try:
-                return l[-2] ** 0.5
-            except IndexError:  # due to not sufficient number of bits in wavelet transform
-                return ''
-        except np.linalg.linalg.LinAlgError:
-            return np.nan
+            l_arr = np.linalg.eigvals(Q)
+            l_arr.sort()
+            mcc_t = l_arr[-2] ** 0.5
+        except (IndexError, np.linalg.linalg.LinAlgError):
+            mcc_t = np.nan
+        return complex(mcc_t).real
 
     def fun_joint_max(self, coM):  # 3.3.1
         return np.max(coM)
@@ -1444,7 +1438,7 @@ class Texture(object):
     def fun_joint_average(self, coM):  # 3.3.2
         s = 0
         for i in range(len(coM)):
-            s += (i + 1) * np.sum(coM[i]) #i+1 gray values starting from 1 not from 0
+            s += (i + 1) * np.sum(coM[i])  # i+1 gray values starting from 1 not from 0
         return s
 
     def fun_diff_average_var(self, p_minus):  # 3.3.5 and 3.3.6
@@ -1452,15 +1446,13 @@ class Texture(object):
         v = 0
         for k in range(len(p_minus)):
             a += k * p_minus[k]
-
         for k in range(len(p_minus)):
             v += (k - a) ** 2 * p_minus[k]
-
         return a, v
 
     def fun_dissimilarity(self, coM):  # 3.3.13
         ds = 0
-        ind = np.where(np.array(coM) != 0) #non-zero entries only to speed up calculation
+        ind = np.where(np.array(coM) != 0)  # non-zero entries only to speed up calculation
         for i in range(len(ind[0])):
             ds += abs(ind[0][i] - ind[1][i]) * coM[ind[0][i]][ind[1][i]]
         return ds
@@ -1469,38 +1461,39 @@ class Texture(object):
         f = 0
         for i in range(len(coM)):
             for j in range(i + 1, len(coM[0])):
-                f += coM[i][j] / (i - j) ** 2 
+                f += coM[i][j] / (i - j) ** 2
         return 2 * f
 
     def fun_autocorr(self, coM):  # 3.3.20
         c = 0
-        ind = np.where(np.array(coM) != 0) #non-zero entries only to speed up calculation
+        ind = np.where(np.array(coM) != 0)  # non-zero entries only to speed up calculation
         for i in range(len(ind[0])):
-            c += (ind[0][i] + 1) * (ind[1][i] + 1) * coM[ind[0][i]][ind[1][i]] #i+1 gray values starting from 1 not from 0
+            c += (ind[0][i] + 1) * (ind[1][i] + 1) * coM[ind[0][i]][
+                ind[1][i]]  # i+1 gray values starting from 1 not from 0
         return c
 
     def fun_cluster(self, coM):  # 3.3.21, 3.3.22 and 3.3.23
         mean = 0
         for i in range(len(coM)):
             mean += (i + 1) * np.sum(coM[i])
-
         clust_t = 0
         clust_s = 0
         clust_p = 0
-        ind = np.where(np.array(coM) != 0) #non-zero entries only to speed up calculation
+        ind = np.where(np.array(coM) != 0)  # non-zero entries only to speed up calculation
         for i in range(len(ind[0])):
-            clust_t += ((ind[0][i] + ind[1][i] + 2 - 2 * mean) ** 2) * coM[ind[0][i]][ind[1][i]] #i+1 gray values starting from 1 not from 0
+            clust_t += ((ind[0][i] + ind[1][i] + 2 - 2 * mean) ** 2) * coM[ind[0][i]][
+                ind[1][i]]  # i+1 gray values starting from 1 not from 0
             clust_s += ((ind[0][i] + ind[1][i] + 2 - 2 * mean) ** 3) * coM[ind[0][i]][ind[1][i]]
             clust_p += ((ind[0][i] + ind[1][i] + 2 - 2 * mean) ** 4) * coM[ind[0][i]][ind[1][i]]
         return clust_t, clust_s, clust_p
 
     def M3(self, matrix):  # Amadasun et al. Textural Features Corresponding to Textural Properties
-        '''neighborhood gray-tone difference matrix'''
-        s = np.zeros(self.n_bits) #average gray level of voxels adjjacent to voxels with given gray value
-        Ni = np.zeros(self.n_bits) #number of voxels of a given gray level
+        """neighborhood gray-tone difference matrix"""
+        s = np.zeros(self.n_bits)  # average gray level of voxels adjacent to voxels with given gray value
+        Ni = np.zeros(self.n_bits)  # number of voxels of a given gray level
         for k in range(len(matrix)):
             for v in range(self.n_bits):
-                index = np.where(matrix[k] == v)  # serach for a value level
+                index = np.where(matrix[k] == v)  # search for a value level
                 for ind in range(len(index[0])):
                     temp = []
                     numerator = 0
@@ -1509,7 +1502,7 @@ class Texture(object):
                             for x in [-1, 0, 1]:
                                 if k + z >= 0 and index[0][ind] + y >= 0 and index[1][ind] + x >= 0 and k + z < len(
                                         matrix) and index[0][ind] + y < len(matrix[0]) and index[1][ind] + x < len(
-                                        matrix[0][0]): #check for the index error
+                                    matrix[0][0]):  # check for the index error
                                     temp.append(matrix[k + z][index[0][ind] + y][index[1][ind] + x])
                                 else:
                                     numerator += 1
@@ -1536,7 +1529,7 @@ class Texture(object):
                         Ni[v] += 1
         return s, Ni
 
-    def fun_coarseness(self, s, Ni, matrix): #3.6.1
+    def fun_coarseness(self, s, Ni, matrix):  # 3.6.1
         f = 0
         ind = np.where(np.array(Ni) != 0)[0]
         for i in ind:
@@ -1547,24 +1540,22 @@ class Texture(object):
             f = 1. / (0.000000001 + f)
         return f
 
-    def fun_busyness(self, s, Ni, matrix): #3.6.3
-        try:
-            nom = 0
-            denom = 0
-            ind = np.where(np.array(Ni) != 0)[0]
-            for i in ind:
-                nom += s[i] * Ni[i] / np.sum(Ni)
-                for j in ind:
-                    denom += abs(float((i + 1) * Ni[i]) / (np.sum(Ni)) - float((j + 1) * Ni[j]) / (
-                    np.sum(Ni)))  # to adapt i = [1:Ng]
-            if nom / denom == 0:
-                return np.nan
-            else:
-                return nom / denom  # don't divide by 2 to adapt for the oncoray
-        except ZeroDivisionError:
+    def fun_busyness(self, s, Ni, matrix):  # 3.6.3
+        nom = 0
+        denom = 0
+        ind = np.where(np.array(Ni) != 0)[0]
+        for i in ind:
+            nom += s[i] * Ni[i] / np.sum(Ni)
+            for j in ind:  # to adapt i = [1:Ng]
+                denom += abs(float((i + 1) * Ni[i]) / (np.sum(Ni)) - float((j + 1) * Ni[j]) / (np.sum(Ni)))
+        if denom == 0:
             return ''
+        elif nom / denom == 0:
+            return np.nan
+        else:
+            return nom / denom  # don't divide by 2 to adapt for the oncoray
 
-    def fun_contrastM3(self, s, Ni, matrix): #3.6.2.
+    def fun_contrastM3(self, s, Ni, matrix):  # 3.6.2.
         try:
             Ng = len(np.where(np.array(Ni) != 0)[0])
             ind = np.where(np.array(Ni) != 0)[0]
@@ -1576,7 +1567,6 @@ class Texture(object):
             ind = np.where(np.array(s) != 0)[0]
             for i in ind:
                 s2 += s[i]
-
             f = (1. / (Ng * (Ng - 1))) * s1 * (1. / (np.sum(Ni))) * s2
             if f == 0:
                 return np.nan
@@ -1585,33 +1575,32 @@ class Texture(object):
         except ZeroDivisionError:
             return ''
 
-    def fun_complexity(self, s, Ni, matrix): #3.6.4
+    def fun_complexity(self, s, Ni, matrix):  # 3.6.4
         ind = np.where(np.array(Ni) != 0)[0]
         s1 = 0
         for i in ind:
             for j in ind:
                 s1 += (abs(i - j) / (float(Ni[i]) + float(Ni[j]))) * (
-                (s[i] * float(Ni[i]) / (np.sum(Ni))) + (s[j] * float(Ni[j]) / (np.sum(Ni))))
+                        (s[i] * float(Ni[i]) / (np.sum(Ni))) + (s[j] * float(Ni[j]) / (np.sum(Ni))))
         if s1 == 0:
             s1 = np.nan
         return s1
 
-    def fun_strength(self, s, Ni, matrix): #3.6.5
+    def fun_strength(self, s, Ni, matrix):  # 3.6.5
         ind = np.where(np.array(Ni) != 0)[0]
         s1 = 0
         for i in ind:
             for j in ind:
                 s1 += ((float(Ni[i]) + float(Ni[j])) / np.sum(Ni)) * (i - j) ** 2
         s2 = np.sum(s)
-
-        s = s1 / s2
-
         if s2 == 0:
             s = 0
+        else:
+            s = s1 / s2
         return s
 
     def M4L(self, matrix, di, direction):
-        '''gray-level run length matrix'''
+        """gray-level run length matrix"""
         GLRLM = []
         Smax = 1
         for i in range(self.n_bits):
@@ -1633,69 +1622,76 @@ class Texture(object):
         planes['[1, -1, 1]'] = self.M4L_choose_plane([1, -1, 1], matrix)
         planes['[1, -1, -1]'] = self.M4L_choose_plane([1, -1, -1], matrix)
 
-        seeds = planes[str(di)]  # plane used as the begining of the rays
+        seeds = planes[str(di)]  # plane used as the beginning of the rays
 
         vector_len = max([len(matrix), len(matrix[0]), len(matrix[0][0]),
                           int(np.sqrt(len(matrix) ** 2 + len(matrix[0]) ** 2)) + 1,
                           int(np.sqrt(len(matrix) ** 2 + len(matrix[0][0]) ** 2)) + 1,
                           int(np.sqrt(len(matrix[0][0]) ** 2 + len(matrix[0]) ** 2)) + 1])
-        v = np.arange(0, vector_len)
-
-        Vx = []  # coordinates of the vectors to extract
-        Vy = []
-        Vz = []
-
-        vm = []  # vecotr with gray values to calculate the matrix
+        v = np.arange(vector_len)
 
         # rays from the plane
         vm = self.M4L_ray(matrix, seeds, di, v, shiftX=0, shiftY=0, shiftZ=0)
-        if np.ndim(vm) != 1: # #to account for different dimensions
-            nan_list = [np.nan for inan in range(np.ndim(vm)+1)]
+        ndim = np.asarray(vm, dtype=object).ndim
+        if ndim != 1:  # #to account for different dimensions
+            nan_list = [np.nan] * (ndim + 1)
             vm.append(nan_list)
-        
+
         # move the plane to account for diagonal crossings
+        vm = np.array(vm, dtype=object)
         if np.sum(di) != 1 or di[0] * di[1] * di[2] != 0:
-            v = np.arange(0, vector_len + 1)
+            v = np.arange(vector_len + 1)
             if di[2] == -1:
-                new_vm = self.M4L_ray(matrix, seeds, di, v, shiftX=1, shiftY=0, shiftZ=0) #to account for different dimensions
-                if np.ndim(new_vm) != 1:
-                    nan_list = [np.nan for inan in range(np.ndim(new_vm)+1)]
+                # to account for different dimensions
+                new_vm = self.M4L_ray(matrix, seeds, di, v, shiftX=1, shiftY=0, shiftZ=0)
+                ndim = np.asarray(new_vm, dtype=object).ndim
+                if ndim != 1:
+                    nan_list = [np.nan] * (ndim + 1)
                     new_vm.append(nan_list)
+                new_vm = np.array(new_vm, dtype=object)
                 vm = np.concatenate((vm, new_vm))
             else:
                 new_vm = self.M4L_ray(matrix, seeds, di, v, shiftX=-1, shiftY=0, shiftZ=0)
-                if np.ndim(new_vm) != 1:
-                    nan_list = [np.nan for inan in range(np.ndim(new_vm)+1)]
+                ndim = np.asarray(new_vm, dtype=object).ndim
+                if ndim != 1:
+                    nan_list = [np.nan] * (ndim + 1)
                     new_vm.append(nan_list)
+                new_vm = np.array(new_vm, dtype=object)
                 vm = np.concatenate((vm, new_vm))
             if di in direction[5:]:
                 new_vm = self.M4L_ray(matrix, seeds, di, v, shiftX=0, shiftY=0, shiftZ=-1)
-                if np.ndim(new_vm) != 1:
-                    nan_list = [np.nan for inan in range(np.ndim(new_vm)+1)]
+                ndim = np.asarray(new_vm, dtype=object).ndim
+                if ndim != 1:
+                    nan_list = [np.nan] * (ndim + 1)
                     new_vm.append(nan_list)
+                new_vm = np.array(new_vm, dtype=object)
                 vm = np.concatenate((vm, new_vm))
             if di in direction[9:]:
                 if di[2] == -1:
                     new_vm = self.M4L_ray(matrix, seeds, di, v, shiftX=1, shiftY=0, shiftZ=-1)
-                    if np.ndim(new_vm) != 1:
-                        nan_list = [np.nan for inan in range(np.ndim(new_vm)+1)]
+                    ndim = np.asarray(new_vm, dtype=object).ndim
+                    if ndim != 1:
+                        nan_list = [np.nan] * (ndim + 1)
                         new_vm.append(nan_list)
+                    new_vm = np.array(new_vm, dtype=object)
                     vm = np.concatenate((vm, new_vm))
                 else:
                     new_vm = self.M4L_ray(matrix, seeds, di, v, shiftX=-1, shiftY=0, shiftZ=-1)
-                    if np.ndim(new_vm) != 1:
-                        nan_list = [np.nan for inan in range(np.ndim(new_vm)+1)]
+                    ndim = np.asarray(new_vm, dtype=object).ndim
+                    if ndim != 1:
+                        nan_list = [np.nan] * (ndim + 1)
                         new_vm.append(nan_list)
+                    new_vm = np.array(new_vm, dtype=object)
                     vm = np.concatenate((vm, new_vm))
 
         GLRLM, Smax = self.M4L_fill(vm, GLRLM, Smax, int(np.nanmin(matrix)), int(np.nanmax(matrix)))
-
         GLRLM = np.array(GLRLM)
         GLRLM.astype(np.float)
+
         return GLRLM, float(np.sum(GLRLM))
 
     def M4L_fill(self, v, M, Smax, vmin, vmax):
-        v = np.array(v)  # matrix of the vector with gray values
+        v = np.array(v, dtype=object)  # matrix of the vector with gray values
         for g in range(vmin, vmax + 1):  # g - gray values in the vector
             for vi in range(len(v)):  # vi - single vector
                 ind = np.where(np.array(v[vi]) == g)[0]  # where in this vector is g
@@ -1722,12 +1718,11 @@ class Texture(object):
                         Smax = s
                     M[g][s - 1] += 1
                     S += s
-                M[g][0] += len(ind) - S  # fill all the lenght equal to 1
-
+                M[g][0] += len(ind) - S  # fill all the length equal to 1
         return M, Smax
 
     def M4L_choose_plane(self, d, matrix):
-        '''choose plane where rays for a given angl should start'''
+        """Choose plane where rays for a given angl should start"""
         max_dim = max([len(matrix), len(matrix[0]), len(matrix[0][0])]) + 1
         seeds = []
         if d[0] >= 0 and d[1] >= 0 and d[2] >= 0:
@@ -1769,7 +1764,6 @@ class Texture(object):
                 for cor in range(-max_dim, max_dim + 1):
                     for z in range(-max_dim, max_dim + 1):
                         seeds.append([z + corner[0], (cor + corner[1]) + z, (cor + corner[2]) - z])
-
         return seeds
 
     def M4L_remove(self, vx, vy, vz, dx, dy, dz):
@@ -1808,14 +1802,13 @@ class Texture(object):
         # find maximum size
         size = [len(m[0]) for m in list_GLRLM_merged]
         size_max = np.max(size)
-        # extend matricies
+        # extend matrices
         for i in range(len(list_GLRLM_merged)):
             temp = list_GLRLM_merged[i].tolist()
             for j in range(len(temp)):
                 for n in range(len(temp[j]), size_max):
                     temp[j].append(0)
             list_GLRLM_merged[i] = np.array(temp)
-
         GLRLM_merged = list_GLRLM_merged[0]
         for i in range(1, len(list_GLRLM_merged)):
             GLRLM_merged += list_GLRLM_merged[i]
@@ -1823,18 +1816,19 @@ class Texture(object):
 
         GLRLM_merged = np.array(GLRLM_merged)
         GLRLM_merged.astype(np.float)
-
         return GLRLM_merged, norm_GLRLM_merged
 
-    def M4(self, matrix, dist_matrix): #Guillaume Thibault et al., ADVANCED STATISTICAL MATRICES FOR TEXTURE CHARACTERIZATION: APPLICATION TO DNA CHROMATIN AND MICROTUBULE NETWORK CLASSIFICATION
-        '''gray-level size zone matrix'''
-        '''gray-level distance zone matrix'''
+    def M4(self, matrix, dist_matrix):
+        """gray-level size zone matrix
+        gray-level distance zone matrix
+        Guillaume Thibault et al., ADVANCED STATISTICAL MATRICES FOR TEXTURE CHARACTERIZATION:
+        APPLICATION TO DNA CHROMATIN AND MICROTUBULE NETWORK CLASSIFICATION"""
         GLSZM = []
         GLDZM = []
         m = np.array(matrix).copy()
         m.dtype = np.float
-        Smax = 1 #maximal size
-        Dmax = 1 #maximal distance
+        Smax = 1  # maximal size
+        Dmax = 1  # maximal distance
         for i in range(self.n_bits):
             GLSZM.append([0])
             GLDZM.append([0])
@@ -1847,73 +1841,74 @@ class Texture(object):
                         v = int(m[k][i][j])
                         size = 1
                         m[k][i][j] = np.nan
-                        points = self.neighbor(k,i,j, m,v) #searching for neighbors with the same value
-                        size+=len(points)
-                        zone = [[k,i,j]] #contains coordinates of points in the zone
+                        points = self.neighbor(k, i, j, m, v)  # searching for neighbors with the same value
+                        size += len(points)
+                        zone = [[k, i, j]]  # contains coordinates of points in the zone
                         for ni in points:
                             zone.append(ni)
                             m[ni[0]][ni[1]][ni[2]] = np.nan
-                        while len(points)!=0:
+                        while len(points) != 0:
                             p = []
                             for n in range(len(points)):
-                                poin = self.neighbor(points[n][0],points[n][1],points[n][2], m,v)
+                                poin = self.neighbor(points[n][0], points[n][1], points[n][2], m, v)
                                 for ni in poin:
                                     zone.append(ni)
                                     m[ni[0]][ni[1]][ni[2]] = np.nan
                                     p.append(ni)
-                                    size+=1
-                            points = p 
+                                    size += 1
+                            points = p
 
-                        if size>Smax:
+                        if size > Smax:
                             for s in range(len(GLSZM)):
-                                for si in range(size-Smax):
+                                for si in range(size - Smax):
                                     GLSZM[s].append(0)
-                            Smax=size
-                            GLSZM[v][size-1] +=1
+                            Smax = size
+                            GLSZM[v][size - 1] += 1
                         else:
-                            GLSZM[v][size-1] +=1
+                            GLSZM[v][size - 1] += 1
 
-                        #define minimum distance
+                        # define minimum distance
                         distance = []
                         for zi in zone:
-                            distance.append(dist_matrix[zi[0], zi[1],zi[2]])
+                            distance.append(dist_matrix[zi[0], zi[1], zi[2]])
                         min_distance = int(np.min(distance))
-                        if min_distance>Dmax:
+                        if min_distance > Dmax:
                             for s in range(len(GLDZM)):
-                                for si in range(min_distance-Dmax):
+                                for si in range(min_distance - Dmax):
                                     GLDZM[s].append(0)
-                            Dmax=min_distance
-                            GLDZM[v][min_distance-1] +=1
+                            Dmax = min_distance
+                            GLDZM[v][min_distance - 1] += 1
                         else:
-                            GLDZM[v][min_distance-1] +=1
+                            GLDZM[v][min_distance - 1] += 1
 
         for i in range(len(GLSZM)):
             GLSZM[i] = np.array(GLSZM[i])
-        GLSZM = np.array(GLSZM)#no normalization according to IBSI /float(np.sum(GLSZM))
+        GLSZM = np.array(GLSZM)  # no normalization according to IBSI /float(np.sum(GLSZM))
         norm_GLSZM = np.sum(GLSZM)
         GLSZM.astype(np.float)
 
-        GLDZM = np.array(GLDZM)#no normalization according to IBSI /float(np.sum(GLSZM))
+        GLDZM = np.array(GLDZM)  # no normalization according to IBSI /float(np.sum(GLSZM))
         norm_GLDZM = np.sum(GLDZM)
         GLDZM.astype(np.float)
 
         return GLSZM, norm_GLSZM, GLDZM, norm_GLDZM
-                                
-    def neighbor(self, z,y,x, matrix,v):
-        '''search for neighbours with the same gray level'''
+
+    def neighbor(self, z, y, x, matrix, v):
+        """search for neighbours with the same gray level"""
         points = []
-        for k in range(-1,2):
-            for i in range(-1,2):
-                for j in range(-1,2):
+        for k in range(-1, 2):
+            for i in range(-1, 2):
+                for j in range(-1, 2):
                     try:
-                        if matrix[z+k][y+i][x+j] == v and z+k >= 0 and y+i >= 0 and x+j >= 0:
-                            points.append([z+k,y+i,x+j])
+                        if matrix[z + k][y + i][x + j] == v and z + k >= 0 and y + i >= 0 and x + j >= 0:
+                            points.append([z + k, y + i, x + j])
                     except IndexError:
                         pass
         return points
 
     def distanceMatrix(self, matrix):
-        # distance to the ROI border, this distance is not exactly the same as in the IBSI, it just seacrhine for the closest nan voxel not a clostest nan voxel from the original ROI
+        """distance to the ROI border, this distance is not exactly the same as in the IBSI, it just seacrhine for the
+        closest nan voxel not a clostest nan voxel from the original ROI"""
         dm = np.array(matrix).copy()
         (indz, indy, indx) = np.where(~np.isnan(matrix))
         for i in range(len(indz)):
@@ -1957,8 +1952,8 @@ class Texture(object):
             s = 0
             for m in range(len(GLSZM)):
                 s += GLSZM[m][n]
-            var += s ** 2 #to avoid overflow
-        return var, float(var) / norm 
+            var += s ** 2  # to avoid overflow
+        return var, float(var) / norm
 
     def intensityVariability(self, GLSZM, norm):  # 3.4.9 and #3.4.10
         var = 0
@@ -1967,8 +1962,8 @@ class Texture(object):
             s = 0
             for n in range(len(GLSZM[m])):
                 s += GLSZM[m][n]
-            var += s ** 2 #to avoid overflow error
-        return var, float(var) / norm 
+            var += s ** 2  # to avoid overflow error
+        return var, float(var) / norm
 
     def shortSize(self, GLSZM, norm):  # 3.4.1
         sse = 0
@@ -2009,14 +2004,16 @@ class Texture(object):
         sshge = 0
         for i in range(len(GLSZM)):
             for j in range(len(GLSZM[i])):
-                sshge += GLSZM[i][j] * float((i + 1) ** 2) / float(np.uint(j + 1) ** 2)  # otherwise level 0 is not included
+                sshge += GLSZM[i][j] * float((i + 1) ** 2) / float(
+                    np.uint(j + 1) ** 2)  # otherwise level 0 is not included
         return sshge / norm
 
     def LSLGE(self, GLSZM, norm):  # 3.4.7
         lslge = 0
         for i in range(len(GLSZM)):
             for j in range(len(GLSZM[i])):
-                lslge += GLSZM[i][j] * float(np.uint(j + 1) ** 2) / float((i + 1) ** 2)  # otherwise level 0 is not included
+                lslge += GLSZM[i][j] * float(np.uint(j + 1) ** 2) / float(
+                    (i + 1) ** 2)  # otherwise level 0 is not included
         return lslge / norm
 
     def LSHGE(self, GLSZM, norm):  # 3.4.8
@@ -2043,7 +2040,6 @@ class Texture(object):
         glv = 0
         for i in range(len(GLSZM)):
             glv += ((i + 1 - miu) ** 2) * np.sum(pGLSZM[i])
-
         return glv
 
     def fun_LSvar(self, GLSZM, norm):  # 3.4.15
@@ -2057,7 +2053,6 @@ class Texture(object):
         for i in range(len(GLSZM)):
             for j in range(len(GLSZM[i])):
                 lsv += ((j + 1 - miu) ** 2) * pGLSZM[i][j]
-
         return lsv
 
     def fun_size_ent(self, GLSZM, norm):  # 3.4.16
@@ -2086,7 +2081,7 @@ class Texture(object):
                             for x in [-1, 0, 1]:
                                 if k + z >= 0 and index[0][ind] + y >= 0 and index[1][ind] + x >= 0 and k + z < len(
                                         matrix) and index[0][ind] + y < len(matrix[0]) and index[1][ind] + x < len(
-                                        matrix[0][0]):
+                                    matrix[0][0]):
                                     temp.append(matrix[k + z][index[0][ind] + y][index[1][ind] + x])
                                 else:
                                     numerator += 1
@@ -2117,7 +2112,6 @@ class Texture(object):
                                     s[gray].append(0)
                             maxSize = size  # update maxSize
                         s[int(v)][size] += 1
-                       
 
         s = np.array(s)
         s.astype(np.float)
@@ -2130,44 +2124,44 @@ class Texture(object):
         return e
 
     def fractal(self, m, path, pixNr, ImName):
-        #https://en.wikipedia.org/wiki/Box_counting
-        '''fractal dimension'''
+        """fractal dimension
+        https://en.wikipedia.org/wiki/Box_counting"""
         try:
-            def func_lin(x,a,b):
-                return x*a+b
-            
-            maxR = np.min([len(m),len(m[0]),len(m[0][0])])
+            def func_lin(x, a, b):
+                return x * a + b
+
+            maxR = np.min([len(m), len(m[0]), len(m[0][0])])
             frac = []
-            for r in range(2, maxR+1): #because log(1) = 0
-                N=0
+            for r in range(2, maxR + 1):  # because log(1) = 0
+                N = 0
                 for z in range(0, len(m), r):
                     for y in range(0, len(m[0]), r):
-                        for x in range(0, len(m[0][0]),r):
-                            m =np.array(m)
-                            matrix=m[z:z+r,y:y+r,x:x+r] #doesn't produce indexerror
+                        for x in range(0, len(m[0][0]), r):
+                            m = np.array(m)
+                            matrix = m[z:z + r, y:y + r, x:x + r]  # doesn't produce indexerror
                             ind = len(np.where(np.isnan(matrix))[0])
-                            if ind<(r**3):
-                                N+=1
+                            if ind < (r ** 3):
+                                N += 1
                 frac.append(np.log(N))
-            x = np.log(np.arange(2, maxR+1))
-            xdata=np.transpose(x)
-            x0 = np.array([0, 0]) #initial guess
+            x = np.log(np.arange(2, maxR + 1))
+            xdata = np.transpose(x)
+            x0 = np.array([0, 0])  # initial guess
             result = optimization.curve_fit(func_lin, xdata, frac, x0)
             fit = func_lin(x, result[0][0], result[0][1])
             plt.figure(2000)
             ax = plt.subplot(111)
-            plt.plot(x,frac, 'o')
-            plt.plot(x,fit, label = 'dim = '+str(-round(result[0][0],2)))
+            plt.plot(x, frac, 'o')
+            plt.plot(x, fit, label='dim = ' + str(-round(result[0][0], 2)))
             plt.xlabel('ln(r)')
             plt.ylabel('ln(N(r))')
             plt.legend()
-            #print path+'fractals\\'+ImName+'.png'
+            # print path+'fractals'+os.sep+ImName+'.png'
             try:
-                makedirs(path+'fractals\\')
+                makedirs(path + 'fractals' + os.sep)
             except OSError:
-                if not isdir(path+'fractals\\'):
+                if not isdir(path + 'fractals' + os.sep):
                     raise
-            plt.savefig(path+'fractals\\'+ImName+'_'+self.structure+'_'+pixNr+'.png')
+            plt.savefig(path + 'fractals' + os.sep + ImName + '_' + self.structure + '_' + pixNr + '.png')
             plt.close()
             return -result[0][0]
         except TypeError:
@@ -2197,29 +2191,29 @@ class Texture(object):
 
         percent = [0.2, 0.3, 0.4, 0.5, 0.6, 0.7]
         mtv = []
-        for p in percent:        
-            ind = np.where(matrix > p*vmax)
-            if len(ind) !=3:
+        for p in percent:
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                ind = np.where(matrix > p * vmax)
+            if len(ind) != 3:
                 mtv.append['']
             else:
-                vol = len(ind[0])*voxel_size**3
+                vol = len(ind[0]) * voxel_size ** 3
                 mtv.append(vol)
-        
         return mtv
 
     def saveImage(self, path, name, matrix, ImName, pixNr):
-        '''save image of anylsed roi'''
+        """Save image of anylsed roi"""
         matplotlib.rcParams.update({'font.size': 24})
-
         pixNr = str(pixNr)
-        
+
         # print matrix
-        for n in range(len(matrix)//24+1):
+        for n in range(len(matrix) // 24 + 1):
             fig = plt.figure(10, figsize=(20, 20))
-            fig.text(0.5, 0.95, ImName+' '+name)
+            fig.text(0.5, 0.95, ImName + ' ' + name)
             for j in range(24):
-                axes = fig.add_subplot(5, 5, j+1)
-                axes.set_title(24*n+j)
+                axes = fig.add_subplot(5, 5, j + 1)
+                axes.set_title(24 * n + j)
                 try:
                     im = axes.imshow(matrix[24 * n + j], cmap=plt.get_cmap('jet'), vmin=0, vmax=self.n_bits)
                 except IndexError:
@@ -2231,22 +2225,22 @@ class Texture(object):
             except UnboundLocalError:
                 pass
             try:
-                makedirs(path+ImName+'\\')
+                makedirs(path + ImName + os.sep)
             except OSError:
-                if not isdir(path+ImName+'\\'):
+                if not isdir(path + ImName + os.sep):
                     raise
-            fig.savefig(path+ImName+'\\'+name+'_'+self.structure+'_'+pixNr+'_'+str(n+1)+'.png')
+            fig.savefig(path + ImName + os.sep + name + '_' + self.structure + '_' + pixNr + '_' + str(n + 1) + '.png')
             plt.close()
-            
+
             del fig
-        for n in range(len(matrix)//24+1):
+        for n in range(len(matrix) // 24 + 1):
             fig = plt.figure(20, figsize=(20, 20))
-            fig.text(0.5, 0.95, ImName+' '+name)
+            fig.text(0.5, 0.95, ImName + ' ' + name)
             for j in range(24):
-                axes = fig.add_subplot(5, 5, j+1, facecolor='#FFFF99')
-                axes.set_title(24*n+j)
+                axes = fig.add_subplot(5, 5, j + 1, facecolor='#FFFF99')
+                axes.set_title(24 * n + j)
                 try:
-                    im = axes.imshow(matrix[24*n+j], cmap=plt.get_cmap('Greys'), vmin=0, vmax=self.n_bits)
+                    im = axes.imshow(matrix[24 * n + j], cmap=plt.get_cmap('Greys'), vmin=0, vmax=self.n_bits)
                 except IndexError:
                     break
                     pass
@@ -2255,6 +2249,7 @@ class Texture(object):
                 fig.colorbar(im)
             except UnboundLocalError:
                 pass
-            fig.savefig(path+ImName+'\\black_'+name+'_'+self.structure+'_'+pixNr+'_'+str(n+1)+'.png')
+            fig.savefig(path + ImName + os.sep + 'black_' + name + '_' + self.structure + '_' + pixNr + '_' + str(
+                n + 1) + '.png')
             plt.close()
             del fig

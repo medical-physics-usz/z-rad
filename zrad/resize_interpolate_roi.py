@@ -1,26 +1,26 @@
-# -*- coding: utf-8 -*-
-
-# import libraries
-import pydicom as dc
-import numpy as np
-from scipy.ndimage.morphology import distance_transform_edt
-from scipy.interpolate import interp1d
-import cv2
 import logging
-from tqdm import tqdm
+
+import cv2
+import numpy as np
+import pydicom as dc
+from scipy.interpolate import interp1d
+from scipy.ndimage.morphology import distance_transform_edt
+
 
 class InterpolateROI(object):
 
     def structures(self, rs, structure, slices, x_ct, y_ct, xCTspace, yCTspace, l_IM, round_factor):
+        """find the contour points for a given ROI,
+        calls the getPoints methods with returns a M - 3D matrix with -1 outside, 0 on the border and 1 inside
+        """
         self.logger = logging.getLogger("InterpolROI")
-        '''find the contour points for a given ROI, calls the getPoints methods with returns a M - 3D matrix with -1 outside, 0 on the border and 1 inside'''
 
         rs = dc.read_file(rs)  # read RS file
         list_organs = []  # list of organs defined in the RS file
-        
+
         for j in range(len(rs.StructureSetROISequence)):
             list_organs.append([rs.StructureSetROISequence[j].ROIName, rs.StructureSetROISequence[j].ROINumber])
-        self.logger.info("Structures in structure set file\t" + ", ".join(map(str, np.array(list_organs)[:,0])))
+        self.logger.info("Structures in structure set file\t" + ", ".join(map(str, np.array(list_organs)[:, 0])))
 
         organs = [structure]  # define the structure you're interested in
 
@@ -31,7 +31,7 @@ class InterpolateROI(object):
             for j in range(len(list_organs)):  # organ in RS
                 if list_organs[j][0] == organs[i]:  # if the same name
                     for k in range(len(rs.ROIContourSequence)):  # search by ROI number
-                        if rs.ROIContourSequence[k].ReferencedROINumber == list_organs[j][1]:  # double check the ROI number
+                        if rs.ROIContourSequence[k].ReferencedROINumber == list_organs[j][1]:  # check the ROI number
                             st_nr = k  # ROI number
                             try:
                                 lista = []  # z position of the slice
@@ -48,25 +48,29 @@ class InterpolateROI(object):
                                 lista = self.multiContour(lista)  # sub-contours in the slice
                                 for m in range(len(lista)):
                                     index.append(lista[m][0])
-                                self.logger.info('z positions contour \t' + ", ".join(map(str,index)))
-                                self.logger.info('z positions image \t' + ", ".join(map(str,slices)))
+                                self.logger.info('z positions contour \t' + ", ".join(map(str, index)))
+                                self.logger.info('z positions image \t' + ", ".join(map(str, slices)))
                                 if len(index) != 1:  # if more than one slice
                                     diffI = round(index[1] - index[0], 3)  # double check if the orientation is ok
                                     diffS = round(slices[1] - slices[0], 3)
                                     self.logger.info('resolution image: {} mm, ROI: {} mm'.format(diffI, diffS))
-                                    if np.sign(diffI) != np.sign(diffS):  # if different orientation then reverse the contour points
+                                    # if different orientation then reverse the contour points
+                                    if np.sign(diffI) != np.sign(diffS):
                                         index.reverse()
                                         lista.reverse()
                                     # check for slices without contour in between other contour slices
                                     diff = abs(np.array(index[1:]) - np.array(index[:-1])) / diffS
-                                    self.logger.info('difference in z position between slices normalized to slice spacing \t' + ", ".join(map(str,diff)))
+                                    self.logger.info('difference in z position between slices normalized to slice spacing \t' + ", ".join(map(str, diff)))
                                     dk = 0
                                     for d in range(len(diff)):
-                                        for di in range(1, int(round(abs(diff[d]), 0))):  # if no empty slice in between then abs(int(round(diff[d],0))) = 1
-                                            index.insert(d + dk + 1, index[d + dk] + diffS)  # if not add empty slices to index and lista
+                                        # if no empty slice in between then abs(int(round(diff[d],0))) = 1
+                                        for di in range(1, int(round(abs(diff[d]), 0))):
+                                            # if not add empty slices to index and lista
+                                            index.insert(d + dk + 1, index[d + dk] + diffS)
                                             lista.insert(d + dk + 1, [[], [[], []]])
                                             dk += 1
-                                    # include empty list to slices where structure was not contour, so in the end lista and index has the same length as image
+                                    # include empty list to slices where structure was not contour, so in the end
+                                    # lista and index has the same length as image
                                     sliceB = index[-1]
                                     sliceE = index[0]
 
@@ -99,7 +103,7 @@ class InterpolateROI(object):
                                 self.logger.info('no contours for: ' + organs[i])
 
         # recalculating for pixels the points into pixels
-        contours = np.array(contours)
+        contours = np.array(contours, dtype=object)
 
         # recalculate contour points from mm to pixels
         for i in range(len(contours)):  # contours
@@ -186,21 +190,20 @@ class InterpolateROI(object):
             cnt_all.append(cnt)
 
         M = []
-        for k in tqdm(range(l_IM)):
+        for k in range(l_IM):
             if cnt_all[k] != [[]]:
                 m = np.ones((ymax + 1 - ymin, xmax + 1 - xmin))  # initialize  the 2D matrix with 1
                 for n in range(len(cnt_all[k])):  # sub-contours
                     for i in range(ymin, ymax + 1):
                         for j in range(xmin, xmax + 1):
-                            m[i - ymin][j - xmin] = m[i - ymin][j - xmin] * cv2.pointPolygonTest(
-                                np.array(cnt_all[k][n]), (j, i),
-                                False)  # check if the point in inside the polygon defined by contour points, 0 - on contour, 1 - inside, -1 -outside
+                            # check if the point in inside the polygon defined by contour points, 0 - on contour, 1 - inside, -1 -outside
+                            m[i - ymin][j - xmin] = m[i - ymin][j - xmin] * cv2.pointPolygonTest(np.array(cnt_all[k][n]), (j, i), False)
                 m = m * (-1) ** (len(
                     cnt_all[k]) + 1)  # to account for multiple sub-contours, especially the holes in the contour
                 M.append(m)
             else:
                 M.append([])
-        M = np.array(M)
+        M = np.array(M, dtype=object)
 
         # adjust if there is a contour only in one slice, add slice filled with -1 before and after
         ind = []

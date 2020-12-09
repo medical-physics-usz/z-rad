@@ -1,9 +1,9 @@
-# -*- coding: utf-8 -*-
-
-# import libraries
-from distutils.core import setup
 # Remove the build folder, a bit slower but ensures that build contains the latest
 import shutil
+from distutils.core import setup
+
+import matplotlib as mpl
+
 shutil.rmtree("build", ignore_errors=True)
 
 # my setup.py is based on one generated with gui2exe, so data_files is done a bit differently
@@ -22,33 +22,30 @@ icon_resources = ['ikona.png']
 bitmap_resources = []
 other_resources = []
 
-# add the mpl mpl-data folder and rc file
-import matplotlib as mpl
 data_files += mpl.get_py2exe_datafiles()
 
 setup(
     windows=['main_texture.py'],
-                          # compressed and optimize reduce the size
-    options = {"py2exe": {"compressed": 2, 
-                          "optimize": 2,
-                          "includes": includes,
-                          "excludes": excludes,
-                          "packages": packages,
-                          "dll_excludes": dll_excludes,
-                          # using 2 to reduce number of files in dist folder
-                          # using 1 is not recommended as it often does not work
-                          "bundle_files": 2,
-                          "dist_dir": 'dist',
-                          "xref": False,
-                          "skip_archive": False,
-                          "ascii": False,
-                          "custom_boot_script": '',
-                         }
-              },
+    # compressed and optimize reduce the size
+    options={"py2exe": {"compressed": 2,
+                        "optimize": 2,
+                        "includes": includes,
+                        "excludes": excludes,
+                        "packages": packages,
+                        "dll_excludes": dll_excludes,
+                        # using 2 to reduce number of files in dist folder
+                        # using 1 is not recommended as it often does not work
+                        "bundle_files": 2,
+                        "dist_dir": 'dist',
+                        "xref": False,
+                        "skip_archive": False,
+                        "ascii": False,
+                        "custom_boot_script": '',
+                        }
+             },
 
     # using zipfile to reduce number of files in dist
-    zipfile = r'lib\library.zip',
+    zipfile=r'lib\library.zip',
 
     data_files=data_files
 )
-

@@ -1,17 +1,17 @@
-# -*- coding: utf-8 -*-s
+import copy
+import logging
 
-# import libraries
 import cv2
 import numpy as np
-import copy
-import pydicom as dc  # dicom library
-import logging
+import pydicom as dc
 
 
 class Structures(object):
     """Class to extract each point in the image grid which belongs to the defined ROI
     rs - to the structure set including structure set name
-    structure – list of organs to be analyzed, always choose first existing organ for this list, for example [GTV_art, GTV], if GTV_art  is not defined in the rs then choose GTV, if GTV not defined then /AttributeError with a message: missing structure
+    structure – list of organs to be analyzed, always choose first existing organ for this list, for example [GTV_art,
+    GTV], if GTV_art  is not defined in the rs then choose GTV, if GTV not defined then /AttributeError with a message:
+    missing structure
     slices – list of positions of slice in z
     x_ct - x coordinate of image top left corner
     y_ct – y coordinate of image top left corner
@@ -19,7 +19,7 @@ class Structures(object):
     position – patient position on the table for example HFS (head first supine)
     len_IM – number of slices
     wv - bool, calculate wavelet, to see if we need contours in wavelet space
-        """
+    """
 
     def __init__(self, rs, structure, slices, x_ct, y_ct, xCTspace, len_IM, wv, dim, local):
         self.logger = logging.getLogger(__name__)
@@ -31,7 +31,6 @@ class Structures(object):
         self.len_IM = len_IM
         self.wv = wv
         self.dim = dim
-
         self.Xcontour_W = []
         self.Ycontour_W = []
         self.slices_w = []
@@ -39,7 +38,6 @@ class Structures(object):
         self.Ycontour = []
         self.Xcontour_Rec = []
         self.Ycontour_Rec = []
-
         self.find(rs, structure, local)
 
     def find(self, rs, structure, local):
@@ -47,8 +45,9 @@ class Structures(object):
         self.rs = dc.read_file(rs)  # read RS file
         list_organs = []  # list of organs defined in the RS file
         for j in range(len(self.rs.StructureSetROISequence)):  # find structure name and number
-            list_organs.append([self.rs.StructureSetROISequence[j].ROIName, self.rs.StructureSetROISequence[j].ROINumber])
-        self.logger.info("Structures in structure set file\t" + ", ".join(map(str, np.array(list_organs)[:,0])))
+            list_organs.append(
+                [self.rs.StructureSetROISequence[j].ROIName, self.rs.StructureSetROISequence[j].ROINumber])
+        self.logger.info("Structures in structure set file\t" + ", ".join(map(str, np.array(list_organs)[:, 0])))
 
         organs = structure  # define the structure you're interested in
 
@@ -59,7 +58,8 @@ class Structures(object):
             for j in range(len(list_organs)):  # organ in RS
                 if list_organs[j][0] == organs[i]:  # if the same name
                     for k in range(len(self.rs.ROIContourSequence)):  # search by ROI number
-                        if self.rs.ROIContourSequence[k].ReferencedROINumber == list_organs[j][1]:  # double check the ROI number
+                        # double check the ROI number
+                        if self.rs.ROIContourSequence[k].ReferencedROINumber == list_organs[j][1]:
                             try:
                                 lista = []  # z position of the slice
                                 # contours in dicom are save as a list with sequence x1, y1, zi, x2, y2, zi, ... xn, yn, zi
@@ -68,8 +68,8 @@ class Structures(object):
                                 for l in range(len(self.rs.ROIContourSequence[k].ContourSequence)):
                                     lista.append([round(
                                         float(self.rs.ROIContourSequence[k].ContourSequence[l].ContourData[2]), 3),
-                                                  self.rs.ROIContourSequence[k].ContourSequence[l].ContourData[::3],
-                                                  self.rs.ROIContourSequence[k].ContourSequence[l].ContourData[1::3]])
+                                        self.rs.ROIContourSequence[k].ContourSequence[l].ContourData[::3],
+                                        self.rs.ROIContourSequence[k].ContourSequence[l].ContourData[1::3]])
                                 lista.sort()
                                 index = []
                                 lista = self.multiContour(lista)  # subcontours in the slice
@@ -90,21 +90,23 @@ class Structures(object):
                                 if slice_count:  # if more than one slice
                                     diffS = round(self.slices[1] - self.slices[0], 2)
                                     self.logger.info("resolution image, ROI " + ", ".join(map(str, (diffI, diffS))))
-                                    if np.sign(diffI) != np.sign(diffS):  # if different orientation then reverse the contour points
+                                    # if different orientation then reverse the contour points
+                                    if np.sign(diffI) != np.sign(diffS):
                                         index.reverse()
                                         lista.reverse()
                                     # check for slices without contour in between other contour slices
                                     diff = abs(np.array(index[1:]) - np.array(index[:-1])) / diffS
-                                    self.logger.info(
-                                        "difference in t position between slices normalized to slice spacing \n" + ", ".join(
-                                            map(str, diff)))
+                                    self.logger.info("difference in t position between slices normalized to slice spacing \n" + ", ".join(map(str, diff)))
                                     dk = 0
                                     for d in range(len(diff)):
-                                        for di in range(1, abs(int(round(diff[d], 0)))):  # if no empty slice in between then abs(int(round(diff[d],0))) = 1
-                                            index.insert(d + dk + 1, index[d + dk] + diffS)  # if not add empty slices to index and lista
+                                        # if no empty slice in between then abs(int(round(diff[d],0))) = 1
+                                        for di in range(1, abs(int(round(diff[d], 0)))):
+                                            index.insert(d + dk + 1, index[
+                                                d + dk] + diffS)  # if not add empty slices to index and lista
                                             lista.insert(d + dk + 1, [[], [[], []]])
                                             dk += 1
-                                    # include empty list to slices where structure was not contour, so in the end lista and index has the same length as image
+                                    # include empty list to slices where structure was not contour, so in the end lista
+                                    # and index has the same length as image
                                     sliceB = index[-1]  # first slice with contour (Begin)
                                     sliceE = index[0]  # last slice with contour (End)
                                     indB = np.where(np.array(self.slices) == sliceB)[0][0]
@@ -119,10 +121,11 @@ class Structures(object):
                                         lista[n] = lista[n][1:]
                                     self.contours.append(lista)  # list of contours for all user defined structures
                                     break
-                                else:   # check if this is also true for several contours in one slice!!!!!!!!!!!!!!!!!!!!!!!
+                                else:  # check if this is also true for several contours in one slice!!!!!!!!!!!!!!!!!!!
                                     # if only one slice of contour (but also many other slices) or if only one slice
                                     self.logger.info("contour only in slice")
-                                    if len(self.slices) == 1 and len(index) != 1:  # if one slice but contour of 3D volume
+                                    if len(self.slices) == 1 and len(
+                                            index) != 1:  # if one slice but contour of 3D volume
                                         ind = np.where(np.array(self.slices) == index)[0][0]
                                         lista[ind] = lista[ind][1:]  # get rid of slice position in lista for ind
                                         self.contours.append([lista[ind]])
@@ -140,7 +143,8 @@ class Structures(object):
                             except AttributeError:
                                 self.logger.info("no contours for: " + organs[i])
 
-        if self.wv and self.dim == "2D" or self.wv and self.dim == "2D_singleSlice":  # contours not scaled in slice-direction for 2D wavelet calculation
+        # contours not scaled in slice-direction for 2D wavelet calculation
+        if self.wv and self.dim == "2D" or self.wv and self.dim == "2D_singleSlice":
             contours_wv = copy.deepcopy(self.contours)
 
         # recalculating for pixels the points into pixels
@@ -155,33 +159,36 @@ class Structures(object):
                     self.organs = organs[0]
                 else:
                     if self.dim != "2D_singleSlice":
-                        self.contours = np.array(self.contours)
+                        self.contours = np.array(self.contours, dtype=object)
                     self.organs = organs[-1]
             except IndexError:
                 #            info = "Check structure names" #for Lucas
                 #            MyException(info)
                 raise IndexError
 
-        if list(self.contours[0]) == ['one slice']:  # stop the calculation if it's only one slice  % does it ever stop ?????????????????????????
+        # stop the calculation if it's only one slice  % does it ever stop ?
+        if list(self.contours[0]) == ['one slice']:
             self.Xcontour = 'one slice'
             self.Ycontour = 'one slice'
             self.Xcontour_W = 'one slice'
             self.Ycontour_W = 'one slice'
         else:  # continue, recalculate contour points from mm to pixels
-            print(self.x_ct, self.xCTspace)
             for i in range(len(self.contours)):  # contours
                 for j in range(len(self.contours[i])):  # slice
                     for n in range(len(self.contours[i][j])):  # number of contours per slice
                         if list(self.contours[i][j][n][0]):  # if list (with x values) not empty
-                            self.contours[i][j][n][0] = np.array(abs(self.contours[i][j][n][0] - self.x_ct) / self.xCTspace)
-                            self.contours[i][j][n][1] = np.array(abs(self.contours[i][j][n][1] - self.y_ct) / self.xCTspace)
+                            self.contours[i][j][n][0] = np.array(
+                                abs(self.contours[i][j][n][0] - self.x_ct) / self.xCTspace)
+                            self.contours[i][j][n][1] = np.array(
+                                abs(self.contours[i][j][n][1] - self.y_ct) / self.xCTspace)
                             for k in range(len(self.contours[i][j][n][0])):
                                 self.contours[i][j][n][0][k] = int(round(self.contours[i][j][n][0][k], 0))
                                 self.contours[i][j][n][1][k] = int(round(self.contours[i][j][n][1][k], 0))
                             self.contours[i][j][n][0] = np.array(self.contours[i][j][n][0], dtype=np.int)
                             self.contours[i][j][n][1] = np.array(self.contours[i][j][n][1], dtype=np.int)
 
-            x_c_min = []  # x position of contour points to define the region of interest where we look for the structure
+            # x position of contour points to define the region of interest where we look for the structure
+            x_c_min = []
             x_c_max = []
             y_c_min = []
             y_c_max = []
@@ -208,10 +215,12 @@ class Structures(object):
                 del y_c_max
 
                 # finding points inside the contour
-                self.Xcontour, self.Ycontour, cnt = self.getPoints(self.contours[0], x_min, x_max, y_min, y_max, self.len_IM)
+                self.Xcontour, self.Ycontour, cnt = self.getPoints(self.contours[0], x_min, x_max, y_min, y_max,
+                                                                   self.len_IM)
 
                 if local:
-                    self.Xcontour_Rec, self.Ycontour_Rec, cnt = self.getPoints(self.contours[-1], x_min, x_max, y_min, y_max, self.len_IM)
+                    self.Xcontour_Rec, self.Ycontour_Rec, cnt = self.getPoints(self.contours[-1], x_min, x_max, y_min,
+                                                                               y_max, self.len_IM)
 
                 del self.contours
 
@@ -222,7 +231,8 @@ class Structures(object):
                     # slices position in the transformed image
                     self.slices_w = list(np.array(self.slices).copy())
 
-                    if self.dim == "2D" or self.dim == "2D_singleSlice":  # slice position doesn't change - use self.contour as previously calculated
+                    # slice position doesn't change - use self.contour as previously calculated
+                    if self.dim == "2D" or self.dim == "2D_singleSlice":
                         self.contours = contours_wv  # slice positions will be the same
 
                     if self.dim == "3D":  # slice position changed
@@ -266,7 +276,8 @@ class Structures(object):
                                                     index.append(round(lista[m][0], 3))
                                                 slice_count = True  # True is more than one slice
                                                 try:
-                                                    diffI = round(index[1] - index[0], 3)  # double check if the orientation is ok
+                                                    # double check if the orientation is ok
+                                                    diffI = round(index[1] - index[0], 3)
                                                 except IndexError:
                                                     info = 'only one slice'
                                                     slice_count = False
@@ -310,15 +321,18 @@ class Structures(object):
                         for j in range(len(self.contours[i])):  # slice
                             for n in range(len(self.contours[i][j])):  # number of contours per slice
                                 if list(self.contours[i][j][n][0]):
-                                    self.contours[i][j][n][0] = np.array(abs(self.contours[i][j][n][0] - x_ct) / (2 * self.xCTspace))
-                                    self.contours[i][j][n][1] = np.array(abs(self.contours[i][j][n][1] - y_ct) / (2 * self.xCTspace))
+                                    self.contours[i][j][n][0] = np.array(
+                                        abs(self.contours[i][j][n][0] - x_ct) / (2 * self.xCTspace))
+                                    self.contours[i][j][n][1] = np.array(
+                                        abs(self.contours[i][j][n][1] - y_ct) / (2 * self.xCTspace))
                                     for k in range(len(self.contours[i][j][n][0])):
                                         self.contours[i][j][n][0][k] = int(round(self.contours[i][j][n][0][k], 0))
                                         self.contours[i][j][n][1][k] = int(round(self.contours[i][j][n][1][k], 0))
                                     self.contours[i][j][n][0] = np.array(self.contours[i][j][n][0], dtype=np.int)
                                     self.contours[i][j][n][1] = np.array(self.contours[i][j][n][1], dtype=np.int)
 
-                    x_c_min = []  # x position of contour points to define the region of interest where we look for the structure
+                    # x position of contour points to define the region of interest where we look for the structure
+                    x_c_min = []
                     x_c_max = []
                     y_c_min = []
                     y_c_max = []
@@ -345,22 +359,26 @@ class Structures(object):
 
                     # get all point inside the contour
                     if self.dim == "2D" or self.dim == "2D_singleSlice":
-                        self.Xcontour_W, self.Ycontour_W, cnt = self.getPoints(self.contours[0], x_min, x_max, y_min, y_max, self.len_IM)
+                        self.Xcontour_W, self.Ycontour_W, cnt = self.getPoints(self.contours[0], x_min, x_max, y_min,
+                                                                               y_max, self.len_IM)
                     elif self.dim == "3D":
-                        self.Xcontour_W, self.Ycontour_W, cnt = self.getPoints(self.contours[0], x_min, x_max, y_min, y_max, int(np.floor((self.len_IM + 5) / 2.)))
+                        self.Xcontour_W, self.Ycontour_W, cnt = self.getPoints(self.contours[0], x_min, x_max, y_min,
+                                                                               y_max,
+                                                                               int(np.floor((self.len_IM + 5) / 2.)))
 
             except ValueError:  # ValueError
                 self.Xcontour_W = ''
                 self.Ycontour_W = ''
-                self.logger.warn('too small structure')
+                # self.logger.warning('too small structure')
                 pass
             # raise ValueError
 
     def multiContour(self, lista):
-        """account for multicontours in one slice,
-        checks z positions in each sublist of the list and if the have the same z then creates a new sublist
+        """Account for multicontours in one slice,
+        checks z positions in each sublist of the list and if the have the same z then creates a new sublist,
         for example input l = [[z1, [x1, x2],[y1,y2]], [z1, [x3, x4, x5],[y3, y4, y5]], [z2, [x1, x2],[y1,y2]]] - 3 contours on 2 slices
-        output l = [[z1, [[x1, x2],[y1,y2]], [[x3, x4, x5],[y3, y4, y5]]], [z2, [[x1, x2],[y1,y2]]]]"""
+        output l = [[z1, [[x1, x2],[y1,y2]], [[x3, x4, x5],[y3, y4, y5]]], [z2, [[x1, x2],[y1,y2]]]]
+        """
 
         listap = []
         lista_nr = []
@@ -390,7 +408,8 @@ class Structures(object):
         segment - contour points
         nr_slices: self.len_IM.
         If points calculated for wavelets in 3D, slices are reduced, therefore,
-        int(np.floor((self.len_IM + 5) / 2.)) must be used as input for nr_slices!"""
+        int(np.floor((self.len_IM + 5) / 2.)) must be used as input for nr_slices!
+        """
         cnt_all = []
         # print 'slices in image: ', self.len_IM
         # print 'slices in structure: ', len(segment)
@@ -401,7 +420,7 @@ class Structures(object):
                 for j in range(len(segment[k][i][0])):
                     c.append([segment[k][i][0][j], segment[k][i][1][j]])
                 cnt.append(c)
-            if cnt == []:
+            if not cnt:
                 cnt = [[], []]
             cnt_all.append(cnt)
 
@@ -413,10 +432,13 @@ class Structures(object):
                 for n in range(len(cnt_all[k])):
                     m = np.zeros((int(ymax + 1 - ymin), int(xmax + 1 - xmin)))
                     for i in range(ymin, ymax + 1):
-                        for j in range(xmin, xmax + 1):  # check if the point in inside the polygon defined by contour points, 0 - on contour, 1 - inside, -1 -outside
+                        # check if the point in inside the polygon defined by contour points, 0 - on contour,
+                        # 1 - inside, -1 -outside
+                        for j in range(xmin, xmax + 1):
                             m[int(i - ymin)][int(j - xmin)] = cv2.pointPolygonTest(np.array(cnt_all[k][n]), (j, i), False)
                     M.append(m)
-                for n in range(1, len(M)):  # to account for multiple subcontours in a slice, including holes in a contour
+                # to account for multiple subcontours in a slice, including holes in a contour
+                for n in range(1, len(M)):
                     M[0] = M[0] * M[n]
                 M[0] = M[0] * (-1) ** (len(M) + 1)
                 ind = np.where(M[0] >= 0)

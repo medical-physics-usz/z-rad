@@ -1,16 +1,15 @@
-# -*- coding: utf-8 -*-s
-
-# import libraries
-import numpy as np
-import matplotlib
-import matplotlib.pyplot as plt
+import os
 from os import makedirs
 from os.path import isdir
+
+import matplotlib
+import matplotlib.pyplot as plt
+import numpy as np
 import scipy.optimize as optimization
 
 
 class Intensity(object):
-    # feature initialisation (image biomarker standardisation initiative)
+    """feature initialisation (image biomarker standardisation initiative)"""
 
     def __init__(self):
         self.histogram = []
@@ -53,15 +52,15 @@ class Intensity(object):
             fig.text(0.5, 0.95, ImName + ' ' + name)
             plt.hist(M1)
             try:
-                makedirs(path + 'histogram\\')
+                makedirs(path + 'histogram' + os.sep)
             except OSError:
-                if not isdir(path + 'histogram\\'):
+                if not isdir(path + 'histogram' + os.sep):
                     raise
         except ValueError:
             pass
 
         fig.savefig(
-            path + 'histogram\\' + name + '_' + ImName + '_' + structure + '_' + pixNr + '_' + str(w) + '.png')
+            path + 'histogram' + os.sep + name + '_' + ImName + '_' + structure + '_' + pixNr + '_' + str(w) + '.png')
         plt.close()
         self.histogram = M1
 
@@ -577,8 +576,8 @@ class GLCM(object):
 
                 # 3.6.24    information correlation 1
                 # 3.6.25    information correlation 2
-                hxy = self.joint_entropy[
-                    x + dd * nrslices]  # all values are appended. for second direction we need to "jump" over all slices of first direction
+                # all values are appended. for second direction we need to "jump" over all slices of first direction
+                hxy = self.joint_entropy[x + dd * nrslices]
                 X = []
                 for i in range(len(matrix[x])):
                     X.append(np.sum(matrix[x][i]))
@@ -797,8 +796,7 @@ class GLRLM_GLSZM_GLDZM_NGLDM(object):
 
             # check if voxels are not accounted for twice:
             se = np.sum(glrlm_mf, axis=0)  # sums over columns
-            elements = 1 * se[0] + 2 * se[1] + 3 * se[2] + 4 * se[3] + 5 * se[
-                4]  # + 6 * se[5] + 7 * se[6] + 8 * se[7] + 9 * se[8]  # each column weighted according to its run length
+            elements = 1 * se[0] + 2 * se[1] + 3 * se[2] + 4 * se[3] + 5 * se[4]  # + 6 * se[5] + 7 * se[6] + 8 * se[7] + 9 * se[8]  # each column weighted according to its run length
             ee = np.sum(~np.isnan(self.matrix)) * 4
 
             return glrlm, glrlm_mbs, glrlm_mbd, glrlm_mf
@@ -843,8 +841,8 @@ class GLRLM_GLSZM_GLDZM_NGLDM(object):
                 dm[indz[i], indy[i], indx[i]] = np.min(dist)
             dist_matrix = np.array(dm)
 
-            '''gray-level size zone matrix'''
-            '''gray-level distance zone matrix'''
+            # gray-level size zone matrix
+            # gray-level distance zone matrix
             # adapted
             # Guillaume Thibault et al., ADVANCED STATISTICAL MATRICES FOR TEXTURE CHARACTERIZATION: APPLICATION TO
             # DNA CHROMATIN AND MICROTUBULE NETWORK CLASSIFICATION
@@ -930,7 +928,7 @@ class GLRLM_GLSZM_GLDZM_NGLDM(object):
             return GLSZM, GLDZM, GLSZM_perslice, GLDZM_perslice
 
         if self.matrix_type == "NGLDM":
-            '''neighborhood gray-level dependence matrix'''
+            # neighborhood gray-level dependence matrix
             matrix = np.copy(self.matrix)
             s = []
             for i in range(self.n_bits):
@@ -1193,7 +1191,7 @@ class GLRLM_GLSZM_GLDZM_NGLDM(object):
         self.longLarge_x_low_grey_level_emphasis_av = np.nanmean(self.longLarge_x_low_grey_level_emphasis)
         self.longLarge_x_high_grey_level_emphasis_av = np.nanmean(self.longLarge_x_high_grey_level_emphasis)
         self.grey_level_nonuniform_av = np.nanmean(self.grey_level_nonuniform)
-        self.normalised_grey_level_nonuniform_av = np.nanmean(self.normalised_grey_level_nonuniform)  # 3.7.10         #nanss   ...................
+        self.normalised_grey_level_nonuniform_av = np.nanmean(self.normalised_grey_level_nonuniform)  # 3.7.10
         self.x_lengthSize_nonuniform_av = np.nanmean(self.x_lengthSize_nonuniform)
         self.normalised_x_lengthSize_nonuniform_av = np.nanmean(self.normalised_x_lengthSize_nonuniform)
         self.x_percentage_av = np.nanmean(self.x_percentage)
@@ -1341,15 +1339,16 @@ class NGTDM(object):
                     for y in [-1, 1]:
                         for x in [-1, 0, 1]:
                             if 0 <= index[0][ind] + y < len(matrix[0]) and 0 <= index[1][ind] + x < len(matrix[0][0]):
-                                temp.append(matrix[k][index[0][ind] + y][index[1][ind] + x])    # add neighbor grey value to temp
-                            else: # if neighbor out of index
+                                # add neighbor grey value to temp
+                                temp.append(matrix[k][index[0][ind] + y][index[1][ind] + x])
+                            else:  # if neighbor out of index
                                 numerator += 1
                     for x in [-1, 1]:
                         if 0 <= index[1][ind] + x < len(matrix[0][0]):
                             temp.append(matrix[k][index[0][ind]][index[1][ind] + x])
                         else:
                             numerator += 1
-                    ind_nan = np.where(np.isnan(np.array(temp)))[0]     # no nan values in neighborhood for calculation
+                    ind_nan = np.where(np.isnan(np.array(temp)))[0]  # no nan values in neighborhood for calculation
                     for n in range(1, len(ind_nan) + 1):
                         temp.pop(ind_nan[-n])
                     numerator += len(ind_nan)
@@ -1358,7 +1357,7 @@ class NGTDM(object):
                         s[k][v] += a
                         ni[k][v] += 1
         if self.dim == "2D" or self.dim == "2D_singleSlice":
-            self.ngtdm_merged = np.sum(s, axis=0)    # calculated per slice (only 2D neighbours, then merged)
+            self.ngtdm_merged = np.sum(s, axis=0)  # calculated per slice (only 2D neighbours, then merged)
             self.ngtdm_voxelcount_merged = np.sum(ni, axis=0)
         if self.dim == "3D":
             s = np.sum(s, axis=0)
@@ -1600,13 +1599,13 @@ class CMS_MTV(object):
             plt.xlabel('ln(r)')
             plt.ylabel('ln(N(r))')
             plt.legend()
-            # print path+'fractals\\'+ImName+'.png'
+            # print path + 'fractals' + os.sep + ImName + '.png'
             try:
-                makedirs(path + 'fractals\\')
+                makedirs(path + 'fractals' + os.sep)
             except OSError:
-                if not isdir(path + 'fractals\\'):
+                if not isdir(path + 'fractals' + os.sep):
                     raise
-            plt.savefig(path + 'fractals\\' + ImName + '_' + self.structure + '_' + pixNr + '.png')
+            plt.savefig(path + 'fractals' + os.sep + ImName + '_' + self.structure + '_' + pixNr + '.png')
             plt.close()
             return -result[0][0]
         except TypeError:

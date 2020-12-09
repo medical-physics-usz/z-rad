@@ -1,0 +1,11 @@
+joblib
+matplotlib
+numpy
+pandas
+pydicom
+scikit-learn
+scipy
+tqdm
+vtk
+wxpython
+xlsxwriter

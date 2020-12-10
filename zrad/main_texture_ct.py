@@ -40,7 +40,6 @@ class main_texture_ct(object):
         self.logger.info("Start")
         self.n_jobs = n_jobs
         image_modality = ['CT']
-        dicomProblem = []
 
         def parfor(ImName):
             self.logger.info("Patient " + ImName)
@@ -59,7 +58,6 @@ class main_texture_ct(object):
                     # CT and contrast-enhanced CT
                     CT_UID = ['1.2.840.10008.5.1.4.1.1.2', '1.2.840.10008.5.1.4.1.1.2.1', 'CT Image Storage']
                     read = ReadImageStructure(CT_UID, mypath_image, structure, wv, dim, local)
-                    dicomProblem.append([ImName, read.listDicomProblem])
 
                     # parameters to recalculate intensities HU
                     inter = float(dc.read_file(mypath_image + read.onlyfiles[0]).RescaleIntercept)
@@ -106,7 +104,8 @@ class main_texture_ct(object):
                     dp_export = pd.DataFrame(dict_features, index=[ImName])
                     to_return_2d = to_return_2d.append(dp_export, sort=False)
                 else:
-                    features_3d = [[ImName, lista_results[2], lista_results[:2], lista_results[3:-1], lista_results[-1]]]
+                    features_3d = [[ImName, lista_results[2], lista_results[:2], lista_results[3:-1],
+                                    lista_results[-1]]]
                     to_return_3d.append(features_3d)
 
             if dim == "2D" or dim == "2D_singleSlice":
@@ -119,10 +118,10 @@ class main_texture_ct(object):
             out = Parallel(n_jobs=self.n_jobs)(delayed(parfor)(ImName) for ImName in l_ImName)
 
         if dim == "2D" or dim == "2D_singleSlice":
-            df_features_all = out
+            df_features_all = pd.concat(out).reset_index().rename(columns={'index': 'patient'})
             # create dictionary with important parameters
             dict_parameters = {"image_modality": image_modality,
-                               "structures": structures,
+                               "structures": str.join(', ', structures),
                                "pixelNr": pixNr,
                                "bin_size": binSize,
                                "Dimension": dim,
@@ -132,7 +131,7 @@ class main_texture_ct(object):
                                "wv": wv}
             df_parameters = pd.DataFrame.from_dict(dict_parameters)
             # save excel sheet
-            with pd.ExcelWriter(path_save + "features_2D.xlsx") as writer:
+            with pd.ExcelWriter(path_save + save_as + ".xlsx") as writer:
                 df_features_all.to_excel(writer, sheet_name="Features")
                 df_parameters.to_excel(writer, sheet_name="Parameters")
         else:

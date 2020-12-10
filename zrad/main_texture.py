@@ -37,7 +37,6 @@ class Radiomics(wx.Frame):
         self.Show()
 
     def InitUI(self):
-        self.local = False  # ATTENTION!: if you set True, be aware that you calculate Radiomics in 3D only.
         self.panelHeight = 24  # height of boxes in GUI, 20 for PC and 40 for lenovo laptop
         self.p = wx.Panel(self, size=self.defaultWindowsize)
         self.nb = wx.Notebook(self.p, size=self.defaultWindowsize)
@@ -107,6 +106,8 @@ class Radiomics(wx.Frame):
         stop'''
         stop = int(stop) + 1
         start = int(start)
+        
+        self.local = self.panelRadiomics.FindWindowById(200).GetValue()  # ATTENTION!: if you set True, be aware that you calculate Radiomics in 3D only. Final implementation to be added
 
         # convert to a list        
         if structure == '':
@@ -117,6 +118,8 @@ class Radiomics(wx.Frame):
             for i in arange(1, len(structure)):
                 if structure[i][0] == ' ':
                     structure[i] = structure[i][1:]
+                    
+        multipleNames = self.panelRadiomics.FindWindowById(1041).GetValue()
 
         # dimensionality
         if self.panelRadiomics.FindWindowById(1061).GetValue():
@@ -169,7 +172,7 @@ class Radiomics(wx.Frame):
             dict_parameters["HUmax"] = hu_max
             dict_parameters["outlier_corr"] = outlier_corr
             main_texture_ct(self.GetStatusBar(), path_image, path_save, structure, pixNr, binSize, l_ImName, save_as,
-                            dim, hu_min, hu_max, outlier_corr, wv, self.local, cropStructure, exportList, n_jobs)
+                            dim, hu_min, hu_max, outlier_corr, wv, self.local, multipleNames, cropStructure, exportList, n_jobs)
 
         elif self.panelRadiomics.FindWindowById(130).GetValue():  # PET
             SUV = self.panelRadiomics.FindWindowById(131).GetValue()
@@ -226,8 +229,8 @@ class Radiomics(wx.Frame):
             name_shape_pt_list = name_shape_pts.split(',')
             dict_parameters['shape structure'] = name_shape_pt_list
             Shape(path_image, path_save, save_as, name_shape_pt_list, start, stop, n_jobs)
-            if dim == "3D":
-                ExportExcel(calc_shape, path_save, save_as, dict_parameters)
+        if dim == "3D":
+            ExportExcel(calc_shape, path_save, save_as, dict_parameters)
 
         # calculate results for LN
         if self.panelRadiomics.FindWindowById(1091).GetValue():

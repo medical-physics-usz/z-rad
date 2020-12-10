@@ -44,9 +44,6 @@ class main_texture_pet(object):
 
         def parfor(ImName):
             self.logger.info("Patient " + ImName)
-            with open("feature_names_2D.txt", "r") as f:
-                feature_names_2d_list = f.read().split()
-            to_return_2d = pd.DataFrame(columns=feature_names_2d_list)
             to_return_3d = list()
 
             for structure in structures:

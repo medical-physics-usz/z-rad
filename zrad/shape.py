@@ -123,7 +123,7 @@ class Shape(object):
 
     def fill(self, fname):
         # Start with empty 3d-array of zeros
-        width = 600
+        width = 700
         files = [f for f in listdir(self.path_load + fname) if isfile(join(self.path_load + fname, f))]
         # what slices are in the files
         l_slices = []

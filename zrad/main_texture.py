@@ -111,12 +111,10 @@ class Radiomics(wx.Frame):
         # convert to a list        
         if structure == '':
             structure = 'none'
-            self.panelRadiomics.FindWindowById(104).SetValue('none')
+            self.panelRadiomics.FindWindowById(104).SetValue(structure)
         else:
             structure = structure.split(',')
-            for i in arange(1, len(structure)):
-                if structure[i][0] == ' ':
-                    structure[i] = structure[i][1:]
+            structure = [e.strip() for e in structure]
 
         # dimensionality
         if self.panelRadiomics.FindWindowById(1061).GetValue():
@@ -224,6 +222,7 @@ class Radiomics(wx.Frame):
         name_shape_pts = self.panelRadiomics.FindWindowById(1083).GetValue()  # name of ROIs defined for shape
         if calc_shape:  # calculate shape
             name_shape_pt_list = name_shape_pts.split(',')
+            name_shape_pt_list = [e.strip() for e in name_shape_pt_list]
             dict_parameters['shape structure'] = name_shape_pt_list
             Shape(path_image, path_save, save_as, name_shape_pt_list, start, stop, n_jobs)
             if dim == "3D":

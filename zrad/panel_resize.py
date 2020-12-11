@@ -192,9 +192,7 @@ class panelResize(scrolled.ScrolledPanel):
             list_structure = [inp_struct]
         else:
             list_structure = inp_struct.split(',')
-
-        for i in range(len(list_structure)):
-            list_structure[i] = list_structure[i].strip()
+            list_structure = [e.strip() for e in list_structure]
 
         # if resizing to texture resolution selected
         if self.FindWindowById(10082).GetValue() or self.FindWindowById(10083).GetValue():

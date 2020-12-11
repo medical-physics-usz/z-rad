@@ -442,7 +442,7 @@ class Features2D(object):
 
                 except ValueError:
                     print(ValueError)
-                    self.stop_calculation('ValueError', [1])
+                    # self.stop_calculation('ValueError', [1])
 
     def stop_calculation(self, info, rs_type):
         """returns empty string and error type bt does not stop the calculation"""

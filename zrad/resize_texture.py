@@ -510,7 +510,8 @@ class ResizeTexture(object):
                     if self.dim == "2D" or self.dim == "2D_singleSlice":
                         # copy structure file into new resize folder
                         copyfile(join(rs_name), join(mypath_save, rs[0]))
-                        return None  # structure will not be resized
+                        # structure will not be resized
+                        return {'wrong_roi': wrong_roi_this, 'list_voi': list_voi_this, 'empty_roi': empty_roi_this}
 
                     rs = dc.read_file(rs_name)  # read rs
 

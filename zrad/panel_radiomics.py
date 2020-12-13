@@ -26,6 +26,7 @@ class panelRadiomics(scrolled.ScrolledPanel):
         st2 = wx.StaticLine(self, -1, (10, 1), (900, 3))
         st3 = wx.StaticLine(self, -1, (10, 1), (900, 3))
         st7 = wx.StaticLine(self, -1, (10, 1), (900, 3))
+        st12 = wx.StaticLine(self, -1, (10, 1), (900, 3))
 
         self.gs_3 = wx.FlexGridSizer(cols=3, vgap=5, hgap=10)  # grid size with 3 columns
 
@@ -67,6 +68,23 @@ class panelRadiomics(scrolled.ScrolledPanel):
         h31box.Add(st3)
         self.vbox.Add(h31box, flag=wx.LEFT)
         self.vbox.Add((-1, 20))
+        
+        #local radiomics settings
+        self.gs_12 = wx.FlexGridSizer(cols=1, vgap=5, hgap=10)  # grid size with 3 columns
+        cb_local = wx.CheckBox(self, id=200, label='local radiomics') 
+        self.gs_12.AddMany([cb_local])
+        
+        h12box = wx.BoxSizer(wx.HORIZONTAL)
+        h12box.Add((10, 10))
+        h12box.Add(self.gs_12)
+        self.vbox.Add(h12box, flag=wx.LEFT)
+        self.vbox.Add((-1, 10))
+
+        h121box = wx.BoxSizer(wx.HORIZONTAL)
+        h121box.Add((10, 10))
+        h121box.Add(st12)
+        self.vbox.Add(h121box, flag=wx.LEFT)
+        self.vbox.Add((-1, 20))
 
         self.gs_1 = wx.FlexGridSizer(cols=3, vgap=5, hgap=10)
         st_saver = wx.StaticText(self, label='Save results in')
@@ -97,6 +115,7 @@ class panelRadiomics(scrolled.ScrolledPanel):
         st_name = wx.StaticText(self, label='Structure name ')
         # name of ROI to be analysed, separate by ',';  take the first structure which can be found in the RS
         tc_name = wx.TextCtrl(self, id=104, size=(200, h), value="", style=wx.TE_PROCESS_ENTER)
+        cb_structure = wx.CheckBox(self, id=1041, label='Calculate only first exisiting ROI') 
         st_disc = wx.StaticText(self, label='Discretization')
         st_bin = wx.StaticText(self, label='Bins No')
         st_size = wx.StaticText(self, label='Bin size')
@@ -127,7 +146,7 @@ class panelRadiomics(scrolled.ScrolledPanel):
         tc_name_LN = wx.TextCtrl(self, id=1093, size=(200, h), value="", style=wx.TE_PROCESS_ENTER)
 
         # fill grid sizer
-        self.gs_2.AddMany([st_name, tc_name, wx.StaticText(self, label=''), wx.StaticText(self, label=''),
+        self.gs_2.AddMany([st_name, tc_name, cb_structure, wx.StaticText(self, label=''),
                            st_disc, st_bin, st_size, wx.StaticText(self, label=''),
                            wx.StaticText(self, label=''), tc_bin, tc_size, wx.StaticText(self, label=''),
                            st_dim, rb_dim2single, rb_dim2, rb_dim3,
@@ -298,8 +317,8 @@ class panelRadiomics(scrolled.ScrolledPanel):
         """method called by parent to fill the text boxes with save settings
         l - list of elements read from a text file"""
         # ids of the boxes to be filled
-        ids = [107, 108, 109, 110, 102, 103, 104, 1051, 1052, 1061, 10611, 1062, 1071, 1072, 1081, 1082, 1083, 1091,
-               1092, 1093, 120, 125, 126, 127, 130, 131, 132, 133, 135, 136, 137, 140, 141, 142, 150, 151, 152, 160, 170]
+        ids = [107, 108, 109, 110, 102, 103, 104, 1041, 1051, 1052, 1061, 10611, 1062, 1071, 1072, 1081, 1082, 1083, 1091,
+               1092, 1093, 120, 125, 126, 127, 130, 131, 132, 133, 135, 136, 137, 140, 141, 142, 150, 151, 152, 160, 170, 200]
 
         for i in range(len(l)):
             try:
@@ -331,8 +350,8 @@ class panelRadiomics(scrolled.ScrolledPanel):
         """save the last used settings"""
         l = []
 
-        ids = [107, 108, 109, 110, 102, 103, 104, 1051, 1052, 1061, 10611, 1062, 1071, 1072, 1081, 1082, 1083, 1091,
-               1092, 1093, 120, 125, 126, 127, 130, 131, 132, 133, 135, 136, 137, 140, 141, 142, 150, 151, 152, 160, 170]
+        ids = [107, 108, 109, 110, 102, 103, 104, 1041, 1051, 1052, 1061, 10611, 1062, 1071, 1072, 1081, 1082, 1083, 1091,
+               1092, 1093, 120, 125, 126, 127, 130, 131, 132, 133, 135, 136, 137, 140, 141, 142, 150, 151, 152, 160, 170, 200]
         for i in ids:
             l.append(self.FindWindowById(i).GetValue())
         return l

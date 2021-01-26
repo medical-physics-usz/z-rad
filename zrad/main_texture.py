@@ -25,7 +25,7 @@ class Radiomics(wx.Frame):
         Parent of class Panel"""
 
     def __init__(self, *a, **b):
-        super(Radiomics, self).__init__(size=(1075, 725), pos=(100, 100), title='Z-Rad', *a, **b)
+        super(Radiomics, self).__init__(size=(1075, 725), pos=(100, 100), title='Z-Rad 7.2.1', *a, **b)
 
         self.defaultWindowsize = (1100, 725)
         self.SetMinSize(self.defaultWindowsize)
@@ -226,7 +226,9 @@ class Radiomics(wx.Frame):
             dict_parameters['shape structure'] = name_shape_pt_list
             Shape(path_image, path_save, save_as, name_shape_pt_list, start, stop, n_jobs)
             if dim == "3D":
-                ExportExcel(calc_shape, path_save, save_as, dict_parameters)
+                ExportExcel(True, path_save, save_as, dict_parameters)
+        elif dim == "3D":
+            ExportExcel(False, path_save, save_as, dict_parameters)
 
         # calculate results for LN
         if self.panelRadiomics.FindWindowById(1091).GetValue():
@@ -292,9 +294,9 @@ class Radiomics(wx.Frame):
         licence = """"""
         info = AboutDialogInfo()
         info.SetName('Z-Rad')
-        info.SetVersion('7.2.0')
+        info.SetVersion('7.2.1')
         info.SetDescription(description)
-        info.SetCopyright('(C) 2017-2020 USZ Radiomics Team')
+        info.SetCopyright('(C) 2017-2021 USZ Radiomics Team')
         info.SetLicence(licence)
         AboutBox(info)
 

@@ -104,7 +104,7 @@ class main_texture_ct(object):
                 df_parameters.to_excel(writer, sheet_name="Parameters")
         else:
             final_file, wave_names, par_names = Export().Preset(exportList, wv, local, path_save, save_as,
-                                                                image_modality, path_image)
+                                                                image_modality)
             feature_vectors = [feature_vec for batch in out for feature_vec in batch]
             for feature_vec in feature_vectors:
                 final_file = Export().ExportResults(feature_vec, final_file, par_names, image_modality, wave_names, wv,

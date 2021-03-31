@@ -133,7 +133,11 @@ class Radiomics(wx.Frame):
         if n_pref != '':
             l_ImName = [n_pref + '_' + str(i) for i in arange(start, stop)]  # subfolders that you want to analyze
         else:
-            l_ImName = [str(i) for i in arange(start, stop)]  # subfolders that you want to analyze
+            pat_range = [str(i) for i in arange(start, stop)]
+            pat_dirs = [e[1] for e in os.walk(path_image)][0]
+            pat_multiple = ['{}_{}'.format(patient, i) for patient in pat_range for i in range(1, len(pat_dirs))]
+            list_dir_candidates = pat_range + pat_multiple
+            l_ImName = [e for e in list_dir_candidates if e in pat_dirs]
 
         # no. parallel jobs
         n_jobs = int(self.panelRadiomics.FindWindowById(170).GetValue())

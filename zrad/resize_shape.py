@@ -56,7 +56,11 @@ class ResizeShape(object):
         self.mypath_load = inp_mypath_load
         self.mypath_s = inp_mypath_save
         self.image_type = image_type
-        self.list_dir = [str(i) for i in range(low, high + 1)]  # list of directories to be analyzed
+        pat_range = [str(i) for i in range(low, high + 1)]
+        pat_dirs = [e[1] for e in os.walk(self.mypath_load)][0]
+        pat_multiple = ['{}_{}'.format(patient, i) for patient in pat_range for i in range(1, len(pat_dirs))]
+        list_dir_candidates = pat_range + pat_multiple
+        self.list_dir = [e for e in list_dir_candidates if e in pat_dirs]
         self.n_jobs = n_jobs
         self.resize()
 

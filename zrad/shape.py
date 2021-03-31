@@ -29,7 +29,11 @@ class Shape(object):
     """
 
     def __init__(self, path_image, path_save, save_as, rois, low, high, n_jobs):
-        nlist = [str(i) for i in range(low, high)]
+        pat_range = [str(i) for i in range(low, high)]
+        pat_dirs = [e[1] for e in os.walk(path_image)][0]
+        pat_multiple = ['{}_{}'.format(patient, i) for patient in pat_range for i in range(1, len(pat_dirs))]
+        list_dir_candidates = pat_range + pat_multiple
+        nlist = [e for e in list_dir_candidates if e in pat_dirs]
 
         # maximum euclidian distance, one needs
         scalefactor = 0.3  # 0.4 #0.1 => 8 s /file, 0.2 => 10 s/file, 0.3 => 1 min/file, 0.4 => MemoryOverload
@@ -42,7 +46,6 @@ class Shape(object):
 
         # for nn in nlist:
         def parfor(nn):
-            # df_results = pd.DataFrame()
             pat_results = []
             for roi_name in rois:
                 roi_results = {}

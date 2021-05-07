@@ -294,7 +294,6 @@ class Radiomics(wx.Frame):
         info.SetName('Z-Rad')
         info.SetVersion('7.2.0')
         info.SetDescription(description)
-        info.SetCopyright('(C) 2017-2020 USZ Radiomics Team')
         info.SetLicence(licence)
         AboutBox(info)
 

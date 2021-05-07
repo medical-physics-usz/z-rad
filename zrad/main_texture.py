@@ -25,7 +25,7 @@ class Radiomics(wx.Frame):
         Parent of class Panel"""
 
     def __init__(self, *a, **b):
-        super(Radiomics, self).__init__(size=(1075, 725), pos=(100, 100), title='Z-Rad', *a, **b)
+        super(Radiomics, self).__init__(size=(1075, 725), pos=(100, 100), title='Z-Rad 7.2.1', *a, **b)
 
         self.defaultWindowsize = (1100, 725)
         self.SetMinSize(self.defaultWindowsize)
@@ -37,6 +37,7 @@ class Radiomics(wx.Frame):
         self.Show()
 
     def InitUI(self):
+        self.local = False  # ATTENTION!: if you set True, be aware that you calculate Radiomics in 3D only.
         self.panelHeight = 24  # height of boxes in GUI, 20 for PC and 40 for lenovo laptop
         self.p = wx.Panel(self, size=self.defaultWindowsize)
         self.nb = wx.Notebook(self.p, size=self.defaultWindowsize)
@@ -106,17 +107,14 @@ class Radiomics(wx.Frame):
         stop'''
         stop = int(stop) + 1
         start = int(start)
-        
-        self.local = self.panelRadiomics.FindWindowById(200).GetValue()  # ATTENTION!: if you set True, be aware that you calculate Radiomics in 3D only. Final implementation to be added
 
         # convert to a list        
         if structure == '':
             structure = 'none'
             self.panelRadiomics.FindWindowById(104).SetValue(structure)
         else:
+            structure = structure.split(',')
             structure = [e.strip() for e in structure]
-                    
-        multipleNames = self.panelRadiomics.FindWindowById(1041).GetValue()
 
         # dimensionality
         if self.panelRadiomics.FindWindowById(1061).GetValue():
@@ -169,7 +167,7 @@ class Radiomics(wx.Frame):
             dict_parameters["HUmax"] = hu_max
             dict_parameters["outlier_corr"] = outlier_corr
             main_texture_ct(self.GetStatusBar(), path_image, path_save, structure, pixNr, binSize, l_ImName, save_as,
-                            dim, hu_min, hu_max, outlier_corr, wv, self.local, multipleNames, cropStructure, exportList, n_jobs)
+                            dim, hu_min, hu_max, outlier_corr, wv, self.local, cropStructure, exportList, n_jobs)
 
         elif self.panelRadiomics.FindWindowById(130).GetValue():  # PET
             SUV = self.panelRadiomics.FindWindowById(131).GetValue()
@@ -227,8 +225,10 @@ class Radiomics(wx.Frame):
             name_shape_pt_list = [e.strip() for e in name_shape_pt_list]
             dict_parameters['shape structure'] = name_shape_pt_list
             Shape(path_image, path_save, save_as, name_shape_pt_list, start, stop, n_jobs)
-        if dim == "3D":
-            ExportExcel(calc_shape, path_save, save_as, dict_parameters)
+            if dim == "3D":
+                ExportExcel(True, path_save, save_as, dict_parameters)
+        elif dim == "3D":
+            ExportExcel(False, path_save, save_as, dict_parameters)
 
         # calculate results for LN
         if self.panelRadiomics.FindWindowById(1091).GetValue():
@@ -294,9 +294,9 @@ class Radiomics(wx.Frame):
         licence = """"""
         info = AboutDialogInfo()
         info.SetName('Z-Rad')
-        info.SetVersion('7.2.0')
+        info.SetVersion('7.2.1')
         info.SetDescription(description)
-        info.SetCopyright('(C) 2017-2020 USZ Radiomics Team')
+        info.SetCopyright('(C) 2017-2021 USZ Radiomics Team')
         info.SetLicence(licence)
         AboutBox(info)
 

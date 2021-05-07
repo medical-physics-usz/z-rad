@@ -1,0 +1,9 @@
+diff a/zrad/panel_radiomics.py b/zrad/panel_radiomics.py	(rejected hunks)
+@@ -67,7 +67,6 @@
+         h31box.Add(st3)
+         self.vbox.Add(h31box, flag=wx.LEFT)
+         self.vbox.Add((-1, 20))
+-        self.gs_12.AddMany([cb_local])
+ 
+         self.gs_1 = wx.FlexGridSizer(cols=3, vgap=5, hgap=10)
+         st_saver = wx.StaticText(self, label='Save results in')

@@ -35,7 +35,7 @@ class main_texture_ct(object):
     """
 
     def __init__(self, sb, path_image, path_save, structures, pixNr, binSize, l_ImName, save_as, dim, HUmin, HUmax,
-                 outlier_corr, wv, local, multipleNames, cropInput, exportList, n_jobs):
+                 outlier_corr, wv, local, cropInput, exportList, n_jobs):
         self.logger = logging.getLogger(__name__)
         self.logger.info("Start")
         self.n_jobs = n_jobs
@@ -49,33 +49,65 @@ class main_texture_ct(object):
                 feature_names_2d_list = f.read().split()
             to_return_2d = pd.DataFrame(columns=feature_names_2d_list)
             to_return_3d = list()
-            
-            #if the multiple structures or subregions should be included in one texture extraction
-            if local or multipleNames: 
-                return_extract = self.Exctract(path_image, ImName, structures, wv, dim, local, path_save, pixNr, binSize, image_modality, cropInput, HUmin, HUmax, outlier_corr)
-                if return_extract != False:
-                    if dim == "2D" or dim == "2D_singleSlice":
-                        dp_export = pd.DataFrame(return_extract, index=[ImName])
-                        to_return_2d = to_return_2d.append(dp_export, sort=False)
-                    else:
-                        to_return_3d.append(return_extract)
-            #if texture should be calculated for all specified structures
-            else: 
-                for structure in structures:
-                    self.logger.info("Structure " + structure)
-                    structure = [structure]
-                    return_extract = self.Exctract(path_image, ImName, structure, wv, dim, local, path_save, pixNr, binSize, image_modality, cropInput, HUmin, HUmax, outlier_corr)
-                    
-                    # final list contains of the sublist for each patient, sublist contains of
-                    # [patient number, structure used for calculations, list of texture parameters,
-                    # number of points used for calculations]
-                    if return_extract != False:
-                        if dim == "2D" or dim == "2D_singleSlice":
-                            dp_export = pd.DataFrame(return_extract, index=[ImName])
-                            to_return_2d = to_return_2d.append(dp_export, sort=False)
-                        else:
-                            to_return_3d.append(return_extract)
-                            
+
+            for structure in structures:
+                self.logger.info("Structure " + structure)
+                structure = [structure]
+                try:
+                    mypath_image = path_image + ImName + os.sep
+                    # CT and contrast-enhanced CT
+                    CT_UID = ['1.2.840.10008.5.1.4.1.1.2', '1.2.840.10008.5.1.4.1.1.2.1', 'CT Image Storage']
+                    read = ReadImageStructure(CT_UID, mypath_image, structure, wv, dim, local)
+
+                    # parameters to recalculate intensities HU
+                    inter = float(dc.read_file(mypath_image + read.onlyfiles[0]).RescaleIntercept)
+                    slope = float(dc.read_file(mypath_image + read.onlyfiles[0]).RescaleSlope)
+                    bitsRead = str(dc.read_file(mypath_image + read.onlyfiles[0]).BitsAllocated)
+                    sign = int(dc.read_file(mypath_image + read.onlyfiles[0]).PixelRepresentation)
+                    if sign == 1:
+                        bitsRead = 'int' + bitsRead
+                    elif sign == 0:
+                        bitsRead = 'uint' + bitsRead
+
+                    IM_matrix = []  # list containing the images matrix
+                    for f in read.onlyfiles:
+                        data = dc.read_file(mypath_image + f).PixelData
+                        data16 = np.array(np.frombuffer(data, dtype=bitsRead))  # converting to decimal
+                        data16 = data16 * slope + inter
+                        # recalculating for rows x columns
+                        a = np.reshape(data16, (read.rows, read.columns))
+                        IM_matrix.append(np.array(a))
+                    IM_matrix = np.array(IM_matrix)
+                except OSError:  # error if there is not directory
+                    continue
+                except IndexError:  # empty folder
+                    continue
+
+                stop_calc = ''  # in case something would be wrong with the image tags
+                if dim == "2D" or dim == "2D_singleSlice":
+                    dict_features = Features2D(dim, [IM_matrix], read.structure_f, read.columns, read.rows,
+                                               read.xCTspace, read.zCTspace, read.slices, path_save, ImName, pixNr,
+                                               binSize, image_modality, wv, local, cropInput, stop_calc, read.Xcontour,
+                                               read.Xcontour_W, read.Ycontour, read.Ycontour_W, read.Xcontour_Rec,
+                                               read.Ycontour_Rec, HUmin, HUmax, outlier_corr).ret()
+                else:
+                    lista_results = Texture([IM_matrix], read.structure_f, read.columns, read.rows, read.xCTspace,
+                                            read.slices, path_save, ImName, pixNr, binSize, image_modality, wv, local,
+                                            cropInput, stop_calc, read.Xcontour, read.Xcontour_W, read.Ycontour,
+                                            read.Ycontour_W, read.Xcontour_Rec, read.Ycontour_Rec, HUmin, HUmax,
+                                            outlier_corr).ret()
+
+                # final list contains of the sublist for each patient, sublist contains of
+                # [patient number, structure used for calculations, list of texture parameters,
+                # number of points used for calculations]
+                if dim == "2D" or dim == "2D_singleSlice":
+                    dp_export = pd.DataFrame(dict_features, index=[ImName])
+                    to_return_2d = to_return_2d.append(dp_export, sort=False)
+                else:
+                    features_3d = [[ImName, lista_results[2], lista_results[:2], lista_results[3:-1],
+                                    lista_results[-1]]]
+                    to_return_3d.append(features_3d)
+
             if dim == "2D" or dim == "2D_singleSlice":
                 to_return = to_return_2d
             else:
@@ -110,63 +142,3 @@ class main_texture_ct(object):
                 final_file = Export().ExportResults(feature_vec, final_file, par_names, image_modality, wave_names, wv,
                                                     local)
             final_file.close()
-            
-    def Exctract(self, path_image, ImName, structure, wv, dim, local, path_save, pixNr, binSize, image_modality, cropInput, HUmin, HUmax, outlier_corr):
-        try:
-            stop_texture = False # in case something would be wrong with the image tags
-            mypath_image = path_image + ImName + os.sep
-            # CT and contrast-enhanced CT
-            CT_UID = ['1.2.840.10008.5.1.4.1.1.2', '1.2.840.10008.5.1.4.1.1.2.1', 'CT Image Storage']
-            read = ReadImageStructure(CT_UID, mypath_image, structure, wv, dim, local)
-            self.dicomProblem.append([ImName, read.listDicomProblem])
-
-            # parameters to recalculate intensities HU
-            inter = float(dc.read_file(mypath_image + read.onlyfiles[0]).RescaleIntercept)
-            slope = float(dc.read_file(mypath_image + read.onlyfiles[0]).RescaleSlope)
-            bitsRead = str(dc.read_file(mypath_image + read.onlyfiles[0]).BitsAllocated)
-            sign = int(dc.read_file(mypath_image + read.onlyfiles[0]).PixelRepresentation)
-            if sign == 1:
-                bitsRead = 'int' + bitsRead
-            elif sign == 0:
-                bitsRead = 'uint' + bitsRead
-
-            IM_matrix = []  # list containing the images matrix
-            for f in read.onlyfiles:
-                data = dc.read_file(mypath_image + f).PixelData
-                data16 = np.array(np.frombuffer(data, dtype=bitsRead))  # converting to decimal
-                data16 = data16 * slope + inter
-                # recalculating for rows x columns
-                a = np.reshape(data16, (read.rows, read.columns))
-                IM_matrix.append(np.array(a))
-            IM_matrix = np.array(IM_matrix)
-        except OSError:  # error if there is not directory
-            stop_texture = True
-            pass
-        except IndexError:  # empty folder
-            stop_texture = True
-            pass
-        
-        stop_calc = '' # in case something would be wrong with the image tags
-        if not stop_texture:
-            if dim == "2D" or dim == "2D_singleSlice":
-                dict_features = Features2D(dim, [IM_matrix], read.structure_f, read.columns, read.rows,
-                                           read.xCTspace, read.zCTspace, read.slices, path_save, ImName, pixNr,
-                                           binSize, image_modality, wv, local, cropInput, stop_calc, read.Xcontour,
-                                           read.Xcontour_W, read.Ycontour, read.Ycontour_W, read.Xcontour_Rec,
-                                           read.Ycontour_Rec, HUmin, HUmax, outlier_corr).ret()
-                to_return = dict_features
-            else:
-                lista_results = Texture([IM_matrix], read.structure_f, read.columns, read.rows, read.xCTspace,
-                                        read.slices, path_save, ImName, pixNr, binSize, image_modality, wv, local,
-                                        cropInput, stop_calc, read.Xcontour, read.Xcontour_W, read.Ycontour,
-                                        read.Ycontour_W, read.Xcontour_Rec, read.Ycontour_Rec, HUmin, HUmax,
-                                        outlier_corr).ret()
-                features_3d = [[ImName, lista_results[2], lista_results[:2], lista_results[3:-1], lista_results[-1]]]
-                to_return = features_3d
-        else:
-            to_return = False
-        
-        return to_return 
-        
-
-

@@ -107,17 +107,16 @@ class Radiomics(wx.Frame):
         stop = int(stop) + 1
         start = int(start)
         
-        self.local = self.panelRadiomics.FindWindowById(200).GetValue()  # ATTENTION!: if you set True, be aware that you calculate Radiomics in 3D only. Final implementation to be added
+        self.local = False # ATTENTION!: if you set True, be aware that you calculate Radiomics in 3D only. Final implementation to be added
 
         # convert to a list        
         if structure == '':
             structure = 'none'
             self.panelRadiomics.FindWindowById(104).SetValue(structure)
         else:
+            structure = structure.split(',')
             structure = [e.strip() for e in structure]
                     
-        multipleNames = self.panelRadiomics.FindWindowById(1041).GetValue()
-
         # dimensionality
         if self.panelRadiomics.FindWindowById(1061).GetValue():
             dim = '2D'
@@ -146,7 +145,7 @@ class Radiomics(wx.Frame):
         
         # save parameters of calculation
         dict_parameters = {'path': path_image,
-                           "structure": structure,
+                           "structure": str(structure),
                             "pixelNr": pixNr,
                             "bin_size": binSize,
                             "Dimension": dim,
@@ -169,7 +168,7 @@ class Radiomics(wx.Frame):
             dict_parameters["HUmax"] = hu_max
             dict_parameters["outlier_corr"] = outlier_corr
             main_texture_ct(self.GetStatusBar(), path_image, path_save, structure, pixNr, binSize, l_ImName, save_as,
-                            dim, hu_min, hu_max, outlier_corr, wv, self.local, multipleNames, cropStructure, exportList, n_jobs)
+                            dim, hu_min, hu_max, outlier_corr, wv, self.local, cropStructure, exportList, n_jobs)
 
         elif self.panelRadiomics.FindWindowById(130).GetValue():  # PET
             SUV = self.panelRadiomics.FindWindowById(131).GetValue()
@@ -225,7 +224,7 @@ class Radiomics(wx.Frame):
         if calc_shape:  # calculate shape
             name_shape_pt_list = name_shape_pts.split(',')
             name_shape_pt_list = [e.strip() for e in name_shape_pt_list]
-            dict_parameters['shape structure'] = name_shape_pt_list
+            dict_parameters['shape structure'] = str(name_shape_pt_list)
             Shape(path_image, path_save, save_as, name_shape_pt_list, start, stop, n_jobs)
         if dim == "3D":
             ExportExcel(calc_shape, path_save, save_as, dict_parameters)

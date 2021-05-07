@@ -292,9 +292,9 @@ class Radiomics(wx.Frame):
         licence = """"""
         info = AboutDialogInfo()
         info.SetName('Z-Rad')
-        info.SetVersion('7.2.0')
+        info.SetVersion('7.2.1')
         info.SetDescription(description)
-        info.SetCopyright('(C) 2017-2020 USZ Radiomics Team')
+        info.SetCopyright('(C) 2017-2021 USZ Radiomics Team')
         info.SetLicence(licence)
         AboutBox(info)
 

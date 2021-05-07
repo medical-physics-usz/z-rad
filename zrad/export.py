@@ -29,22 +29,22 @@ class Export(object):
                      'mGLCM_autocorrelation', 'mGLCM_clust_tendency', 'mGLCM_clust_shade', 'mGLCM_clust_prominence',
                      'NGTDM_coarseness', 'NGTDM_contrast', 'NGTDM_busyness', 'NGTDM_complexity', 'NGTDM_strength',
                      'GLRLM_GLnonuniformity', 'GLRLM_GLnonuniformity_norm', 'GLRLM_RLnonuniformity', 'GLRLM_RLnonuniformity_norm', 'GLRLM_shortRunEmp', 'GLRLM_longRunEmp',
-                     'GLRLM_lowGL_run_emp', 'GLRLM_highGL_run_emp', 'GLRLM_shortRun_lowGL_emp', 'GLRLM_shortRun_highGL_emp', 'GLRLM_longRun_lowGL_emp', 'GLRLM_longRun_lowGL_emp', 'GLRLM_runPercentage',
+                     'GLRLM_lowGL_run_emp', 'GLRLM_highGL_run_emp', 'GLRLM_shortRun_lowGL_emp', 'GLRLM_shortRun_highGL_emp', 'GLRLM_longRun_lowGL_emp', 'GLRLM_longRun_highGL_emp', 'GLRLM_runPercentage',
                      'GLRLM_LRvar', 'GLRLM_RLvar', 'GLRLM_entropy',
                      'mGLRLM_GLnonuniformity', 'mGLRLM_GLnonuniformity_norm', 'mGLRLM_RLnonuniformity', 'mGLRLM_RLnonuniformity_norm', 'mGLRLM_shortRunEmp', 'mGLRLM_longRunEmp',
-                     'mGLRLM_lowGL_run_emp', 'mGLRLM_highGL_run_emp', 'mGLRLM_shortRun_lowGL_emp', 'mGLRLM_shortRun_highGL_emp', 'mGLRLM_longRun_lowGL_emp', 'mGLRLM_longRun_lowGL_emp', 'mGLRLM_runPercentage',
+                     'mGLRLM_lowGL_run_emp', 'mGLRLM_highGL_run_emp', 'mGLRLM_shortRun_lowGL_emp', 'mGLRLM_shortRun_highGL_emp', 'mGLRLM_longRun_lowGL_emp', 'mGLRLM_longRun_highGL_emp', 'mGLRLM_runPercentage',
                      'mGLRLM_LRvar', 'mGLRLM_RLvar', 'mGLRLM_entropy',
                      'GLSZM_GLnonuniformity', 'GLSZM_GLnonuniformity_norm', 'GLSZM_ZSnonuniformity', 'GLSZM_ZSnonuniformity_norm', 'GLSZM_smallZoneEmp', 'GLSZM_largeZoneEmp',
-                     'GLSZM_lowGL_zone_emp', 'GLSZM_highGL_zone_emp', 'GLSZM_smallZone_lowGL_emp', 'GLSZM_smallZone_highGL_emp', 'GLSZM_largeZone_lowGL_emp', 'GLSZM_largeZone_lowGL_emp', 'GLSZM_zonePercentage',
+                     'GLSZM_lowGL_zone_emp', 'GLSZM_highGL_zone_emp', 'GLSZM_smallZone_lowGL_emp', 'GLSZM_smallZone_highGL_emp', 'GLSZM_largeZone_lowGL_emp', 'GLSZM_largeZone_highGL_emp', 'GLSZM_zonePercentage',
                      'GLSZM_GLvar', 'GLSZM_ZSvar', 'GLSZM_entropy']
         if calcGLDZM:
             app = ['GLDZM_GLnonuniformity', 'GLDZM_GLnonuniformity_norm', 'GLDZM_ZSnonuniformity', 'GLDZM_ZSnonuniformity_norm', 'GLDZM_smallDistanceEmp', 'GLDZM_largeDistanceEmp',
-                    'GLDZM_lowGL_zone_emp', 'GLDZM_highGL_zone_emp', 'GLDZM_smallDistance_lowGL_emp', 'GLDZM_smallDistance_highGL_emp', 'GLDZM_largeDistance_lowGL_emp', 'GLDZM_largeDistance_lowGL_emp', 'GLDZM_zonePercentage',
+                    'GLDZM_lowGL_zone_emp', 'GLDZM_highGL_zone_emp', 'GLDZM_smallDistance_lowGL_emp', 'GLDZM_smallDistance_highGL_emp', 'GLDZM_largeDistance_lowGL_emp', 'GLDZM_largeDistance_highGL_emp', 'GLDZM_zonePercentage',
                     'GLDZM_GLvar', 'GLDZM_ZSvar', 'GLDZM_entropy']
             par_names = par_names + app
         if calcNGLDM:
             app = ['NGLDM_GLnonuniformity', 'NGLDM_GLnonuniformity_norm', 'NGLDM_DCnonuniformity', 'NGLDM_DCnonuniformity_norm', 'NGLDM_lowDependenceEmp', 'GLDZM_highDependenceEmp',
-                    'NGLDM_lowGL_count_emp', 'NGLDM_highGL_count_emp', 'NGLDM_lowDependence_lowGL_emp', 'NGLDM_lowDependence_highGL_emp', 'NGLDM_highDependence_lowGL_emp', 'NGLDM_highDependence_lowGL_emp',
+                    'NGLDM_lowGL_count_emp', 'NGLDM_highGL_count_emp', 'NGLDM_lowDependence_lowGL_emp', 'NGLDM_lowDependence_highGL_emp', 'NGLDM_highDependence_lowGL_emp', 'NGLDM_highDependence_highGL_emp',
                     'NGLDM_GLvar', 'NGLDM_DCvar', 'NGLDM_DCenergy', 'NGLDM_DCentropy']
             par_names = par_names + app
         app = ['fractal_dim', 'center_mass_shift', 'MaxIntensityTumorVolume20%', 'MaxIntensityTumorVolume30%', 'MaxIntensityTumorVolume40%', 'MaxIntensityTumorVolume50%', 'MaxIntensityTumorVolume60%', 'MaxIntensityTumorVolume70%']

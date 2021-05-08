@@ -25,7 +25,7 @@ class Radiomics(wx.Frame):
         Parent of class Panel"""
 
     def __init__(self, *a, **b):
-        super(Radiomics, self).__init__(size=(1075, 725), pos=(100, 100), title='Z-Rad', *a, **b)
+        super(Radiomics, self).__init__(size=(1075, 725), pos=(100, 100), title='Z-Rad 7.2.1', *a, **b)
 
         self.defaultWindowsize = (1100, 725)
         self.SetMinSize(self.defaultWindowsize)
@@ -208,10 +208,21 @@ class Radiomics(wx.Frame):
         elif self.panelRadiomics.FindWindowById(150).GetValue():  # MR
             struct_norm1 = self.panelRadiomics.FindWindowById(151).GetValue()
             struct_norm2 = self.panelRadiomics.FindWindowById(152).GetValue()
+            normROI_advanced = self.panelRadiomics.FindWindowById(153).GetValue()
+            path_skull = self.panelRadiomics.FindWindowById(154).GetValue()
+            path_template =  self.panelRadiomics.FindWindowById(155).GetValue()
+            norm_type = self.panelRadiomics.FindWindowById(156).GetValue() # 'none', 'linear', 'z-score', 'histogram matching'
+            
+            if norm_type == 'linear' and (struct_norm1 == '' or struct_norm2 == ''):
+                MyInfo('To perform the linear interpolation provide the names of two ROIs')
+                raise SystemExit(0)                
+            elif norm_type == 'histogram matching' and path_template == '':
+                MyInfo('To perform the histogram matching provide numpy array of standard ROI')
+                raise SystemExit(0)
+
             dict_parameters["image_modality"] = 'MR'
-            dict_parameters['normalization'] = struct_norm1 + ' ' + struct_norm2
-            main_texture_mr(self.GetStatusBar(), path_image, path_save, structure, pixNr, binSize, l_ImName, save_as,
-                            dim, struct_norm1, struct_norm2, wv, self.local, cropStructure, exportList, n_jobs)
+            dict_parameters['normalization']= norm_type + '\\ ' + struct_norm1 + ' ' + struct_norm2 + '\\ ' + normROI_advanced + '\\ ' + path_template
+            main_texture_mr(self.GetStatusBar(), path_image, path_save, structure, pixNr, binSize, l_ImName, save_as, dim,  struct_norm1, struct_norm2, normROI_advanced, path_skull, norm_type, path_template, wv, self.local, cropStructure,exportList, n_jobs)
 
         elif self.panelRadiomics.FindWindowById(160).GetValue():  # IVIM
             dict_parameters["image_modality"] = 'IVIM'
@@ -225,7 +236,8 @@ class Radiomics(wx.Frame):
             name_shape_pt_list = [e.strip() for e in name_shape_pt_list]
             dict_parameters['shape structure'] = name_shape_pt_list
             Shape(path_image, path_save, save_as, name_shape_pt_list, start, stop, n_jobs)
-            if dim == "3D":
+            
+        if dim == "3D":
                 ExportExcel(calc_shape, path_save, save_as, dict_parameters)
 
         # calculate results for LN
@@ -292,8 +304,9 @@ class Radiomics(wx.Frame):
         licence = """"""
         info = AboutDialogInfo()
         info.SetName('Z-Rad')
-        info.SetVersion('7.2.0')
+        info.SetVersion('7.2.1')
         info.SetDescription(description)
+        info.SetCopyright('(C) 2017-2021 USZ Radiomics Team')
         info.SetLicence(licence)
         AboutBox(info)
 

@@ -34,6 +34,7 @@ class Texture(object):
     data
     stop_calc - string, stop calculation if image tag was incorrect, eg activty PET = 0; stop_calc=='' continue,
     stop_calc != '' break and save info in the excel file
+    maskedROI - False if the image is read without nans, True is the image was already masked and some nans exists which have to be accounted for in filtering part
     *cont – list of additional variables:
     Xc – structure points in X, list of slices, per slice list of substructures
     Yc - structure points in Y, list of slices, per slice list of substructures
@@ -45,7 +46,7 @@ class Texture(object):
     """
 
     # Xc, Yc, XcW, YcW, HUmin, HUmax, outlier,  ):
-    def __init__(self, maps, structure, columns, rows, xCTspace, slices, path, ImName, pixNr, binSize, modality, wv, localRadiomics, cropStructure, stop_calc, *cont):
+    def __init__(self, maps, structure, columns, rows, xCTspace, slices, path, ImName, pixNr, binSize, modality, wv, localRadiomics, cropStructure, stop_calc, maskedROI, *cont):
         self.logger = logging.getLogger("Texture")
         self.logger.info("Start: Texture Calculation")
         self.structure = structure
@@ -271,7 +272,7 @@ class Texture(object):
                 # wavelet transform
                 if wv:
                     if 'BV' not in modality:
-                        ctp = False
+                        ctp = maskedROI
                         # order of transformed images: original, LLL, HHH, HHL, HLH, HLL, LHH, LHL, LLH
                         wave_list = Wavelet(maps[i], path, modality[i], ImName + '_' + pixNr, "3D", ctp).Return()
                     else:

@@ -45,6 +45,7 @@ class main_texture_pet(object):
         def parfor(ImName):
             self.logger.info("Patient " + ImName)
             to_return_3d = list()
+            meanWV = False #caluclated modified WV transform
 
             for structure in structures:
                 self.logger.info("Structure " + structure)
@@ -186,7 +187,7 @@ class main_texture_pet(object):
                     stop_calc = 'undefined weight'
                 lista_results = Texture([IM_matrix], read.structure_f, read.columns, read.rows, read.xCTspace,
                                         read.slices, path_save, ImName, pixNr, binSize, image_modality, wv, local,
-                                        cropStructure, stop_calc, read.Xcontour, read.Xcontour_W, read.Ycontour,
+                                        cropStructure, stop_calc, meanWV, read.Xcontour, read.Xcontour_W, read.Ycontour,
                                         read.Ycontour_W, read.Xcontour_Rec, read.Ycontour_Rec).ret()
                 #            elif dim == '2D': #not working
                 #                lista_results = Texture2D(sb,IM_matrix, structure, x_ct,y_ct, columns, rows, xCTspace, patientPos, rs, slices, path_save, ImName, pixNr, prefix).ret()

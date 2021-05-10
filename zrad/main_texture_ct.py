@@ -40,6 +40,7 @@ class main_texture_ct(object):
         self.logger.info("Start")
         self.n_jobs = n_jobs
         image_modality = ['CT']
+        meanWV = False
 
         def parfor(ImName):
             self.logger.info("Patient " + ImName)
@@ -49,7 +50,8 @@ class main_texture_ct(object):
                 feature_names_2d_list = f.read().split()
             to_return_2d = pd.DataFrame(columns=feature_names_2d_list)
             to_return_3d = list()
-
+            meanWV = False #caluclated modified WV transform
+                                
             for structure in structures:
                 self.logger.info("Structure " + structure)
                 structure = [structure]
@@ -93,7 +95,7 @@ class main_texture_ct(object):
                 else:
                     lista_results = Texture([IM_matrix], read.structure_f, read.columns, read.rows, read.xCTspace,
                                             read.slices, path_save, ImName, pixNr, binSize, image_modality, wv, local,
-                                            cropInput, stop_calc, read.Xcontour, read.Xcontour_W, read.Ycontour,
+                                            cropInput, stop_calc, meanWV, read.Xcontour, read.Xcontour_W, read.Ycontour,
                                             read.Ycontour_W, read.Xcontour_Rec, read.Ycontour_Rec, HUmin, HUmax,
                                             outlier_corr).ret()
 

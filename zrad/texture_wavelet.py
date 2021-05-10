@@ -5,7 +5,7 @@ from os.path import isdir
 
 import matplotlib.pyplot as plt
 import pywt
-from numpy import sqrt, array, zeros, where, floor, isnan, nan
+from numpy import sqrt, array, zeros, where, floor, isnan, nan, nanmean
 
 
 class Wavelet(object):
@@ -20,40 +20,25 @@ class Wavelet(object):
         if ctp:
             perf = im_name
             ind = where(isnan(m))
-            mean = 0
-            licz = 0
-            cnt = []
-            for i in range(len(ind[0])):
-                cnt.append([ind[0][i], ind[1][i], ind[2][i]])
-            for z in range(len(m)):
-                for y in range(len(m[z])):
-                    for x in range(len(m[z][y])):
-                        if [z, y, x] not in cnt:
-                            mean += m[z][y][x]
-                            licz += 1.
-            mean = mean / licz
-            for i in range(len(ind[0])):
-                self.map[ind[0][i]][ind[1][i]][ind[2][i]] = mean
+            mean = nanmean(m)
+            self.map[ind] = mean
 
         if self.dim == "3D":
             HHH, HHL, HLH, HLL, LHH, LHL, LLH, LLL = self.wavelet_calculation(self.map)  # xyz
 
             if ctp:
                 for i in range(len(ind[0])):
-                    self.map[ind[0][i]][ind[1][i]][ind[2][i]] = nan
-                for i in range(len(cnt)):
-                    cnt[i] = [int(round(cnt[i][0] / 2. + 1, 0)), int(round(cnt[i][1] / 2. + 1, 0)),
-                              int(round(cnt[i][2] / 2. + 1, 0))]
-
-                for i in cnt:
-                    HHH[i[0]][i[1]][i[2]] = nan
-                    HHL[i[0]][i[1]][i[2]] = nan
-                    HLH[i[0]][i[1]][i[2]] = nan
-                    HLL[i[0]][i[1]][i[2]] = nan
-                    LHH[i[0]][i[1]][i[2]] = nan
-                    LHL[i[0]][i[1]][i[2]] = nan
-                    LLH[i[0]][i[1]][i[2]] = nan
-                    LLL[i[0]][i[1]][i[2]] = nan
+                    z = int(round(ind[0][i] / 2. + 1, 0))
+                    y = int(round(ind[1][i] / 2. + 1, 0))
+                    x = int(round(ind[2][i] / 2. + 1, 0))
+                    HHH[z][y][x] = nan
+                    HHL[z][y][x] = nan
+                    HLH[z][y][x] = nan
+                    HLL[z][y][x] = nan
+                    LHH[z][y][x] = nan
+                    LHL[z][y][x] = nan
+                    LLH[z][y][x] = nan
+                    LLL[z][y][x] = nan
 
                 self.HHH = HHH
                 self.HHL = HHL

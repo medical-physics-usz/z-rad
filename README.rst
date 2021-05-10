@@ -23,6 +23,7 @@ Dependencies
 - vtk
 - wxpython
 - xlsxwriter
+- hd-bet ()
 
 
 Installing Python
@@ -54,6 +55,17 @@ Due to access right restrictions from USZ site, installation is possible either 
                    files.pythonhosted.org
 
    This configuration file routes the network traffic related to ``pip``. Do not forget to change *username* and *password* to your credentials.
+
+
+Configure HD-BET for skull stripping
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Download the source code https://github.com/MIC-DKFZ/HD-BET
+Go to the folder: cd HD-BET
+And install with pip: pip install -e
+Copy a file from HD_BET\config.py to the Zrad software folder and rename to config_hd_bet.py
+Model parameters are saved in K:\RAO_Physik\Research\1_FUNCTIONAL IMAGING\F_Software\radiomics documentation\hd-bet_params
+Copy the folder with model parameter and adapt the path (folder_with_parameter_files) in HD_BET\path.py
 
 
 

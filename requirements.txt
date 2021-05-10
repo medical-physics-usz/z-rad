@@ -10,3 +10,4 @@ tqdm
 vtk
 wxpython
 xlsxwriter
+hd-bet

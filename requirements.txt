@@ -3,6 +3,7 @@ matplotlib
 numpy
 pandas
 pydicom
+pywavelets
 scikit-learn
 scipy
 tqdm

@@ -6,21 +6,24 @@ This is an in-house implementation of radiomics software from University Hospita
 Installation
 ------------
 
-Current version of Z-Rad supports Python 3.6-3.8. All releases are tested in Windows 10. Z-Rad may work on Linux or MacOS but it was not tested on these systems. The legacy version of Z-Rad supporting Python 2.7 is available in **python2** branch.
+Current version of Z-Rad supports Python 3.6-3.8. All releases are tested in Windows 10 and MacOS. Z-Rad may work on Linux but it was not tested on such systems. The legacy version of Z-Rad supporting Python 2.7 is available in **python2** branch.
 
 Dependencies
 ~~~~~~~~~~~~ 
 
-- Python (>= 3.6)
-- NumPy (>= 1.14.0)
-- SciPy (>= 1.0.0)
-- Pydicom (>= 1.1.0)
-- Matplotlib (>= 3.0.0)
-- wxPython (>= 4.0.0)
-- VTK (>= 6.3.0)
-- OpenCV
-- PyWavelets (>= 1.0.0)
+- joblib
+- matplotlib
+- numpy
+- pandas
+- pydicom
+- pywavelets
+- scikit-learn
+- scipy
 - tqdm
+- vtk
+- wxpython
+- xlsxwriter
+
 
 Installing Python
 ~~~~~~~~~~~~~~~~~
@@ -41,6 +44,7 @@ Due to access right restrictions from USZ site, installation is possible either 
 1. **Wheel**: Download the packages from the Unofficial Windows Binaries for Python Extension Packages: https://www.lfd.uci.edu/~gohlke/pythonlibs/ and then go to the directory where the wheel was downloaded. Use the following command to install them::
 
     pip install <name_of_the_wheel.whl>
+
 2. **PIP through a proxy**: Create *pip.ini* file in ``%APPDATA%\pip\pip.ini`` with the following contents::
 
     [global]
@@ -62,8 +66,8 @@ Known issues
 ------------
 
 List of the known issues related to the software or hardware:
-- Python environment without admin rights or IT with conda: 
-It used to work, but somehow now it does not anymore ;)
+
+- Python environment without admin rights or IT with conda. It used to work, but somehow now it does not anymore ;)
 
 
 Contact

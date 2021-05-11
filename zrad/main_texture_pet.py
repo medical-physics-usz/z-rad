@@ -199,7 +199,7 @@ class main_texture_pet(object):
             out = Parallel(n_jobs=self.n_jobs)(delayed(parfor)(ImName) for ImName in l_ImName)
 
         final_file, wave_names, par_names = Export().Preset(exportList, wv, local, path_save, save_as,
-                                                            image_modality, path_image)
+                                                            image_modality)
         feature_vectors = [feature_vec for batch in out for feature_vec in batch]
         for feature_vec in feature_vectors:
             final_file = Export().ExportResults(feature_vec, final_file, par_names, image_modality, wave_names, wv,

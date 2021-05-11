@@ -35,8 +35,8 @@ class ExportExcel(object):
 
         # clean up texture
         wavelet_types = ['HHH', 'HHL', 'HLH', 'HLL', 'LHH', 'LHL', 'LLH', 'LLL']
-        delete_names = ['fractal_dim', 'center_mass_shift', 'MTV20%', 'MTV30%', 'MTV40%', 'MTV50%', 'MTV60%',
-                        'MTV70%']  # 'vmin', 'vmax', 'organ', 'voxels',
+        delete_names = ['fractal_dim', 'center_mass_shift', 'MaxIntensityTumorVolume20%', 'MaxIntensityTumorVolume30%', 
+                        'MaxIntensityTumorVolume40%', 'MaxIntensityTumorVolume50%', 'MaxIntensityTumorVolume60%', 'MaxIntensityTumorVolume70%']  # 'vmin', 'vmax', 'organ', 'voxels',
         for iDeleteCol in delete_names:
             delWavelets = [s + "_" + iDeleteCol for s in wavelet_types]
             df = df.iloc[:, ~df.columns.str.contains('|'.join(delWavelets))]
@@ -48,12 +48,12 @@ class ExportExcel(object):
         # fractal dims and center of mass shift
         df.insert(21, 'fractal_dim', df.pop("fractal_dim"))
         df.insert(22, 'center_mass_shift', df.pop("center_mass_shift"))
-        df.insert(23, 'MTV20%', df.pop("MTV20%"))
-        df.insert(24, 'MTV30%', df.pop("MTV30%"))
-        df.insert(25, 'MTV40%', df.pop("MTV40%"))
-        df.insert(26, 'MTV50%', df.pop("MTV50%"))
-        df.insert(27, 'MTV60%', df.pop("MTV60%"))
-        df.insert(28, 'MTV70%', df.pop("MTV70%"))
+        df.insert(23, 'MaxIntensityTumorVolume20%', df.pop("MaxIntensityTumorVolume20%"))
+        df.insert(24, 'MaxIntensityTumorVolume30%', df.pop("MaxIntensityTumorVolume30%"))
+        df.insert(25, 'MaxIntensityTumorVolume40%', df.pop("MaxIntensityTumorVolume40%"))
+        df.insert(26, 'MaxIntensityTumorVolume50%', df.pop("MaxIntensityTumorVolume50%"))
+        df.insert(27, 'MaxIntensityTumorVolume60%', df.pop("MaxIntensityTumorVolume60%"))
+        df.insert(28, 'MaxIntensityTumorVolume70%', df.pop("MaxIntensityTumorVolume70%"))
         df.insert(28, 'vmin', df.pop("vmin"))
         df.insert(28, 'vmax', df.pop("vmax"))
         return df

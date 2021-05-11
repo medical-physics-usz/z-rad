@@ -6,7 +6,7 @@ from numpy import array, float64
 
 
 class Export(object):
-    def Preset(self, exportList, wv, local, path_save, save_as, perf_names, path_image):
+    def Preset(self, exportList, wv, local, path_save, save_as, perf_names):
         try:
             makedirs(path_save)
         except OSError:
@@ -17,37 +17,37 @@ class Export(object):
         calcNGLDM = True
         final_file = open(path_save + 'texture_' + save_as + '.txt', 'w')
         # names of the texture parameters
-        par_names = ['Mean', 'SD', 'COV', 'skewness', 'kurtosis', 'var', 'median', 'percentile10', 'percentile90',
-                     'iqr', 'Hrange', 'mad', 'rmad', 'H_energy', 'H_entropy', 'rms', 'H_uniformity',
-                     'energy', 'entropy', 'contrast', 'correlation', 'homogenity', 'homogenity_n', 'idiff', 'idiff_n',
-                     'variance', 'sum_average', 'sum_entropy', 'sum_variance', 'diff_entropy', 'diff_variance', 'IMC1',
-                     'IMC2', 'MCC', 'joint_max', 'joint_average', 'diff_average', 'dissimilarity', 'inverse_variance',
-                     'autocorrelation', 'clust_tendency', 'clust_shade', 'clust_prominence',
-                     'M_energy', 'M_entropy', 'M_contrast', 'M_correlation', 'M_homogenity', 'M_homogenity_n',
-                     'M_idiff', 'M_idiff_n', 'M_variance', 'M_sum_average', 'M_sum_entropy', 'M_sum_variance',
-                     'M_diff_entropy', 'M_diff_variance', 'M_IMC1', 'M_IMC2', 'M_MCC', 'M_joint_max', 'M_joint_average',
-                     'M_diff_average', 'M_dissimilarity', 'M_inverse_variance', 'M_autocorrelation', 'M_clust_tendency',
-                     'M_clust_shade', 'M_clust_prominence',
-                     'coarseness', 'neighContrast', 'busyness', 'complexity', 'strength',
-                     'len_intensityVar', 'len_intensityVar_n', 'len_sizeVar', 'len_sizeVar_n', 'len_sse', 'len_lse',
-                     'len_lgse', 'len_hgse', 'len_sslge', 'len_sshge', 'len_lslge', 'len_lshge', 'len_rpc',
-                     'len_grey_lev_var', 'len_zone_size_var', 'len_size_entropy',
-                     'M_len_intensityVar', 'M_len_intensityVar_n', 'M_len_sizeVar', 'M_len_sizeVar_n', 'M_len_sse',
-                     'M_len_lse', 'M_len_lgse', 'M_len_hgse', 'M_len_sslge', 'M_len_sshge', 'M_len_lslge',
-                     'M_len_lshge', 'M_len_rpc', 'M_len_grey_lev_var', 'M_len_zone_size_var', 'M_len_size_entropy',
-                     'intensityVar', 'intensityVar_n', 'sizeVar', 'sizeVar_n', 'sse', 'lse', 'lgse', 'hgse', 'sslge',
-                     'sshge', 'lslge', 'lshge', 'rpc', 'grey_lev_var', 'zone_size_var', 'size_entropy']
+        par_names = ['hist_mean', 'hist_SD', 'hist_coeffOfVar', 'hist_skewness', 'hist_kurtosis', 'hist_variance', 'hist_median', 'hist_percentile10', 'hist_percentile90',
+                     'hist_IQR', 'hist_range', 'hist_meanAbsDeviation', 'hist_robustMeanAbsDeviation', 'hist_energy', 'hist_entropy', 'hist_RMS', 'hist_uniformity',
+                     'GLCM_energy', 'GLCM_entropy', 'GLCM_contrast', 'GLCM_correlation', 'GLCM_homogeneity', 'GLCM_homogeneity_norm', 'GLCM_inverese_diff', 'GLCM_inverese_diff_norm',
+                     'GLCM_variance', 'GLCM_sum_average', 'GLCM_sum_entropy', 'GLCM_sum_variance', 'GLCM_diff_entropy', 'GLCM_diff_variance', 'GLCM_IMC1',
+                     'GLCM_IMC2', 'GLCM_MCC', 'GLCM_joint_max', 'GLCM_joint_average', 'GLCM_diff_average', 'GLCM_dissimilarity', 'GLCM_inverse_variance',
+                     'GLCM_autocorrelation', 'GLCM_clust_tendency', 'GLCM_clust_shade', 'GLCM_clust_prominence',
+                     'mGLCM_energy', 'mGLCM_entropy', 'mGLCM_contrast', 'mGLCM_correlation', 'mGLCM_homogeneity', 'mGLCM_homogeneity_norm', 'mGLCM_inverese_diff', 'mGLCM_inverese_diff_norm',
+                     'mGLCM_variance', 'mGLCM_sum_average', 'mGLCM_sum_entropy', 'mGLCM_sum_variance', 'mGLCM_diff_entropy', 'mGLCM_diff_variance', 'mGLCM_IMC1',
+                     'mGLCM_IMC2', 'mGLCM_MCC', 'mGLCM_joint_max', 'mGLCM_joint_average', 'mGLCM_diff_average', 'mGLCM_dissimilarity', 'mGLCM_inverse_variance',
+                     'mGLCM_autocorrelation', 'mGLCM_clust_tendency', 'mGLCM_clust_shade', 'mGLCM_clust_prominence',
+                     'NGTDM_coarseness', 'NGTDM_contrast', 'NGTDM_busyness', 'NGTDM_complexity', 'NGTDM_strength',
+                     'GLRLM_GLnonuniformity', 'GLRLM_GLnonuniformity_norm', 'GLRLM_RLnonuniformity', 'GLRLM_RLnonuniformity_norm', 'GLRLM_shortRunEmp', 'GLRLM_longRunEmp',
+                     'GLRLM_lowGL_run_emp', 'GLRLM_highGL_run_emp', 'GLRLM_shortRun_lowGL_emp', 'GLRLM_shortRun_highGL_emp', 'GLRLM_longRun_lowGL_emp', 'GLRLM_longRun_highGL_emp', 'GLRLM_runPercentage',
+                     'GLRLM_LRvar', 'GLRLM_RLvar', 'GLRLM_entropy',
+                     'mGLRLM_GLnonuniformity', 'mGLRLM_GLnonuniformity_norm', 'mGLRLM_RLnonuniformity', 'mGLRLM_RLnonuniformity_norm', 'mGLRLM_shortRunEmp', 'mGLRLM_longRunEmp',
+                     'mGLRLM_lowGL_run_emp', 'mGLRLM_highGL_run_emp', 'mGLRLM_shortRun_lowGL_emp', 'mGLRLM_shortRun_highGL_emp', 'mGLRLM_longRun_lowGL_emp', 'mGLRLM_longRun_highGL_emp', 'mGLRLM_runPercentage',
+                     'mGLRLM_LRvar', 'mGLRLM_RLvar', 'mGLRLM_entropy',
+                     'GLSZM_GLnonuniformity', 'GLSZM_GLnonuniformity_norm', 'GLSZM_ZSnonuniformity', 'GLSZM_ZSnonuniformity_norm', 'GLSZM_smallZoneEmp', 'GLSZM_largeZoneEmp',
+                     'GLSZM_lowGL_zone_emp', 'GLSZM_highGL_zone_emp', 'GLSZM_smallZone_lowGL_emp', 'GLSZM_smallZone_highGL_emp', 'GLSZM_largeZone_lowGL_emp', 'GLSZM_largeZone_highGL_emp', 'GLSZM_zonePercentage',
+                     'GLSZM_GLvar', 'GLSZM_ZSvar', 'GLSZM_entropy']
         if calcGLDZM:
-            app = ['GLDZM_intensityVar', 'GLDZM_intensityVar_n', 'GLDZM_sizeVar', 'GLDZM_sizeVar_n', 'GLDZM_sse',
-                   'GLDZM_lse', 'GLDZM_lgse', 'GLDZM_hgse', 'GLDZM_sslge', 'GLDZM_sshge', 'GLDZM_lslge', 'GLDZM_lshge',
-                   'GLDZM_rpc', 'GLDZM_grey_lev_var', 'GLDZM_zone_size_var', 'GLDZM_size_entropy']
+            app = ['GLDZM_GLnonuniformity', 'GLDZM_GLnonuniformity_norm', 'GLDZM_ZSnonuniformity', 'GLDZM_ZSnonuniformity_norm', 'GLDZM_smallDistanceEmp', 'GLDZM_largeDistanceEmp',
+                    'GLDZM_lowGL_zone_emp', 'GLDZM_highGL_zone_emp', 'GLDZM_smallDistance_lowGL_emp', 'GLDZM_smallDistance_highGL_emp', 'GLDZM_largeDistance_lowGL_emp', 'GLDZM_largeDistance_highGL_emp', 'GLDZM_zonePercentage',
+                    'GLDZM_GLvar', 'GLDZM_ZSvar', 'GLDZM_entropy']
             par_names = par_names + app
         if calcNGLDM:
-            app = ['NGLDM_intensityVar', 'NGLDM_intensityVar_n', 'NGLDM_sizeVar', 'NGLDM_sizeVar_n', 'NGLDM_sse',
-                   'NGLDM_lse', 'NGLDM_lgse', 'NGLDM_hgse', 'NGLDM_sslge', 'NGLDM_sshge', 'NGLDM_lslge', 'NGLDM_lshge',
-                   'NGLDM_grey_lev_var', 'NGLDM_zone_size_var', 'NGLDM_size_entropy', 'NGLDM_energy']
+            app = ['NGLDM_GLnonuniformity', 'NGLDM_GLnonuniformity_norm', 'NGLDM_DCnonuniformity', 'NGLDM_DCnonuniformity_norm', 'NGLDM_lowDependenceEmp', 'GLDZM_highDependenceEmp',
+                    'NGLDM_lowGL_count_emp', 'NGLDM_highGL_count_emp', 'NGLDM_lowDependence_lowGL_emp', 'NGLDM_lowDependence_highGL_emp', 'NGLDM_highDependence_lowGL_emp', 'NGLDM_highDependence_highGL_emp',
+                    'NGLDM_GLvar', 'NGLDM_DCvar', 'NGLDM_DCenergy', 'NGLDM_DCentropy']
             par_names = par_names + app
-        app = ['fractal_dim', 'center_mass_shift', 'MTV20%', 'MTV30%', 'MTV40%', 'MTV50%', 'MTV60%', 'MTV70%']
+        app = ['fractal_dim', 'center_mass_shift', 'MaxIntensityTumorVolume20%', 'MaxIntensityTumorVolume30%', 'MaxIntensityTumorVolume40%', 'MaxIntensityTumorVolume50%', 'MaxIntensityTumorVolume60%', 'MaxIntensityTumorVolume70%']
         par_names = par_names + app
 
         if wv:

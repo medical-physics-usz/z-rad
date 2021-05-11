@@ -11,3 +11,4 @@ vtk
 wxpython
 xlsxwriter
 hd-bet
+pytorch

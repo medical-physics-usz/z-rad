@@ -23,7 +23,7 @@ Dependencies
 - vtk
 - wxpython
 - xlsxwriter
-- hd-bet
+- pytorch
 
 
 Installing Python

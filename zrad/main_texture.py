@@ -238,7 +238,7 @@ class Radiomics(wx.Frame):
             Shape(path_image, path_save, save_as, name_shape_pt_list, start, stop, n_jobs)
             
         if dim == "3D":
-                ExportExcel(calc_shape, path_save, save_as, dict_parameters)
+            ExportExcel(calc_shape, path_save, save_as, dict_parameters)
 
         # calculate results for LN
         if self.panelRadiomics.FindWindowById(1091).GetValue():

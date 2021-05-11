@@ -86,7 +86,7 @@ class main_texture_ivim(object):
             stop_calc = ''  # in case something would be wrong with the image tags
             lista_results = Texture(sb, l_IM_matrix, read.structure_f, read.columns, read.rows, read.xCTspace,
                                     read.slices, path_save, ImName, pixNr, binSize, image_modality, wv, local,
-                                    cropStructure, stop_calc,meanWV, read.Xcontour, read.Xcontour_W, read.Ycontour,
+                                    cropStructure, stop_calc, meanWV , read.Xcontour, read.Xcontour_W, read.Ycontour,
                                     read.Ycontour_W).ret()
 
             # final list contains of the sublist for each patient, sublist contains of [patient number,

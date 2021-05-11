@@ -45,7 +45,7 @@ class main_texture_pet(object):
         def parfor(ImName):
             self.logger.info("Patient " + ImName)
             to_return_3d = list()
-            meanWV = False #caluclated modified WV transform
+            meanWV = False # caluclated modified WV transform
 
             for structure in structures:
                 self.logger.info("Structure " + structure)

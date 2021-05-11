@@ -40,7 +40,8 @@ class main_texture_ct(object):
         self.logger.info("Start")
         self.n_jobs = n_jobs
         image_modality = ['CT']
-        meanWV = False
+        
+        meanWV = False # caluclated modified WV transform
 
         def parfor(ImName):
             self.logger.info("Patient " + ImName)

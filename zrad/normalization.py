@@ -16,11 +16,11 @@ from structure import Structures
 
 #normalization libraries
 import nibabel as nib
-from HD_BET.run import run_hd_bet
-import pylab as plt
+from hdbet.HD_BET.run import run_hd_bet
+import matplotlib.pyplot as plt
 
 class Normalization(object):
-    '''3 methods for image intensity normalization'''
+    """3 methods for image intensity normalization"""
     def normalization_linear(self, struct_norm1, struct_norm2, mypath_image, rs, slices, x_ct, y_ct, xCTspace, onlyfiles, rows, columns):
         """Get the normalization coefficients for MR image based on two normal structures (for example muscle and white
         matter) and linear function.
@@ -177,7 +177,6 @@ class Normalization(object):
                     im = axes.imshow(a[8 * n + j], cmap=plt.get_cmap('jet'), vmin=0, vmax=np.nanmax(a))
                 except IndexError:
                     break
-                    pass
             axes = fig.add_subplot(3, 3, 9)
             try:
                 fig.colorbar(im)

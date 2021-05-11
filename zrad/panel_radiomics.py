@@ -380,11 +380,12 @@ class panelRadiomics(scrolled.ScrolledPanel):
         fop = wx.FileDialog(self, style=wx.DD_DEFAULT_STYLE)
         fop.SetPath(self.FindWindowById(155).GetValue())
         if fop.ShowModal() == wx.ID_OK:
-            self.FindWindowById(155).SetValue(fop.GetPath())
+            self.FindWindowById(155).SetValue(fop.GetPath() + os.sep)
             
     def OnOpenBrain(self, evt):  # need and event as an argument
         """dialog box to define path to save results"""
         fop = wx.DirDialog(self, style=wx.DD_DEFAULT_STYLE)
         fop.SetPath(self.FindWindowById(154).GetValue())
         if fop.ShowModal() == wx.ID_OK:
-            self.FindWindowById(154).SetValue(fop.GetPath() + '\\')
+            self.FindWindowById(154).SetValue(fop.GetPath() + os.sep)
+            

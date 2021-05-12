@@ -4,7 +4,6 @@ import os
 import wx
 import wx.lib.scrolledpanel as scrolled
 
-
 class panelRadiomics(scrolled.ScrolledPanel):
     def __init__(self, parent, id=-1, size=(800, 400), *a, **b):
         super(panelRadiomics, self).__init__(parent, id, (0, 0), size=size, style=wx.SUNKEN_BORDER, *a, **b)
@@ -233,22 +232,29 @@ class panelRadiomics(scrolled.ScrolledPanel):
         self.vbox.Add(h7box, flag=wx.LEFT)
         self.vbox.Add((-1, 10))
 
-        self.gs_8 = wx.FlexGridSizer(cols=4, vgap=5, hgap=10)
+        self.gs_8 = wx.FlexGridSizer(cols=5, vgap=5, hgap=10)
         rb_mr = wx.RadioButton(self, id=150, label='MR')
-        st_stan = wx.StaticText(self, label='ROI for standardization')
-        # names of structures for linaer function fitting to normalize MR
-        tc_struct1 = wx.TextCtrl(self, id=151, size=(200, h), value='', style=wx.TE_PROCESS_ENTER)
+        cb_norm_type = wx.ComboBox(self, id=156, size=(200, 2*h), value="", choices=['none', 'linear', 'z-score', 'histogram matching'], style=wx.CB_READONLY)  # modality type
+        tc_struct1 = wx.TextCtrl(self, id=151, size=(200, h), value='', style=wx.TE_PROCESS_ENTER)  # names of structures for linaer function fitting to normalize MR
         tc_struct2 = wx.TextCtrl(self, id=152, size=(200, h), value='', style=wx.TE_PROCESS_ENTER)
+        cb_norm_ROI = wx.ComboBox(self, id=153, size=(200, 2*h), value="", choices=['none', 'brain', 'ROI', 'brain-ROI'], style=wx.CB_READONLY)
+        tc_skull = wx.TextCtrl(self, id=154, size=(300, h), value='', style=wx.TE_PROCESS_ENTER) 
+        btn_skull = wx.Button(self, -1, label='ROI mask already created')
+        tc_histmatch = wx.TextCtrl(self, id=155, size=(300, h), value='', style=wx.TE_PROCESS_ENTER) 
+        btn_histmatch = wx.Button(self, -1, label='Search standard MR image')
 
-        self.gs_8.AddMany(
-            [rb_mr, wx.StaticText(self, label=''), wx.StaticText(self, label=''), wx.StaticText(self, label=''),
-             wx.StaticText(self, label=''), st_stan, tc_struct1, tc_struct2])
+        self.gs_8.AddMany([rb_mr, wx.StaticText(self, label=''), wx.StaticText(self, label=''), wx.StaticText(self, label=''),  wx.StaticText(self, label=''), 
+             wx.StaticText(self, label=''), wx.StaticText(self, label='normalization'), cb_norm_type, wx.StaticText(self, label=''),  wx.StaticText(self, label=''), 
+             wx.StaticText(self, label=''), wx.StaticText(self, label='ROI for linear normalization'), tc_struct1, tc_struct2, wx.StaticText(self, label=''), 
+             wx.StaticText(self, label=''), wx.StaticText(self, label='ROI for advanced normalization'), cb_norm_ROI, tc_skull, btn_skull,
+             wx.StaticText(self, label=''), wx.StaticText(self, label='Standard MR for histogram matching'), tc_histmatch, btn_histmatch,  wx.StaticText(self, label='')])
 
         h8box = wx.BoxSizer(wx.HORIZONTAL)
         h8box.Add((10, 10))
         h8box.Add(self.gs_8)
         self.vbox.Add(h8box, flag=wx.LEFT)
         self.vbox.Add((-1, 10))
+        
 
         self.gs_9 = wx.FlexGridSizer(cols=4, vgap=5, hgap=10)
         rb_ivim = wx.RadioButton(self, id=160, label='IVIM')
@@ -289,6 +295,8 @@ class panelRadiomics(scrolled.ScrolledPanel):
         self.Bind(wx.EVT_BUTTON, self.OnOpenP, btn_load_path)
         self.Bind(wx.EVT_BUTTON, self.OnOpenP_crop, crop_btn_load_path)
         self.Bind(wx.EVT_BUTTON, self.OnOpenSR, btn_load_saver)
+        self.Bind(wx.EVT_BUTTON, self.OnOpenStandard, btn_histmatch)
+        self.Bind(wx.EVT_BUTTON, self.OnOpenBrain, btn_skull)
 
         self.SetSizer(self.vbox)  # add vbox to panel
         self.Layout()  # show panel
@@ -299,7 +307,7 @@ class panelRadiomics(scrolled.ScrolledPanel):
         l - list of elements read from a text file"""
         # ids of the boxes to be filled
         ids = [107, 108, 109, 110, 102, 103, 104, 1051, 1052, 1061, 10611, 1062, 1071, 1072, 1081, 1082, 1083, 1091,
-               1092, 1093, 120, 125, 126, 127, 130, 131, 132, 133, 135, 136, 137, 140, 141, 142, 150, 151, 152, 160, 170]
+               1092, 1093, 120, 125, 126, 127, 130, 131, 132, 133, 135, 136, 137, 140, 141, 142, 150, 151, 152, 153, 154, 155, 156, 160, 170]
 
         for i in range(len(l)):
             try:
@@ -332,7 +340,7 @@ class panelRadiomics(scrolled.ScrolledPanel):
         l = []
 
         ids = [107, 108, 109, 110, 102, 103, 104, 1051, 1052, 1061, 10611, 1062, 1071, 1072, 1081, 1082, 1083, 1091,
-               1092, 1093, 120, 125, 126, 127, 130, 131, 132, 133, 135, 136, 137, 140, 141, 142, 150, 151, 152, 160, 170]
+               1092, 1093, 120, 125, 126, 127, 130, 131, 132, 133, 135, 136, 137, 140, 141, 142, 150, 151, 152, 153, 154, 155, 156, 160, 170]
         for i in ids:
             l.append(self.FindWindowById(i).GetValue())
         return l
@@ -366,3 +374,18 @@ class panelRadiomics(scrolled.ScrolledPanel):
         fop.SetPath(self.FindWindowById(102).GetValue())
         if fop.ShowModal() == wx.ID_OK:
             self.FindWindowById(102).SetValue(fop.GetPath() + os.sep)
+
+    def OnOpenStandard(self, evt):  # need and event as an argument
+        """dialog box to define path to save results"""
+        fop = wx.FileDialog(self, style=wx.DD_DEFAULT_STYLE)
+        fop.SetPath(self.FindWindowById(155).GetValue())
+        if fop.ShowModal() == wx.ID_OK:
+            self.FindWindowById(155).SetValue(fop.GetPath() + os.sep)
+            
+    def OnOpenBrain(self, evt):  # need and event as an argument
+        """dialog box to define path to save results"""
+        fop = wx.DirDialog(self, style=wx.DD_DEFAULT_STYLE)
+        fop.SetPath(self.FindWindowById(154).GetValue())
+        if fop.ShowModal() == wx.ID_OK:
+            self.FindWindowById(154).SetValue(fop.GetPath() + os.sep)
+            

@@ -29,6 +29,7 @@ class ReadImageStructure(object):
         if 'CTP' in UID or 'IVIM' in UID:
             self.modality = modality
         self.dim = dim
+        self.stop_calc = ''
         self.ReadImages(UID, mypath_image)
         self.ReadStucture(mypath_image, structure, wv, local)
 

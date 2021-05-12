@@ -23,6 +23,7 @@ Dependencies
 - vtk
 - wxpython
 - xlsxwriter
+- pytorch
 
 
 Installing Python
@@ -55,6 +56,16 @@ Due to access right restrictions from USZ site, installation is possible either 
 
    This configuration file routes the network traffic related to ``pip``. Do not forget to change *username* and *password* to your credentials.
 
+
+Configure HD-BET for skull stripping
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The source code was dowloaded from https://github.com/MIC-DKFZ/HD-BET
+CPU configuration: If you want to use the CPUs for segmentation you only have to copy the model paremeters into subdirecotry \hdbet\HD-BET. You will find them in K:\RAO_Physik\Research\1_FUNCTIONAL IMAGING\F_Software\radiomics documentation\hd-bet_params. Copy the entire hd-bet_params folder.
+
+GPU configuration: download the source code. Go to the folder: cd HD-BET. Install with pip: pip install -e
+Copy the file from HD_BET\config.py to the Zrad software folder and rename to config_hd_bet.py (replace the exisiting file). Copy your unpacked folders (HD_BET, HB_BET.egg-info) into \hdbet. 
+Copy the model paremeters into subdirecotry \hdbet\HD-BET. You will find them in K:\RAO_Physik\Research\1_FUNCTIONAL IMAGING\F_Software\radiomics documentation\hd-bet_params. Copy the entire hd-bet_params folder.
 
 
 Documentation

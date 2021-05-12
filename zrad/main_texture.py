@@ -1,6 +1,7 @@
 """read data and save texture parameters in txt file"""
 import logging
 import os
+from glob import glob
 
 import wx
 from numpy import arange
@@ -134,10 +135,10 @@ class Radiomics(wx.Frame):
             l_ImName = [n_pref + '_' + str(i) for i in arange(start, stop)]  # subfolders that you want to analyze
         else:
             pat_range = [str(i) for i in arange(start, stop)]
-            pat_dirs = [e[1] for e in os.walk(path_image)][0]
-            pat_multiple = ['{}_{}'.format(patient, i) for patient in pat_range for i in range(1, len(pat_dirs))]
-            list_dir_candidates = pat_range + pat_multiple
-            l_ImName = [e for e in list_dir_candidates if e in pat_dirs]
+            pat_dirs = glob(path_image + os.sep + "*[0-9]*")
+            list_dir_candidates = [e.split(os.sep)[-1] for e in pat_dirs if
+                                   e.split(os.sep)[-1].split("_")[0] in pat_range]
+            l_ImName = sorted(list_dir_candidates)
 
         # no. parallel jobs
         n_jobs = int(self.panelRadiomics.FindWindowById(170).GetValue())

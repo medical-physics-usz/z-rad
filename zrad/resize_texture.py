@@ -50,7 +50,11 @@ class ResizeTexture(object):
         self.UID = '2030'  # UID for new images
         self.image_type = image_type
 
-        self.list_dir = [str(f) for f in range(begin, stop + 1)]  # list of directories to be analyzed
+        pat_range = [str(f) for f in range(begin, stop + 1)]
+        pat_dirs = glob(self.mypath_load + os.sep + "*[0-9]*")
+        list_dir_candidates = [e.split(os.sep)[-1] for e in pat_dirs if e.split(os.sep)[-1].split("_")[0] in pat_range]
+        self.list_dir = sorted(list_dir_candidates)
+
         self.listDicomProblem = []  # cannot open as dicom
         self.n_jobs = n_jobs
         self.resize()

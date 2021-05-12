@@ -1,6 +1,6 @@
 import os
 import sys
-from datetime import datetime
+from glob import glob
 from os import listdir, remove
 from os.path import isfile, join, exists
 
@@ -29,7 +29,10 @@ class Shape(object):
     """
 
     def __init__(self, path_image, path_save, save_as, rois, low, high, n_jobs):
-        nlist = [str(i) for i in range(low, high)]
+        pat_range = [str(i) for i in range(low, high)]
+        pat_dirs = glob(path_image + os.sep + "*[0-9]*")
+        list_dir_candidates = [e.split(os.sep)[-1] for e in pat_dirs if e.split(os.sep)[-1].split("_")[0] in pat_range]
+        nlist = sorted(list_dir_candidates)
 
         # maximum euclidian distance, one needs
         scalefactor = 0.3  # 0.4 #0.1 => 8 s /file, 0.2 => 10 s/file, 0.3 => 1 min/file, 0.4 => MemoryOverload
@@ -42,7 +45,6 @@ class Shape(object):
 
         # for nn in nlist:
         def parfor(nn):
-            # df_results = pd.DataFrame()
             pat_results = []
             for roi_name in rois:
                 roi_results = {}

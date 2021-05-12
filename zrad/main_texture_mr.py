@@ -149,8 +149,7 @@ class main_texture_mr(object):
 
         out = Parallel(n_jobs=self.n_jobs, verbose=20)(delayed(parfor)(ImName) for ImName in l_ImName)
 
-        final_file, wave_names, par_names = Export().Preset(exportList, wv, local, path_save, save_as, image_modality,
-                                                            path_image)
+        final_file, wave_names, par_names = Export().Preset(exportList, wv, local, path_save, save_as, image_modality)
 
         feature_vectors = [feature_vec for batch in out for feature_vec in batch]
         for feature_vec in feature_vectors:

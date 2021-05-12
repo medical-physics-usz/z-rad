@@ -1,6 +1,7 @@
 """read data and save texture parameters in txt file"""
 import logging
 import os
+from glob import glob
 
 import wx
 from numpy import arange
@@ -37,7 +38,6 @@ class Radiomics(wx.Frame):
         self.Show()
 
     def InitUI(self):
-        self.local = False  # ATTENTION!: if you set True, be aware that you calculate Radiomics in 3D only.
         self.panelHeight = 24  # height of boxes in GUI, 20 for PC and 40 for lenovo laptop
         self.p = wx.Panel(self, size=self.defaultWindowsize)
         self.nb = wx.Notebook(self.p, size=self.defaultWindowsize)
@@ -107,6 +107,8 @@ class Radiomics(wx.Frame):
         stop'''
         stop = int(stop) + 1
         start = int(start)
+        
+        self.local = False # ATTENTION!: if you set True, be aware that you calculate Radiomics in 3D only. Final implementation to be added
 
         # convert to a list        
         if structure == '':
@@ -115,7 +117,7 @@ class Radiomics(wx.Frame):
         else:
             structure = structure.split(',')
             structure = [e.strip() for e in structure]
-
+                    
         # dimensionality
         if self.panelRadiomics.FindWindowById(1061).GetValue():
             dim = '2D'
@@ -133,7 +135,11 @@ class Radiomics(wx.Frame):
         if n_pref != '':
             l_ImName = [n_pref + '_' + str(i) for i in arange(start, stop)]  # subfolders that you want to analyze
         else:
-            l_ImName = [str(i) for i in arange(start, stop)]  # subfolders that you want to analyze
+            pat_range = [str(i) for i in arange(start, stop)]
+            pat_dirs = glob(path_image + os.sep + "*[0-9]*")
+            list_dir_candidates = [e.split(os.sep)[-1] for e in pat_dirs if
+                                   e.split(os.sep)[-1].split("_")[0] in pat_range]
+            l_ImName = sorted(list_dir_candidates)
 
         # no. parallel jobs
         n_jobs = int(self.panelRadiomics.FindWindowById(170).GetValue())
@@ -144,7 +150,7 @@ class Radiomics(wx.Frame):
         
         # save parameters of calculation
         dict_parameters = {'path': path_image,
-                           "structure": structure,
+                           "structure": str(structure),
                             "pixelNr": pixNr,
                             "bin_size": binSize,
                             "Dimension": dim,
@@ -234,9 +240,9 @@ class Radiomics(wx.Frame):
         if calc_shape:  # calculate shape
             name_shape_pt_list = name_shape_pts.split(',')
             name_shape_pt_list = [e.strip() for e in name_shape_pt_list]
-            dict_parameters['shape structure'] = name_shape_pt_list
+            dict_parameters['shape structure'] = str(name_shape_pt_list)
             Shape(path_image, path_save, save_as, name_shape_pt_list, start, stop, n_jobs)
-            
+
         if dim == "3D":
             ExportExcel(calc_shape, path_save, save_as, dict_parameters)
 

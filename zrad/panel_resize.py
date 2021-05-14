@@ -3,11 +3,13 @@ import os
 
 import wx
 import wx.lib.scrolledpanel as scrolled
+from numpy import arange
 
 from check import CheckStructures
 from myinfo import MyInfo
 from resize_shape import ResizeShape
 from resize_texture import ResizeTexture
+from resize_nifti import ResizeNifti
 
 
 class panelResize(scrolled.ScrolledPanel):
@@ -27,21 +29,26 @@ class panelResize(scrolled.ScrolledPanel):
         # creatignngoxes containing elements of the panel, vbox - vertical box, hbox - horizontal box
         self.vbox = wx.BoxSizer(wx.VERTICAL)
         self.vbox.Add((-1, 20))
-        self.gs_01 = wx.FlexGridSizer(cols=4, vgap=5, hgap=10)  # grid sizes is a box with 3 columns
 
         # elements I want to put the the grid sizer
         st_org = wx.StaticText(self, label='Original data')  # static text
         # text box, id is important as I use i later for reading elements from the boxes
-        tc_org = wx.TextCtrl(self, id=1001, size=(600, h), value="", style=wx.TE_PROCESS_ENTER)
+        tc_org = wx.TextCtrl(self, id=1001, size=(1000, h), value="", style=wx.TE_PROCESS_ENTER)
         # tc_org- directory with original images
         btn_load_org = wx.Button(self, -1, label='Search')  # button to search
         # directory to save resized images
         st_save_resized = wx.StaticText(self, label='Save resized files')
-        tc_save_resized = wx.TextCtrl(self, id=1002, size=(600, h), value="", style=wx.TE_PROCESS_ENTER)
+        tc_save_resized = wx.TextCtrl(self, id=1002, size=(1000, h), value="", style=wx.TE_PROCESS_ENTER)
         btn_load_resized = wx.Button(self, -1, label='Search')
+        st_file_type = wx.StaticText(self, label='File type')
+        rb_dicom = wx.RadioButton(self, id=1017, label='DICOM', style=wx.RB_GROUP) 
+        rb_nifti = wx.RadioButton(self, id=1018, label='NIFTI') 
+        st_number = wx.StaticText(self, label='Label number (only for nifit) ')
+        # label of the ROI in the nifti file, it can be separated by coma
+        tc_number = wx.TextCtrl(self, id=1019, size=(100, h), value="", style=wx.TE_PROCESS_ENTER)
         # structures to be resized separated by coma ','
         st_name = wx.StaticText(self, label='Structure name')
-        tc_name = wx.TextCtrl(self, id=1003, size=(600, h), value="", style=wx.TE_PROCESS_ENTER)
+        tc_name = wx.TextCtrl(self, id=1003, size=(940, h), value="", style=wx.TE_PROCESS_ENTER)
 
         # resolution for texture calculation
         st_reso = wx.StaticText(self, label='Resolution for texture calculation [mm]')
@@ -73,7 +80,7 @@ class panelResize(scrolled.ScrolledPanel):
         cb_cropStructure = wx.CheckBox(self, id=1012, label='Use CT Structure')
         st_cropStructure = wx.StaticText(self, label='     CT Path')  # static text
         # text box, id is important as I use i later for reading elements from the boxes
-        tc_cropStructure = wx.TextCtrl(self, id=1013, size=(600, h), value="", style=wx.TE_PROCESS_ENTER)
+        tc_cropStructure = wx.TextCtrl(self, id=1013, size=(1000, h), value="", style=wx.TE_PROCESS_ENTER)
         # tc_org- directory with original images
         btn_cropStructure = wx.Button(self, -1, label='Search')  # button to search
 
@@ -86,34 +93,11 @@ class panelResize(scrolled.ScrolledPanel):
         btn_resize = wx.Button(self, id=1010, label='Resize')
         btn_check = wx.Button(self, id=1011, label='Check')
 
+        self.gs_01 = wx.FlexGridSizer(cols=4, vgap=5, hgap=10)  # grid sizes is a box with 3 columns
         # fill the grid sizer with elements
-        self.gs_01.AddMany([st_org, tc_org, btn_load_org, wx.StaticText(self, label=''),
-                            st_save_resized, tc_save_resized, btn_load_resized, wx.StaticText(self, label=''),
-                            st_name, tc_name, wx.StaticText(self, label=''), wx.StaticText(self, label=''),
-                            st_reso, tc_reso, wx.StaticText(self, label=''), wx.StaticText(self, label=''),
-                            int_type, inte_type, wx.StaticText(self, label=''), wx.StaticText(self, label=''),
-                            st_type, tc_type, wx.StaticText(self, label=''), wx.StaticText(self, label=''),
-                            st_start, tc_start, wx.StaticText(self, label=''), wx.StaticText(self, label=''),
-                            st_stop, tc_stop, wx.StaticText(self, label=''), wx.StaticText(self, label=''),
-                            n_jobs_st, n_jobs_cb, wx.StaticText(self, label=''), wx.StaticText(self, label=''),
-                            cb_texture, cb_texture_dim2, wx.StaticText(self, label=''), wx.StaticText(self, label=''),
-                            wx.StaticText(self, label=''), cb_texture_dim3, wx.StaticText(self, label=''),
-                            wx.StaticText(self, label=''),
-                            wx.StaticText(self, label=''), cb_texture_none, wx.StaticText(self, label=''),
-                            wx.StaticText(self, label=''),
-                            cb_shape, wx.StaticText(self, label=''), wx.StaticText(self, label=''),
-                            wx.StaticText(self, label=''),
-                            cb_cropStructure, wx.StaticText(self, label=''), wx.StaticText(self, label=''),
-                            wx.StaticText(self, label=''),
-                            st_cropStructure, tc_cropStructure, btn_cropStructure, wx.StaticText(self, label=''),
-                            wx.StaticText(self, label=''), wx.StaticText(self, label=''), wx.StaticText(self, label=''),
-                            wx.StaticText(self, label=''),
-                            wx.StaticText(self, label=''), wx.StaticText(self, label=''), btn_check,
-                            wx.StaticText(self, label=''),
-                            wx.StaticText(self, label=''), wx.StaticText(self, label=''), btn_resize,
-                            wx.StaticText(self, label='')])
-
-        st01 = wx.StaticLine(self, -1, (10, 1), (900, 3))
+        self.gs_01.AddMany([st_org, btn_load_org, tc_org, wx.StaticText(self, label=''),
+                            st_file_type, rb_dicom, rb_nifti, wx.StaticText(self, label=''), 
+                            st_save_resized, btn_load_resized, tc_save_resized, wx.StaticText(self, label='')])
 
         # add grid size to a hbox
         h01box = wx.BoxSizer(wx.HORIZONTAL)
@@ -121,7 +105,97 @@ class panelResize(scrolled.ScrolledPanel):
         h01box.Add(self.gs_01)
         self.vbox.Add(h01box, flag=wx.LEFT)
         self.vbox.Add((-1, 10))
+        
+        self.gs_02 = wx.FlexGridSizer(cols=4, vgap=5, hgap=10)  # grid sizes is a box with 3 columns
+        
+        self.gs_02.AddMany([st_name, tc_name, wx.StaticText(self, label=''), wx.StaticText(self, label=''), 
+                            st_number, tc_number, wx.StaticText(self, label=''), wx.StaticText(self, label=''),
+                            st_reso, tc_reso, wx.StaticText(self, label=''), wx.StaticText(self, label=''),
+                            int_type, inte_type, wx.StaticText(self, label=''), wx.StaticText(self, label=''),
+                            st_type, tc_type, wx.StaticText(self, label=''), wx.StaticText(self, label=''),
+                            st_start, tc_start, wx.StaticText(self, label=''), wx.StaticText(self, label=''),
+                            st_stop, tc_stop, wx.StaticText(self, label=''), wx.StaticText(self, label=''),
+                            n_jobs_st, n_jobs_cb, wx.StaticText(self, label=''), wx.StaticText(self, label='')])
+    
+        # add grid size to a hbox
+        h02box = wx.BoxSizer(wx.HORIZONTAL)
+        h02box.Add((10, 10))
+        h02box.Add(self.gs_02)
+        self.vbox.Add(h02box, flag=wx.LEFT)
+        self.vbox.Add((-1, 10))
+        
+        st02 = wx.StaticLine(self, -1, (10, 1), (2000, 3))
 
+        # add hbox to vbox
+        h012box = wx.BoxSizer(wx.HORIZONTAL)
+        h012box.Add((10, 10))
+        h012box.Add(st02)
+        self.vbox.Add(h012box, flag=wx.LEFT)
+        self.vbox.Add((-1, 10))
+        
+        
+        self.gs_03 = wx.FlexGridSizer(cols=4, vgap=5, hgap=10)  # grid sizes is a box with 3 columns
+        
+        self.gs_03.AddMany([cb_texture, cb_texture_dim2, wx.StaticText(self, label=''), wx.StaticText(self, label=''),
+                            wx.StaticText(self, label=''), cb_texture_dim3, wx.StaticText(self, label=''),
+                            wx.StaticText(self, label=''),
+                            wx.StaticText(self, label=''), cb_texture_none, wx.StaticText(self, label=''),
+                            wx.StaticText(self, label=''),
+                            cb_shape, wx.StaticText(self, label=''), wx.StaticText(self, label='')])
+    
+        # add grid size to a hbox
+        h03box = wx.BoxSizer(wx.HORIZONTAL)
+        h03box.Add((10, 10))
+        h03box.Add(self.gs_03)
+        self.vbox.Add(h03box, flag=wx.LEFT)
+        self.vbox.Add((-1, 10))
+        
+        
+        st03 = wx.StaticLine(self, -1, (10, 1), (2000, 3))
+
+        # add hbox to vbox
+        h013box = wx.BoxSizer(wx.HORIZONTAL)
+        h013box.Add((10, 10))
+        h013box.Add(st03)
+        self.vbox.Add(h013box, flag=wx.LEFT)
+        self.vbox.Add((-1, 10))
+        
+        self.gs_04 = wx.FlexGridSizer(cols=4, vgap=5, hgap=10)  # grid sizes is a box with 3 columns
+        
+        self.gs_04.AddMany([cb_cropStructure, wx.StaticText(self, label=''), wx.StaticText(self, label=''),
+                            wx.StaticText(self, label=''),
+                            st_cropStructure, btn_cropStructure, tc_cropStructure, wx.StaticText(self, label=''),
+                            wx.StaticText(self, label=''), wx.StaticText(self, label=''), wx.StaticText(self, label=''),
+                            wx.StaticText(self, label='')])
+                            
+    
+        # add grid size to a hbox
+        h04box = wx.BoxSizer(wx.HORIZONTAL)
+        h04box.Add((10, 10))
+        h04box.Add(self.gs_04)
+        self.vbox.Add(h04box, flag=wx.LEFT)
+        self.vbox.Add((-1, 10))
+    
+        st04 = wx.StaticLine(self, -1, (10, 1), (2000, 3))
+        # add hbox to vbox
+        h014box = wx.BoxSizer(wx.HORIZONTAL)
+        h014box.Add((10, 10))
+        h014box.Add(st04)
+        self.vbox.Add(h014box, flag=wx.LEFT)
+        self.vbox.Add((-1, 10))
+        
+        self.gs_05 = wx.FlexGridSizer(cols=1, vgap=5, hgap=10)  # grid sizes is a box with 3 columns
+        
+        self.gs_05.AddMany([btn_check, 
+                            btn_resize])
+    
+        h05box = wx.BoxSizer(wx.HORIZONTAL)
+        h05box.Add((10, 10))
+        h05box.Add(self.gs_05)
+        self.vbox.Add(h05box, flag=wx.LEFT)
+        self.vbox.Add((-1, 10))
+        
+        st01 = wx.StaticLine(self, -1, (10, 1), (2000, 3))
         # add hbox to vbox
         h011box = wx.BoxSizer(wx.HORIZONTAL)
         h011box.Add((10, 10))
@@ -167,6 +241,18 @@ class panelResize(scrolled.ScrolledPanel):
 
     def resize(self, evt):  # need and event as an argument
         """main method which calls resize classes"""
+        
+        if self.FindWindowById(1017).GetValue():
+            file_type = 'dicom'
+            labels = ''
+        else:
+            file_type = 'nifti' #nifti file type assumes that conversion to eg HU or SUV has already been performed
+            #read the labels for ROIs in the nifti files
+            labels = self.FindWindowById(1019).GetValue()
+            if labels != '':
+                labels = labels.split(',')
+                for i in arange(0, len(labels)):
+                    labels[i] = int(labels[i])
 
         cropArg = False
         ct_path = ""
@@ -186,6 +272,10 @@ class panelResize(scrolled.ScrolledPanel):
             cropInput = {"crop": cropArg, "ct_path": ""}
         else:
             cropInput = {"crop": cropArg, "ct_path": ct_path}
+            if file_type == 'nifit':
+                MyInfo('ROI cropping based on secondary image is not supported for Nifti files.')
+                raise SystemExit(0)
+                
         # divide a string with structures names to a list of names
 
         if ',' not in inp_struct:
@@ -202,15 +292,30 @@ class panelResize(scrolled.ScrolledPanel):
                 dimension_resize = "3D"
 
             # resize images and structure to the resolution of texture
-            ResizeTexture(inp_resolution, interpolation_type, list_structure, inp_mypath_load, inp_mypath_save,
-                          image_type, begin, stop, cropInput, dimension_resize, n_jobs)
+            if file_type == 'dicom':
+                ResizeTexture(inp_resolution, interpolation_type, list_structure, inp_mypath_load, inp_mypath_save,
+                              image_type, begin, stop, cropInput, dimension_resize, n_jobs)
+            elif file_type == 'nifti':
+                if dimension_resize == '2D':
+                    MyInfo('Resize in 2D is not supported for Nifti files.')
+                    raise SystemExit(0)
+                    
+                if image_type == 'CT' or image_type == 'PET' or image_type == 'MR': 
+                    ResizeNifti(inp_resolution, interpolation_type, list_structure, labels, inp_mypath_load, inp_mypath_save,
+                                  image_type, begin, stop, n_jobs)
+                else:
+                    MyInfo('IVIM does not support Nifti files.')
+                    raise SystemExit(0)
 
-        if self.FindWindowById(1009).GetValue():  # if resizing to shape resolution selected
+        if self.FindWindowById(1009).GetValue() and file_type == 'dicom':  # if resizing to shape resolution selected
             inp_mypath_save_shape = inp_mypath_save + 'resized_1mm' + os.sep
             # resize the structure to the resolution of shape, default 1mm unless resolution of texture smaller than
             # 1mm then 0.1 mm
             ResizeShape(list_structure, inp_mypath_load, inp_mypath_save_shape, image_type, begin, stop,
                         inp_resolution, 'linear', cropInput, n_jobs)
+        elif self.FindWindowById(1009).GetValue() and file_type == 'nifti':
+            MyInfo('Shape calculation is not supported for Nifti files.')
+            raise SystemExit(0)
 
         MyInfo('Resize done')  # show info box
 
@@ -236,7 +341,7 @@ class panelResize(scrolled.ScrolledPanel):
         l - list of elements read from a text file"""
         # ids of field to fill # if adjust number of ids then also adjust in main_texture in
         # self.panelResize.fill(l[:11])
-        ids = [1001, 1002, 1003, 1004, 1015, 1005, 1006, 1007, 1016, 10081, 10082, 10083, 1009, 1012, 1013]
+        ids = [1001, 1002, 1003, 1004, 1015, 1005, 1006, 1007, 1016, 10081, 10082, 10083, 1009, 1012, 1013, 1017, 1018, 1019]
 
         for i in range(len(l)):
             try:
@@ -267,7 +372,7 @@ class panelResize(scrolled.ScrolledPanel):
     def save(self):
         """save the last used settings"""
         l = []
-        ids = [1001, 1002, 1003, 1004, 1015, 1005, 1006, 1007, 1016, 10081, 10082, 10083, 1009, 1012, 1013]
+        ids = [1001, 1002, 1003, 1004, 1015, 1005, 1006, 1007, 1016, 10081, 10082, 10083, 1009, 1012, 1013, 1017, 1018, 1019]
         for i in ids:
             l.append(self.FindWindowById(i).GetValue())
         return l

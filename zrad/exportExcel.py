@@ -10,6 +10,8 @@ class ExportExcel(object):
         texture = pd.read_csv(path_save + 'texture_' + save_as + '.txt', sep="\t", header=0, index_col=False)
         if ifshape:
             shape = pd.read_csv(path_save + 'shape_' + save_as + '.csv', index_col=0)
+            texture['patient'] = texture['patient'].astype(str)
+            shape['patient'] = shape['patient'].astype(str)
             df = shape.merge(texture, on=['patient', 'organ'], how='outer')
         else:
             df = texture
@@ -20,7 +22,7 @@ class ExportExcel(object):
         path = path_save + os.sep + save_as + '.xlsx'
         df_parameters = pd.DataFrame.from_dict(dict_parameters)
         with pd.ExcelWriter(path) as writer:
-            df.to_excel(writer, index=True, header=True, sheet_name="radiomics")
+            df.to_excel(writer, index=False, header=True, sheet_name="radiomics")
             df_parameters.to_excel(writer, index=False, header=True, sheet_name="parameters")
 
     def cleanup(self, df):

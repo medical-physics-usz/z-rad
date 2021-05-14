@@ -1,9 +1,11 @@
 import logging
 import os
+from os.path import isfile, join
 
 import numpy as np
 import pandas as pd
 import pydicom as dc
+import nibabel as nib
 from joblib import Parallel, delayed
 from tqdm import tqdm
 
@@ -19,9 +21,11 @@ class main_texture_ct(object):
     Type: object
     Attributes:
     sb - Status bar in the frame
+    file_type - dicom or nifti, influences reading in the files
     path_image - path to the patients subfolders
     path_save - path to save radiomics results
     structure - list of structures to be analysed
+    labels - label number in the nifti file, list of numbers, each number corresponds to different contour
     pixNr number of analyzed bins, if not specified  = none
     binSize - bin size for the analysis, if not specified = none
     l_ImName - list of patients subfolders (here are data to be analysed)
@@ -34,7 +38,7 @@ class main_texture_ct(object):
     exportList - list of matrices/features to be calculated and exported
     """
 
-    def __init__(self, sb, path_image, path_save, structures, pixNr, binSize, l_ImName, save_as, dim, HUmin, HUmax,
+    def __init__(self, sb, file_type, path_image, path_save, structures, labels, pixNr, binSize, l_ImName, save_as, dim, HUmin, HUmax,
                  outlier_corr, wv, local, cropInput, exportList, n_jobs):
         self.logger = logging.getLogger(__name__)
         self.logger.info("Start")
@@ -60,43 +64,78 @@ class main_texture_ct(object):
                     mypath_image = path_image + ImName + os.sep
                     # CT and contrast-enhanced CT
                     CT_UID = ['1.2.840.10008.5.1.4.1.1.2', '1.2.840.10008.5.1.4.1.1.2.1', 'CT Image Storage']
-                    read = ReadImageStructure(CT_UID, mypath_image, structure, wv, dim, local)
+                    read = ReadImageStructure(file_type, CT_UID, mypath_image, structure, wv, dim, local)
 
-                    # parameters to recalculate intensities HU
-                    inter = float(dc.read_file(mypath_image + read.onlyfiles[0]).RescaleIntercept)
-                    slope = float(dc.read_file(mypath_image + read.onlyfiles[0]).RescaleSlope)
-                    bitsRead = str(dc.read_file(mypath_image + read.onlyfiles[0]).BitsAllocated)
-                    sign = int(dc.read_file(mypath_image + read.onlyfiles[0]).PixelRepresentation)
-                    if sign == 1:
-                        bitsRead = 'int' + bitsRead
-                    elif sign == 0:
-                        bitsRead = 'uint' + bitsRead
-
-                    IM_matrix = []  # list containing the images matrix
-                    for f in read.onlyfiles:
-                        data = dc.read_file(mypath_image + f).PixelData
-                        data16 = np.array(np.frombuffer(data, dtype=bitsRead))  # converting to decimal
-                        data16 = data16 * slope + inter
-                        # recalculating for rows x columns
-                        a = np.reshape(data16, (read.rows, read.columns))
-                        IM_matrix.append(np.array(a))
-                    IM_matrix = np.array(IM_matrix)
+                    if file_type == 'dicom':
+                        # parameters to recalculate intensities HU
+        
+                        inter = float(dc.read_file(mypath_image + read.onlyfiles[0]).RescaleIntercept)
+                        slope = float(dc.read_file(mypath_image + read.onlyfiles[0]).RescaleSlope)
+        
+                        bitsRead = str(dc.read_file(mypath_image + read.onlyfiles[0]).BitsAllocated)
+                        sign = int(dc.read_file(mypath_image + read.onlyfiles[0]).PixelRepresentation)
+        
+                        if sign == 1:
+                            bitsRead = 'int' + bitsRead
+                        elif sign == 0:
+                            bitsRead = 'uint' + bitsRead
+        
+                        IM_matrix = []  # list containing the images matrix
+                        for f in read.onlyfiles:
+                            data = dc.read_file(mypath_image + f).PixelData
+                            data16 = np.array(np.fromstring(data, dtype=bitsRead))  # converting to decimal
+                            data16 = data16 * slope + inter
+                            # recalculating for rows x columns
+                            a = np.reshape(data16, (read.rows, read.columns))
+                            IM_matrix.append(np.array(a))
+                        IM_matrix = np.array(IM_matrix)
+                        contour_matrix = ''  #only for nifti
+                    
+                    elif file_type == 'nifti': #nifti file type assumes that conversion to eg HU or SUV has already been performed
+                        #the folder should contain two file, one contour mask with the name corresponding to the name given in GUI and the other file with the image
+                        if read.stop_calc == '':
+                            image_name = ''
+                            contour_name = ''
+                            for f in read.onlyfiles:
+                                if isfile(join(mypath_image, f)) and structure[0] in f: #nifti only handles one ROI
+                                    contour_name = f
+                                else: 
+                                    image_name = f
+                            img = nib.load(mypath_image + image_name)
+                            contour = nib.load(mypath_image + contour_name)   
+                            slope = img.header['scl_slope']
+                            intercept = img.header['scl_inter']
+                            if np.isnan(slope):
+                                slope = 1.
+                            if np.isnan(intercept):
+                                intercept = 0
+                            IM_matrix = img.get_fdata() * slope + intercept
+                            contour_matrix = contour.get_fdata()
+                            for lab in labels:
+                                ind = np.where(contour_matrix == lab)
+                                contour_matrix[ind] = 100
+                            ind = np.where(contour_matrix != 100)
+                            contour_matrix[ind] = 0
+                            ind = np.where(contour_matrix == 100)
+                            contour_matrix[ind] = 1
+                        else:
+                            IM_matrix = ''
+                            contour_matrix = ''       
                 except OSError:  # error if there is not directory
                     continue
                 except IndexError:  # empty folder
                     continue
 
-                stop_calc = ''  # in case something would be wrong with the image tags
                 if dim == "2D" or dim == "2D_singleSlice":
                     dict_features = Features2D(dim, [IM_matrix], read.structure_f, read.columns, read.rows,
                                                read.xCTspace, read.zCTspace, read.slices, path_save, ImName, pixNr,
-                                               binSize, image_modality, wv, local, cropInput, stop_calc, read.Xcontour,
+                                               binSize, image_modality, wv, local, cropInput, read.stop_calc, read.Xcontour,
                                                read.Xcontour_W, read.Ycontour, read.Ycontour_W, read.Xcontour_Rec,
                                                read.Ycontour_Rec, HUmin, HUmax, outlier_corr).ret()
                 else:
-                    lista_results = Texture([IM_matrix], read.structure_f, read.columns, read.rows, read.xCTspace,
+                    lista_results = Texture(file_type, [IM_matrix], contour_matrix, read.structure_f, read.columns, read.rows, read.xCTspace,
                                             read.slices, path_save, ImName, pixNr, binSize, image_modality, wv, local,
-                                            cropInput, stop_calc, meanWV, read.Xcontour, read.Xcontour_W, read.Ycontour,
+                                            cropInput, read.stop_calc, meanWV, read.Xcontour, read.Xcontour_W, read.Ycontour,
                                             read.Ycontour_W, read.Xcontour_Rec, read.Ycontour_Rec, HUmin, HUmax,
                                             outlier_corr).ret()
 

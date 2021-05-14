@@ -13,11 +13,13 @@ import scipy.optimize as optimization
 
 from ROImatrix import Matrix
 from texture_wavelet import Wavelet
-
+from ROImatrix_nifti import MatrixNifti
 
 class Texture(object):
     """Calculate texture, intensity, fractal dim and center of the mass shift
+    file_type - dicom or nifti, influences reading in the controus
     maps – list of images to analyze, for CT it is one element list with 3D matrix, for perfusion it is a 3 elements
+    cont_map - contour array for nifti files (1 inside of the contour, 0 outside)
     list with 3D matrices for BF, MTT, BV
     structure – name of analyzed structure, used for naming the output files
     columns – number of columns in the image
@@ -46,7 +48,7 @@ class Texture(object):
     """
 
     # Xc, Yc, XcW, YcW, HUmin, HUmax, outlier,  ):
-    def __init__(self, maps, structure, columns, rows, xCTspace, slices, path, ImName, pixNr, binSize, modality, wv, localRadiomics, cropStructure, stop_calc, maskedROI, *cont):
+    def __init__(self, file_type, maps, cont_map, structure, columns, rows, xCTspace, slices, path, ImName, pixNr, binSize, modality, wv, localRadiomics, cropStructure, stop_calc, maskedROI, *cont):
         self.logger = logging.getLogger("Texture")
         self.logger.info("Start: Texture Calculation")
         self.structure = structure
@@ -357,10 +359,15 @@ class Texture(object):
                 else:
                     self.logger.info("Normal Mode, no cropping")
                     for w in range(len(wave_list)):
-                        ROImatrix = Matrix(wave_list[w], rs_type[w], structure, modality[i], self.Xcontour,
-                                           self.Ycontour, self.Xcontour_W, self.Ycontour_W, self.Xcontour_Rec,
-                                           self.Ycontour_Rec, self.columns, self.rows, self.HUmin, self.HUmax,
-                                           self.binSize, self.bits, self.outlier_correction, HUmask, cropStructure)
+                        if file_type == 'dicom':
+                            ROImatrix = Matrix(wave_list[w], rs_type[w], structure, modality[i], self.Xcontour,
+                                               self.Ycontour, self.Xcontour_W, self.Ycontour_W, self.Xcontour_Rec,
+                                               self.Ycontour_Rec, self.columns, self.rows, self.HUmin, self.HUmax,
+                                               self.binSize, self.bits, self.outlier_correction, HUmask, cropStructure)
+                        else: # nifit
+                            ROImatrix = MatrixNifti(wave_list[w], rs_type[w], structure, modality[i], cont_map, self.columns, 
+                                                    self.rows, self.HUmin, self.HUmax, self.binSize, self.bits, self.outlier_correction, HUmask)
+  
                         matrix_list.append(ROImatrix.matrix)  # tumor matrix
                         interval_list.append(ROImatrix.interval)
                         norm_points_list.append(ROImatrix.norm_points)

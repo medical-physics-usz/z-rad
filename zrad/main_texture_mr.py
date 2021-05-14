@@ -3,6 +3,7 @@ import os
 
 import numpy as np
 import pydicom as dc
+import nibabel as nib
 from joblib import Parallel, delayed
 
 from os.path import isdir, isfile, join
@@ -21,9 +22,11 @@ class main_texture_mr(object):
     Type: object
     Attributes:
     sb - Status bar in the frame
+    file_type - dicom or nifti, influences reading in the files
     path_image - path to the patients subfolders
     path_save - path to save radiomics results
     structure - list of structures to be analysed
+    labels - label number in the nifti file, list of numbers, each number corresponds to different contour
     pixNr number of analyzed bins, if not specified  = none
     binSize - bin size for the analysis, if not specified = none
     l_ImName - list of patients subfolders (here are data to be analysed)
@@ -40,7 +43,7 @@ class main_texture_mr(object):
     exportList - list of matrices/features to be calculated and exported
     """
 
-    def __init__(self, sb, path_image, path_save, structures, pixNr, binSize, l_ImName, save_as, dim, struct_norm1, struct_norm2, normROI_advanced, path_skull, 
+    def __init__(self, sb, file_type, path_image, path_save, structures, labels, pixNr, binSize, l_ImName, save_as, dim, struct_norm1, struct_norm2, normROI_advanced, path_skull, 
                  norm_type, path_template, wv, local, cropStructure, exportList, n_jobs):
 
         self.logger = logging.getLogger(__name__)
@@ -58,35 +61,74 @@ class main_texture_mr(object):
 
             for structure in structures:
                 try:
-                    read = ReadImageStructure(MR_UID, mypath_image, [structure], wv, dim, local)
+                    read = ReadImageStructure(file_type, MR_UID, mypath_image, [structure], wv, dim, local)
                     dicomProblem.append([ImName, read.listDicomProblem])
+                    
+                    if file_type == 'dicom':
+                        # MR intensities normalization
+                        if norm_type == 'linear':
+                            norm_slope, norm_inter = Normalization().normalization_linear(struct_norm1, struct_norm2, mypath_image, read.rs, read.slices, read.x_ct, read.y_ct, read.xCTspace, read.onlyfiles, read.rows, read.columns)
+                        else:
+                            norm_slope = 1  # to allow for calculation with no normalization
+                            norm_inter = 0
+    
+                        bitsRead = str(dc.read_file(mypath_image + read.onlyfiles[1]).BitsAllocated)
+                        sign = int(dc.read_file(mypath_image + read.onlyfiles[1]).PixelRepresentation)
+                        if sign == 1:
+                            bitsRead = 'int' + bitsRead
+                        elif sign == 0:
+                            bitsRead = 'uint' + bitsRead
+    
+                        IM_matrix = []  # list containing the images matrix
+                        for f in read.onlyfiles:
+                            data = dc.read_file(mypath_image + f).PixelData
+                            data16 = np.array(np.fromstring(data, dtype=bitsRead))  # converting to decimal
+                            data16 = data16 * norm_slope + norm_inter
+                            # recalculating for rows x columns
+                            a = []
+                            for j in range(read.rows):
+                                a.append(data16[j * read.columns:(j + 1) * read.columns])
+                            a = np.array(a)
+                            IM_matrix.append(np.array(a))
+                        IM_matrix = np.array(IM_matrix)
+                        contour_matrix = ''  #only for nifti
+                        
+                    elif file_type == 'nifti': #nifti file type assumes that conversion to eg HU or SUV has already been performed
+                        #the folder should contain two file, one contour mask with the name corresponding to the name given in GUI and the other file with the image
+                        if read.stop_calc == '':
+                            image_name = ''
+                            contour_name = ''
+                            for f in read.onlyfiles:
+                                if isfile(join(mypath_image, f)) and structure[0] in f: #nifti only handles one ROI
+                                    contour_name = f
+                                else: 
+                                    image_name = f
+                            img = nib.load(mypath_image + image_name)
+                            contour = nib.load(mypath_image + contour_name)      
+                            slope = img.header['scl_slope']
+                            intercept = img.header['scl_inter']
+                            if np.isnan(slope):
+                                slope = 1.
+                            if np.isnan(intercept):
+                                intercept = 0
+                            IM_matrix = img.get_fdata() * slope + intercept
+                            contour_matrix = contour.get_fdata()
+                            print(np.where(contour_matrix == 1))
+                            print(np.where(contour_matrix == 3))
+                            print(np.where(contour_matrix == 4))
+                            print(labels)
+                            for lab in labels:
+                                ind = np.where(contour_matrix == lab)
+                                print(lab, ind)
+                                contour_matrix[ind] = 100
+                            ind = np.where(contour_matrix != 100)
+                            contour_matrix[ind] = 0
+                            ind = np.where(contour_matrix == 100)
+                            contour_matrix[ind] = 1
+                        else:
+                            IM_matrix = ''
+                            contour_matrix = ''                        
 
-                    # MR intensities normalization
-                    if struct_norm1 != '':
-                        norm_slope, norm_inter = Normalization().normalization_linear(struct_norm1, struct_norm2, mypath_image, read.rs, read.slices, read.x_ct, read.y_ct, read.xCTspace, read.onlyfiles, read.rows, read.columns)
-                    else:
-                        norm_slope = 1  # to allow for calculation with no normalization
-                        norm_inter = 0
-
-                    bitsRead = str(dc.read_file(mypath_image + read.onlyfiles[1]).BitsAllocated)
-                    sign = int(dc.read_file(mypath_image + read.onlyfiles[1]).PixelRepresentation)
-                    if sign == 1:
-                        bitsRead = 'int' + bitsRead
-                    elif sign == 0:
-                        bitsRead = 'uint' + bitsRead
-
-                    IM_matrix = []  # list containing the images matrix
-                    for f in read.onlyfiles:
-                        data = dc.read_file(mypath_image + f).PixelData
-                        data16 = np.array(np.fromstring(data, dtype=bitsRead))  # converting to decimal
-                        data16 = data16 * norm_slope + norm_inter
-                        # recalculating for rows x columns
-                        a = []
-                        for j in range(read.rows):
-                            a.append(data16[j * read.columns:(j + 1) * read.columns])
-                        a = np.array(a)
-                        IM_matrix.append(np.array(a))
-                    IM_matrix = np.array(IM_matrix)
                     
                     #advanced normalization
                     if norm_type == 'z-score' or norm_type == 'histogram matching' and read.stop_calc == '':
@@ -95,13 +137,18 @@ class main_texture_mr(object):
                             patPos = dc.read_file(mypath_image + f).PatientPosition
                             brain_mask = Normalization().mask_brain(patPos, read.xCTspace, read.x_ct, read.y_ct, np.min(read.slices), IM_matrix, path_skull, ImName, path_save)
                             IM_matrix_masked = IM_matrix * brain_mask  
-                        elif normROI_advanced == 'ROI':
+                        elif normROI_advanced == 'ROI' and file_type == 'dicom':
                             structROI = Structures(read.rs, [read.structure_f], read.slices, read.x_ct, read.y_ct, read.xCTspace, len(read.slices), False, None, False) #False for the wavelet and local  argument, none for dim
                             norm_Xcontour = structROI.Xcontour
                             norm_Ycontour = structROI.Ycontour
                             ROI_mask = Normalization().mask_ROI(norm_Xcontour, norm_Ycontour, IM_matrix.shape, np.nan)
-                            IM_matrix_masked = IM_matrix * ROI_mask                            
-                        elif normROI_advanced == 'brain-ROI':
+                            IM_matrix_masked = IM_matrix * ROI_mask                  
+                        elif normROI_advanced == 'ROI' and file_type == 'nifti':
+                            c_temp = contour_matrix.copy()
+                            c_temp[np.where(c_temp == 0)] = np.nan
+                            IM_matrix_masked = IM_matrix * c_temp
+                            del c_temp
+                        elif normROI_advanced == 'brain-ROI' and file_type == 'dicom':
                             patPos = dc.read_file(mypath_image + f).PatientPosition
                             brain_mask = Normalization().mask_brain(patPos, read.xCTspace, read.x_ct, read.y_ct, np.min(read.slices), IM_matrix, path_skull, ImName, path_save)
                             structROI = Structures(read.rs, [read.structure_f], read.slices, read.x_ct, read.y_ct, read.xCTspace, len(read.slices), False, None, False) #False for the wavelet and local  argument, none for dim
@@ -135,7 +182,7 @@ class main_texture_mr(object):
                     # arguments: image, structure name, image corner x, image corner x, columns, pixelSpacing, HFS or FFS, structure file, list of slice positions, patient number, path to save the textutre maps, map name (eg. AIF1), pixel discretization, site
                     # function returns: number of removed points, minimum values, maximum values, structre used for calculations, mean,std, cov, skewness, kurtosis, enenrgy, entropy, contrast, corrrelation, homogenity, coarseness, neighContrast, busyness, complexity, intensity varation, size variation, fractal dimension, number of points used in the calculations, histogram (values bigger/smaller than median)
                 if dim == '3D':
-                    lista_results = Texture([IM_matrix], read.structure_f, read.columns, read.rows, read.xCTspace,
+                    lista_results = Texture(file_type, [IM_matrix], contour_matrix, read.structure_f, read.columns, read.rows, read.xCTspace,
                                             read.slices, path_save, ImName, pixNr, binSize, image_modality, wv, local,
                                             cropStructure, read.stop_calc, meanWV, read.Xcontour, read.Xcontour_W, read.Ycontour,
                                             read.Ycontour_W, read.Xcontour_Rec, read.Ycontour_Rec).ret()

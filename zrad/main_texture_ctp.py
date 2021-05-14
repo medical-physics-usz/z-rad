@@ -18,9 +18,11 @@ class main_texture_ctp(object):
     Type: object
     Attributes: 
     sb – Status bar in the frame 
-    path_image – path to the patients subfolders
-    path_save – path to save radiomics results
-    structure – list of structures to be analysed
+    file_type - dicom or nifti, influences reading in the files
+    path_image - path to the patients subfolders
+    path_save - path to save radiomics results
+    structure - list of structures to be analysed
+    labels - label number in the nifti file, list of numbers, each number corresponds to different contour
     pixNr number of analyzed bins, if not specified  = none
     binSize – bin size for the analysis, if not specified = none
     l_ImName – list of patients subfolders (here are data to be analysed)
@@ -31,7 +33,7 @@ class main_texture_ctp(object):
     exportList – list of matrices/features to be calculated and exported
     """
 
-    def __init__(self, sb, path_image, path_save, structure, pixNr, binSize, l_ImName, save_as, dim, outlier_corr, wv,
+    def __init__(self, sb, file_type, path_image, path_save, structure, labels, pixNr, binSize, l_ImName, save_as, dim, outlier_corr, wv,
                  local, cropStructure, exportList):
         final = []  # list with results
         image_modality = ['BV', 'MTT', 'BF']
@@ -46,7 +48,7 @@ class main_texture_ctp(object):
                 UID = ['CTP']
 
                 # none for dimension
-                read = ReadImageStructure(UID, mypath_image, structure, wv, dim, local, image_modality)
+                read = ReadImageStructure(file_type, UID, mypath_image, structure, wv, dim, local, image_modality)
 
                 dicomProblem.append([ImName, read.listDicomProblem])
 
@@ -65,6 +67,7 @@ class main_texture_ctp(object):
                     IM_matrix = np.array(IM_matrix)
 
                     l_IM_matrix.append(IM_matrix)
+                contour_matrix = '' # only for nifti
 
                 # pre-processing - remove points outside 3 sigma
                 points_remove = []
@@ -102,7 +105,7 @@ class main_texture_ctp(object):
                 # histogram (values bigger/smaller than median)
             sb.SetStatusText('Calculate ' + ImName)
             stop_calc = ''  # in case something would be wrong with the image tags
-            lista_results = Texture(sb, l_IM_matrix, read.structure_f, read.columns, read.rows, read.xCTspace,
+            lista_results = Texture(sb, file_type, l_IM_matrix, contour_matrix, read.structure_f, read.columns, read.rows, read.xCTspace,
                                     read.slices, path_save, ImName, pixNr, binSize, image_modality, wv, cropStructure,
                                     stop_calc, meanWV, read.Xcontour, read.Xcontour_W, read.Ycontour, read.Ycontour_W).ret()
 

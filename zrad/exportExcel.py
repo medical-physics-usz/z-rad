@@ -10,6 +10,8 @@ class ExportExcel(object):
         texture = pd.read_csv(path_save + 'texture_' + save_as + '.txt', sep="\t", header=0, index_col=False)
         if ifshape:
             shape = pd.read_csv(path_save + 'shape_' + save_as + '.csv', index_col=0)
+            texture['patient'] = texture['patient'].astype(str)
+            shape['patient'] = shape['patient'].astype(str)
             df = shape.merge(texture, on=['patient', 'organ'], how='outer')
         else:
             df = texture

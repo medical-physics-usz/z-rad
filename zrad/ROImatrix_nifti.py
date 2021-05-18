@@ -1,9 +1,7 @@
 import logging
 
 import numpy as np
-from scipy.interpolate import interp2d
 from scipy.interpolate import interpn
-import pylab as py
 
 from exception import MyException
 
@@ -72,7 +70,7 @@ class MatrixNifti(object):
                     ind = np.where(contour_wavelet < 0.5)
                     contour_wavelet[ind] = 0
                     
-                    print(contour_wavelet.shape)
+                    # print(contour_wavelet.shape)
                     
                     matrix_true = imap * contour_wavelet # matrix with real image values
                     ind = np.where(contour_wavelet == 0)

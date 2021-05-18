@@ -113,13 +113,8 @@ class main_texture_mr(object):
                                 intercept = 0
                             IM_matrix = img.get_fdata() * slope + intercept
                             contour_matrix = contour.get_fdata()
-                            print(np.where(contour_matrix == 1))
-                            print(np.where(contour_matrix == 3))
-                            print(np.where(contour_matrix == 4))
-                            print(labels)
                             for lab in labels:
                                 ind = np.where(contour_matrix == lab)
-                                print(lab, ind)
                                 contour_matrix[ind] = 100
                             ind = np.where(contour_matrix != 100)
                             contour_matrix[ind] = 0

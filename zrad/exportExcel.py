@@ -22,7 +22,7 @@ class ExportExcel(object):
         path = path_save + os.sep + save_as + '.xlsx'
         df_parameters = pd.DataFrame.from_dict(dict_parameters)
         with pd.ExcelWriter(path) as writer:
-            df.to_excel(writer, index=True, header=True, sheet_name="radiomics")
+            df.to_excel(writer, index=False, header=True, sheet_name="radiomics")
             df_parameters.to_excel(writer, index=False, header=True, sheet_name="parameters")
 
     def cleanup(self, df):

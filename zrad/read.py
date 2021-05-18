@@ -5,6 +5,7 @@ from os.path import isfile, join
 
 import pydicom as dc
 from numpy import arange
+import nibabel as nib
 
 from structure import Structures
 
@@ -23,15 +24,18 @@ class ReadImageStructure(object):
     'BF']
     """
 
-    def __init__(self, UID, mypath_image, structure, wv, dim, local, *modality):
+    def __init__(self, file_type, UID, mypath_image, structure, wv, dim, local, *modality):
         self.logger = logging.getLogger(__name__)
         self.logger.info("Start")
         if 'CTP' in UID or 'IVIM' in UID:
             self.modality = modality
         self.dim = dim
         self.stop_calc = ''
-        self.ReadImages(UID, mypath_image)
-        self.ReadStucture(mypath_image, structure, wv, local)
+        if file_type == 'dicom':
+            self.ReadImages(UID, mypath_image)
+            self.ReadStucture(mypath_image, structure, wv, local)
+        elif file_type == 'nifti':
+            self.ReadNiftiImageStructure(mypath_image, structure) 
 
     def ReadImages(self, UID, mypath_image):
         self.logger.info("Reading Images")
@@ -103,3 +107,41 @@ class ReadImageStructure(object):
         self.Xcontour_Rec = struct.Xcontour_Rec
         self.Ycontour_Rec = struct.Ycontour_Rec
         self.structure_f = struct.organs
+
+    def ReadNiftiImageStructure(self, mypath_image, structure):
+        self.onlyfiles = listdir(mypath_image)
+        if len(self.onlyfiles ) == 2:
+            matrix1 = nib.load(mypath_image + self.onlyfiles[0])
+            matrix2 = nib.load(mypath_image + self.onlyfiles[1])     
+            img_matrix1 = matrix1.get_fdata() 
+            img_matrix2 = matrix2.get_fdata()
+            xCTspace = matrix1.header['pixdim'][2]
+            yCTspace = matrix1.header['pixdim'][3]
+            zCTspace = matrix1.header['pixdim'][1] 
+            xCTspaceCont = matrix2.header['pixdim'][2]
+            yCTspaceCont = matrix2.header['pixdim'][3]
+            zCTspaceCont = matrix2.header['pixdim'][1]
+            if not (xCTspace == yCTspace == zCTspace and xCTspaceCont == yCTspaceCont == zCTspaceCont and xCTspace == xCTspaceCont):
+                self.stop_calc = 'image and contour voxels are not cubic or voxel size in image and contour differ'
+            if img_matrix1.shape != img_matrix2.shape:
+                self.stop_calc = 'image and contour shape differ'
+            self.xCTspace = xCTspace
+            self.yCTspace = yCTspace
+            self.zCTspace = zCTspace
+            self.columns = img_matrix1.shape[2] 
+            self.rows = img_matrix1.shape[1] 
+            self.slices = img_matrix1.shape[0]                         
+        else:
+            self.stop_calc = 'expecting 2 files per directory'
+            self.xCTspace = ''
+            self.columns = ''
+            self.rows = ''
+            self.slices = ''
+        self.Xcontour = ''
+        self.Xcontour_W = ''
+        self.Ycontour = '' 
+        self.Ycontour_W = ''
+        self.Xcontour_Rec = ''
+        self.Ycontour_Rec = ''
+        self.listDicomProblem = []
+        self.structure_f = structure[0]

@@ -26,7 +26,7 @@ class Radiomics(wx.Frame):
         Parent of class Panel"""
 
     def __init__(self, *a, **b):
-        super(Radiomics, self).__init__(size=(1075, 725), pos=(100, 100), title='Z-Rad 7.2.1', *a, **b)
+        super(Radiomics, self).__init__(size=(1075, 725), pos=(100, 100), title='Z-Rad 7.3.0', *a, **b)
 
         self.defaultWindowsize = (1100, 725)
         self.SetMinSize(self.defaultWindowsize)
@@ -69,8 +69,8 @@ class Radiomics(wx.Frame):
         for i in config:
             l.append(i)
             # self.logger.debug("list of config " + i )
-        self.panelResize.fill(l[:15])  # use the saved configuration
-        self.panelRadiomics.fill(l[15:])
+        self.panelResize.fill(l[:18])  # use the saved configuration
+        self.panelRadiomics.fill(l[18:])
         del l
         config.close()
 
@@ -109,7 +109,20 @@ class Radiomics(wx.Frame):
         start = int(start)
         
         self.local = False # ATTENTION!: if you set True, be aware that you calculate Radiomics in 3D only. Final implementation to be added
-
+        
+        #file type
+        if self.panelRadiomics.FindWindowById(111).GetValue():
+            file_type = 'dicom'
+            labels = ''
+        else:
+            file_type = 'nifti' #nifti file type assumes that conversion to eg HU or SUV has already been performed
+            #read the labels for ROIs in the nifti files
+            labels = self.panelRadiomics.FindWindowById(1041).GetValue()
+            if labels != '':
+                labels = labels.split(',')
+                for i in arange(0, len(labels)):
+                    labels[i] = int(labels[i])
+                    
         # convert to a list        
         if structure == '':
             structure = 'none'
@@ -149,12 +162,12 @@ class Radiomics(wx.Frame):
         cropStructure = {"crop": False, "ct_path": ""}
         
         # save parameters of calculation
-        dict_parameters = {'path': path_image,
-                           "structure": str(structure),
-                            "pixelNr": pixNr,
-                            "bin_size": binSize,
-                            "Dimension": dim,
-                            "wv": wv}
+        dict_parameters = {'path': [path_image],
+                           "structure": [str(structure)],
+                            "pixelNr": [pixNr],
+                            "bin_size": [binSize],
+                            "Dimension": [dim],
+                            "wv": [wv]}
 
         # modality
         if self.panelRadiomics.FindWindowById(120).GetValue():  # CT
@@ -168,11 +181,11 @@ class Radiomics(wx.Frame):
                 self.panelRadiomics.FindWindowById(125).SetValue('none')
                 self.panelRadiomics.FindWindowById(126).SetValue('none')
 
-            dict_parameters["image_modality"] = 'CT'
-            dict_parameters["HUmin"] = hu_min
-            dict_parameters["HUmax"] = hu_max
-            dict_parameters["outlier_corr"] = outlier_corr
-            main_texture_ct(self.GetStatusBar(), path_image, path_save, structure, pixNr, binSize, l_ImName, save_as,
+            dict_parameters["image_modality"] = ['CT']
+            dict_parameters["HUmin"] = [hu_min]
+            dict_parameters["HUmax"] = [hu_max]
+            dict_parameters["outlier_corr"] = [outlier_corr]
+            main_texture_ct(self.GetStatusBar(), file_type, path_image, path_save, structure, labels, pixNr, binSize, l_ImName, save_as,
                             dim, hu_min, hu_max, outlier_corr, wv, self.local, cropStructure, exportList, n_jobs)
 
         elif self.panelRadiomics.FindWindowById(130).GetValue():  # PET
@@ -181,8 +194,15 @@ class Radiomics(wx.Frame):
             ct_hu_min = 'none'
             ct_hu_max = 'none'
             ct_path = ""
+            
+            if SUV and file_type == 'nifti':
+                MyInfo('Nifti files with SUV normalization were not tested.')
+                raise SystemExit(0)
 
-            if cropArg:
+            if cropArg and file_type == 'nifti':
+                MyInfo('CT cropping and nifit format are not compatible. Use dicom data înstead.')
+                raise SystemExit(0)
+            elif cropArg and file_type == 'dicom':
                 self.logger.info("CropStructures " + str(cropArg))
                 try:
                     ct_hu_min = int(self.panelRadiomics.FindWindowById(135).GetValue())
@@ -196,20 +216,24 @@ class Radiomics(wx.Frame):
                     raise
 
             cropStructure = {"crop": cropArg, "hu_min": ct_hu_min, "hu_max": ct_hu_max, "ct_path": ct_path}
-            dict_parameters["image_modality"] = 'PET'
-            dict_parameters['SUV'] = SUV
-            dict_parameters['CT corrected'] = cropArg
-            dict_parameters["HUmin"] = ct_hu_min
-            dict_parameters["HUmax"] = ct_hu_max
-            main_texture_pet(self.GetStatusBar(), path_image, path_save, structure, pixNr, binSize, l_ImName, save_as,
+            dict_parameters["image_modality"] = ['PET']
+            dict_parameters['SUV'] = [SUV]
+            dict_parameters['CT corrected'] = [cropArg]
+            dict_parameters["HUmin"] = [ct_hu_min]
+            dict_parameters["HUmax"] = [ct_hu_max]
+            main_texture_pet(self.GetStatusBar(), file_type, path_image, path_save, structure, labels, pixNr, binSize, l_ImName, save_as,
                              dim, SUV, wv, self.local, cropStructure, exportList, n_jobs)
 
         elif self.panelRadiomics.FindWindowById(140).GetValue():  # CTP
-            outlier_corr = self.panelRadiomics.FindWindowById(141).GetValue()
-            dict_parameters["image_modality"] = 'CTP'
-            dict_parameters["outlier_corr"] = outlier_corr
-            main_texture_ctp(self.GetStatusBar(), path_image, path_save, structure, pixNr, binSize, l_ImName, save_as,
-                             dim, outlier_corr, wv, self.local, cropStructure, exportList)
+            if file_type == 'dicom':
+                outlier_corr = self.panelRadiomics.FindWindowById(141).GetValue()
+                dict_parameters["image_modality"] = ['CTP']
+                dict_parameters["outlier_corr"] = [outlier_corr]
+                main_texture_ctp(self.GetStatusBar(), file_type, path_image, path_save, structure, labels, pixNr, binSize, l_ImName, save_as,
+                                 dim, outlier_corr, wv, self.local, cropStructure, exportList)
+            else:
+                MyInfo('Nifti file format was not tested for IVIM. Use dicom data înstead.')
+                raise SystemExit(0)
 
         elif self.panelRadiomics.FindWindowById(150).GetValue():  # MR
             struct_norm1 = self.panelRadiomics.FindWindowById(151).GetValue()
@@ -221,27 +245,42 @@ class Radiomics(wx.Frame):
             
             if norm_type == 'linear' and (struct_norm1 == '' or struct_norm2 == ''):
                 MyInfo('To perform the linear interpolation provide the names of two ROIs')
-                raise SystemExit(0)                
-            elif norm_type == 'histogram matching' and path_template == '':
+                raise SystemExit(0)
+            elif norm_type == 'linear' and file_type == 'nifti':
+                MyInfo('MR linear normalization nifit format are not compatible. Use dicom data înstead.')
+                raise SystemExit(0)
+            elif norm_type == 'histogram matching' and normROI_advanced != 'ROI' and file_type == 'nifti':
+                MyInfo('MR normalization using brain mask and nifit format are not compatible. Use dicom data înstead.')
+                raise SystemExit(0)
+                
+            if norm_type == 'histogram matching' and path_template == '':
                 MyInfo('To perform the histogram matching provide numpy array of standard ROI')
                 raise SystemExit(0)
 
-            dict_parameters["image_modality"] = 'MR'
-            dict_parameters['normalization']= norm_type + '\\ ' + struct_norm1 + ' ' + struct_norm2 + '\\ ' + normROI_advanced + '\\ ' + path_template
-            main_texture_mr(self.GetStatusBar(), path_image, path_save, structure, pixNr, binSize, l_ImName, save_as, dim,  struct_norm1, struct_norm2, normROI_advanced, path_skull, norm_type, path_template, wv, self.local, cropStructure,exportList, n_jobs)
+            dict_parameters["image_modality"] = ['MR']
+            dict_parameters['normalization']= [norm_type + '\\ ' + struct_norm1 + ' ' + struct_norm2 + '\\ ' + normROI_advanced + '\\ ' + path_template]
+            main_texture_mr(self.GetStatusBar(), file_type, path_image, path_save, structure, labels, pixNr, binSize, l_ImName, save_as, dim,  struct_norm1, struct_norm2, normROI_advanced, path_skull, norm_type, path_template, wv, self.local, cropStructure,exportList, n_jobs)
 
         elif self.panelRadiomics.FindWindowById(160).GetValue():  # IVIM
-            dict_parameters["image_modality"] = 'IVIM'
-            main_texture_ivim(self.GetStatusBar(), path_image, path_save, structure, pixNr, binSize, l_ImName, save_as,
-                              dim, wv, self.local, cropStructure, exportList)
+            if file_type == 'dicom':
+                dict_parameters["image_modality"] = 'IVIM'
+                main_texture_ivim(self.GetStatusBar(), file_type, path_image, path_save, structure, labels, pixNr, binSize, l_ImName, save_as,
+                                  dim, wv, self.local, cropStructure, exportList)
+            else:
+                MyInfo('Nifti file format was not tested for IVIM. Use dicom data înstead.')
+                raise SystemExit(0)
 
         calc_shape = self.panelRadiomics.FindWindowById(1081).GetValue()
         name_shape_pts = self.panelRadiomics.FindWindowById(1083).GetValue()  # name of ROIs defined for shape
-        if calc_shape:  # calculate shape
-            name_shape_pt_list = name_shape_pts.split(',')
-            name_shape_pt_list = [e.strip() for e in name_shape_pt_list]
-            dict_parameters['shape structure'] = str(name_shape_pt_list)
-            Shape(path_image, path_save, save_as, name_shape_pt_list, start, stop, n_jobs)
+        if calc_shape: # calculate shape
+            if file_type == 'nifti':
+                MyInfo('Shape parameters cannot be computed from nifti files')
+                calc_shape = False
+            else:
+                name_shape_pt_list = name_shape_pts.split(',')
+                name_shape_pt_list = [e.strip() for e in name_shape_pt_list]
+                dict_parameters['shape structure'] = [str(name_shape_pt_list)]
+                Shape(path_image, path_save, save_as, name_shape_pt_list, start, stop, n_jobs)
 
         if dim == "3D":
             ExportExcel(calc_shape, path_save, save_as, dict_parameters)
@@ -310,7 +349,7 @@ class Radiomics(wx.Frame):
         licence = """"""
         info = AboutDialogInfo()
         info.SetName('Z-Rad')
-        info.SetVersion('7.2.1')
+        info.SetVersion('7.3.0')
         info.SetDescription(description)
         info.SetCopyright('(C) 2017-2021 USZ Radiomics Team')
         info.SetLicence(licence)

@@ -24,6 +24,7 @@ Dependencies
 - wxpython
 - xlsxwriter
 - pytorch
+- nibabel
 
 
 Installing Python

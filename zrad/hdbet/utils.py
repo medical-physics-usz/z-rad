@@ -4,7 +4,7 @@ from torch import nn
 import numpy as np
 from skimage.morphology import label
 import os
-from HD_BET.paths import folder_with_parameter_files
+from hdbet.paths import folder_with_parameter_files
 
 
 def get_params_fname(fold):

@@ -1,12 +1,12 @@
 import torch
 import numpy as np
 import SimpleITK as sitk
-from HD_BET.data_loading import load_and_preprocess, save_segmentation_nifti
-from HD_BET.predict_case import predict_case_3D_net
+from hdbet.data_loading import load_and_preprocess, save_segmentation_nifti
+from hdbet.predict_case import predict_case_3D_net
 import imp
-from HD_BET.utils import postprocess_prediction, SetNetworkToVal, get_params_fname, maybe_download_parameters
+from hdbet.utils import postprocess_prediction, SetNetworkToVal, get_params_fname, maybe_download_parameters
 import os
-import HD_BET
+import hdbet
 
 
 def apply_bet(img, bet, out_fname):
@@ -19,7 +19,7 @@ def apply_bet(img, bet, out_fname):
     sitk.WriteImage(out, out_fname)
 
 
-def run_hd_bet(mri_fnames, output_fnames, mode="accurate", config_file=os.path.join(HD_BET.__path__[0], "config.py"), device=0,
+def run_hd_bet(mri_fnames, output_fnames, mode="accurate", config_file=os.path.join(hdbet.__path__[0], "config.py"), device=0,
                postprocess=False, do_tta=True, keep_mask=True, overwrite=True):
     """
 

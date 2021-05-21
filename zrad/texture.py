@@ -2229,7 +2229,7 @@ class Texture(object):
                     pass
             axes = fig.add_subplot(5, 5, 25)
             try:
-                fig.colorbar(im)
+                fig.colorbar(im, ax=axes)
             except UnboundLocalError:
                 pass
             try:
@@ -2254,7 +2254,7 @@ class Texture(object):
                     pass
             axes = fig.add_subplot(5, 5, 25)
             try:
-                fig.colorbar(im)
+                fig.colorbar(im, ax=axes)
             except UnboundLocalError:
                 pass
             fig.savefig(path + ImName + os.sep + 'black_' + name + '_' + self.structure + '_' + pixNr + '_' + str(

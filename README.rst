@@ -6,7 +6,7 @@ This is an in-house implementation of radiomics software from University Hospita
 Installation
 ------------
 
-Current version of Z-Rad supports Python 3.6-3.8. All releases are tested in Windows 10 and MacOS. Z-Rad may work on Linux but it was not tested on such systems. The legacy version of Z-Rad supporting Python 2.7 is available in **python2** branch.
+Current version of Z-Rad supports Python 3.6-3.9. All releases are tested in MS Windows, MacOS, and Linux. The legacy version of Z-Rad supporting Python 2.7 is available in **python2** branch.
 
 Dependencies
 ~~~~~~~~~~~~ 
@@ -25,6 +25,7 @@ Dependencies
 - xlsxwriter
 - pytorch
 - nibabel
+- simpleitk
 
 
 Installing Python
@@ -58,15 +59,11 @@ Due to access right restrictions from USZ site, installation is possible either 
    This configuration file routes the network traffic related to ``pip``. Do not forget to change *username* and *password* to your credentials.
 
 
+
 Configure HD-BET for skull stripping
-~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The source code was dowloaded from https://github.com/MIC-DKFZ/HD-BET
-CPU configuration: If you want to use the CPUs for segmentation you only have to copy the model paremeters into subdirecotry \hdbet\HD-BET. You will find them in K:\RAO_Physik\Research\1_FUNCTIONAL IMAGING\F_Software\radiomics documentation\hd-bet_params. Copy the entire hd-bet_params folder.
-
-GPU configuration: download the source code. Go to the folder: cd HD-BET. Install with pip: pip install -e
-Copy the file from HD_BET\config.py to the Zrad software folder and rename to config_hd_bet.py (replace the exisiting file). Copy your unpacked folders (HD_BET, HB_BET.egg-info) into \hdbet. 
-Copy the model paremeters into subdirecotry \hdbet\HD-BET. You will find them in K:\RAO_Physik\Research\1_FUNCTIONAL IMAGING\F_Software\radiomics documentation\hd-bet_params. Copy the entire hd-bet_params folder.
+The source code was copied from https://github.com/MIC-DKFZ/HD-BET. If you want to use it for segmentation, you have to copy the model paremeters from ``K:\RAO_Physik\Research\1_FUNCTIONAL IMAGING\F_Software\radiomics documentation\hd-bet_params`` to ``zrad\hdbet\hd-bet_params``.
 
 
 Documentation

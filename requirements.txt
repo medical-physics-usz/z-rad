@@ -12,3 +12,4 @@ wxpython
 xlsxwriter
 pytorch
 nibabel
+simpleitk

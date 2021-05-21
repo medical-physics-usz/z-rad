@@ -16,7 +16,7 @@ from structure import Structures
 
 #normalization libraries
 import nibabel as nib
-from hdbet.HD_BET.run import run_hd_bet
+from hdbet.run import run_hd_bet
 import matplotlib.pyplot as plt
 
 class Normalization(object):

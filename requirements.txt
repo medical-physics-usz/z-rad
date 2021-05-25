@@ -13,3 +13,4 @@ xlsxwriter
 pytorch
 nibabel
 simpleitk
+scikit-image

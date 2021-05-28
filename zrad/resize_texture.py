@@ -98,12 +98,15 @@ class ResizeTexture(object):
 
                     for f in listdir(mypath_file):
                         try:
+                            ds = dc.read_file(mypath_file + f)
                             # read only dicoms of certain modality
-                            if isfile(join(mypath_file, f)) and dc.read_file(mypath_file + f).SOPClassUID in UID_t:
+                            if isfile(join(mypath_file, f)) and ds.SOPClassUID in UID_t:
+                                # skip non-axial slices
+                                is_axial = np.array_equal(np.round(ds.ImageOrientationPatient), [1, 0, 0, 0, 1, 0])
+                                if (self.image_type == 'CT') and not is_axial:
+                                    continue
                                 # sort files by slice position
-                                onlyfiles.append((round(
-                                    float(dc.read_file(mypath_file + os.sep + f).ImagePositionPatient[2]),
-                                    self.round_factor), f))
+                                onlyfiles.append((round(float(ds.ImagePositionPatient[2]), self.round_factor), f))
                         except InvalidDicomError:  # not a dicom file
                             self.listDicomProblem.append(name + ' ' + f)
                             pass

@@ -99,7 +99,7 @@ class main_texture_mr(object):
                             image_name = ''
                             contour_name = ''
                             for f in read.onlyfiles:
-                                if isfile(join(mypath_image, f)) and structure[0] in f: #nifti only handles one ROI
+                                if isfile(join(mypath_image, f)) and structure in f: #nifti only handles one ROI
                                     contour_name = f
                                 else: 
                                     image_name = f
@@ -111,8 +111,8 @@ class main_texture_mr(object):
                                 slope = 1.
                             if np.isnan(intercept):
                                 intercept = 0
-                            IM_matrix = img.get_fdata() * slope + intercept
-                            contour_matrix = contour.get_fdata()
+                            IM_matrix = img.get_fdata().transpose(2,1,0)  * slope + intercept
+                            contour_matrix = contour.get_fdata().transpose(2,1,0) 
                             for lab in labels:
                                 ind = np.where(contour_matrix == lab)
                                 contour_matrix[ind] = 100

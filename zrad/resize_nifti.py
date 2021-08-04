@@ -85,8 +85,8 @@ class ResizeNifti(object):
                     slope = 1.
                 if np.isnan(intercept):
                     intercept = 0
-                IM_matrix = img.get_fdata() * slope + intercept
-                contour_matrix = contour.get_fdata()
+                IM_matrix = img.get_fdata().transpose(2,1,0) * slope + intercept
+                contour_matrix = contour.get_fdata().transpose(2,1,0)
                 for lab in self.labels:
                     ind = np.where(contour_matrix == lab)
                     contour_matrix[ind] = 100
@@ -138,8 +138,8 @@ class ResizeNifti(object):
                 affine_trans[2, 3] = 0
                         
                 
-                IM_matrix_nifti = nib.Nifti1Image(new_image_matrix, affine = affine_trans)
-                contour_matrix_nifti = nib.Nifti1Image(new_contour_matrix, affine = affine_trans)
+                IM_matrix_nifti = nib.Nifti1Image(new_image_matrix.transpose(2,1,0), affine = affine_trans)
+                contour_matrix_nifti = nib.Nifti1Image(new_contour_matrix.transpose(2,1,0), affine = affine_trans)
                 
                 try:
                     makedirs(self.mypath_s + name + os.sep)

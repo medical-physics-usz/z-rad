@@ -113,14 +113,14 @@ class ReadImageStructure(object):
         if len(self.onlyfiles ) == 2:
             matrix1 = nib.load(mypath_image + self.onlyfiles[0])
             matrix2 = nib.load(mypath_image + self.onlyfiles[1])     
-            img_matrix1 = matrix1.get_fdata() 
-            img_matrix2 = matrix2.get_fdata()
-            xCTspace = matrix1.header['pixdim'][2]
-            yCTspace = matrix1.header['pixdim'][3]
-            zCTspace = matrix1.header['pixdim'][1] 
-            xCTspaceCont = matrix2.header['pixdim'][2]
-            yCTspaceCont = matrix2.header['pixdim'][3]
-            zCTspaceCont = matrix2.header['pixdim'][1]
+            img_matrix1 = matrix1.get_fdata().transpose(2,1,0) 
+            img_matrix2 = matrix2.get_fdata().transpose(2,1,0)
+            xCTspace = matrix1.header['pixdim'][1]
+            yCTspace = matrix1.header['pixdim'][2]
+            zCTspace = matrix1.header['pixdim'][3] 
+            xCTspaceCont = matrix2.header['pixdim'][1]
+            yCTspaceCont = matrix2.header['pixdim'][2]
+            zCTspaceCont = matrix2.header['pixdim'][3]
             if not (xCTspace == yCTspace == zCTspace and xCTspaceCont == yCTspaceCont == zCTspaceCont and xCTspace == xCTspaceCont):
                 self.stop_calc = 'image and contour voxels are not cubic or voxel size in image and contour differ'
             if img_matrix1.shape != img_matrix2.shape:

@@ -121,7 +121,7 @@ class Normalization(object):
                 mask = nib.load(path_skull + sep + str(ImName) + '_mask.nii.gz')
             except WindowsError:
                 mask = nib.load(path_skull + sep + str(ImName) + '_mask.nii')
-            mask_data = mask.get_fdata()
+            mask_data = mask.get_fdata().transpose(2,1,0) 
 
             mask_data[np.where(mask_data == 0)] = np.nan
             
@@ -161,7 +161,7 @@ class Normalization(object):
             mask = nib.load(path_save + sep + 'brain_mask' + sep + str(name) + '_mask.nii.gz')
         except WindowsError:
             mask = nib.load(path_save + sep + 'brain_mask' + sep + str(name) + '_mask.nii')
-        mask_data = mask.get_fdata()
+        mask_data = mask.get_fdata().transpose(2,1,0)
         
         mask_data[np.where(mask_data == 0)] = np.nan
         

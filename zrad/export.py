@@ -43,7 +43,7 @@ class Export(object):
                     'GLDZM_GLvar', 'GLDZM_ZSvar', 'GLDZM_entropy']
             par_names = par_names + app
         if calcNGLDM:
-            app = ['NGLDM_GLnonuniformity', 'NGLDM_GLnonuniformity_norm', 'NGLDM_DCnonuniformity', 'NGLDM_DCnonuniformity_norm', 'NGLDM_lowDependenceEmp', 'GLDZM_highDependenceEmp',
+            app = ['NGLDM_GLnonuniformity', 'NGLDM_GLnonuniformity_norm', 'NGLDM_DCnonuniformity', 'NGLDM_DCnonuniformity_norm', 'NGLDM_lowDependenceEmp', 'NGLDM_highDependenceEmp',
                     'NGLDM_lowGL_count_emp', 'NGLDM_highGL_count_emp', 'NGLDM_lowDependence_lowGL_emp', 'NGLDM_lowDependence_highGL_emp', 'NGLDM_highDependence_lowGL_emp', 'NGLDM_highDependence_highGL_emp',
                     'NGLDM_GLvar', 'NGLDM_DCvar', 'NGLDM_DCenergy', 'NGLDM_DCentropy']
             par_names = par_names + app

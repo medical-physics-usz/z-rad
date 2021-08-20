@@ -65,7 +65,7 @@ class Wavelet(object):
                 if not isdir(path + os.sep + 'wavelet' + os.sep + name + os.sep):
                     raise
             # if not ctp:
-            # for i in range(len(self.map), 2):
+            # for i in range(0, len(self.map), 2):
             #     plt.figure()
             #     plt.subplot(331)
             #     plt.imshow(self.map[i], cmap=plt.get_cmap('Greys_r'))
@@ -98,7 +98,7 @@ class Wavelet(object):
             #     plt.close()
             #     k+=1
             if ctp:  # if ctp
-                for i in range(len(self.map), 2):
+                for i in range(0, len(self.map), 2):
                     plt.figure()
                     plt.subplot(331)
                     plt.imshow(self.map[i], vmin=0, vmax=10, cmap=plt.get_cmap('Jet'))
@@ -142,7 +142,7 @@ class Wavelet(object):
                 if not isdir(path + os.sep + 'wavelet' + os.sep + '2D_' + name + os.sep):
                     raise
 
-            # for i in range(len(self.map), 2):
+            # for i in range(0, len(self.map), 2):
             #     plt.figure()
             #     plt.subplot(321)
             #     plt.imshow(self.map[i], cmap=plt.get_cmap('Greys_r'))

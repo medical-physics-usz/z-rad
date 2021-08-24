@@ -92,7 +92,7 @@ class main_texture_pet(object):
                                 if sample_image.PatientWeight != '' and float(sample_image.PatientWeight) != 0.0:
                                     weight = float(sample_image.PatientWeight) * 1000
                                 else:
-                                    read.stop_calc = 'attribute to calc SUV missing'
+                                    read.stop_calc = 'Patient weight attribute to calc SUV missing!'
                                     weight = np.nan
                                 self.logger.info('weight' + str(weight))
                             except AttributeError:

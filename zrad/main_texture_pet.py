@@ -3,7 +3,6 @@ import os
 from os.path import isfile, join
 
 import numpy as np
-import pandas as pd
 import pydicom as dc
 import nibabel as nib
 from joblib import Parallel, delayed
@@ -49,7 +48,7 @@ class main_texture_pet(object):
         def parfor(ImName):
             self.logger.info("Patient " + ImName)
             to_return_3d = list()
-            meanWV = False # caluclated modified WV transform
+            meanWV = False  # calculated modified WV transform
 
             for structure in structures:
                 self.logger.info("Structure " + structure)
@@ -90,16 +89,15 @@ class main_texture_pet(object):
                                 time = (h_stop + m_stop + s_stop - h_start - m_start - s_start)
                                 activity = dose * np.exp(-time * np.log(2) / HL)
                                 self.logger.info('activity ' + str(activity))
-                                if sample_image.PatientWeight != '':
+                                if sample_image.PatientWeight != '' and float(sample_image.PatientWeight) != 0.0:
                                     weight = float(sample_image.PatientWeight) * 1000
                                 else:
+                                    read.stop_calc = 'Patient weight attribute to calc SUV missing!'
                                     weight = np.nan
                                 self.logger.info('weight' + str(weight))
-                                # print(activity / weight)
                             except AttributeError:
                                 read.stop_calc = 'attribute to calc SUV missing'
                                 activity = np.nan
-                                weight = 1.
                         elif SUV and sample_image.Units == 'GML':
                             activity = 1.
                             weight = 1.
@@ -129,7 +127,7 @@ class main_texture_pet(object):
                             a = np.array(a)
                             IM_matrix.append(np.array(a))
                         IM_matrix = np.array(IM_matrix)
-                        contour_matrix = '' # only for nifti
+                        contour_matrix = ''  # only for nifti
     
                         if cropStructure["crop"]:
                             self.logger.info("Start: Cropping")
@@ -173,13 +171,13 @@ class main_texture_pet(object):
                             print("shape of matrices of PET and CT", IM_matrix.shape, CT_matrix.shape)
                             
                     elif file_type == 'nifti':
-                        #nifti file type assumes that conversion to eg HU or SUV has already been performed
-                        #the folder should contain two file, one contour mask with the name corresponding to the name given in GUI and the other file with the image
+                        # nifti file type assumes that conversion to eg HU or SUV has already been performed
+                        # the folder should contain two file, one contour mask with the name corresponding to the name given in GUI and the other file with the image
                         if read.stop_calc == '':
                             image_name = ''
                             contour_name = ''
                             for f in read.onlyfiles:
-                                if isfile(join(mypath_image, f)) and structure[0] in f: #nifti only handles one ROI
+                                if isfile(join(mypath_image, f)) and structure[0] in f:  # nifti only handles one ROI
                                     contour_name = f
                                 else: 
                                     image_name = f

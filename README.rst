@@ -36,11 +36,17 @@ Probably the easiest way to install Python 3 is from https://www.anaconda.com/di
 Installing Python packages
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-**With admin rights:**::
+**With GPU support:** ::
 
-    conda install <package-name>
+    conda create -n zrad python numpy scipy matplotlib pandas scikit-learn scikit-image tqdm joblib wxpython vtk pydicom pywavelets opencv nibabel pytorch simpleitk xlsxwriter cudatoolkit=11.1
+    conda activate zrad
+    
+**Without GPU support:** ::
 
-**Without admin rights:**
+    conda create -n zrad python numpy scipy matplotlib pandas scikit-learn scikit-image tqdm joblib wxpython vtk pydicom pywavelets opencv nibabel pytorch simpleitk xlsxwriter
+    conda activate zrad
+
+**On USZ PC without admin rights:**
 
 Due to access right restrictions from USZ site, installation is possible either using compiled binary wheels or via ``pip`` through a proxy.
 

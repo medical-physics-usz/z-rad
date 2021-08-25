@@ -2,6 +2,7 @@ import PyInstaller.__main__
 
 PyInstaller.__main__.run([
     'main_texture.py',
+    '--distpath=exec',
     '--onefile',
     '--add-data=config.txt;.',
     '--add-data=LogoUSZ.png;.',

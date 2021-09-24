@@ -1,12 +1,14 @@
-import torch
-import numpy as np
+import imp
+import os
+
 import SimpleITK as sitk
+import hdbet
+import numpy as np
+import torch
 from hdbet.data_loading import load_and_preprocess, save_segmentation_nifti
 from hdbet.predict_case import predict_case_3D_net
-import imp
 from hdbet.utils import postprocess_prediction, SetNetworkToVal, get_params_fname, maybe_download_parameters
-import os
-import hdbet
+from tqdm import tqdm
 
 
 def apply_bet(img, bet, out_fname):
@@ -89,9 +91,8 @@ def run_hd_bet(mri_fnames, output_fnames, mode="accurate", config_file=os.path.j
 
             softmax_preds = []
 
-            print("prediction (CNN id)...")
-            for i, p in enumerate(params):
-                print(i)
+            print("Prediction...")
+            for i, p in enumerate(tqdm(params, desc='HD-BET parameters')):
                 net.load_state_dict(p)
                 net.eval()
                 net.apply(SetNetworkToVal(False, False))

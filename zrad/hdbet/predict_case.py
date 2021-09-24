@@ -1,5 +1,6 @@
-import torch
 import numpy as np
+import torch
+from tqdm import tqdm
 
 
 def pad_patient_3D(patient, shape_must_be_divisible_by=16, min_size=None):
@@ -66,8 +67,8 @@ def predict_case_3D_net(net, patient_data, do_mirroring, num_repeats, BATCH_SIZE
         else:
             x = 1
         all_preds = []
-        for i in range(num_repeats):
-            for m in range(x):
+        for _ in tqdm(range(num_repeats), desc='Iterations'):
+            for m in tqdm(range(x), desc='Mirroring'):
                 data_for_net = np.array(data)
                 do_stuff = False
                 if m == 0:

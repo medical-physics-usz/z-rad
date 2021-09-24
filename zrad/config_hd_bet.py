@@ -1,10 +1,13 @@
+from abc import abstractmethod
+
 import numpy as np
 import torch
-from HD_BET.utils import SetNetworkToVal, softmax_helper
-from abc import abstractmethod
-from HD_BET.network_architecture import Network
+
+from hdbet.network_architecture import Network
+from hdbet.utils import SetNetworkToVal, softmax_helper
 
 '''Code taken from https://github.com/MIC-DKFZ/HD-BET'''
+
 
 class BaseConfig(object):
     def __init__(self):

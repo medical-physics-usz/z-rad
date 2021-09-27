@@ -71,6 +71,14 @@ Configure HD-BET for skull stripping
 
 The source code was copied from https://github.com/MIC-DKFZ/HD-BET. If you want to use it for segmentation, you have to copy the model paremeters from ``K:\RAO_Physik\Research\1_FUNCTIONAL IMAGING\F_Software\radiomics documentation\hd-bet_params`` to ``zrad\hdbet\hd-bet_params``.
 
+Executable
+----------
+
+Creating an executable requires PyInstaller (https://pyinstaller.readthedocs.io). To generate an executable, run ::
+
+    python generate_executable.py
+    
+The executable is going to be saved in *exec/* directory. The compilation takes around 15 minutes and the resulting file size is ca. 700 MB.
 
 Documentation
 -------------

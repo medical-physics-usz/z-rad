@@ -281,4 +281,43 @@ class Normalization(object):
         std = np.nanstd(ROI)
         
         return mean, std
+
+    #__________________________________________Nyul Normalization______________________________________________________
+
+    # This function uses piecewise linear transformation to normalize the image intensities to a template histogram
+    # function Args:
+       # Img (array): Image matrix
+       # temp_img (str): path to the mask of template image
+       # save_path (str): Directory to save the normalized image
+    # Returns:
+       # Normalized Image
+
+    def Nyul_norm(self,Img,temp_Img):
+
+        i_min = 1 # minimum percentile to consider in the image
+        i_max = 99 # maximum percentile to consider on the image
+        i_s_min = 1 # minimum percentile on the standard scale
+        i_s_max = 100 # maximum percentile on standard scale
+        l_percentile = 10 # middle percentile lower band
+        U_percentile = 90 # middle percentile upper band
+        steps = 10
+    # define the percentiles -------------------------------------------------------------------------------------------
+        percs1 = np.concatenate(([i_min], np.arange(l_percentile, U_percentile, steps), [i_max])) # Array of percentiles on the image
+        percs2 = np.concatenate(([i_s_min], np.arange(l_percentile, U_percentile, steps), [i_s_max])) # Array of percentiles on the template image
+
+        temp_data = np.load(temp_Img)
+        standard_scale = get_landmarks(temp_data.ravel(),percs2)
+        img_landmarks = get_landmarks(Img.ravel(),percs1)
+        normalized_intensities = interp1d(img_landmarks, standard_scale,fill_value='extrapolate')
+        img_normed = normalized_intensities(Img)
+
+        return img_normed
+
+    def get_landmarks(self,Img,perc):
+
+        landmarks = np.percentile(Img,perc)
+        return landmarks
+
+    #___________________________________________________________________________________________________________________
+
     

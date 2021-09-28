@@ -126,7 +126,7 @@ class main_texture_mr(object):
 
                     
                     #advanced normalization
-                    if norm_type == 'z-score' or norm_type == 'histogram matching' and read.stop_calc == '':
+                    if norm_type == 'z-score' or norm_type == 'Nyul_norm' or norm_type == 'histogram matching' and read.stop_calc == '':
                         #normalization ROI
                         if normROI_advanced == 'brain':
                             patPos = dc.read_file(mypath_image + f).PatientPosition
@@ -163,6 +163,8 @@ class main_texture_mr(object):
                         if norm_type == 'histogram matching':
                             IM_matrix = Normalization().hist_matching(IM_matrix_masked, ImName, path_save, path_template)   
                             meanWV = True #caluclated modified WV transform
+                        elif norm_type == 'Nyul_norm':
+                        	IM_matrix = Normalization().Nyul_norm(IM_matrix_masked, path_template)
                         elif norm_type == 'z-score':
                             mean, std = Normalization().zscore_norm(IM_matrix_masked)      
                             IM_matrix = (IM_matrix - mean)/std

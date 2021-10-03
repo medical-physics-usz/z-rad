@@ -164,7 +164,7 @@ class main_texture_mr(object):
                             IM_matrix = Normalization().hist_matching(IM_matrix_masked, ImName, path_save, path_template)   
                             meanWV = True #caluclated modified WV transform
                         elif norm_type == 'Nyul_norm':
-                        	IM_matrix = Normalization().Nyul_norm(IM_matrix_masked, path_template)
+                        	IM_matrix = Normalization().Nyul_norm(IM_matrix_masked, path_template, ImName, path_save)
                         elif norm_type == 'z-score':
                             mean, std = Normalization().zscore_norm(IM_matrix_masked)      
                             IM_matrix = (IM_matrix - mean)/std

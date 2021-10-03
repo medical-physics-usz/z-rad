@@ -289,10 +289,11 @@ class Normalization(object):
        # Img (array): Image matrix
        # temp_img (str): path to the mask of template image
        # save_path (str): Directory to save the normalized image
+       # name (str) : the name of image
     # Returns:
-       # Normalized Image
+       # Normalized Image (array) 
 
-    def Nyul_norm(self,Img,temp_Img):
+    def Nyul_norm(self,Img,temp_Img, name, path_save):
 
         i_min = 1 # minimum percentile to consider in the image
         i_max = 99 # maximum percentile to consider on the image
@@ -301,23 +302,54 @@ class Normalization(object):
         l_percentile = 10 # middle percentile lower band
         U_percentile = 90 # middle percentile upper band
         steps = 10
-    # define the percentiles -------------------------------------------------------------------------------------------
+
+        # define the percentiles ---------------------------------------------------------------------------------------
         percs1 = np.concatenate(([i_min], np.arange(l_percentile, U_percentile, steps), [i_max])) # Array of percentiles on the image
         percs2 = np.concatenate(([i_s_min], np.arange(l_percentile, U_percentile, steps), [i_s_max])) # Array of percentiles on the template image
 
+        # load template Image ------------------------------------------------------------------------------------------
         temp_data = np.load(temp_Img)
-        standard_scale = get_landmarks(temp_data.ravel(),percs2)
-        img_landmarks = get_landmarks(Img.ravel(),percs1)
+
+        # Remove NaNs from Image and template array --------------------------------------------------------------------
+        temp_NaNs = np.isnan(temp_data)
+        temp_non_NaN = temp_data[~temp_NaNs]
+
+        Img_NaNs = np.isnan(Img)
+        Img_non_NaN = Img[~Img_NaNs]
+
+        # Calculate Image and Template Landmarks -----------------------------------------------------------------------
+        standard_scale = self.get_landmarks(temp_non_NaN.ravel(),percs2)
+        img_landmarks = self.get_landmarks(Img_non_NaN.ravel(),percs1)
+
+        # normalizing the Image ----------------------------------------------------------------------------------------
         normalized_intensities = interp1d(img_landmarks, standard_scale,fill_value='extrapolate')
         img_normed = normalized_intensities(Img)
 
+        # Export the Normalized Image in Nifti Format ------------------------------------------------------------------
+        affine_trans = np.zeros((4,4))
+        affine_trans[0,0] = -1 * 0.5
+        affine_trans[1,1] = -1 * 0.5
+        affine_trans[2,2] = 0.5
+        affine_trans[3,3] = 1.
+        affine_trans[0,3] = -1 * 100
+        affine_trans[1,3] = -1 * 100
+        affine_trans[2,3] = 100
+        Img_nifti = nib.Nifti1Image(img_normed, affine=affine_trans)
+        try:
+            os.mkdir(path_save + 'normalized_img_nyul')
+        except FileExistsError:
+            pass
+
+        nib.save(Img_nifti, path_save + 'normalized_img_nyul' + sep + name + 'norm.nii.gz')
+
         return img_normed
 
+    # Define the function for getting the landmarks --------------------------------------------------------------------
     def get_landmarks(self,Img,perc):
 
         landmarks = np.percentile(Img,perc)
         return landmarks
 
-    #___________________________________________________________________________________________________________________
+
 
     

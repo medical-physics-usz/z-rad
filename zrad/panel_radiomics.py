@@ -277,7 +277,7 @@ class panelRadiomics(scrolled.ScrolledPanel):
              wx.StaticText(self, label=''), wx.StaticText(self, label='normalization'), cb_norm_type, wx.StaticText(self, label=''),  wx.StaticText(self, label=''), 
              wx.StaticText(self, label=''), wx.StaticText(self, label='ROI for linear normalization'), tc_struct1, tc_struct2, wx.StaticText(self, label=''), 
              wx.StaticText(self, label=''), wx.StaticText(self, label='ROI for advanced normalization'), cb_norm_ROI, btn_skull, tc_skull,
-             wx.StaticText(self, label=''), wx.StaticText(self, label=''), wx.StaticText(self, label='Standard MR for histogram matching or Nyul normalization'), btn_histmatch, tc_histmatch])
+             wx.StaticText(self, label=''), wx.StaticText(self, label=''), wx.StaticText(self, label='Standard MR for histogram matching/Nyul normalization'), btn_histmatch, tc_histmatch])
 
         h8box = wx.BoxSizer(wx.HORIZONTAL)
         h8box.Add((10, 10))

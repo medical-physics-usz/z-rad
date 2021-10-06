@@ -101,8 +101,13 @@ class ResizeTexture(object):
                             ds = dc.read_file(mypath_file + f)
                             # read only dicoms of certain modality
                             if isfile(join(mypath_file, f)) and ds.SOPClassUID in UID_t:
-                                # skip non-axial slices
-                                is_axial = np.array_equal(np.round(ds.ImageOrientationPatient), [1, 0, 0, 0, 1, 0])
+                                # skip non-axial slices for CT
+                                if ds.PatientPosition == 'HFS':
+                                    is_axial = np.array_equal(np.round(ds.ImageOrientationPatient), [1, 0, 0, 0, 1, 0])
+                                elif ds.PatientPosition == 'FFS':
+                                    is_axial = np.array_equal(np.round(ds.ImageOrientationPatient), [1, 0, 0, 0, -1, 0])
+                                else:
+                                    is_axial = False
                                 if (self.image_type == 'CT') and not is_axial:
                                     continue
                                 # sort files by slice position
@@ -686,7 +691,7 @@ class ResizeTexture(object):
                 pass
             except IndexError:
                 list_voi_this.append(name)
-                pass
+                sys.exit(f"No valid image for patient {name}.")
 
             return {'wrong_roi': wrong_roi_this, 'list_voi': list_voi_this, 'empty_roi': empty_roi_this}
 

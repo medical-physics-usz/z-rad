@@ -89,8 +89,13 @@ class ResizeShape(object):
                         ds = dc.read_file(mypath_file + f)
                         # read only dicoms of certain modality
                         if isfile(join(mypath_file, f)) and ds.SOPClassUID in UID_t:
-                            # skip non-axial slices
-                            is_axial = np.array_equal(np.round(ds.ImageOrientationPatient), [1, 0, 0, 0, 1, 0])
+                            # skip non-axial slices for CT
+                            if ds.PatientPosition == 'HFS':
+                                is_axial = np.array_equal(np.round(ds.ImageOrientationPatient), [1, 0, 0, 0, 1, 0])
+                            elif ds.PatientPosition == 'FFS':
+                                is_axial = np.array_equal(np.round(ds.ImageOrientationPatient), [1, 0, 0, 0, -1, 0])
+                            else:
+                                is_axial = False
                             if (self.image_type == 'CT') and not is_axial:
                                 continue
                             # sort files by slice position

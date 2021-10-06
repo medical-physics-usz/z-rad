@@ -46,8 +46,8 @@ class panelRadiomics(scrolled.ScrolledPanel):
         rb_nifti = wx.RadioButton(self, id=112, label='NIFTI') 
         
         # Number of CPU cores used for parallelization
-        n_jobs_st = wx.StaticText(self, label='No. parallel jobs', size = (90, h))
-        n_jobs_cb = wx.ComboBox(self, id=170, size=(200, 1.25 * h), value='1',
+        n_jobs_st = wx.StaticText(self, label='No. parallel jobs', size=(90, h))
+        n_jobs_cb = wx.ComboBox(self, id=170, value='1',
                                 choices=[str(e) for e in range(1, multiprocessing.cpu_count() + 1)],
                                 style=wx.CB_READONLY)
 
@@ -264,10 +264,10 @@ class panelRadiomics(scrolled.ScrolledPanel):
 
         self.gs_8 = wx.FlexGridSizer(cols=5, vgap=5, hgap=10)
         rb_mr = wx.RadioButton(self, id=150, label='MR')
-        cb_norm_type = wx.ComboBox(self, id=156, size=(200, 2*h), value="", choices=['none', 'linear', 'z-score', 'histogram matching'], style=wx.CB_READONLY)  # modality type
+        cb_norm_type = wx.ComboBox(self, id=156, value="", choices=['none', 'linear', 'z-score', 'histogram matching'], style=wx.CB_READONLY)  # modality type
         tc_struct1 = wx.TextCtrl(self, id=151, size=(200, h), value='', style=wx.TE_PROCESS_ENTER)  # names of structures for linaer function fitting to normalize MR
         tc_struct2 = wx.TextCtrl(self, id=152, size=(200, h), value='', style=wx.TE_PROCESS_ENTER)
-        cb_norm_ROI = wx.ComboBox(self, id=153, size=(200, 2*h), value="", choices=['none', 'brain', 'ROI', 'brain-ROI'], style=wx.CB_READONLY)
+        cb_norm_ROI = wx.ComboBox(self, id=153, value="", choices=['none', 'brain', 'ROI', 'brain-ROI'], style=wx.CB_READONLY)
         tc_skull = wx.TextCtrl(self, id=154, size=(1000, h), value='', style=wx.TE_PROCESS_ENTER) 
         btn_skull = wx.Button(self, -1, label='ROI mask already created', size=(200, h))
         tc_histmatch = wx.TextCtrl(self, id=155, size=(1000, h), value='', style=wx.TE_PROCESS_ENTER) 

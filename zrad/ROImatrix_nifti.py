@@ -211,7 +211,7 @@ class MatrixNifti(object):
                     matrix_full[ind_max] = np.nan
                     matrix_rec[ind_min] = np.nan
                     matrix_rec[ind_max] = np.nan
-                    print("rs_type", rs_type, " matrix_true", matrix_true.shape)
+                    # print("rs_type", rs_type, " matrix_true", matrix_true.shape)
                     if rs_type == 2:
                         self.HUmask = [ind_min, ind_max]
                     elif rs_type == 1:

@@ -1,23 +1,18 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Fri Mar 19 08:56:15 2021
-
-@author: marta
-"""
 import logging
 import os
-from os.path import isdir, isfile, join
-from os import makedirs, listdir
 from glob import glob
+from os import makedirs
+from os.path import isdir, isfile, join
+
 import nibabel as nib
 import numpy as np
-from scipy.interpolate import interpn
-from utils import tqdm_joblib
-from tqdm import tqdm
 from joblib import Parallel, delayed
+from scipy.interpolate import interpn
+from tqdm import tqdm
 
+from read import ReadImageStructure
+from utils import tqdm_joblib
 
-from read import ReadImageStructure   
 
 class ResizeNifti(object):
     """Class to resize images and listed structures to a resolution defined by user and saved the results as dicom file
@@ -85,8 +80,8 @@ class ResizeNifti(object):
                     slope = 1.
                 if np.isnan(intercept):
                     intercept = 0
-                IM_matrix = img.get_fdata().transpose(2,1,0) * slope + intercept
-                contour_matrix = contour.get_fdata().transpose(2,1,0)
+                IM_matrix = img.get_fdata().transpose(2, 1, 0) * slope + intercept
+                contour_matrix = contour.get_fdata().transpose(2, 1, 0)
                 for lab in self.labels:
                     ind = np.where(contour_matrix == lab)
                     contour_matrix[ind] = 100
@@ -136,8 +131,7 @@ class ResizeNifti(object):
                 affine_trans[0, 3] = 0
                 affine_trans[1, 3] = 0
                 affine_trans[2, 3] = 0
-                        
-                
+
                 IM_matrix_nifti = nib.Nifti1Image(new_image_matrix.transpose(2,1,0), affine = affine_trans)
                 contour_matrix_nifti = nib.Nifti1Image(new_contour_matrix.transpose(2,1,0), affine = affine_trans)
                 
@@ -152,34 +146,3 @@ class ResizeNifti(object):
         
         with tqdm_joblib(tqdm(desc="Resizing texture nifti", total=len(self.list_dir))):
             Parallel(n_jobs=self.n_jobs)(delayed(parfor)(name) for name in self.list_dir)
-
-#Mfile_type = 'nifti'
-#R_UID = []
-#wv = True
-#dim = '3D'
-#local = True
-#new_resolution = 2.0
-#
-#label_list = [[1], [2],[4], [1,2,4]]#1: called necrosis and non-enhancing tumor,2: edema, 4: enhancing tumor
-#VOI_names = ['VOI1', 'VOI2', 'VOI4', 'VOI_combined']
-#
-#for seg in range(1,12):
-#    print('segmentation: ', seg)
-#    
-#    for seq in ['T1', 'T1KM', 'FLAIR', 'T2']:
-#        print('sequence: '+ seq)
-#        
-#        for li, labels in enumerate(label_list):
-#
-#            mypath = 'C:\\radiomics\\3_SPHN_IOV\\data\\2_sorted_for_radiomics\\1_segmentation\\'+str(seg)+'\\'+seq+'\\'
-#            path_save = 'C:\\radiomics\\3_SPHN_IOV\\data\\2_sorted_for_radiomics\\2_resize_NIFTI_2mm\\seg'+str(seg)+'\\'+seq+'\\'+VOI_names[li]+'\\'
-#            structure = ['seg'+str(seg)]
-#            
-#            for d in listdir(mypath):
-#                print('patient: '+d)
-#                d = str(d)
-#                
-                    
-#                    dummy = nib.Nifti1Image(IM_matrix, affine = affine_trans)
-#                    nib.save(dummy, path_save+d+'\\org.nii.gz')
-

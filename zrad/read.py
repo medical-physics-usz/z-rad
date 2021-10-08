@@ -110,11 +110,11 @@ class ReadImageStructure(object):
 
     def ReadNiftiImageStructure(self, mypath_image, structure):
         self.onlyfiles = listdir(mypath_image)
-        if len(self.onlyfiles ) == 2:
+        if len(self.onlyfiles) == 2:
             matrix1 = nib.load(mypath_image + self.onlyfiles[0])
             matrix2 = nib.load(mypath_image + self.onlyfiles[1])     
-            img_matrix1 = matrix1.get_fdata().transpose(2,1,0) 
-            img_matrix2 = matrix2.get_fdata().transpose(2,1,0)
+            img_matrix1 = matrix1.get_fdata().transpose(2, 1, 0)
+            img_matrix2 = matrix2.get_fdata().transpose(2, 1, 0)
             xCTspace = matrix1.header['pixdim'][1]
             yCTspace = matrix1.header['pixdim'][2]
             zCTspace = matrix1.header['pixdim'][3] 

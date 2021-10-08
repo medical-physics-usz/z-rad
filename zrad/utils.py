@@ -1,4 +1,6 @@
 import contextlib
+import os
+
 import joblib
 
 
@@ -23,3 +25,11 @@ def tqdm_joblib(tqdm_object):
     finally:
         joblib.parallel.BatchCompletionCallBack = old_batch_callback
         tqdm_object.close()
+
+
+def new_directory(dir_path):
+    try:
+        os.makedirs(dir_path)
+    except OSError:
+        if not os.path.isdir(dir_path):
+            raise

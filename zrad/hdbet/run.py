@@ -2,13 +2,13 @@ import imp
 import os
 
 import SimpleITK as sitk
-import hdbet
 import numpy as np
 import torch
-from hdbet.data_loading import load_and_preprocess, save_segmentation_nifti
-from hdbet.predict_case import predict_case_3D_net
-from hdbet.utils import postprocess_prediction, SetNetworkToVal, get_params_fname, maybe_download_parameters
 from tqdm import tqdm
+
+from .data_loading import load_and_preprocess, save_segmentation_nifti
+from .predict_case import predict_case_3D_net
+from .utils import postprocess_prediction, SetNetworkToVal, get_params_fname, maybe_download_parameters
 
 
 def apply_bet(img, bet, out_fname):
@@ -21,8 +21,8 @@ def apply_bet(img, bet, out_fname):
     sitk.WriteImage(out, out_fname)
 
 
-def run_hd_bet(mri_fnames, output_fnames, mode="accurate", config_file=os.path.join(hdbet.__path__[0], "config.py"), device=0,
-               postprocess=False, do_tta=True, keep_mask=True, overwrite=True):
+def run_hd_bet(mri_fnames, output_fnames, mode="accurate", config_file="config.py", device=0, postprocess=False,
+               do_tta=True, keep_mask=True, overwrite=True):
     """
 
     :param mri_fnames: str or list/tuple of str
@@ -54,7 +54,7 @@ def run_hd_bet(mri_fnames, output_fnames, mode="accurate", config_file=os.path.j
 
     assert all([os.path.isfile(i) for i in list_of_param_files]), "Could not find parameter files"
 
-    cf = imp.load_source('cf', config_file)
+    cf = imp.load_source('cf', os.path.join(os.path.dirname(__file__), config_file))
     cf = cf.config()
 
     net, _ = cf.get_network(cf.val_use_train_mode, None)
@@ -113,5 +113,3 @@ def run_hd_bet(mri_fnames, output_fnames, mode="accurate", config_file=os.path.j
 
             if not keep_mask:
                 os.remove(mask_fname)
-
-

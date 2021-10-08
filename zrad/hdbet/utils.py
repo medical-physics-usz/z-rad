@@ -1,10 +1,12 @@
-from urllib.request import urlopen
-import torch
-from torch import nn
-import numpy as np
-from skimage.morphology import label
 import os
-from hdbet.paths import folder_with_parameter_files
+from urllib.request import urlopen
+
+import numpy as np
+import torch
+from skimage.morphology import label
+from torch import nn
+
+from .paths import folder_with_parameter_files
 
 
 def get_params_fname(fold):

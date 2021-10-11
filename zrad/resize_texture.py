@@ -1,5 +1,6 @@
 import logging
 import os
+import sys
 from functools import reduce
 from glob import glob
 from os import path, makedirs, listdir, rmdir
@@ -101,8 +102,13 @@ class ResizeTexture(object):
                             ds = dc.read_file(mypath_file + f)
                             # read only dicoms of certain modality
                             if isfile(join(mypath_file, f)) and ds.SOPClassUID in UID_t:
-                                # skip non-axial slices
-                                is_axial = np.array_equal(np.round(ds.ImageOrientationPatient), [1, 0, 0, 0, 1, 0])
+                                # skip non-axial slices for CT
+                                if ds.PatientPosition == 'HFS':
+                                    is_axial = np.array_equal(np.round(ds.ImageOrientationPatient), [1, 0, 0, 0, 1, 0])
+                                elif ds.PatientPosition == 'FFS':
+                                    is_axial = np.array_equal(np.round(ds.ImageOrientationPatient), [1, 0, 0, 0, -1, 0])
+                                else:
+                                    is_axial = False
                                 if (self.image_type == 'CT') and not is_axial:
                                     continue
                                 # sort files by slice position
@@ -220,18 +226,18 @@ class ResizeTexture(object):
                     else:
                         # define z interpolation grid
                         IM = np.array(IM)
-                        sliceThick = round(abs(slices[0] - slices[1]), self.round_factor)
+                        slice_thick = round(abs(slices[0] - slices[1]), self.round_factor)
                         # check slice sorting,for the interpolation function one need increasing slice position
                         if slices[1] - slices[0] < 0:
-                            new_gridZ = range(slices[-1], slices[0] + sliceThick, self.resolution)
-                            old_gridZ = range(slices[-1], slices[0] + sliceThick, sliceThick)
+                            new_gridZ = range(slices[-1], slices[0] + slice_thick, self.resolution)
+                            old_gridZ = range(slices[-1], slices[0] + slice_thick, slice_thick)
                             Image = IM.copy()
                             for j in range(len(IM)):
                                 IM[j] = Image[-j - 1]
                             del Image
                         else:
-                            new_gridZ = np.arange(slices[0], slices[-1] + sliceThick, self.resolution)
-                            old_gridZ = np.arange(slices[0], slices[-1] + sliceThick, sliceThick)
+                            new_gridZ = np.arange(slices[0], slices[-1] + slice_thick, self.resolution)
+                            old_gridZ = np.arange(slices[0], slices[-1] + slice_thick, slice_thick)
                         self.logger.info('new grid Z ' + str(len(new_gridZ)))
                         self.logger.info(" " + ", ".join(map(str, new_gridZ)))
                         self.logger.info('old grid Z ' + str(len(old_gridZ)))
@@ -293,7 +299,7 @@ class ResizeTexture(object):
                         CT.PixelSpacing[0] = str(self.resolution)  # adapt XY resolution
                         CT.PixelSpacing[1] = str(self.resolution)
                         if self.dim == "3D":
-                            CT.sliceThick = str(self.resolution)  # adapt slice thickness
+                            CT.SliceThickness = str(self.resolution)  # adapt slice thickness
                             # adapt slice location tag if exists (in 3D)
                             try:
                                 if position == 'FFS':
@@ -418,18 +424,18 @@ class ResizeTexture(object):
                         else:
                             # define z interpolation grid
                             IM = np.array(IM)
-                            sliceThick = round(abs(slices[0] - slices[1]), self.round_factor)
+                            slice_thick = round(abs(slices[0] - slices[1]), self.round_factor)
                             # check slice sorting,for the interpolation function one need increasing slice position
                             if slices[1] - slices[0] < 0:
-                                new_gridZ = np.arange(slices[-1], slices[0] + sliceThick, self.resolution)
-                                old_gridZ = np.arange(slices[-1], slices[0] + sliceThick, sliceThick)
+                                new_gridZ = np.arange(slices[-1], slices[0] + slice_thick, self.resolution)
+                                old_gridZ = np.arange(slices[-1], slices[0] + slice_thick, slice_thick)
                                 Image = IM.copy()
                                 for j in range(len(IM)):
                                     IM[j] = Image[-j - 1]
                                 del Image
                             else:
-                                new_gridZ = np.arange(slices[0], slices[-1] + sliceThick, self.resolution)
-                                old_gridZ = np.arange(slices[0], slices[-1] + sliceThick, sliceThick)
+                                new_gridZ = np.arange(slices[0], slices[-1] + slice_thick, self.resolution)
+                                old_gridZ = np.arange(slices[0], slices[-1] + slice_thick, slice_thick)
                             self.logger.info('new grid Z ' + ", ".join(map(str, new_gridZ)))
                             self.logger.info('old grid Z ' + ", ".join(map(str, old_gridZ)))
 
@@ -470,7 +476,7 @@ class ResizeTexture(object):
                             CT.PixelSpacing[0] = str(self.resolution)  # adapt XY resolution
                             CT.PixelSpacing[1] = str(self.resolution)
                             if self.dim == "3D":
-                                CT.sliceThick = str(self.resolution)  # adapt slice thickness
+                                CT.SliceThickness = str(self.resolution)  # adapt slice thickness
                                 # adapt slice location tag if exists
                                 try:
                                     if position == 'FFS':
@@ -557,7 +563,7 @@ class ResizeTexture(object):
                                 if (M[n_s] != []) and (M[n_s + 1] != []):
                                     if self.round_factor == 2:
                                         # create an interpolation grid between those slices
-                                        zi = np.linspace(old_gridZ[n_s], old_gridZ[n_s + 1], int(sliceThick / 0.01) + 1)
+                                        zi = np.linspace(old_gridZ[n_s], old_gridZ[n_s + 1], int(slice_thick / 0.01) + 1)
                                         # round interpolation grid according to specified precision
                                         for gz in range(len(zi)):
                                             zi[gz] = round(zi[gz], self.round_factor)
@@ -566,12 +572,12 @@ class ResizeTexture(object):
                                         # polygon encompassing the sturcture
                                         X, Y = InterpolateROI().interpolate(self.interpolation_alg, M[n_s], M[n_s + 1],
                                                                             np.linspace(0, 1,
-                                                                                        int(sliceThick / 0.01) + 1),
+                                                                                        int(slice_thick / 0.01) + 1),
                                                                             'texture')
                                     elif self.round_factor == 3:
                                         # create an interpolation grid between those slices
                                         zi = np.linspace(old_gridZ[n_s], old_gridZ[n_s + 1],
-                                                         int(sliceThick / 0.001) + 1)
+                                                         int(slice_thick / 0.001) + 1)
 
                                         # round interpolation grid according to specified precision
                                         for gz in range(len(zi)):
@@ -581,7 +587,7 @@ class ResizeTexture(object):
                                         # polygon encompassing the sturcture
                                         X, Y = InterpolateROI().interpolate(self.interpolation_alg, M[n_s], M[n_s + 1],
                                                                             np.linspace(0, 1,
-                                                                                        int(sliceThick / 0.001) + 1),
+                                                                                        int(slice_thick / 0.001) + 1),
                                                                             'texture')
                                     # check which position in the interpolation grid corresponds to the new slice
                                     # position
@@ -686,7 +692,7 @@ class ResizeTexture(object):
                 pass
             except IndexError:
                 list_voi_this.append(name)
-                pass
+                sys.exit(f"No valid image for patient {name}.")
 
             return {'wrong_roi': wrong_roi_this, 'list_voi': list_voi_this, 'empty_roi': empty_roi_this}
 

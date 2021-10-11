@@ -15,9 +15,10 @@ from ROImatrix import Matrix
 from texture_wavelet import Wavelet
 from ROImatrix_nifti import MatrixNifti
 
+
 class Texture(object):
     """Calculate texture, intensity, fractal dim and center of the mass shift
-    file_type - dicom or nifti, influences reading in the controus
+    file_type - dicom or nifti, influences reading in the contours
     maps – list of images to analyze, for CT it is one element list with 3D matrix, for perfusion it is a 3 elements
     cont_map - contour array for nifti files (1 inside of the contour, 0 outside)
     list with 3D matrices for BF, MTT, BV
@@ -414,6 +415,16 @@ class Texture(object):
                         if rs_type[w] == 1:  # save only for the original image
                             self.saveImage(path, modality[i], matrix, ImName, pixNr)
                         more_than_one_pix = True
+
+                        # save numpy binary
+                        if rs_type[w] == 1:
+                            numpy_bin_directory = os.path.join(path, "numpy_binaries")
+                            try:
+                                os.mkdir(numpy_bin_directory)
+                            except FileExistsError:
+                                pass
+                            numpy_bin_path = os.path.join(numpy_bin_directory, f"{ImName}_{structure}.npy")
+                            np.save(file=numpy_bin_path, arr=matrix_v, allow_pickle=False)
 
                         try:
                             # histogram

@@ -89,8 +89,13 @@ class ResizeShape(object):
                         ds = dc.read_file(mypath_file + f)
                         # read only dicoms of certain modality
                         if isfile(join(mypath_file, f)) and ds.SOPClassUID in UID_t:
-                            # skip non-axial slices
-                            is_axial = np.array_equal(np.round(ds.ImageOrientationPatient), [1, 0, 0, 0, 1, 0])
+                            # skip non-axial slices for CT
+                            if ds.PatientPosition == 'HFS':
+                                is_axial = np.array_equal(np.round(ds.ImageOrientationPatient), [1, 0, 0, 0, 1, 0])
+                            elif ds.PatientPosition == 'FFS':
+                                is_axial = np.array_equal(np.round(ds.ImageOrientationPatient), [1, 0, 0, 0, -1, 0])
+                            else:
+                                is_axial = False
                             if (self.image_type == 'CT') and not is_axial:
                                 continue
                             # sort files by slice position
@@ -119,14 +124,14 @@ class ResizeShape(object):
                     xct = float(cropCT.ImagePositionPatient[0])  # x position of top left corner
                     yct = float(cropCT.ImagePositionPatient[1])  # y position of top left corner
                 # define z interpolation grid
-                sliceThick = round(abs(slices[0] - slices[1]), self.round_factor)
+                slice_thick = round(abs(slices[0] - slices[1]), self.round_factor)
                 # check slice sorting,for the interpolation function one need increasing slice position
                 if slices[1] - slices[0] < 0:
-                    new_gridZ = np.arange(slices[-1], slices[0] + sliceThick, self.resolution)
-                    old_gridZ = np.arange(slices[-1], slices[0] + sliceThick, sliceThick)
+                    new_gridZ = np.arange(slices[-1], slices[0] + slice_thick, self.resolution)
+                    old_gridZ = np.arange(slices[-1], slices[0] + slice_thick, slice_thick)
                 else:
-                    new_gridZ = np.arange(slices[0], slices[-1] + sliceThick, self.resolution)
-                    old_gridZ = np.arange(slices[0], slices[-1] + sliceThick, sliceThick)
+                    new_gridZ = np.arange(slices[0], slices[-1] + slice_thick, self.resolution)
+                    old_gridZ = np.arange(slices[0], slices[-1] + slice_thick, slice_thick)
 
                 # check the length in case of rounding problems
                 if len(old_gridZ) != len(slices):
@@ -199,7 +204,7 @@ class ResizeShape(object):
                             if M[n_s] != [] and M[n_s + 1] != []:  # if two consecutive slices not empty - interpolate
                                 if self.round_factor == 2:
                                     zi = np.linspace(old_gridZ[n_s], old_gridZ[n_s + 1], int(
-                                        sliceThick / 0.01) + 1)  # create an interpolation grid between those slice
+                                        slice_thick / 0.01) + 1)  # create an interpolation grid between those slice
                                     # round interpolation grid according to specified precision
                                     for gz in range(len(zi)):
                                         zi[gz] = round(zi[gz], self.round_factor)
@@ -208,11 +213,11 @@ class ResizeShape(object):
                                     # returns all the points in the structure
                                     X, Y = InterpolateROI().interpolate(self.interpolation_algorithm, M[n_s],
                                                                         M[n_s + 1],
-                                                                        np.linspace(0, 1, int(sliceThick / 0.01) + 1),
+                                                                        np.linspace(0, 1, int(slice_thick / 0.01) + 1),
                                                                         'shape')
                                 elif self.round_factor == 3:
                                     # create an interpolation grid between those slicse
-                                    zi = np.linspace(old_gridZ[n_s], old_gridZ[n_s + 1], int(sliceThick / 0.001) + 1)
+                                    zi = np.linspace(old_gridZ[n_s], old_gridZ[n_s + 1], int(slice_thick / 0.001) + 1)
                                     # round interpolation grid according to specified precision
                                     for gz in range(len(zi)):
                                         zi[gz] = round(zi[gz], self.round_factor)
@@ -222,7 +227,7 @@ class ResizeShape(object):
 
                                     X, Y = InterpolateROI().interpolate(self.interpolation_algorithm, M[n_s],
                                                                         M[n_s + 1],
-                                                                        np.linspace(0, 1, int(sliceThick / 0.001) + 1),
+                                                                        np.linspace(0, 1, int(slice_thick / 0.001) + 1),
                                                                         'shape')
 
                                 # check which position in the interpolation grid corresponds to the new slice position

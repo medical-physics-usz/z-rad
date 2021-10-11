@@ -56,12 +56,12 @@ class panelResize(scrolled.ScrolledPanel):
 
         # interpolation type
         int_type = wx.StaticText(self, label='Interpolation')
-        inte_type = wx.ComboBox(self, id=1015, size=(100, 1.25 * h), value='linear', choices=['linear', 'nearest', 'cubic'],
+        inte_type = wx.ComboBox(self, id=1015, value='linear', choices=['linear', 'nearest', 'cubic'],
                                 style=wx.CB_READONLY)
 
         # imaging modality
         st_type = wx.StaticText(self, label='Image type')
-        tc_type = wx.ComboBox(self, id=1005, size=(100, 1.25 * h), value="", choices=['CT', 'PET', 'MR', 'IVIM'],
+        tc_type = wx.ComboBox(self, id=1005, value="", choices=['CT', 'PET', 'MR', 'IVIM'],
                               style=wx.CB_READONLY)  # modality type
 
         # patient number to start
@@ -73,7 +73,7 @@ class panelResize(scrolled.ScrolledPanel):
 
         # Number of CPU cores used for parallelization
         n_jobs_st = wx.StaticText(self, label='No. parallel jobs')
-        n_jobs_cb = wx.ComboBox(self, id=1016, size=(100, 1.25 * h), value='1',
+        n_jobs_cb = wx.ComboBox(self, id=1016, value='1',
                                 choices=[str(e) for e in range(1, multiprocessing.cpu_count()+1)],
                                 style=wx.CB_READONLY)
 

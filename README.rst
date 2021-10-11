@@ -38,11 +38,15 @@ Installing Python packages
 
 **With GPU support:** ::
 
+    conda config --add channels conda-forge
+    conda config --set channel_priority strict
     conda create -n zrad python numpy scipy matplotlib pandas scikit-learn scikit-image tqdm joblib wxpython vtk pydicom pywavelets opencv nibabel pytorch simpleitk xlsxwriter cudatoolkit=11.1
     conda activate zrad
     
 **Without GPU support:** ::
 
+    conda config --add channels conda-forge
+    conda config --set channel_priority strict
     conda create -n zrad python numpy scipy matplotlib pandas scikit-learn scikit-image tqdm joblib wxpython vtk pydicom pywavelets opencv nibabel pytorch simpleitk xlsxwriter
     conda activate zrad
 

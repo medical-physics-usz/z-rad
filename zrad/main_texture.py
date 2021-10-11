@@ -349,7 +349,7 @@ class Radiomics(wx.Frame):
         licence = """"""
         info = AboutDialogInfo()
         info.SetName('Z-Rad')
-        info.SetVersion('7.3.1')
+        info.SetVersion('7.4.0')
         info.SetDescription(description)
         info.SetCopyright('(C) 2017-2021 USZ Radiomics Team')
         info.SetLicence(licence)

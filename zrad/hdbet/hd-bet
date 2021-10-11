@@ -1,7 +1,7 @@
 import os
-from HD_BET.run import run_hd_bet
-from HD_BET.utils import maybe_mkdir_p, subfiles
-import HD_BET
+from hdbet.run import run_hd_bet
+from hdbet.utils import maybe_mkdir_p, subfiles
+import hdbet
 
 
 if __name__ == "__main__":

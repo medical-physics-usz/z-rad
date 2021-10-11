@@ -7,9 +7,9 @@ from numpy import arange
 
 from check import CheckStructures
 from myinfo import MyInfo
+from resize_nifti import ResizeNifti
 from resize_shape import ResizeShape
 from resize_texture import ResizeTexture
-from resize_nifti import ResizeNifti
 
 
 class panelResize(scrolled.ScrolledPanel):

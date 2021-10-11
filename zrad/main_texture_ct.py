@@ -109,8 +109,8 @@ class main_texture_ct(object):
                                 slope = 1.
                             if np.isnan(intercept):
                                 intercept = 0
-                            IM_matrix = img.get_fdata().transpose(2,1,0)  * slope + intercept
-                            contour_matrix = contour.get_fdata().transpose(2,1,0) 
+                            IM_matrix = img.get_fdata().transpose(2, 1, 0) * slope + intercept
+                            contour_matrix = contour.get_fdata().transpose(2, 1, 0)
                             for lab in labels:
                                 ind = np.where(contour_matrix == lab)
                                 contour_matrix[ind] = 100

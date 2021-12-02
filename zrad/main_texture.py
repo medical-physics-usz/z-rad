@@ -26,7 +26,7 @@ class Radiomics(wx.Frame):
         Parent of class Panel"""
 
     def __init__(self, *a, **b):
-        super(Radiomics, self).__init__(size=(1075, 725), pos=(100, 100), title='Z-Rad 7.3.1', *a, **b)
+        super(Radiomics, self).__init__(size=(1075, 725), pos=(100, 100), title='Z-Rad 7.4.0', *a, **b)
 
         self.defaultWindowsize = (1100, 725)
         self.SetMinSize(self.defaultWindowsize)

@@ -109,14 +109,14 @@ class InterpolateROI(object):
         for i in range(len(contours)):  # contours
             for j in range(len(contours[i])):  # slice
                 for n in range(len(contours[i][j])):  # number of contours per slice
-                    if contours[i][j][n][0] != []:
+                    if np.size(contours[i][j][n][0]) != 0:
                         contours[i][j][n][0] = np.array(abs(contours[i][j][n][0] - x_ct) / xCTspace)
                         contours[i][j][n][1] = np.array(abs(contours[i][j][n][1] - y_ct) / yCTspace)
                         for k in range(len(contours[i][j][n][0])):
                             contours[i][j][n][0][k] = int(round(contours[i][j][n][0][k], 0))
                             contours[i][j][n][1][k] = int(round(contours[i][j][n][1][k], 0))
-                        contours[i][j][n][0] = np.array(contours[i][j][n][0], dtype=np.int)
-                        contours[i][j][n][1] = np.array(contours[i][j][n][1], dtype=np.int)
+                        contours[i][j][n][0] = np.array(contours[i][j][n][0], dtype=int)
+                        contours[i][j][n][1] = np.array(contours[i][j][n][1], dtype=int)
 
         x_c_min = []  # x position of contour points to define the region of interest where we look for the structure
         x_c_max = []
@@ -125,7 +125,7 @@ class InterpolateROI(object):
         for i in range(len(contours)):  # contours
             for j in range(len(contours[i])):  # slice
                 for n in range(len(contours[i][j])):  # number of contours per slice
-                    if contours[i][j][n][0] != []:
+                    if np.size(contours[i][j][n][0]) != 0:
                         x_c_min.append(np.min(contours[i][j][n][0]))
                         x_c_max.append(np.max(contours[i][j][n][0]))
                         y_c_min.append(np.min(contours[i][j][n][1]))
@@ -166,7 +166,7 @@ class InterpolateROI(object):
             if lista[i][0] not in listka:
                 m = [lista[i][0]]
                 for j in range(counts[nr]):
-                    m.append([np.array(lista[i + j][1], dtype=np.float), np.array(lista[i + j][2], dtype=np.float)])
+                    m.append([np.array(lista[i + j][1], dtype=float), np.array(lista[i + j][2], dtype=float)])
                     listka.append(lista[i][0])
                 kontur.append(m)
                 nr += 1
@@ -208,7 +208,7 @@ class InterpolateROI(object):
         # adjust if there is a contour only in one slice, add slice filled with -1 before and after
         ind = []
         for k in range(len(M)):
-            if M[k] != []:
+            if np.size(M[k]) != 0:
                 ind.append(k)
 
         if len(ind) == 1:
@@ -232,8 +232,8 @@ class InterpolateROI(object):
         del s1a
         del s2a
 
-        out1 = np.ones((len(s1), len(s1[0])), dtype=np.int)
-        out2 = np.ones((len(s2), len(s2[0])), dtype=np.int)
+        out1 = np.ones((len(s1), len(s1[0])), dtype=int)
+        out2 = np.ones((len(s2), len(s2[0])), dtype=int)
         out1[np.where(s1 != -1)] = 0  # a matrix with 1 inside ROI and 0 outside
         out2[np.where(s2 != -1)] = 0
         del s1

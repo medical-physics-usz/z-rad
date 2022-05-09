@@ -90,10 +90,9 @@ class ResizeShape(object):
                         # read only dicoms of certain modality
                         if isfile(join(mypath_file, f)) and ds.SOPClassUID in UID_t:
                             # skip non-axial slices for CT
-                            if ds.PatientPosition == 'HFS':
-                                is_axial = np.array_equal(np.round(ds.ImageOrientationPatient), [1, 0, 0, 0, 1, 0])
-                            elif ds.PatientPosition == 'FFS':
-                                is_axial = np.array_equal(np.round(ds.ImageOrientationPatient), [1, 0, 0, 0, -1, 0])
+                            if (ds.PatientPosition == 'HFS') or (ds.PatientPosition == 'FFS'):
+                                iop = np.round(ds.ImageOrientationPatient)
+                                is_axial = any([np.array_equal(iop, [1, 0, 0, 0, 1, 0]), np.array_equal(iop, [1, 0, 0, 0, -1, 0])])
                             else:
                                 is_axial = False
                             if (self.image_type == 'CT') and not is_axial:
@@ -201,7 +200,7 @@ class ResizeShape(object):
                         for gz in range(len(new_gridZ)):
                             new_gridZ[gz] = round(new_gridZ[gz], self.round_factor)
                         for n_s in range(len(M) - 1):  # n_s slice number
-                            if M[n_s] != [] and M[n_s + 1] != []:  # if two consecutive slices not empty - interpolate
+                            if np.size(M[n_s]) != 0 and np.size(M[n_s + 1]) != 0:  # if two consecutive slices not empty - interpolate
                                 if self.round_factor == 2:
                                     zi = np.linspace(old_gridZ[n_s], old_gridZ[n_s + 1], int(
                                         slice_thick / 0.01) + 1)  # create an interpolation grid between those slice

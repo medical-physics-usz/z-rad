@@ -311,12 +311,12 @@ class panelRadiomics(scrolled.ScrolledPanel):
         self.vbox.Add(h10box, flag=wx.LEFT)
         self.vbox.Add((-1, 10))
 
-        img = wx.Image('LogoUSZ.png', wx.BITMAP_TYPE_PNG).Scale(220, 40).ConvertToBitmap()  # USZ logo
-        im = wx.StaticBitmap(self, -1, img)
+        # img = wx.Image('LogoUSZ.png', wx.BITMAP_TYPE_PNG).Scale(220, 40).ConvertToBitmap()  # USZ logo
+        # im = wx.StaticBitmap(self, -1, img)
 
         h11box = wx.BoxSizer(wx.HORIZONTAL)
         h11box.Add((10, 10))
-        h11box.Add(im)
+        # h11box.Add(im)
         self.vbox.Add(h11box, flag=wx.RIGHT)
         self.vbox.Add((-1, 10))
 

@@ -10,12 +10,15 @@ from shutil import copyfile
 import numpy as np
 import pydicom as dc
 from joblib import Parallel, delayed
+from pydicom.errors import BytesLengthException
 from pydicom.filereader import InvalidDicomError
 from scipy.interpolate import interp1d
 from tqdm import tqdm
 
 from resize_interpolate_roi import InterpolateROI
 from utils import tqdm_joblib
+import warnings
+# warnings.filterwarnings("error")
 
 
 class ResizeTexture(object):
@@ -103,10 +106,9 @@ class ResizeTexture(object):
                             # read only dicoms of certain modality
                             if isfile(join(mypath_file, f)) and ds.SOPClassUID in UID_t:
                                 # skip non-axial slices for CT
-                                if ds.PatientPosition == 'HFS':
-                                    is_axial = np.array_equal(np.round(ds.ImageOrientationPatient), [1, 0, 0, 0, 1, 0])
-                                elif ds.PatientPosition == 'FFS':
-                                    is_axial = np.array_equal(np.round(ds.ImageOrientationPatient), [1, 0, 0, 0, -1, 0])
+                                if (ds.PatientPosition == 'HFS') or (ds.PatientPosition == 'FFS'):
+                                    iop = np.round(ds.ImageOrientationPatient)
+                                    is_axial = any([np.array_equal(iop, [1, 0, 0, 0, 1, 0]), np.array_equal(iop, [1, 0, 0, 0, -1, 0])])
                                 else:
                                     is_axial = False
                                 if (self.image_type == 'CT') and not is_axial:
@@ -195,11 +197,11 @@ class ResizeTexture(object):
                             bits = 'uint' + bits
 
                         if self.image_type == 'PET':
-                            data16 = np.array(np.fromstring(data, dtype=bits))  # converting to decimal
+                            data16 = np.array(np.frombuffer(data, dtype=bits))  # converting to decimal
                             data16 = data16 * float(CT.RescaleSlope) + float(CT.RescaleIntercept)
                         else:
                             # converting to decimal, for CT no intercept as it is the same per image
-                            data16 = np.array(np.fromstring(data, dtype=bits))
+                            data16 = np.array(np.frombuffer(data, dtype=bits))
                         # recalculating for rows x columns
                         a = np.reshape(data16, (rows, columns))
                         del data
@@ -238,13 +240,17 @@ class ResizeTexture(object):
                         else:
                             new_gridZ = np.arange(slices[0], slices[-1] + slice_thick, self.resolution)
                             old_gridZ = np.arange(slices[0], slices[-1] + slice_thick, slice_thick)
+
+                        # set rounding precision
+                        old_gridZ = [round(e, 4) for e in old_gridZ]
+                        new_gridZ = [round(e, 4) for e in new_gridZ]
+
                         self.logger.info('new grid Z ' + str(len(new_gridZ)))
                         self.logger.info(" " + ", ".join(map(str, new_gridZ)))
                         self.logger.info('old grid Z ' + str(len(old_gridZ)))
                         self.logger.info(" " + ", ".join(map(str, old_gridZ)))
                         self.logger.info("new rows and cols {}, {}".format(new_rows, new_columns))
-                        new_image = np.zeros(
-                            (len(new_gridZ), new_rows, new_columns))  # matrix with zeros for the new image
+                        new_image = np.zeros((len(new_gridZ), new_rows, new_columns))  # matrix with zeros for the new image
                         # interpolate in z direction
                         try:
                             for x in range(new_columns):
@@ -274,7 +280,7 @@ class ResizeTexture(object):
                     for ki in key:
                         try:
                             CT[ki].VR
-                        except KeyError:
+                        except (KeyError, UserWarning, BytesLengthException):
                             invalid_tags.append(ki)
 
                     for ki in invalid_tags:
@@ -282,8 +288,7 @@ class ResizeTexture(object):
 
                     # save interpolated images
                     for im in range(len(new_image)):
-                        im_nr = int(
-                            im * float(len(onlyfiles)) / len(new_image))  # choose an original dicom file to be modify
+                        im_nr = int(im * float(len(onlyfiles)) / len(new_image))  # choose an original dicom file to be modify
                         CT = dc.read_file(mypath_file + onlyfiles[im_nr])  # read file to be modified
                         for ki in invalid_tags:
                             del CT[ki]
@@ -293,7 +298,7 @@ class ResizeTexture(object):
                         # change UID so it is treated as new image
                         CT.FrameOfReferenceUID = CT.FrameOfReferenceUID[:-2] + self.UID
                         CT.SeriesInstanceUID = CT.SeriesInstanceUID[:-2] + self.UID
-                        CT.SOPInstanceUID = CT.SOPInstanceUID[:-1] + self.UID + str(im)
+                        CT.SOPInstanceUID = CT.SOPInstanceUID[:-7] + self.UID + str(im)
                         CT.Columns = new_columns  # adapt columns
                         CT.Rows = new_rows  # adapt rows
                         CT.PixelSpacing[0] = str(self.resolution)  # adapt XY resolution
@@ -325,7 +330,7 @@ class ResizeTexture(object):
                             CT[0x28, 0x107].VR = 'US'
                         else:
                             array = np.array(new_image[im], dtype=bits)
-                        data = array.tostring()  # convert to string
+                        data = array.tobytes()  # convert to string
                         CT.PixelData = data  # data pixel data to new image
                         if self.cropStructure["ct_path"] != "":
                             CT.ImagePositionPatient[0] = crop_corner_x
@@ -396,7 +401,7 @@ class ResizeTexture(object):
 
                             # read image data
                             data = CT.PixelData
-                            data16 = np.array(np.fromstring(data, dtype=np.int16))  # converting to decimal
+                            data16 = np.array(np.frombuffer(data, dtype=np.int16))  # converting to decimal
                             # recalculating for rows x columns
                             a = np.reshape(data16, (rows, columns))
                             del data
@@ -488,7 +493,7 @@ class ResizeTexture(object):
                                 # adapt patient position tag for new z position of the image
                                 CT.ImagePositionPatient[2] = str(new_gridZ[im])
                             array = np.array(new_image[im], dtype=np.int16)
-                            data = array.tostring()  # convert to string
+                            data = array.tobytes()  # convert to string
                             CT.PixelData = data  # data pixel data to new image
 
                             CT.save_as(mypath_save + ivim_map + os.sep + 'image' + str(im + 1) + '.dcm')  # save image
@@ -560,7 +565,7 @@ class ResizeTexture(object):
                                 new_gridZ[gz] = round(new_gridZ[gz], self.round_factor)
                             for n_s in range(len(M) - 1):  # n_s slice number
                                 # if two consecutive slices not empty - interpolate
-                                if (M[n_s] != []) and (M[n_s + 1] != []):
+                                if (np.size(M[n_s]) != 0) and (np.size(M[n_s + 1]) != 0):
                                     if self.round_factor == 2:
                                         # create an interpolation grid between those slices
                                         zi = np.linspace(old_gridZ[n_s], old_gridZ[n_s + 1], int(slice_thick / 0.01) + 1)

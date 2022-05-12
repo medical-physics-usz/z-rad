@@ -9,4 +9,8 @@ PyInstaller.__main__.run([
     '--add-data=feature_names_2D.txt;.',
     '--hidden-import=vtkmodules',
     '--hidden-import=vtkmodules.all',
+    '--hidden-import=sklearn.utils._typedefs',
+    '--hidden-import=sklearn.neighbors._partition_nodes',
+    '--hidden-import=pydicom.encoders.gdcm',
+    '--hidden-import=pydicom.encoders.pylibjpeg',
 ])

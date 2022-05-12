@@ -10,10 +10,7 @@ from scipy.sparse.csgraph import minimum_spanning_tree
 from scipy.spatial import Delaunay
 from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
-try:
-    from sklearn.metrics import calinski_harabaz_score
-except ImportError:
-    from sklearn.metrics import calinski_harabasz_score
+from sklearn.metrics import calinski_harabasz_score
 
 
 class LymphNodes(object):
@@ -72,7 +69,7 @@ class LymphNodes(object):
             l_slices = []
             for z in files:
                 l_slices.append(int(z[6:]))  # files are called slice_X where X is a slice number, so l_slice is a list containing slice numbers.
-            width = 1000  # everythng is resized to 1mm so tzpically 700 voxels would be enough
+            width = 1000  # everything is resized to 1mm so typically 700 voxels would be enough
             print(max(l_slices))
             pic3d = np.zeros([max(l_slices) + 10, width, width], dtype=np.uint8)
             # fill the 3d-array with ones inside the contour
@@ -97,7 +94,7 @@ class LymphNodes(object):
                         xp = data[x, 0]
                         yp = data[x, 1]
                         pic3d[z][yp][xp] = 1
-                except IOError:  # if the files does not exists
+                except IOError:  # if the files does not exist
                     pass
             # calcuate center of the mass
             ind = list(np.where(pic3d == 1))  # voxel size 1mm
@@ -149,7 +146,7 @@ class LymphNodes(object):
             listLnMass.append(m)
             listLnPoints.append(p)
             listLnVol.append(vol)
-        # remove "" corresponing to nonexcistig files
+        # remove "" corresponding to nonexisting files
         remove = True
 
         while remove:
@@ -319,7 +316,7 @@ class LymphNodes(object):
             for i in range(2, len(points)):
                 kmeans_model = KMeans(n_clusters=i, random_state=1).fit(points)
                 labels = kmeans_model.labels_
-                ch.append((calinski_harabaz_score(points, labels), i))
+                ch.append((calinski_harabasz_score(points, labels), i))
             limitedCH = ch[:int(len(points) / 2. + 1) - 2]  # limit number of cluters to N/2 +1
             limitedCH.sort()
 

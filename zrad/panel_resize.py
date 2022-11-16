@@ -30,7 +30,7 @@ class panelResize(scrolled.ScrolledPanel):
         self.vbox = wx.BoxSizer(wx.VERTICAL)
         self.vbox.Add((-1, 20))
 
-        # elements I want to put the the grid sizer
+        # elements I want to put the grid sizer
         st_org = wx.StaticText(self, label='Original data')  # static text
         # text box, id is important as I use i later for reading elements from the boxes
         tc_org = wx.TextCtrl(self, id=1001, size=(1000, h), value="", style=wx.TE_PROCESS_ENTER)
@@ -61,7 +61,7 @@ class panelResize(scrolled.ScrolledPanel):
 
         # imaging modality
         st_type = wx.StaticText(self, label='Image type')
-        tc_type = wx.ComboBox(self, id=1005, value="", choices=['CT', 'PET', 'MR', 'IVIM'],
+        tc_type = wx.ComboBox(self, id=1005, value="", choices=['CT', 'PET', 'MR'],
                               style=wx.CB_READONLY)  # modality type
 
         # patient number to start
@@ -303,9 +303,6 @@ class panelResize(scrolled.ScrolledPanel):
                 if image_type == 'CT' or image_type == 'PET' or image_type == 'MR': 
                     ResizeNifti(inp_resolution, interpolation_type, list_structure, labels, inp_mypath_load, inp_mypath_save,
                                   image_type, begin, stop, n_jobs)
-                else:
-                    MyInfo('IVIM does not support Nifti files.')
-                    raise SystemExit(0)
 
         if self.FindWindowById(1009).GetValue() and file_type == 'dicom':  # if resizing to shape resolution selected
             inp_mypath_save_shape = inp_mypath_save + 'resized_1mm' + os.sep

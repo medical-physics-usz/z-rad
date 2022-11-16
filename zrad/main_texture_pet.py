@@ -8,10 +8,10 @@ import nibabel as nib
 from joblib import Parallel, delayed
 from tqdm import tqdm
 
-from export import Export
 from read import ReadImageStructure
 from texture import Texture
 from utils import tqdm_joblib
+from zrad.export import export_results, preset
 
 
 class main_texture_pet(object):
@@ -236,10 +236,8 @@ class main_texture_pet(object):
         with tqdm_joblib(tqdm(desc="Extracting intensity and texture features", total=len(l_ImName))):
             out = Parallel(n_jobs=self.n_jobs)(delayed(parfor)(ImName) for ImName in l_ImName)
 
-        final_file, wave_names, par_names = Export().Preset(exportList, wv, local, path_save, save_as,
-                                                            image_modality)
+        final_file, wave_names, par_names = preset(wv, path_save, save_as, image_modality)
         feature_vectors = [feature_vec for batch in out for feature_vec in batch]
         for feature_vec in feature_vectors:
-            final_file = Export().ExportResults(feature_vec, final_file, par_names, image_modality, wave_names, wv,
-                                                local)
+            final_file = export_results(feature_vec, final_file, image_modality, wave_names, wv)
         final_file.close()

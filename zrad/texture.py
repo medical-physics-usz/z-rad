@@ -381,28 +381,6 @@ class Texture(object):
 
                 del wave_list
 
-                if localRadiomics:
-                    self.logger.info("Start: Local Radiomics")
-                    # call NaN optimizer
-
-                    iterations_n = len(centers)  # to define how many time the radiomics need to be calculated
-                    # list to collect info if the subvolume belongs to the tumor or to the recurrence
-                    self.structure = []
-
-                    # to have list with n_bits and intervals for each centers (it will be the same number for
-                    # eachcenter, but it is done for compability with wavelet)
-                    n_bits_temp = []
-                    interval_list_temp = []
-                    for c in len(centers):
-                        n_bits_temp.append([n_bits_list[0]])
-                        interval_list_temp.append([interval_list[0]])
-                    n_bits_list = n_bits_temp
-                    interval_list = interval_list_temp
-                    del n_bits_temp
-                    del interval_list_temp
-
-                    # make the matrix_list and matrix_v_list with all the subregions to be analyzed
-
                 for w in range(iterations_n):
                     # calculate features for original and transformed images or local centers if provided
                     # feed in the list of maps to calculate

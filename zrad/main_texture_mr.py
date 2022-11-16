@@ -8,11 +8,11 @@ import pydicom as dc
 from joblib import Parallel, delayed
 
 import normalization
-from export import Export
 from normalization import linear_norm, zscore_norm, hist_matching_norm
 from read import ReadImageStructure
 from structure import Structures
 from texture import Texture
+from zrad.export import export_results, preset
 
 
 class main_texture_mr(object):
@@ -189,11 +189,10 @@ class main_texture_mr(object):
 
         out = Parallel(n_jobs=self.n_jobs, verbose=20)(delayed(parfor)(ImName) for ImName in l_ImName)
 
-        final_file, wave_names, par_names = Export().Preset(exportList, wv, local, path_save, save_as, image_modality)
+        final_file, wave_names, par_names = preset(wv, path_save, save_as, image_modality)
 
         feature_vectors = [feature_vec for batch in out for feature_vec in batch]
         for feature_vec in feature_vectors:
-            final_file = Export().ExportResults(feature_vec, final_file, par_names, image_modality,
-                                                wave_names, wv, local)
+            final_file = export_results(feature_vec, final_file, image_modality, wave_names, wv)
         final_file.close()
 

@@ -9,11 +9,11 @@ import nibabel as nib
 from joblib import Parallel, delayed
 from tqdm import tqdm
 
-from export import Export
 from features2d import Features2D
 from read import ReadImageStructure
 from texture import Texture
 from utils import tqdm_joblib
+from zrad.export import export_results, preset
 
 
 class main_texture_ct(object):
@@ -177,10 +177,8 @@ class main_texture_ct(object):
                 df_features_all.to_excel(writer, sheet_name="Features")
                 df_parameters.to_excel(writer, sheet_name="Parameters")
         else:
-            final_file, wave_names, par_names = Export().Preset(exportList, wv, local, path_save, save_as,
-                                                                image_modality)
+            final_file, wave_names, par_names = preset(wv, path_save, save_as, image_modality)
             feature_vectors = [feature_vec for batch in out for feature_vec in batch]
             for feature_vec in feature_vectors:
-                final_file = Export().ExportResults(feature_vec, final_file, par_names, image_modality, wave_names, wv,
-                                                    local)
+                final_file = export_results(feature_vec, final_file, image_modality, wave_names, wv)
             final_file.close()

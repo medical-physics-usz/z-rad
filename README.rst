@@ -1,12 +1,14 @@
 Z-Rad
 =====
 
-This is an in-house implementation of radiomics software from University Hospital Zurich. Feature definition standardization according to image biomarker standardisation initiative (https://arxiv.org/abs/1612.07003).
+Z-Rad is an in-house implementation of radiomics software from University Hospital Zurich. Feature definition standardization according to image biomarker standardisation initiative (https://arxiv.org/abs/1612.07003).
 
 Installation
 ------------
 
-Current version of Z-Rad supports Python 3.6-3.9. All releases are tested in MS Windows, MacOS, and Linux. The legacy version of Z-Rad supporting Python 2.7 is available in **python2** branch.
+Current version of Z-Rad was tested in Python 3.10. Other versions of Python may work but were not tested.
+
+Supported platforms: MS Windows, MacOS, and Linux.
 
 Dependencies
 ~~~~~~~~~~~~ 
@@ -89,19 +91,9 @@ Documentation
 
 Please find the documentation in the documentation folder and on https://medical-physics-usz.github.io.
 
-Known issues
-------------
-
-List of the known issues related to the software or hardware:
-
-- Python environment without admin rights or IT with conda. It used to work, but somehow now it does not anymore ;)
-
-
 Contact
 -------
 Please contact first your responsible research physicist from the USZ radiomics team when problems occur. Problems will be redirected by us to the whole group if they are of general interest.
 
-- Marta Bogowicz (marta.bogowicz@usz.ch): Distributed Learning, Head and Neck
-- Hubert Gabryś (hubert.gabrys@usz.ch): Melanoma, Lung Fibrosis, Artefacts
-- Diem Vuong (diem.vuong@usz.ch): Lung Radiomics (SAKK 16/00)
+- Hubert Gabryś (hubert.gabrys@usz.ch): Development
 - Stephanie Tanadini-Lang (stephanie.tanadini-lang@usz.ch): Administrative

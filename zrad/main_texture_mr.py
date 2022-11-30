@@ -12,7 +12,7 @@ from normalization import linear_norm, zscore_norm, hist_matching_norm
 from read import ReadImageStructure
 from structure import Structures
 from texture import Texture
-from zrad.export import export_results, preset
+from export import export_results, preset
 
 
 class main_texture_mr(object):

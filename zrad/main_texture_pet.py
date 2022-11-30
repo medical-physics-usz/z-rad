@@ -11,7 +11,7 @@ from tqdm import tqdm
 from read import ReadImageStructure
 from texture import Texture
 from utils import tqdm_joblib
-from zrad.export import export_results, preset
+from export import export_results, preset
 
 
 class main_texture_pet(object):

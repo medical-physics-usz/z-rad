@@ -58,7 +58,7 @@ class Structures(object):
             for j in range(len(list_organs)):  # organ in RS
                 if list_organs[j][0] == organs[i]:  # if the same name
                     for k in range(len(self.rs.ROIContourSequence)):  # search by ROI number
-                        # double check the ROI number
+                        # double-check the ROI number
                         if self.rs.ROIContourSequence[k].ReferencedROINumber == list_organs[j][1]:
                             try:
                                 lista = []  # z position of the slice

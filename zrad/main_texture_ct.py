@@ -38,14 +38,14 @@ class main_texture_ct(object):
     exportList - list of matrices/features to be calculated and exported
     """
 
-    def __init__(self, sb, file_type, path_image, path_save, structures, labels, pixNr, binSize, l_ImName, save_as, dim, HUmin, HUmax,
-                 outlier_corr, wv, local, cropInput, exportList, n_jobs):
+    def __init__(self, file_type, path_image, path_save, structures, labels, pixNr, binSize, l_ImName, save_as, dim, HUmin, HUmax,
+                 outlier_corr, wv, local, cropInput, n_jobs):
         self.logger = logging.getLogger(__name__)
         self.logger.info("Start")
         self.n_jobs = n_jobs
         image_modality = ['CT']
         
-        meanWV = False # caluclated modified WV transform
+        meanWV = False  # calculate modified WV transform
 
         def parfor(ImName):
             self.logger.info("Patient " + ImName)
@@ -55,7 +55,7 @@ class main_texture_ct(object):
                 feature_names_2d_list = f.read().split()
             to_return_2d = pd.DataFrame(columns=feature_names_2d_list)
             to_return_3d = list()
-            meanWV = False #caluclated modified WV transform
+            meanWV = False  # calculate modified WV transform
                                 
             for structure in structures:
                 self.logger.info("Structure " + structure)
@@ -91,8 +91,8 @@ class main_texture_ct(object):
                         IM_matrix = np.array(IM_matrix)
                         contour_matrix = ''  #only for nifti
                     
-                    elif file_type == 'nifti': #nifti file type assumes that conversion to eg HU or SUV has already been performed
-                        #the folder should contain two file, one contour mask with the name corresponding to the name given in GUI and the other file with the image
+                    elif file_type == 'nifti':  # nifti file type assumes that conversion to eg HU or SUV has already been performed
+                        # the folder should contain two file, one contour mask with the name corresponding to the name given in GUI and the other file with the image
                         if read.stop_calc == '':
                             image_name = ''
                             contour_name = ''
@@ -121,7 +121,7 @@ class main_texture_ct(object):
                         else:
                             IM_matrix = ''
                             contour_matrix = ''       
-                except OSError:  # error if there is not directory
+                except OSError:  # error if there is no directory
                     continue
                 except IndexError:  # empty folder
                     continue

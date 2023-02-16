@@ -25,7 +25,7 @@ class panelResize(scrolled.ScrolledPanel):
         the IDs are assigned in a consecutive order and are used later to refer to text boxes etc"""
 
         h = self.parent.panelHeight  # height of a text box, 20 for PC, 40 for lenovo laptop
-        self.SetBackgroundColour('#8AB9F1')  # background color
+        self.SetBackgroundColour('#2f2f2f')  # background color
         # creatignngoxes containing elements of the panel, vbox - vertical box, hbox - horizontal box
         self.vbox = wx.BoxSizer(wx.VERTICAL)
         self.vbox.Add((-1, 20))

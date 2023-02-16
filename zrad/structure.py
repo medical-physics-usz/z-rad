@@ -140,8 +140,9 @@ class Structures(object):
                                         for n in range(len(lista)):
                                             lista[n] = lista[n][1:]
                                         self.contours.append(lista)
-                            except AttributeError:
+                            except AttributeError as e:
                                 self.logger.info("no contours for: " + organs[i])
+                                print(e)
 
         # contours not scaled in slice-direction for 2D wavelet calculation
         if self.wv and self.dim == "2D" or self.wv and self.dim == "2D_singleSlice":
@@ -184,8 +185,8 @@ class Structures(object):
                             for k in range(len(self.contours[i][j][n][0])):
                                 self.contours[i][j][n][0][k] = int(round(self.contours[i][j][n][0][k], 0))
                                 self.contours[i][j][n][1][k] = int(round(self.contours[i][j][n][1][k], 0))
-                            self.contours[i][j][n][0] = np.array(self.contours[i][j][n][0], dtype=np.int)
-                            self.contours[i][j][n][1] = np.array(self.contours[i][j][n][1], dtype=np.int)
+                            self.contours[i][j][n][0] = np.array(self.contours[i][j][n][0], dtype=int)
+                            self.contours[i][j][n][1] = np.array(self.contours[i][j][n][1], dtype=int)
 
             # x position of contour points to define the region of interest where we look for the structure
             x_c_min = []
@@ -328,8 +329,8 @@ class Structures(object):
                                     for k in range(len(self.contours[i][j][n][0])):
                                         self.contours[i][j][n][0][k] = int(round(self.contours[i][j][n][0][k], 0))
                                         self.contours[i][j][n][1][k] = int(round(self.contours[i][j][n][1][k], 0))
-                                    self.contours[i][j][n][0] = np.array(self.contours[i][j][n][0], dtype=np.int)
-                                    self.contours[i][j][n][1] = np.array(self.contours[i][j][n][1], dtype=np.int)
+                                    self.contours[i][j][n][0] = np.array(self.contours[i][j][n][0], dtype=int)
+                                    self.contours[i][j][n][1] = np.array(self.contours[i][j][n][1], dtype=int)
 
                     # x position of contour points to define the region of interest where we look for the structure
                     x_c_min = []
@@ -397,7 +398,7 @@ class Structures(object):
             if lista[i][0] not in listka:
                 m = [lista[i][0]]
                 for j in range(counts[nr]):
-                    m.append([np.array(lista[i + j][1], dtype=np.float), np.array(lista[i + j][2], dtype=np.float)])
+                    m.append([np.array(lista[i + j][1], dtype=float), np.array(lista[i + j][2], dtype=float)])
                     listka.append(lista[i][0])
                 kontur.append(m)
                 nr += 1

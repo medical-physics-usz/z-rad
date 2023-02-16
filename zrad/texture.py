@@ -1683,7 +1683,7 @@ class Texture(object):
 
         GLRLM, Smax = self.M4L_fill(vm, GLRLM, Smax, int(np.nanmin(matrix)), int(np.nanmax(matrix)))
         GLRLM = np.array(GLRLM)
-        GLRLM.astype(np.float)
+        GLRLM.astype(float)
 
         return GLRLM, float(np.sum(GLRLM))
 
@@ -1812,7 +1812,7 @@ class Texture(object):
         norm_GLRLM_merged = float(np.sum(GLRLM_merged))
 
         GLRLM_merged = np.array(GLRLM_merged)
-        GLRLM_merged.astype(np.float)
+        GLRLM_merged.astype(float)
         return GLRLM_merged, norm_GLRLM_merged
 
     def M4(self, matrix, dist_matrix):
@@ -1823,7 +1823,7 @@ class Texture(object):
         GLSZM = []
         GLDZM = []
         m = np.array(matrix).copy()
-        m.dtype = np.float
+        m.dtype = float
         Smax = 1  # maximal size
         Dmax = 1  # maximal distance
         for i in range(self.n_bits):
@@ -1882,11 +1882,11 @@ class Texture(object):
             GLSZM[i] = np.array(GLSZM[i])
         GLSZM = np.array(GLSZM)  # no normalization according to IBSI /float(np.sum(GLSZM))
         norm_GLSZM = np.sum(GLSZM)
-        GLSZM.astype(np.float)
+        GLSZM.astype(float)
 
         GLDZM = np.array(GLDZM)  # no normalization according to IBSI /float(np.sum(GLSZM))
         norm_GLDZM = np.sum(GLDZM)
-        GLDZM.astype(np.float)
+        GLDZM.astype(float)
 
         return GLSZM, norm_GLSZM, GLDZM, norm_GLDZM
 
@@ -2111,7 +2111,7 @@ class Texture(object):
                         s[int(v)][size] += 1
 
         s = np.array(s)
-        s.astype(np.float)
+        s.astype(float)
         norm = float(np.sum(s))
         return s, norm
 

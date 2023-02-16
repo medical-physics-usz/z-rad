@@ -97,9 +97,9 @@ class ResizeNifti(object):
                 y = np.arange(0, len(contour_matrix[0])*yCTspace, yCTspace)
                 z = np.arange(0, len(contour_matrix)*zCTspace, zCTspace)
                 #
-                xn = len(np.arange(0, x[-1], self.resolution, dtype = np.float))
-                yn = len(np.arange(0, y[-1], self.resolution, dtype = np.float))
-                zn = len(np.arange(0, z[-1], self.resolution, dtype = np.float))
+                xn = len(np.arange(0, x[-1], self.resolution, dtype = float))
+                yn = len(np.arange(0, y[-1], self.resolution, dtype = float))
+                zn = len(np.arange(0, z[-1], self.resolution, dtype = float))
                 
                 new_points = []
                 for xi in np.arange(0, x[-1], self.resolution):

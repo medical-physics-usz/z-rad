@@ -849,7 +849,7 @@ class GLRLM_GLSZM_GLDZM_NGLDM(object):
             GLSZM = []  # 2. method: 2D matrices merged
             GLDZM = []
             m = np.array(self.matrix).copy()
-            m.dtype = np.float
+            m.dtype = float
             Smax = 1  # maximal size
             Dmax = 1  # maximal distance
             for i in range(self.n_bits):
@@ -919,11 +919,11 @@ class GLRLM_GLSZM_GLDZM_NGLDM(object):
                 GLSZM[i] = np.array(GLSZM[i])
             GLSZM = np.array(GLSZM)  # no normalization according to IBSI /float(np.sum(GLSZM))
             norm_GLSZM = np.sum(GLSZM)
-            GLSZM.astype(np.float)
+            GLSZM.astype(float)
 
             GLDZM = np.array(GLDZM)  # no normalization according to IBSI /float(np.sum(GLSZM))
             norm_GLDZM = np.sum(GLDZM)
-            GLDZM.astype(np.float)
+            GLDZM.astype(float)
 
             return GLSZM, GLDZM, GLSZM_perslice, GLDZM_perslice
 
@@ -983,8 +983,8 @@ class GLRLM_GLSZM_GLDZM_NGLDM(object):
 
             ngldm = np.array(s)
             ngldm_nonmerged = np.array(ngldm_nonmerged)
-            ngldm.astype(np.float)
-            ngldm_nonmerged.astype(np.float)
+            ngldm.astype(float)
+            ngldm_nonmerged.astype(float)
             return ngldm_nonmerged, ngldm
 
     def neighbor(self, z, y, x, matrix, v):

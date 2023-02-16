@@ -19,7 +19,7 @@ from panel_radiomics import panelRadiomics
 from panel_resize import panelResize
 from shape import Shape
 
-VERSION = '7.5.1'
+VERSION = '7.5.2'
 
 
 def on_o_programie(evt):
@@ -30,7 +30,7 @@ def on_o_programie(evt):
     info.SetName('Z-Rad')
     info.SetVersion(VERSION)
     info.SetDescription(description)
-    info.SetCopyright('(C) 2017-2022 USZ Radiomics Team')
+    info.SetCopyright('(C) 2017-2023 USZ Radiomics Team')
     info.SetLicence(licence)
     AboutBox(info)
 
@@ -114,7 +114,7 @@ class Radiomics(wx.Frame):
 
         path_save, save_as, structure, pix_nr, bin_size, path_image, n_pref, start, stop = self.panelRadiomics.read()
         self.logger.info("Start: Calculate Radiomics")
-        MyInfo('Test done!')
+        # MyInfo('Test done!')
         '''path_save - save results in, path
         save_as - name of text file to save radiomics
         structure - analysed structures, later converted to list with ',' separation
@@ -204,9 +204,9 @@ class Radiomics(wx.Frame):
             dict_parameters["HUmin"] = [hu_min]
             dict_parameters["HUmax"] = [hu_max]
             dict_parameters["outlier_corr"] = [outlier_corr]
-            main_texture_ct(self.GetStatusBar(), file_type, path_image, path_save, structure, labels, pix_nr, bin_size,
+            main_texture_ct(file_type, path_image, path_save, structure, labels, pix_nr, bin_size,
                             patient_list, save_as,
-                            dim, hu_min, hu_max, outlier_corr, wv, self.local, crop_structure, export_list, n_jobs)
+                            dim, hu_min, hu_max, outlier_corr, wv, self.local, crop_structure, n_jobs)
 
         elif self.panelRadiomics.FindWindowById(130).GetValue():  # PET
             suv = self.panelRadiomics.FindWindowById(131).GetValue()

@@ -24,57 +24,62 @@ class ReadImageStructure(object):
     'BF']
     """
 
-    def __init__(self, file_type, UID, mypath_image, structure, wv, dim, local, *modality):
+    def __init__(self, file_type, UID, mypath_image, structure, wv, dim, local):
+        self.x_ct = None
+        self.y_ct = None
+        self.onlyfiles = None
+        self.rs = None
+        self.slices_w = None
+        self.yCTspace = None
+        self.zCTspace = None
+        self.xCTspace = None
+        self.columns = None
+        self.rows = None
+        self.slices = None
+        self.Xcontour = None
+        self.Xcontour_W = None
+        self.Ycontour = None
+        self.Ycontour_W = None
+        self.Xcontour_Rec = None
+        self.Ycontour_Rec = None
+        self.listDicomProblem = None
+        self.structure_f = None
         self.logger = logging.getLogger(__name__)
         self.logger.info("Start")
-        if 'CTP' in UID or 'IVIM' in UID:
-            self.modality = modality
         self.dim = dim
         self.stop_calc = ''
+        self.UID = UID
+        self.mypath_image = mypath_image
+        self.structure = structure
+        self.wv = wv
+        self.local = local
         if file_type == 'dicom':
-            self.ReadImages(UID, mypath_image)
-            self.ReadStucture(mypath_image, structure, wv, local)
+            self.ReadImages()
+            self.ReadStucture()
         elif file_type == 'nifti':
-            self.ReadNiftiImageStructure(mypath_image, structure) 
+            self.ReadNiftiImageStructure()
 
-    def ReadImages(self, UID, mypath_image):
+    def ReadImages(self):
         self.logger.info("Reading Images")
         onlyfiles = []
         self.listDicomProblem = []  # cannot open as dicom
-        if 'CTP' in UID or 'IVIM' in UID:  # CTP and IVIM
-            onlyfiles = []
-            for u in UID:  # iterate through different maps types in te functional imaging
-                of = []
-                for f in listdir(mypath_image):
-                    if isfile(join(mypath_image, f)) and f[:len(self.modality[u])] == self.modality[u]:
-                        of.append((round(float(dc.read_file(mypath_image + os.sep + f).ImagePositionPatient[2]), 3), f))
-                        # hier müsste eine Fehlermeldung kommen, falls nicht!
-                of.sort()
-                onlyfiles.append(of)
-            for u in arange(len(UID)):
-                s = []
-                for i in arange(len(onlyfiles[u])):
-                    s.append(onlyfiles[u][i][0])
-                    onlyfiles[u][i] = onlyfiles[u][i][1]
-            self.slices = s
-        else:  # CT or PET
-            for f in listdir(mypath_image):
-                try:
-                    # read only dicoms of certain modality
-                    if isfile(join(mypath_image, f)) and dc.read_file(mypath_image + f).SOPClassUID in UID:
-                        # sort files by slice position
-                        onlyfiles.append((round(float(dc.read_file(mypath_image + os.sep + f).ImagePositionPatient[2]), 3), f))
-                except 'InvalidDicomError':  # not a dicom file
-                    self.listDicomProblem.append(f)
-                    pass
+        for f in listdir(self.mypath_image):
+            try:
+                # read only dicoms of certain modality
+                if isfile(join(self.mypath_image, f)) and dc.read_file(self.mypath_image + f).SOPClassUID in self.UID:
+                    # sort files by slice position
+                    onlyfiles.append((round(float(dc.read_file(self.mypath_image + os.sep + f).ImagePositionPatient[2]), 3), f))
+            except 'InvalidDicomError':  # not a dicom file
+                self.listDicomProblem.append(f)
+                pass
 
-            onlyfiles.sort()  # sort and take only file names
-            self.slices = []
-            for i in arange(len(onlyfiles)):
-                self.slices.append(onlyfiles[i][0])
-                onlyfiles[i] = onlyfiles[i][1]
+        onlyfiles.sort()  # sort and take only file names
+        self.slices = []
+        for i in arange(len(onlyfiles)):
+            self.slices.append(onlyfiles[i][0])
+            onlyfiles[i] = onlyfiles[i][1]
 
-        IM = dc.read_file(mypath_image + os.sep + onlyfiles[0])
+        IM = dc.read_file(self.mypath_image + os.sep + onlyfiles[0])
 
         self.rows = IM.Rows
         self.columns = IM.Columns
@@ -86,19 +91,26 @@ class ReadImageStructure(object):
 
         del IM
 
-    def ReadStucture(self, mypath_image, structure, wv, local):
+    def ReadStucture(self):
         """reading RS file"""
         self.logger.info("Reading StructureSet")
-        self.logger.info("Selected Structure " + " ".join(structure))
+        self.logger.info("Selected Structure " + " ".join(self.structure))
 
         RS_UID = ['1.2.840.10008.5.1.4.1.1.481.3', 'RT Structure Set Storage']  # structure set
-        # take only the first RS file you found
-        rs = [f for f in listdir(mypath_image) if isfile(join(mypath_image, f)) and dc.read_file(mypath_image + f).SOPClassUID in RS_UID][0]
 
-        self.rs = mypath_image + rs
+        rtstruct_files = []
+        for filename in listdir(self.mypath_image):
+            filepath = join(self.mypath_image, filename)
+            if isfile(filepath) and dc.read_file(filepath).SOPClassUID in RS_UID:
+                rtstruct_files.append(filename)
+
+        # take only the first RS file you found
+        rs = rtstruct_files[0]
+
+        self.rs = self.mypath_image + rs
         self.logger.info("StructureSet File" + self.rs)
-        struct = Structures(self.rs, structure, self.slices, self.x_ct, self.y_ct, self.xCTspace, len(self.slices), wv,
-                            self.dim, local)
+        struct = Structures(self.rs, self.structure, self.slices, self.x_ct, self.y_ct, self.xCTspace, len(self.slices), self.wv,
+                            self.dim, self.local)
         self.Xcontour = struct.Xcontour
         self.Xcontour_W = struct.Xcontour_W
         self.Ycontour = struct.Ycontour
@@ -108,11 +120,11 @@ class ReadImageStructure(object):
         self.Ycontour_Rec = struct.Ycontour_Rec
         self.structure_f = struct.organs
 
-    def ReadNiftiImageStructure(self, mypath_image, structure):
-        self.onlyfiles = listdir(mypath_image)
+    def ReadNiftiImageStructure(self):
+        self.onlyfiles = listdir(self.mypath_image)
         if len(self.onlyfiles) == 2:
-            matrix1 = nib.load(mypath_image + self.onlyfiles[0])
-            matrix2 = nib.load(mypath_image + self.onlyfiles[1])     
+            matrix1 = nib.load(self.mypath_image + self.onlyfiles[0])
+            matrix2 = nib.load(self.mypath_image + self.onlyfiles[1])
             img_matrix1 = matrix1.get_fdata().transpose(2, 1, 0)
             img_matrix2 = matrix2.get_fdata().transpose(2, 1, 0)
             xCTspace = matrix1.header['pixdim'][1]
@@ -144,4 +156,4 @@ class ReadImageStructure(object):
         self.Xcontour_Rec = ''
         self.Ycontour_Rec = ''
         self.listDicomProblem = []
-        self.structure_f = structure[0]
+        self.structure_f = self.structure[0]

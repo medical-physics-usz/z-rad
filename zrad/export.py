@@ -158,13 +158,16 @@ def export_excel(if_shape, path_save, save_as, dict_parameters):
     pd.options.mode.chained_assignment = 'warn'
 
     # remove meaningless wavelet features
-    to_remove = list()
-    for wv_type in ['HHH', 'HHL', 'HLH', 'HLL', 'LHH', 'LHL', 'LLH', 'LLL']:
-        for f_type in ['fractal_dim', 'center_mass_shift', 'MaxIntensityTumorVolume20%',
-                       'MaxIntensityTumorVolume30%', 'MaxIntensityTumorVolume40%', 'MaxIntensityTumorVolume50%',
-                       'MaxIntensityTumorVolume60%', 'MaxIntensityTumorVolume70%']:
-            to_remove.append(wv_type + '_' + f_type)
-    texture = texture.drop(columns=to_remove)
+    try:
+        to_remove = list()
+        for wv_type in ['HHH', 'HHL', 'HLH', 'HLL', 'LHH', 'LHL', 'LLH', 'LLL']:
+            for f_type in ['fractal_dim', 'center_mass_shift', 'MaxIntensityTumorVolume20%',
+                           'MaxIntensityTumorVolume30%', 'MaxIntensityTumorVolume40%', 'MaxIntensityTumorVolume50%',
+                           'MaxIntensityTumorVolume60%', 'MaxIntensityTumorVolume70%']:
+                to_remove.append(wv_type + '_' + f_type)
+        texture = texture.drop(columns=to_remove)
+    except KeyError:  # no wavelet features
+        pass
 
     cols2rearrange = ['fractal_dim', 'center_mass_shift', 'MaxIntensityTumorVolume20%',
                       'MaxIntensityTumorVolume30%', 'MaxIntensityTumorVolume40%', 'MaxIntensityTumorVolume50%',

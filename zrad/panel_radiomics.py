@@ -6,7 +6,7 @@ import wx.lib.scrolledpanel as scrolled
 
 
 class panelRadiomics(scrolled.ScrolledPanel):
-    def __init__(self, parent, id=-1, size=(800, 400), *a, **b):
+    def __init__(self, parent, id=-1, size=(800, 600), *a, **b):
         super(panelRadiomics, self).__init__(parent, id, (0, 0), size=size, style=wx.SUNKEN_BORDER, *a, **b)
         self.gs_9 = None
         self.gs_8 = None
@@ -23,12 +23,12 @@ class panelRadiomics(scrolled.ScrolledPanel):
         self.vbox = None
         self.parent = parent  # class Radiomics from main_texture.py is a parent
         self.maxWidth = 800  # width and height of the panel
-        self.maxHeight = 400
+        self.maxHeight = 600
 
         self.init_ui()
 
     def init_ui(self):
-        self.SetBackgroundColour('#8AB9F1')  # background color
+        self.SetBackgroundColour('#2f2f2f')  # background color
         h = self.parent.panelHeight  # height of a text box, 20 for PC, 40 for lenovo laptop
 
         # creating boxes containing elements of the panel, vbox - vertical box, hbox - horizontal box

@@ -17,11 +17,9 @@ from tqdm import tqdm
 
 from resize_interpolate_roi import InterpolateROI
 from utils import tqdm_joblib
-import warnings
-# warnings.filterwarnings("error")
 
 
-class ResizeTexture(object):
+class ResizeDICOM(object):
     """Class to resize images and listed structures to a resolution defined by user and saved the results as dicom file
     inp_resolution – resolution defined by user
     inp_struct – list of structure names to be resized
@@ -38,10 +36,8 @@ class ResizeTexture(object):
         self.logger = logging.getLogger("Resize_Texture")
         self.interpolation_alg = interpolation_type
         self.resolution = float(inp_resolution)
-        if self.resolution < 1.:  # set a round factor for slice position
-            self.round_factor = 3
-        else:
-            self.round_factor = 3
+        # set a round factor for slice position
+        self.round_factor = 3
         self.cropStructure = cropInput
         self.dim = dim
         self.list_structure = inp_struct

@@ -19,7 +19,7 @@ from panel_radiomics import panelRadiomics
 from panel_resize import panelResize
 from shape import Shape
 
-VERSION = '7.5.2'
+VERSION = '7.6-dev'
 
 
 def on_o_programie(evt):

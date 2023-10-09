@@ -7,11 +7,13 @@ from os.path import isdir, isfile, join
 import nibabel as nib
 import numpy as np
 from joblib import Parallel, delayed
-from scipy.interpolate import interpn
 from tqdm import tqdm
 
 from read import ReadImageStructure
 from utils import tqdm_joblib
+import SimpleITK as sitk
+from utils import Image, Mask, ROI
+from datetime import datetime
 
 
 class ResizeNifti(object):
@@ -32,10 +34,6 @@ class ResizeNifti(object):
         self.logger = logging.getLogger("Resize_Nifti")
         self.interpolation_alg = interpolation_type
         self.resolution = float(inp_resolution)
-        if self.resolution < 1.:  # set a round factor for slice position
-            self.round_factor = 3
-        else:
-            self.round_factor = 3
         self.list_structure = inp_struct
         self.labels = labels
         if inp_mypath_load[-1] != os.sep:
@@ -50,7 +48,7 @@ class ResizeNifti(object):
         list_dir_candidates = [e.split(os.sep)[-1] for e in pat_dirs if e.split(os.sep)[-1].split("_")[0] in pat_range]
         self.list_dir = sorted(list_dir_candidates)
         self.n_jobs = n_jobs
-        
+        self.modality = image_type
         self.resize()
         
     def resize(self):
@@ -60,89 +58,65 @@ class ResizeNifti(object):
             read = ReadImageStructure('nifti', 'UID', mypath_image, self.list_structure, False, '3D', False)
             
             if read.stop_calc != '':
-                print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!Issue segmentation: patient: ' + name)
+                print('Issue segmentation: patient: ' + name)
                 print(read.stop_calc)
                 
             else:
                 image_name = ''
                 contour_name = ''
                 for f in read.onlyfiles:
-                    if isfile(join(mypath_image, f)) and self.list_structure[0] in f: #nifti only handles one ROI
+                    if isfile(join(mypath_image, f)) and self.list_structure[0] in f:  # nifti only handles one ROI
                         contour_name = f
                     else: 
                         image_name = f
-                img = nib.load(mypath_image + image_name)
-                contour = nib.load(mypath_image + contour_name)      
-                slope = img.header['scl_slope']
-                intercept = img.header['scl_inter']
-#                    print(slope, intercept)
-                if np.isnan(slope):
-                    slope = 1.
-                if np.isnan(intercept):
-                    intercept = 0
-                IM_matrix = img.get_fdata().transpose(2, 1, 0) * slope + intercept
-                contour_matrix = contour.get_fdata().transpose(2, 1, 0)
-                for lab in self.labels:
-                    ind = np.where(contour_matrix == lab)
-                    contour_matrix[ind] = 100
-                ind = np.where(contour_matrix != 100)
-                contour_matrix[ind] = 0
-                ind = np.where(contour_matrix == 100)
-                contour_matrix[ind] = 1
-                xCTspace = read.xCTspace
-                yCTspace = read.yCTspace
-                zCTspace = read.zCTspace               
-                
-                x = np.arange(0, len(contour_matrix[0][0])*xCTspace, xCTspace)
-                y = np.arange(0, len(contour_matrix[0])*yCTspace, yCTspace)
-                z = np.arange(0, len(contour_matrix)*zCTspace, zCTspace)
-                #
-                xn = len(np.arange(0, x[-1], self.resolution, dtype = float))
-                yn = len(np.arange(0, y[-1], self.resolution, dtype = float))
-                zn = len(np.arange(0, z[-1], self.resolution, dtype = float))
-                
-                new_points = []
-                for xi in np.arange(0, x[-1], self.resolution):
-                    for yi in np.arange(0, y[-1], self.resolution):
-                        for zi in np.arange(0, z[-1], self.resolution):
-                            new_points.append([zi, yi, xi])
-                new_points = np.array(new_points)
-                
-                new_values_image = interpn((z,y,x), IM_matrix, new_points, method = 'linear')
-                new_values_contour = interpn((z,y,x), contour_matrix, new_points, method = self.interpolation_alg)
-                
-                new_contour_matrix = np.zeros((zn, yn, xn))
-                new_image_matrix = np.zeros((zn, yn, xn))
-                
-                for pni, pn in enumerate(new_points):
-                    new_contour_matrix[int(round(pn[0] / self.resolution, 0)), int(round(pn[1] / self.resolution, 0)), int(round(pn[2] / self.resolution, 0))] = new_values_contour[pni]
-                    new_image_matrix[int(round(pn[0] / self.resolution, 0)), int(round(pn[1] / self.resolution, 0)), int(round(pn[2] / self.resolution, 0))] = new_values_image[pni]
-                    
-                ind = np.where(new_contour_matrix >= 0.5)
-                new_contour_matrix[ind] = 1.
-                ind = np.where(new_contour_matrix < 0.5)
-                new_contour_matrix[ind] = 0
-                
-                affine_trans = np.zeros((4,4))
-                affine_trans[0, 0] = -1 * self.resolution
-                affine_trans[1, 1] = -1 * self.resolution
-                affine_trans[2, 2] = self.resolution
-                affine_trans[3, 3] = 1.
-                affine_trans[0, 3] = 0
-                affine_trans[1, 3] = 0
-                affine_trans[2, 3] = 0
+                img_path = mypath_image + image_name
+                mask_path = mypath_image + contour_name
+                new_spacing = [self.resolution, self.resolution, self.resolution]
 
-                IM_matrix_nifti = nib.Nifti1Image(new_image_matrix.transpose(2,1,0), affine = affine_trans)
-                contour_matrix_nifti = nib.Nifti1Image(new_contour_matrix.transpose(2,1,0), affine = affine_trans)
-                
+                def reorient_image(arr):
+                    arr = arr.transpose(2, 1, 0)
+                    arr = np.rot90(arr, axes=(0, 1))
+                    arr = np.flipud(arr)
+                    return arr
+
                 try:
                     makedirs(self.mypath_s + name + os.sep)
                 except OSError:
                     if not isdir(self.mypath_s + name + os.sep):
                         raise
-                
-                nib.save(IM_matrix_nifti, self.mypath_s + name + os.sep + image_name)
-                nib.save(contour_matrix_nifti, self.mypath_s + name + os.sep + contour_name)
-        
+
+                interpolated_image = Image(modality=self.modality)
+                print('Reading image ' + str(datetime.now().strftime('%H:%M:%S')))
+                interpolated_image.read_nifti(img_path)
+                print('Interpolating image ' + str(datetime.now().strftime('%H:%M:%S')))
+                # interpolated_image.interpolate(new_spacing=new_spacing, method=sitk.sitkBSpline)
+                interpolated_image.interpolate(new_spacing=new_spacing, method=sitk.sitkLinear)
+                if self.modality == 'CT':
+                    interpolated_image.round_intensities()
+                print('Reorienting image ' + str(datetime.now().strftime('%H:%M:%S')))
+                interpolated_image = reorient_image(sitk.GetArrayFromImage(interpolated_image.image))
+                interpolated_image = np.rot90(np.flipud(interpolated_image), axes=(1, 0))
+                print('Saving image ' + str(datetime.now().strftime('%H:%M:%S')))
+                interpolated_image = nib.Nifti1Image(interpolated_image, affine=np.eye(4))
+                interpolated_image.header['pixdim'][1:4] = new_spacing
+                nib.save(interpolated_image, self.mypath_s + name + os.sep + image_name)
+                del interpolated_image
+
+                interpolated_mask = Mask()
+                print('Reading mask ' + str(datetime.now().strftime('%H:%M:%S')))
+                interpolated_mask.read_nifti(mask_path)
+                print('Interpolating mask ' + str(datetime.now().strftime('%H:%M:%S')))
+                interpolated_mask.interpolate(new_spacing=new_spacing, method=sitk.sitkLinear)
+                print('Rounding intensities ' + str(datetime.now().strftime('%H:%M:%S')))
+                interpolated_mask.round_intensities()
+                print('Reorienting mask ' + str(datetime.now().strftime('%H:%M:%S')))
+                interpolated_mask = reorient_image(sitk.GetArrayFromImage(interpolated_mask.image))
+                interpolated_mask = np.rot90(np.flipud(interpolated_mask), axes=(1, 0))
+                print('Saving mask ' + str(datetime.now().strftime('%H:%M:%S')))
+                interpolated_mask = nib.Nifti1Image(interpolated_mask, affine=np.eye(4))
+                interpolated_mask.header['pixdim'][1:4] = new_spacing
+                nib.save(interpolated_mask, self.mypath_s + name + os.sep + contour_name)
+                del interpolated_mask
+
         with tqdm_joblib(tqdm(desc="Resizing texture nifti", total=len(self.list_dir))):
             Parallel(n_jobs=self.n_jobs)(delayed(parfor)(name) for name in self.list_dir)

@@ -6,7 +6,7 @@ Z-Rad is an in-house implementation of radiomics software from University Hospit
 Installation
 ------------
 
-Current version of Z-Rad was tested in Python 3.10. Other versions of Python may work but were not tested.
+Current version of Z-Rad was tested in Python 3.11. Other versions of Python may work but were not tested.
 
 Supported platforms: MS Windows, MacOS, and Linux.
 
@@ -33,34 +33,15 @@ Dependencies
 Installing Python
 ~~~~~~~~~~~~~~~~~
 
-Probably the easiest way to install Python 3 is from https://www.anaconda.com/distribution/. **Important**: Please download the 64-bit version, otherwise Z-Rad may crash when calculating large structures.
+Install Python 3.11 from https://www.python.org or https://www.anaconda.com/distribution/.
 
 Installing Python packages
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
+    pip install -r requirements.txt
 
-**With GPU support:** ::
+**On USZ PC without admin rights**
 
-    conda config --add channels conda-forge
-    conda config --set channel_priority strict
-    conda create -n zrad python numpy scipy matplotlib pandas scikit-learn scikit-image tqdm joblib wxpython vtk pydicom pywavelets opencv nibabel pytorch simpleitk xlsxwriter cudatoolkit=11.1
-    conda activate zrad
-    
-**Without GPU support:** ::
-
-    conda config --add channels conda-forge
-    conda config --set channel_priority strict
-    conda create -n zrad python numpy scipy matplotlib pandas scikit-learn scikit-image tqdm joblib wxpython vtk pydicom pywavelets opencv nibabel pytorch simpleitk xlsxwriter
-    conda activate zrad
-
-**On USZ PC without admin rights:**
-
-Due to access right restrictions from USZ site, installation is possible either using compiled binary wheels or via ``pip`` through a proxy.
-
-1. **Wheel**: Download the packages from the Unofficial Windows Binaries for Python Extension Packages: https://www.lfd.uci.edu/~gohlke/pythonlibs/ and then go to the directory where the wheel was downloaded. Use the following command to install them::
-
-    pip install <name_of_the_wheel.whl>
-
-2. **PIP through a proxy**: Create *pip.ini* file in ``%APPDATA%\pip\pip.ini`` with the following contents::
+Due to access right restrictions from USZ site, a proxy needs to be set up for ``pip``. To do it, create *pip.ini* file in ``%APPDATA%\pip\pip.ini`` with the following contents::
 
     [global]
     proxy = http://username:password@proxy.usz.ch:8080

@@ -4,6 +4,7 @@ import numpy as np
 from scipy.interpolate import interpn
 
 from exception import MyException
+from tqdm import tqdm
 
 
 class MatrixNifti(object):
@@ -93,8 +94,7 @@ class MatrixNifti(object):
                     vsd = np.std(v)
                     v_out_low = vmean - 3 * vsd
                     v_out_high = vmean + 3 * vsd
-                    
-                        
+
             else:  # no structure, analyse full image
                 vmin = np.nanmin(imap)
                 vmax = np.nanmax(imap)
@@ -102,12 +102,12 @@ class MatrixNifti(object):
             if structure != 'none':  # if the structure to be anaylsed was defined
                 self.logger.info("Vmin, Vmax " + ", ".join(map(str, (round(vmin, 3), round(vmax, 3)))))
 
-                matrix = np.zeros(matrix_true.shape) #matrix with discretizd values
-                matrix[:,:,:] = np.nan 
+                matrix = np.zeros(matrix_true.shape)  # matrix with discretizd values
+                matrix[:, :, :] = np.nan
                 matrix_full = np.zeros(matrix_true.shape)  # matrix with discretizd values but not cut to the ROI
-                matrix_full[:,:,:] = np.nan 
+                matrix_full[:, :, :] = np.nan
                 matrix_rec = np.zeros(matrix_true.shape)  
-                matrix_rec[:,:,:] = np.nan 
+                matrix_rec[:, :, :] = np.nan
 
                 if bits == '':  # fixed bin defined
                     if map_name == 'MTT':
@@ -119,11 +119,11 @@ class MatrixNifti(object):
                 else:  # fixed number of bin defined
                     interval = round((vmax-vmin)/(bits-1), 2)
                     if vmin + (bits-1)*interval < vmax:
-                        interval = interval+0.01 # problems with rounding, for example the number 0.1249 would be rounderd to 0.12
+                        interval = interval+0.01  # problems with rounding, for example the number 0.1249 would be rounderd to 0.12
                         if vmin + (bits-1)*interval < vmax:
                             MyException('Problem with rounding precision, increase rounding precision of the interval in ROImatrix')
                             raise StopIteration
-                    if interval == 0: #in case the image is homogenous after the filtering
+                    if interval == 0:  # in case the image is homogenous after the filtering
                         interval = 0.01 
                     n_bits = bits
                 self.logger.info('n bins, interval ' + ", ".join(map(str, (n_bits, interval))))
@@ -133,7 +133,7 @@ class MatrixNifti(object):
                 for i in range(len(Xcontour[0])):  # slices
                     try:
                         # first row, second column, changing to bits channels as in co-ocurence matrix we have
-                        # only the channels channels
+                        # only the channels
                         matrix[Xcontour[0][i]][Xcontour[1][i]][Xcontour[2][i]] = int((imap[Xcontour[0][i]][Xcontour[1][i]][Xcontour[2][i]] - vmin) / interval)
                     except ValueError:  # in case of nan
                         pass
@@ -143,7 +143,7 @@ class MatrixNifti(object):
                         for k in range(len(matrix_full[0][0])):  # columns
                             try:  # each point
                                 # first row, second column, changing to bits channels as in co-ocurence matrix we have
-                                # only the channels channels
+                                # only the channels
                                 matrix_full[i][j][k] = int((imap[i][j][k] - vmin) / interval)
                             except ValueError:  # in case of nan
                                 pass

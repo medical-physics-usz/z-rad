@@ -9,7 +9,7 @@ from check import CheckStructures
 from myinfo import MyInfo
 from resize_nifti import ResizeNifti
 from resize_shape import ResizeShape
-from resize_texture import ResizeTexture
+from resize_dicom import ResizeDICOM
 
 
 class panelResize(scrolled.ScrolledPanel):
@@ -25,7 +25,7 @@ class panelResize(scrolled.ScrolledPanel):
         the IDs are assigned in a consecutive order and are used later to refer to text boxes etc"""
 
         h = self.parent.panelHeight  # height of a text box, 20 for PC, 40 for lenovo laptop
-        self.SetBackgroundColour('#2f2f2f')  # background color
+        self.SetBackgroundColour('#008CFF')  # background color
         # creatignngoxes containing elements of the panel, vbox - vertical box, hbox - horizontal box
         self.vbox = wx.BoxSizer(wx.VERTICAL)
         self.vbox.Add((-1, 20))
@@ -246,8 +246,8 @@ class panelResize(scrolled.ScrolledPanel):
             file_type = 'dicom'
             labels = ''
         else:
-            file_type = 'nifti' #nifti file type assumes that conversion to eg HU or SUV has already been performed
-            #read the labels for ROIs in the nifti files
+            file_type = 'nifti'  # nifti file type assumes that conversion to eg HU or SUV has already been performed
+            # read the labels for ROIs in the nifti files
             labels = self.FindWindowById(1019).GetValue()
             if labels != '':
                 labels = labels.split(',')
@@ -293,8 +293,8 @@ class panelResize(scrolled.ScrolledPanel):
 
             # resize images and structure to the resolution of texture
             if file_type == 'dicom':
-                ResizeTexture(inp_resolution, interpolation_type, list_structure, inp_mypath_load, inp_mypath_save,
-                              image_type, begin, stop, cropInput, dimension_resize, n_jobs)
+                ResizeDICOM(inp_resolution, interpolation_type, list_structure, inp_mypath_load, inp_mypath_save,
+                            image_type, begin, stop, cropInput, dimension_resize, n_jobs)
             elif file_type == 'nifti':
                 if dimension_resize == '2D':
                     MyInfo('Resize in 2D is not supported for Nifti files.')

@@ -8,6 +8,7 @@ from numpy import arange
 import nibabel as nib
 
 from structure import Structures
+import numpy as np
 
 
 class ReadImageStructure(object):
@@ -121,7 +122,7 @@ class ReadImageStructure(object):
         self.structure_f = struct.organs
 
     def ReadNiftiImageStructure(self):
-        self.onlyfiles = listdir(self.mypath_image)
+        self.onlyfiles = [e for e in listdir(self.mypath_image) if e[0] != '.']
         if len(self.onlyfiles) == 2:
             matrix1 = nib.load(self.mypath_image + self.onlyfiles[0])
             matrix2 = nib.load(self.mypath_image + self.onlyfiles[1])
@@ -129,12 +130,7 @@ class ReadImageStructure(object):
             img_matrix2 = matrix2.get_fdata().transpose(2, 1, 0)
             xCTspace = matrix1.header['pixdim'][1]
             yCTspace = matrix1.header['pixdim'][2]
-            zCTspace = matrix1.header['pixdim'][3] 
-            xCTspaceCont = matrix2.header['pixdim'][1]
-            yCTspaceCont = matrix2.header['pixdim'][2]
-            zCTspaceCont = matrix2.header['pixdim'][3]
-            if not (xCTspace == yCTspace == zCTspace and xCTspaceCont == yCTspaceCont == zCTspaceCont and xCTspace == xCTspaceCont):
-                self.stop_calc = 'image and contour voxels are not cubic or voxel size in image and contour differ'
+            zCTspace = matrix1.header['pixdim'][3]
             if img_matrix1.shape != img_matrix2.shape:
                 self.stop_calc = 'image and contour shape differ'
             self.xCTspace = xCTspace
@@ -142,7 +138,15 @@ class ReadImageStructure(object):
             self.zCTspace = zCTspace
             self.columns = img_matrix1.shape[2] 
             self.rows = img_matrix1.shape[1] 
-            self.slices = img_matrix1.shape[0]                         
+            self.slices = img_matrix1.shape[0]
+            for i, matrix in enumerate([matrix1, matrix2]):
+                print(f"File {i} pixel dimensions {matrix.header['pixdim'][1:4]}")
+                print(f"Min {np.min(matrix.get_fdata())}")
+                # print(f"p2 {np.percentile(matrix.get_fdata(), 2)}")
+                print(f"Median {np.min(matrix.get_fdata())}")
+                print(f"Mean {np.mean(matrix.get_fdata())}")
+                # print(f"p98 {np.percentile(matrix.get_fdata(), 98)}")
+                print(f"Max {np.max(matrix.get_fdata())}")
         else:
             self.stop_calc = 'expecting 2 files per directory'
             self.xCTspace = ''

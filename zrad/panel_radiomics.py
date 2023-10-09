@@ -28,7 +28,7 @@ class panelRadiomics(scrolled.ScrolledPanel):
         self.init_ui()
 
     def init_ui(self):
-        self.SetBackgroundColour('#2f2f2f')  # background color
+        self.SetBackgroundColour('#008CFF')  # background color
         h = self.parent.panelHeight  # height of a text box, 20 for PC, 40 for lenovo laptop
 
         # creating boxes containing elements of the panel, vbox - vertical box, hbox - horizontal box

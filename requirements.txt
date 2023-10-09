@@ -10,7 +10,8 @@ tqdm
 vtk
 wxpython
 xlsxwriter
-pytorch
+torch
 nibabel
 simpleitk
 scikit-image
+opencv-python

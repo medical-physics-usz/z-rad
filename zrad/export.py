@@ -1,13 +1,16 @@
 import os
+import pdb
 import sys
 from os import makedirs
 from os.path import isdir
 
 import pandas as pd
 from numpy import array, float64
+import pdb
 
 
 def export_results(final, final_file, perf_names, wave_names, wv):
+    # pdb.set_trace()
     # write the results
     # results are save as follow
     # one line corresponds to one patient
@@ -117,7 +120,6 @@ def preset(wv, path_save, save_as, perf_names):
         wave_names = ['']
 
     # #write the header
-
     final_file.write('patient')
     final_file.write('\t')
     final_file.write('organ')
@@ -146,6 +148,7 @@ def preset(wv, path_save, save_as, perf_names):
 
 
 def export_excel(if_shape, path_save, save_as, dict_parameters):
+    # pdb.set_trace()
     texture = pd.read_csv(path_save + 'texture_' + save_as + '.txt', sep="\t", header=0, index_col=False)
     texture['patient'] = texture['patient'].astype(str)
     texture = texture.set_index(['patient', 'organ'])
@@ -191,5 +194,5 @@ def export_excel(if_shape, path_save, save_as, dict_parameters):
     path = path_save + os.sep + save_as + '.xlsx'
     df_parameters = pd.DataFrame.from_dict(dict_parameters)
     with pd.ExcelWriter(path) as writer:
-        df.to_excel(writer, index=False, header=True, sheet_name="radiomics")
+        df.to_excel(writer, index=True, header=True, sheet_name="radiomics")
         df_parameters.to_excel(writer, index=False, header=True, sheet_name="parameters")

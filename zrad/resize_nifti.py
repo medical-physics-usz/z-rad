@@ -55,68 +55,57 @@ class ResizeNifti(object):
         
         def parfor(name):
             mypath_image = self.mypath_load + name + os.sep
-            read = ReadImageStructure('nifti', 'UID', mypath_image, self.list_structure, False, '3D', False)
-            
-            if read.stop_calc != '':
-                print('Issue segmentation: patient: ' + name)
-                print(read.stop_calc)
-                
-            else:
-                image_name = ''
-                contour_name = ''
-                for f in read.onlyfiles:
-                    if isfile(join(mypath_image, f)) and self.list_structure[0] in f:  # nifti only handles one ROI
-                        contour_name = f
-                    else: 
-                        image_name = f
-                img_path = mypath_image + image_name
-                mask_path = mypath_image + contour_name
-                new_spacing = [self.resolution, self.resolution, self.resolution]
 
-                def reorient_image(arr):
-                    arr = arr.transpose(2, 1, 0)
-                    arr = np.rot90(arr, axes=(0, 1))
-                    arr = np.flipud(arr)
-                    return arr
+            image_name = 'image.nii.gz'
+            contour_name = self.list_structure[0] + '.nii.gz'
+            img_path = mypath_image + image_name
+            mask_path = mypath_image + contour_name
+            new_spacing = [self.resolution, self.resolution, self.resolution]
 
-                try:
-                    makedirs(self.mypath_s + name + os.sep)
-                except OSError:
-                    if not isdir(self.mypath_s + name + os.sep):
-                        raise
+            def reorient_image(arr):
+                arr = arr.transpose(2, 1, 0)
+                arr = np.rot90(arr, axes=(0, 1))
+                arr = np.flipud(arr)
+                return arr
 
-                interpolated_image = Image(modality=self.modality)
-                print('Reading image ' + str(datetime.now().strftime('%H:%M:%S')))
-                interpolated_image.read_nifti(img_path)
-                print('Interpolating image ' + str(datetime.now().strftime('%H:%M:%S')))
-                # interpolated_image.interpolate(new_spacing=new_spacing, method=sitk.sitkBSpline)
-                interpolated_image.interpolate(new_spacing=new_spacing, method=sitk.sitkLinear)
-                if self.modality == 'CT':
-                    interpolated_image.round_intensities()
-                print('Reorienting image ' + str(datetime.now().strftime('%H:%M:%S')))
-                interpolated_image = reorient_image(sitk.GetArrayFromImage(interpolated_image.image))
-                interpolated_image = np.rot90(np.flipud(interpolated_image), axes=(1, 0))
-                print('Saving image ' + str(datetime.now().strftime('%H:%M:%S')))
-                interpolated_image = nib.Nifti1Image(interpolated_image, affine=np.eye(4))
-                interpolated_image.header['pixdim'][1:4] = new_spacing
-                nib.save(interpolated_image, self.mypath_s + name + os.sep + image_name)
-                del interpolated_image
+            try:
+                makedirs(self.mypath_s + name + os.sep)
+            except OSError:
+                if not isdir(self.mypath_s + name + os.sep):
+                    raise
 
-                interpolated_mask = Mask()
-                print('Reading mask ' + str(datetime.now().strftime('%H:%M:%S')))
-                interpolated_mask.read_nifti(mask_path)
-                print('Interpolating mask ' + str(datetime.now().strftime('%H:%M:%S')))
-                interpolated_mask.interpolate(new_spacing=new_spacing, method=sitk.sitkLinear)
-                print('Rounding intensities ' + str(datetime.now().strftime('%H:%M:%S')))
-                interpolated_mask.round_intensities()
-                print('Reorienting mask ' + str(datetime.now().strftime('%H:%M:%S')))
-                interpolated_mask = reorient_image(sitk.GetArrayFromImage(interpolated_mask.image))
-                interpolated_mask = np.rot90(np.flipud(interpolated_mask), axes=(1, 0))
-                print('Saving mask ' + str(datetime.now().strftime('%H:%M:%S')))
-                interpolated_mask = nib.Nifti1Image(interpolated_mask, affine=np.eye(4))
-                interpolated_mask.header['pixdim'][1:4] = new_spacing
-                nib.save(interpolated_mask, self.mypath_s + name + os.sep + contour_name)
-                del interpolated_mask
+            interpolated_image = Image(modality=self.modality)
+            print('Reading image ' + str(datetime.now().strftime('%H:%M:%S')))
+            interpolated_image.read_nifti(img_path)
+            print('Interpolating image ' + str(datetime.now().strftime('%H:%M:%S')))
+            # interpolated_image.interpolate(new_spacing=new_spacing, method=sitk.sitkBSpline)
+            interpolated_image.interpolate(new_spacing=new_spacing, method=sitk.sitkLinear)
+            if self.modality == 'CT':
+                interpolated_image.round_intensities()
+            print('Reorienting image ' + str(datetime.now().strftime('%H:%M:%S')))
+            interpolated_image = reorient_image(sitk.GetArrayFromImage(interpolated_image.image))
+            interpolated_image = np.rot90(np.flipud(interpolated_image), axes=(1, 0))
+            print('Saving image ' + str(datetime.now().strftime('%H:%M:%S')))
+            interpolated_image = nib.Nifti1Image(interpolated_image, affine=np.eye(4))
+            interpolated_image.header['pixdim'][1:4] = new_spacing
+            nib.save(interpolated_image, self.mypath_s + name + os.sep + image_name)
+            del interpolated_image
+
+            interpolated_mask = Mask()
+            print('Reading mask ' + str(datetime.now().strftime('%H:%M:%S')))
+            interpolated_mask.read_nifti(mask_path)
+            print('Interpolating mask ' + str(datetime.now().strftime('%H:%M:%S')))
+            interpolated_mask.interpolate(new_spacing=new_spacing, method=sitk.sitkLinear)
+            print('Rounding intensities ' + str(datetime.now().strftime('%H:%M:%S')))
+            interpolated_mask.round_intensities()
+            print('Reorienting mask ' + str(datetime.now().strftime('%H:%M:%S')))
+            interpolated_mask = reorient_image(sitk.GetArrayFromImage(interpolated_mask.image))
+            interpolated_mask = np.rot90(np.flipud(interpolated_mask), axes=(1, 0))
+            print('Saving mask ' + str(datetime.now().strftime('%H:%M:%S')))
+            interpolated_mask = nib.Nifti1Image(interpolated_mask, affine=np.eye(4))
+            interpolated_mask.header['pixdim'][1:4] = new_spacing
+            nib.save(interpolated_mask, self.mypath_s + name + os.sep + contour_name)
+            del interpolated_mask
 
         with tqdm_joblib(tqdm(desc="Resizing texture nifti", total=len(self.list_dir))):
             Parallel(n_jobs=self.n_jobs)(delayed(parfor)(name) for name in self.list_dir)

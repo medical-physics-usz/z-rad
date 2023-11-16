@@ -89,3 +89,8 @@ $RECYCLE.BIN/
 
 # Spyder
 .spyderworkspace
+
+#ignore pycache
+**/__pycache__/
+#ignore .json
+**/*.json

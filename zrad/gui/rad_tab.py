@@ -4,7 +4,7 @@ import multiprocessing
 import sys
 import json
 
-from gui.toolbox_gui import (CustomButton, CustomLabel, CustomBox, CustomTextField, CustomCheckBox)
+from zrad.gui.toolbox_gui import (CustomButton, CustomLabel, CustomBox, CustomTextField, CustomCheckBox)
 class RadiomicsTab(QWidget):
     def __init__(self):
         super().__init__()

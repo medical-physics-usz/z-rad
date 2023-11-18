@@ -1,9 +1,11 @@
-from functools import reduce
-from itertools import permutations, product
+# from functools import reduce
+from itertools import permutations  # , product
+
 import numpy as np
-from cv2 import getGaborKernel
-from scipy import ndimage as ndi
 import pywt
+# from cv2 import getGaborKernel
+from scipy import ndimage as ndi
+
 
 class Mean:
     def __init__(self, padding_type, support, dimensionality):
@@ -11,7 +13,7 @@ class Mean:
         self.support = support
         self.padding_type = padding_type
 
-    def filter(self, img):
+    def implement(self, img):
         if self.dimensionality == "2D":
             filt_mat = np.ones([self.support, self.support])
             filt_mat = filt_mat / np.prod(filt_mat.shape)
@@ -26,6 +28,7 @@ class Mean:
             filtered_img = None
         return filtered_img
 
+
 class LoG:
     """LoG"""
 
@@ -38,7 +41,7 @@ class LoG:
         self.res_mm = res_mm
         self.dimensionality = dimensionality
 
-    def filter(self, img):
+    def implement(self, img):
         sigma = self.sigma_mm / self.res_mm
         if self.dimensionality == "3D":
             filtered_img = ndi.gaussian_laplace(img, sigma=sigma, mode=self.padding_type, cval=self.padding_constant,
@@ -80,7 +83,7 @@ class Wavelets2D:
         filtered_img = ndi.convolve1d(filtered_img, y_filter, axis=0, mode=self.padding_type)
         return filtered_img
 
-    def filter(self, img):
+    def implement(self, img):
         if self.decomposition_level == 1:
             x_filter = self._get_kernel(self.response_map[0])
             y_filter = self._get_kernel(self.response_map[1])
@@ -88,7 +91,8 @@ class Wavelets2D:
                 final_image = np.zeros(img.shape)
                 for i in range(img.shape[2]):
                     for k in range(4):
-                        final_image[:, :, i] += np.rot90(self._filter(np.rot90(img[:, :, i], k=k, axes=(0, 1)), x_filter, y_filter), k=k, axes=(1, 0))
+                        final_image[:, :, i] += np.rot90(self._filter(np.rot90(img[:, :, i], k=k, axes=(0, 1)),
+                                                         x_filter, y_filter), k=k, axes=(1, 0))
                 filtered_img = final_image / 4
             else:
                 filtered_img = np.zeros(img.shape)
@@ -110,10 +114,12 @@ class Wavelets2D:
 
         return filtered_img
 
+
 class Wavelets3D:
     """Wavelet filtering."""
 
-    def __init__(self, wavelet_type, padding_type, response_map, decomposition_level, rotation_invariance=False, pooling=None):
+    def __init__(self, wavelet_type, padding_type, response_map, decomposition_level,
+                 rotation_invariance=False, pooling=None):
         self.pooling = pooling
         self.wavelet_type = wavelet_type
         self.decomposition_level = decomposition_level
@@ -139,14 +145,16 @@ class Wavelets3D:
         filtered_img = ndi.convolve1d(filtered_img, z_filter, axis=2, mode=self.padding_type)
         return filtered_img
 
-    def filter(self, img):
+    def implement(self, img):
         if self.decomposition_level == 1:
             x_filter = self._get_kernel(self.response_map[0])
             y_filter = self._get_kernel(self.response_map[1])
             z_filter = self._get_kernel(self.response_map[2])
             if self.rotation_invariance:
                 final_image = np.zeros(img.shape)
-                kernels_permutation = [(x_filter, y_filter, z_filter), (z_filter, x_filter, y_filter), (y_filter, z_filter, x_filter)]
+                kernels_permutation = [(x_filter, y_filter, z_filter),
+                                       (z_filter, x_filter, y_filter),
+                                       (y_filter, z_filter, x_filter)]
                 for kernels in kernels_permutation:
                     final_image += self._filter(img, kernels[0], kernels[1], kernels[2])
                     final_image += self._filter(img[::-1, :, :], kernels[0], kernels[1], kernels[2])[::-1, :, :]
@@ -164,7 +172,9 @@ class Wavelets3D:
             x_filter = self._get_kernel("L")
             y_filter = self._get_kernel("L")
             z_filter = self._get_kernel("L")
-            kernels_permutation = [(x_filter, y_filter, z_filter), (z_filter, x_filter, y_filter), (y_filter, z_filter, x_filter)]
+            kernels_permutation = [(x_filter, y_filter, z_filter),
+                                   (z_filter, x_filter, y_filter),
+                                   (y_filter, z_filter, x_filter)]
             level1_responses = list()
             for kernels in kernels_permutation:
                 level1_responses.append(self._filter(img, kernels[0], kernels[1], kernels[2]))
@@ -181,8 +191,9 @@ class Wavelets3D:
             y_filter = self._get_kernel(self.response_map[1], decomposition_level=2)
             z_filter = self._get_kernel(self.response_map[2], decomposition_level=2)
             final_image = np.zeros(img.shape)
-            kernels_permutation = [(x_filter, y_filter, z_filter), (z_filter, x_filter, y_filter),
-                           (y_filter, z_filter, x_filter)]
+            kernels_permutation = [(x_filter, y_filter, z_filter),
+                                   (z_filter, x_filter, y_filter),
+                                   (y_filter, z_filter, x_filter)]
             for kernels in kernels_permutation:
                 final_image += self._filter(level1_responses[0], kernels[0], kernels[1], kernels[2])
                 final_image += self._filter(level1_responses[1][::-1, :, :], kernels[0], kernels[1], kernels[2])[::-1, :, :]
@@ -195,10 +206,12 @@ class Wavelets3D:
             filtered_img = final_image / (8 * len(kernels_permutation))
         return filtered_img
 
+
 class Laws:
     """Laws2"""
 
-    def __init__(self, response_map, padding_type, dimensionality="3D", rotation_invariance=False, pooling=None, energy_map=False, distance=7):
+    def __init__(self, response_map, padding_type, dimensionality="3D",
+                 rotation_invariance=False, pooling=None, energy_map=False, distance=7):
         self.response_map = response_map
         self.padding_type = padding_type
         self.dimensionality = dimensionality
@@ -253,7 +266,7 @@ class Laws:
             filtered_img = None
         return filtered_img
 
-    def filter(self, img):
+    def implement(self, img):
         final_image = None
         if self.rotation_invariance:
             response_maps = self._get_response_maps()

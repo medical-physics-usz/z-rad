@@ -1,14 +1,15 @@
 # Import required PyQt5 modules for GUI creation
 import sys
-from PyQt5.QtWidgets import QApplication, QMainWindow, QTabWidget, QAction
-from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QStyleFactory
-from PyQt5.QtGui import QPalette, QColor
 
+from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QPalette, QColor
+from PyQt5.QtWidgets import QApplication, QMainWindow, QTabWidget, QAction
+from PyQt5.QtWidgets import QStyleFactory
+
+from zrad.gui.filt_tab import FilteringTab
 # Import custom tab classes for the GUI
-from gui.prep_tab import PreprocessingTab
-from gui.rad_tab import RadiomicsTab
-from gui.filt_tab import FilteringTab
+from zrad.gui.prep_tab import PreprocessingTab
+from zrad.gui.rad_tab import RadiomicsTab
 
 
 class Zrad(QMainWindow):

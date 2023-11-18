@@ -1,15 +1,24 @@
-from PyQt5.QtWidgets import (QLineEdit, QLabel, QPushButton, QComboBox, QCheckBox)
 from PyQt5.QtGui import QFont
+from PyQt5.QtWidgets import (QLineEdit, QLabel, QPushButton, QComboBox, QCheckBox, QMessageBox)
 
 
 class CustomButton(QPushButton):
 
-    def __init__(self, text, font, pos_x, pos_y, size_x, size_y, parent, style):
+    def __init__(self, text, font, pos_x, pos_y, size_x, size_y, parent, style=True):
         super().__init__(text, parent)
         self.setFont(QFont('SansSerif', font))
         self.setGeometry(pos_x, pos_y, size_x, size_y)
         if style:
-            self.setStyleSheet(style)
+            self.setStyleSheet("QPushButton {" 
+                               "background-color: #4CAF50; "
+                               "color: white; "
+                               "border: none; "
+                               "border-radius: 25px;"
+                               "}"
+                               "QPushButton:hover {"
+                               "  background-color: green;"
+                               "}"
+                               )
 
 
 class CustomBox(QComboBox):
@@ -20,6 +29,11 @@ class CustomBox(QComboBox):
             self.addItem(item)
         self.setGeometry(pos_x, pos_y, size_x, size_y)
         self.setFont(QFont('SansSerif', font))
+        self.setStyleSheet("QComboBox:hover {"
+                           "background-color: #27408B;"
+                           "color: yellow; "
+                           "}"
+                           )
 
 
 class CustomLabel(QLabel):
@@ -39,7 +53,7 @@ class CustomEditLine(QLineEdit):
         self.setPlaceholderText(text)
         self.setGeometry(pos_x, pos_y, size_x, size_y)
         self.setStyleSheet(
-            "background-color: white; color: black;")  # Set background color to white and text color to black
+            "background-color: white; color: black;")
         self.PrefixTextField.setFont(QFont('SansSerif', font))
 
 
@@ -50,7 +64,7 @@ class CustomTextField(QLineEdit):
         self.setPlaceholderText(text)
         self.setGeometry(pos_x, pos_y, size_x, size_y)
         self.setStyleSheet(
-            "background-color: white; color: black;")  # Set background color to white and text color to black
+            "background-color: white; color: black;")
         self.setFont(QFont('SansSerif', font))
 
 
@@ -73,3 +87,37 @@ class CustomCheckBox(QCheckBox):
                         background-color: rgba(144, 238, 144, 255); /* Semi-transparent white background */
                     }
                 """)
+
+
+class CustomWarningBox(QMessageBox):
+    def __init__(self, text):
+        super().__init__()
+        self.setIcon(QMessageBox.Warning)
+        self.setWindowTitle('Warning!')
+        self.setText(text)
+        self.setStandardButtons(QMessageBox.Retry)
+
+        self.setStyleSheet("QPushButton {"
+                           "  background-color: #FFD700;"  
+                           "  color: black;"
+                           "  border-style: solid;"
+                           "  border-width: 2px;"
+                           "  border-radius: 10px;"
+                           "  border-color: #606060;"
+                           "  font: bold 16px;"
+                           "  padding: 10px;"
+                           "}"
+                           "QPushButton:hover {"
+                           "  background-color: #FF8C00;"
+                           "}"
+                           "QPushButton:pressed {"
+                           "  background-color: #505050;"
+                           "}"
+                           )
+        font = QFont()
+        font.setPointSize(14)
+        self.setFont(font)
+
+    def response(self):
+        get_response = self.exec_()
+        return get_response == QMessageBox.Retry

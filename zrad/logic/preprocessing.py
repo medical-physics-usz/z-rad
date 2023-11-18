@@ -1,20 +1,13 @@
-import numpy as np
-import SimpleITK as sitk
-import time
 import os
+import time
+
+import SimpleITK as sitk
 import multiprocess
+import numpy as np
 import pydicom
 from rt_utils import RTStructBuilder
 
-
-class Image:
-    def __init__(self, array, origin, spacing, direction, shape, dtype):
-        self.array = array
-        self.origin = origin
-        self.spacing = spacing
-        self.direction = direction
-        self.shape = shape
-        self.dtype = dtype
+from zrad.logic.toolbox_logic import Image
 
 
 class Preprocessing:
@@ -81,6 +74,7 @@ class Preprocessing:
         print('STARTED')
         with multiprocess.Pool(self.number_of_threads) as pool:
             pool.map(self.load_patient, self.list_of_patient_folders)
+        print('STOPPED')
 
     def load_patient(self, patient_number):
         self.patient_number = patient_number
@@ -99,8 +93,6 @@ class Preprocessing:
             self.save_as_nifti()
         elif self.output_data_type == 'DICOM':
             self.save_as_dicom()
-
-        print('STOPPED')
 
     # ------------------NIFTI pypeline--------------------------
     def process_nifti_files(self):

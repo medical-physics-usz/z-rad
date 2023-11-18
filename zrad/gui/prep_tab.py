@@ -1,10 +1,11 @@
-from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QFileDialog, QMessageBox)
-from PyQt5.QtCore import Qt
-import multiprocessing
 import json
+import multiprocessing
 
-from gui.toolbox_gui import (CustomButton, CustomLabel, CustomBox, CustomTextField)
-from logic.preprocessing import Preprocessing
+from PyQt5.QtCore import Qt
+from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QFileDialog)
+
+from zrad.gui.toolbox_gui import (CustomButton, CustomLabel, CustomBox, CustomTextField, CustomWarningBox)
+from zrad.logic.preprocessing import Preprocessing
 
 
 class PreprocessingTab(QWidget):
@@ -44,13 +45,6 @@ class PreprocessingTab(QWidget):
         self.mask_interpolation_threshold_text_field = None
         self.run_button = None
 
-    def show_warning(self, message):
-        """
-        Display a warning message box and return the user's response.
-        """
-        response = QMessageBox.warning(self, 'Warning!', message, QMessageBox.Retry | QMessageBox.Retry)
-        return response == QMessageBox.Retry
-
     def run_selected_input(self):
         """
         Validate selections and execute the preprocessing operation.
@@ -64,7 +58,7 @@ class PreprocessingTab(QWidget):
         ]
 
         for message, text, warning in selections_text:
-            if text == message and self.show_warning(warning):
+            if text == message and CustomWarningBox(warning).response():
                 return
 
         # Validate combo box selections
@@ -77,13 +71,14 @@ class PreprocessingTab(QWidget):
             ('Resample Dimension:', self.resample_dimension_combo_box)
         ]
 
-        for message, comboBox in selections_combo_box:
-            if (comboBox.currentText() == message
-                    and self.show_warning(f"Select {message.split(':')[0]}")):
+        for message, combo_box in selections_combo_box:
+            if (combo_box.currentText() == message
+                    and CustomWarningBox(f"Select {message.split(':')[0]}").response()):
                 return
 
         # Collect values from GUI elements
         load_dir = self.load_dir_label.text()
+        save_dir = self.save_dir_label.text()
         folder_prefix = self.folder_prefix_text_field.text().strip()
         start_folder = self.start_folder_text_field.text().strip()
         stop_folder = self.stop_folder_text_field.text().strip()
@@ -95,18 +90,16 @@ class PreprocessingTab(QWidget):
             ]
 
         if (not start_folder or not stop_folder) and not list_of_patient_folders:
-            self.show_warning("Incorrectly selected patient folders!")
+            CustomWarningBox("Incorrectly selected patient folders!").response()
             return
 
-        save_dir = self.save_dir_label.text()
-
-        number_of_threads = self.number_of_threads_combo_box.currentText().split(" ")[0]
+        number_of_threads = int(self.number_of_threads_combo_box.currentText().split(" ")[0])
         input_data_type = self.input_data_type_combo_box.currentText()
         dicom_structures = [ROI.strip() for ROI in self.dicom_structures_text_field.text().split(",")]
 
         if (not self.nifti_image_text_field.text().strip()
                 and self.input_data_type_combo_box.currentText() == 'NIFTI'):
-            self.show_warning("Enter NIFTI image")
+            CustomWarningBox("Enter NIFTI image").response()
             return
         nifti_image = self.nifti_image_text_field.text()
 
@@ -119,7 +112,7 @@ class PreprocessingTab(QWidget):
 
         if (self.output_imaging_type_combo_box.currentText() == 'Set Imaging as:'
                 and self.output_data_type_combo_box.currentText() == 'DICOM'
-                and self.show_warning("Select Imaging")):
+                and CustomWarningBox("Select Imaging").response()):
             return
         output_imaging_type = self.output_imaging_type_combo_box.currentText()
 
@@ -176,7 +169,7 @@ class PreprocessingTab(QWidget):
             'Imaging': self.output_imaging_type_combo_box.currentText()
 
         }
-        with open('input/last_saved_user_prep_input.json', 'w') as file:
+        with open('zrad/input/last_saved_user_prep_input.json', 'w') as file:
             json.dump(data, file)
 
     def load_input_data(self):
@@ -184,7 +177,7 @@ class PreprocessingTab(QWidget):
         Load input data from a JSON file.
         """
         try:
-            with open('input/last_saved_user_prep_input.json', 'r') as file:
+            with open('zrad/input/last_saved_user_prep_input.json', 'r') as file:
                 data = json.load(file)
                 self.load_dir_label.setText(data.get('Data Location', ''))
                 self.folder_prefix_text_field.setText(data.get('Folder Prefix', ''))
@@ -215,8 +208,7 @@ class PreprocessingTab(QWidget):
         self.load_dir_button = CustomButton(
             'Load Directory',
             14, 30, 50, 200, 50, self,
-            style="background-color: #4CAF50; color: white; border: none; border-radius: 25px;"
-        )
+            style=True)
         self.load_dir_label = CustomLabel('', 14, 300, 50, 1400, 50, self)
         self.load_dir_label.setAlignment(Qt.AlignCenter)
         self.load_dir_button.clicked.connect(lambda: self.open_directory(key=True))
@@ -286,8 +278,7 @@ class PreprocessingTab(QWidget):
         self.save_dir_button = CustomButton(
             'Save Directory',
             14, 30, 220, 200, 50, self,
-            style="background-color: #4CAF50; color: white; border: none; border-radius: 25px;"
-        )
+            style=True)
         self.save_dir_label = CustomLabel(
             '',
             14, 300, 220, 1400, 50, self

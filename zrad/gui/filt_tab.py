@@ -111,7 +111,7 @@ class FilteringTab(QWidget):
         if filter_type == 'Mean' and not self.mean_filter_support_text_field.text().strip():
             CustomWarningBox("Enter Support!").response()
             return
-        mean_filter_support = int(self.mean_filter_support_text_field.text().strp())
+        mean_filter_support = int(self.mean_filter_support_text_field.text().strip())
 
         if filter_type == 'Laplacian of Gaussian':
             if not self.log_filter_sigma_text_field.text().strip():
@@ -212,19 +212,6 @@ class FilteringTab(QWidget):
                                        decomposition_level=wavelet_filter_decomposition_lvl,
                                        rotation_invariance=wavelet_filter_pseudo_rot_inv
                                        )
-
-        print({'Data location': load_dir, 'Folder folder_prefix': folder_prefix, 'Start folder': start_folder,
-               'Stop folder': stop_folder,
-               'Save Directory': save_dir, 'List of patients': list_of_patient_folders,
-                'NIFTI image': nifti_image,
-               'Data type': input_data_type, '# of cores': number_of_threads, 'Selected Filter': filter_type,
-               'Padding Type': filter_padding_type, 'Mean filter_type mean_filter_support': mean_filter_support,
-               'Filter dim': filter_dimension,
-               'LoG sigma': log_filter_sigma, 'LoG cutoff': log_filter_cutoff,
-               'Wavelet response map': wavelet_filter_response_map,
-               'Wavelet type': wavelet_filter_type, 'Decomposition lvl': wavelet_filter_decomposition_lvl,
-               'Pseudo-rot inv.': wavelet_filter_pseudo_rot_inv, 'mY FILTER': my_filter
-               })
 
         filt_instance = Filtering(load_dir, folder_prefix, start_folder,
                                   stop_folder, list_of_patient_folders,

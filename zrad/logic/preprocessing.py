@@ -2,12 +2,12 @@ import os
 import time
 
 import SimpleITK as sitk
-import multiprocess
 import numpy as np
 import pydicom
 from rt_utils import RTStructBuilder
 
-from zrad.logic.toolbox_logic import Image
+from zrad.logic.toolbox_logic import Image, start_multiprocessing, nifti_save_with_sitk, extract_dicom, \
+    process_nifti_image, process_nifti_mask
 
 
 class Preprocessing:
@@ -71,10 +71,7 @@ class Preprocessing:
         self.patient_number = None
 
     def resample(self):
-        print('STARTED')
-        with multiprocess.Pool(self.number_of_threads) as pool:
-            pool.map(self.load_patient, self.list_of_patient_folders)
-        print('STOPPED')
+        start_multiprocessing(self)
 
     def load_patient(self, patient_number):
         self.patient_number = patient_number
@@ -108,38 +105,15 @@ class Preprocessing:
         reader = sitk.ImageFileReader()
         reader.SetImageIO("NiftiImageIO")
         if instance_key == 'IMAGE':
-            reader.SetFileName(os.path.join(self.patient_folder, self.nifti_image))
-            image = reader.Execute()
-            array = sitk.GetArrayFromImage(image)
-
-            return Image(array=array.tobytes(),
-                         origin=image.GetOrigin(),
-                         spacing=np.array(image.GetSpacing()),
-                         direction=image.GetDirection(),
-                         shape=image.GetSize(),
-                         dtype=array.dtype
-                         )
+            return process_nifti_image(self, reader)
 
         elif instance_key.startswith('MASK'):
-            if os.path.isfile(os.path.join(self.patient_folder, mask_file + '.nii.gz')):
-                reader.SetFileName(os.path.join(self.patient_folder, mask_file + '.nii.gz'))
-            elif os.path.isfile(os.path.join(self.patient_folder, mask_file + '.nii')):
-                reader.SetFileName(os.path.join(self.patient_folder, mask_file + '.nii'))
-            image = reader.Execute()
-            array = sitk.GetArrayFromImage(image)
-
-            return Image(array=array.tobytes(),
-                         origin=self.pat_original_image_and_masks['IMAGE'].origin,
-                         spacing=self.pat_original_image_and_masks['IMAGE'].spacing,
-                         direction=self.pat_original_image_and_masks['IMAGE'].direction,
-                         shape=self.pat_original_image_and_masks['IMAGE'].shape,
-                         dtype=array.dtype
-                         )
+            return process_nifti_mask(self, reader, mask_file)
 
     # -----------------DICOM pypeline-----------------------------
 
     def process_dicom_files(self):
-        self.pat_original_image_and_masks['IMAGE'] = self.extract_dicom()
+        self.pat_original_image_and_masks['IMAGE'] = extract_dicom(self)
         if self.dicom_structures != ['']:
             for dicom_file in os.listdir(self.patient_folder):
                 dcm_data = pydicom.dcmread(os.path.join(self.patient_folder, dicom_file))
@@ -162,21 +136,6 @@ class Preprocessing:
                             shape=self.pat_original_image_and_masks['IMAGE'].shape,
                             dtype=mask_roi.dtype
                         )
-
-    def extract_dicom(self):
-        reader = sitk.ImageSeriesReader()
-        reader.SetImageIO("GDCMImageIO")
-        dicom_series = reader.GetGDCMSeriesFileNames(self.patient_folder)
-        reader.SetFileNames(dicom_series)
-        image = reader.Execute()
-        array = sitk.GetArrayFromImage(image)
-        return Image(array=array.tobytes(),
-                     origin=image.GetOrigin(),
-                     spacing=np.array(image.GetSpacing()),
-                     direction=image.GetDirection(),
-                     shape=image.GetSize(),
-                     dtype=array.dtype
-                     )
 
     # -----------------Preprocessing pypeline------------------------
 
@@ -262,16 +221,8 @@ class Preprocessing:
 
     # -----------------------Saving pypeline-----------------------------
     def save_as_nifti(self):
-
         for instance_key, Img in self.pat_resampled_image_and_masks.items():
-            output_path = os.path.join(self.save_dir, self.patient_number, instance_key + '.nii.gz')
-            if not os.path.exists(os.path.dirname(output_path)):
-                os.makedirs(os.path.dirname(output_path))
-            img = sitk.GetImageFromArray(Img.array)
-            img.SetOrigin(Img.origin)
-            img.SetSpacing(Img.spacing)
-            img.SetDirection(Img.direction)
-            sitk.WriteImage(img, output_path)
+            nifti_save_with_sitk(self, image=Img, image_array=Img.array, key=instance_key)
 
     def save_as_dicom(self):
 

@@ -2,10 +2,8 @@ import os
 import re
 
 import SimpleITK as sitk
-import multiprocess
-import numpy as np
 
-from zrad.logic.toolbox_logic import Image
+from zrad.logic.toolbox_logic import start_multiprocessing, nifti_save_with_sitk, extract_dicom, process_nifti_image
 
 
 class Filtering:
@@ -46,9 +44,7 @@ class Filtering:
         self.patient_number = None
 
     def filtering(self):
-        print('START')
-        with multiprocess.Pool(self.number_of_threads) as pool:
-            pool.map(self.load_patient, self.list_of_patient_folders)
+        start_multiprocessing(self)
 
     def load_patient(self, patient_number):
         self.patient_number = patient_number
@@ -61,7 +57,6 @@ class Filtering:
             self.process_dicom_files()
         self.apply_filter()
         self.save_as_nifti()
-        print('STOPPED')
 
         # ------------------NIFTI pypeline--------------------------
 
@@ -72,34 +67,12 @@ class Filtering:
         reader = sitk.ImageFileReader()
         reader.SetImageIO("NiftiImageIO")
         if key == 'IMAGE':
-            reader.SetFileName(os.path.join(self.patient_folder, self.nifti_image))
-            image = reader.Execute()
-            array = sitk.GetArrayFromImage(image).astype(np.float64)
-            return Image(array=array,
-                         origin=image.GetOrigin(),
-                         spacing=np.array(image.GetSpacing()),
-                         direction=image.GetDirection(),
-                         shape=image.GetSize(),
-                         dtype=array.dtype)
+            return process_nifti_image(self, reader)
 
         # -----------------DICOM pypeline-----------------------------
 
     def process_dicom_files(self):
-        self.pat_image = self.extract_dicom()
-
-    def extract_dicom(self):
-        reader = sitk.ImageSeriesReader()
-        reader.SetImageIO("GDCMImageIO")
-        dicom_series = reader.GetGDCMSeriesFileNames(self.patient_folder)
-        reader.SetFileNames(dicom_series)
-        image = reader.Execute()
-        array = sitk.GetArrayFromImage(image).astype(np.float64)
-        return Image(array=array,
-                     origin=image.GetOrigin(),
-                     spacing=np.array(image.GetSpacing()),
-                     direction=image.GetDirection(),
-                     shape=image.GetSize(),
-                     dtype=array.dtype)
+        self.pat_image = extract_dicom(self)
 
     def apply_filter(self):
         if self.filter_type == 'Laplacian of Gaussian':
@@ -108,12 +81,5 @@ class Filtering:
         self.filtered_image = self.filtered_image.transpose(2, 0, 1)
 
     def save_as_nifti(self):
-        output_path = os.path.join(self.save_dir, self.patient_number,
-                                   'Filtered_with_'+self.filter_type+'_Image' + '.nii.gz')
-        if not os.path.exists(os.path.dirname(output_path)):
-            os.makedirs(os.path.dirname(output_path))
-        img = sitk.GetImageFromArray(self.filtered_image)
-        img.SetOrigin(self.pat_image.origin)
-        img.SetSpacing(self.pat_image.spacing)
-        img.SetDirection(self.pat_image .direction)
-        sitk.WriteImage(img, output_path)
+        nifti_save_with_sitk(self, image=self.pat_image, image_array=self.filtered_image,
+                             key='Filtered_with_'+self.filter_type+'_Image')

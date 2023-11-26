@@ -5,8 +5,7 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QFileDialog)
 
 from zrad.gui.toolbox_gui import (CustomButton, CustomLabel, CustomBox, CustomTextField, CustomWarningBox)
-from zrad.logic.filtering import Filtering
-from zrad.logic.filters import Mean, LoG, Wavelets2D, Wavelets3D, Laws
+from zrad.logic.filtering import Filtering, Mean, LoG, Wavelets2D, Wavelets3D, Laws
 
 
 class FilteringTab(QWidget):

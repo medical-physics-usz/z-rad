@@ -399,7 +399,8 @@ class Filtering:
     def apply_filter(self):
         if self.filter_type == 'Laplacian of Gaussian':
             self.filter.res_mm = float(self.pat_image.spacing[0])
-        image = np.frombuffer(self.pat_image.array, dtype=self.pat_image.dtype).reshape(self.pat_image.shape[::-1])
+        image = np.frombuffer(self.pat_image.array,
+                              dtype=self.pat_image.dtype).reshape(self.pat_image.shape[::-1]).astype(np.float64)
         self.filtered_image = self.filter.implement(image.transpose(1, 2, 0))
         self.filtered_image_to_save = Image(array=self.filtered_image.transpose(2, 0, 1),
                                             origin=self.pat_image.origin,
@@ -411,4 +412,3 @@ class Filtering:
 
     def save_as_nifti(self):
         self.filtered_image_to_save.save_as_nifti(instance=self, key='Filtered_with_'+self.filter_type+'_Image')
-        

@@ -1,5 +1,4 @@
 import os
-import re
 # from functools import reduce
 from itertools import permutations  # , product
 
@@ -10,7 +9,7 @@ import pywt
 # from cv2 import getGaborKernel
 from scipy import ndimage as ndi
 
-from zrad.logic.toolbox_logic import extract_dicom, extract_nifti_image, Image
+from zrad.logic.toolbox_logic import extract_dicom, extract_nifti_image, Image, list_folders_in_range
 
 
 class Mean:
@@ -333,26 +332,12 @@ class Filtering:
                  nifti_image, filter_type, my_filter, save_dir, number_of_threads):
 
         # --------Load/Save data part-------
-        def extract_elements_between(start, stop, pat_list):
-            result = []
-
-            start_number = int(re.search(r'\d+', start).group())
-            stop_number = int(re.search(r'\d+', stop).group())
-
-            for element in pat_list:
-                element_number = int(re.search(r'\d+', element).group())
-                if start_number <= element_number <= stop_number:
-                    result.append(element)
-                elif element_number > stop_number:
-                    break
-
-            return result
-
         self.load_dir = load_dir
         self.folder_prefix = folder_prefix
         self.list_of_patient_folders = [self.folder_prefix + str(pat) for pat in list_of_patient_folders] if list_of_patient_folders else \
-            extract_elements_between(self.folder_prefix + str(start_folder), self.folder_prefix + str(stop_folder),
-                                     os.listdir(self.load_dir))
+            list_folders_in_range(self.folder_prefix + str(start_folder),
+                                  self.folder_prefix + str(stop_folder),
+                                  self.load_dir)
         self.number_of_threads = int(number_of_threads)
         self.save_dir = save_dir
         self.input_data_type = input_data_type
@@ -374,18 +359,18 @@ class Filtering:
         self.pat_image = None
         self.filtered_image = None
         if self.input_data_type == 'NIFTI':
-            self.process_nifti_files()
+            self._process_nifti_files()
         elif self.input_data_type == 'DICOM':
-            self.process_dicom_files()
-        self.apply_filter()
-        self.save_as_nifti()
+            self._process_dicom_files()
+        self._apply_filter()
+        self._save_as_nifti()
 
         # ------------------NIFTI pypeline--------------------------
 
-    def process_nifti_files(self):
-        self.pat_image = self.extract_nifti('IMAGE')
+    def _process_nifti_files(self):
+        self.pat_image = self._extract_nifti('IMAGE')
 
-    def extract_nifti(self, key):
+    def _extract_nifti(self, key):
         reader = sitk.ImageFileReader()
         reader.SetImageIO("NiftiImageIO")
         if key == 'IMAGE':
@@ -393,10 +378,10 @@ class Filtering:
 
         # -----------------DICOM pypeline-----------------------------
 
-    def process_dicom_files(self):
+    def _process_dicom_files(self):
         self.pat_image = extract_dicom(self)
 
-    def apply_filter(self):
+    def _apply_filter(self):
         if self.filter_type == 'Laplacian of Gaussian':
             self.filter.res_mm = float(self.pat_image.spacing[0])
         image = np.frombuffer(self.pat_image.array,
@@ -410,5 +395,5 @@ class Filtering:
                                             dtype=self.pat_image.dtype
                                             )
 
-    def save_as_nifti(self):
+    def _save_as_nifti(self):
         self.filtered_image_to_save.save_as_nifti(instance=self, key='Filtered_with_'+self.filter_type+'_Image')

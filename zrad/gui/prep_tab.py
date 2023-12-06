@@ -2,10 +2,10 @@ import json
 import multiprocessing
 
 from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QFileDialog)
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QFileDialog
 
-from zrad.gui.toolbox_gui import (CustomButton, CustomLabel, CustomBox, CustomTextField, CustomWarningBox)
-from zrad.logic.preprocessing import Preprocessing
+from .toolbox_gui import CustomButton, CustomLabel, CustomBox, CustomTextField, CustomWarningBox
+from ..logic.preprocessing import Preprocessing
 
 
 class PreprocessingTab(QWidget):
@@ -169,7 +169,7 @@ class PreprocessingTab(QWidget):
             'Imaging': self.output_imaging_type_combo_box.currentText()
 
         }
-        with open('zrad/input/last_saved_user_prep_input.json', 'w') as file:
+        with open('zrad/input/last_saved_prep_user_input.json', 'w') as file:
             json.dump(data, file)
 
     def load_input_data(self):
@@ -177,7 +177,7 @@ class PreprocessingTab(QWidget):
         Load input data from a JSON file.
         """
         try:
-            with open('zrad/input/last_saved_user_prep_input.json', 'r') as file:
+            with open('zrad/input/last_saved_prep_user_input.json', 'r') as file:
                 data = json.load(file)
                 self.load_dir_label.setText(data.get('Data Location', ''))
                 self.folder_prefix_text_field.setText(data.get('Folder Prefix', ''))

@@ -1,15 +1,13 @@
 import os
-# from functools import reduce
-from itertools import permutations  # , product
+from itertools import permutations
 
 import SimpleITK as sitk
 import multiprocess
 import numpy as np
 import pywt
-# from cv2 import getGaborKernel
 from scipy import ndimage as ndi
 
-from zrad.logic.toolbox_logic import extract_dicom, extract_nifti_image, Image, list_folders_in_range
+from .toolbox_logic import extract_dicom, extract_nifti_image, Image, list_folders_in_range
 
 
 class Mean:
@@ -384,15 +382,12 @@ class Filtering:
     def _apply_filter(self):
         if self.filter_type == 'Laplacian of Gaussian':
             self.filter.res_mm = float(self.pat_image.spacing[0])
-        image = np.frombuffer(self.pat_image.array,
-                              dtype=self.pat_image.dtype).reshape(self.pat_image.shape[::-1]).astype(np.float64)
-        self.filtered_image = self.filter.implement(image.transpose(1, 2, 0))
+        self.filtered_image = self.filter.implement(self.pat_image.array.astype(np.float64).transpose(1, 2, 0))
         self.filtered_image_to_save = Image(array=self.filtered_image.transpose(2, 0, 1),
                                             origin=self.pat_image.origin,
                                             spacing=self.pat_image.spacing,
                                             direction=self.pat_image.direction,
                                             shape=self.pat_image.shape,
-                                            dtype=self.pat_image.dtype
                                             )
 
     def _save_as_nifti(self):

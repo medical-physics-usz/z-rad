@@ -7,7 +7,6 @@ from PyQt5.QtWidgets import QApplication, QMainWindow, QTabWidget, QAction
 from PyQt5.QtWidgets import QStyleFactory
 
 from zrad.gui.filt_tab import FilteringTab
-# Import custom tab classes for the GUI
 from zrad.gui.prep_tab import PreprocessingTab
 from zrad.gui.rad_tab import RadiomicsTab
 
@@ -32,7 +31,7 @@ class Zrad(QMainWindow):
         Initialize the main GUI components.
         """
         # Set window title and geometry
-        self.setWindowTitle('Z-rad')
+        self.setWindowTitle('Z-rad-V8')
         self.setGeometry(0, 0, 1800, 750)
 
         # Create and set the central tab widget

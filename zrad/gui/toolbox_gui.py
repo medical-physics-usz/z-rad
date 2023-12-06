@@ -1,5 +1,5 @@
 from PyQt5.QtGui import QFont
-from PyQt5.QtWidgets import (QLineEdit, QLabel, QPushButton, QComboBox, QCheckBox, QMessageBox)
+from PyQt5.QtWidgets import QLineEdit, QLabel, QPushButton, QComboBox, QCheckBox, QMessageBox
 
 
 class CustomButton(QPushButton):
@@ -82,7 +82,6 @@ class CustomCheckBox(QCheckBox):
                         background-color: rgba(255, 255, 255, 128); /* Semi-transparent white background */
                     }
                     QCheckBox::indicator:checked {
-                        image: url(graphics/blue-check-mark.png);
                         border: 1px solid black;
                         background-color: rgba(144, 238, 144, 255); /* Semi-transparent white background */
                     }

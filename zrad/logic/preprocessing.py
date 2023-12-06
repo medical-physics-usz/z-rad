@@ -1,13 +1,12 @@
 import os
 
-import multiprocess
 import SimpleITK as sitk
+import multiprocess
 import numpy as np
 import pydicom
 from rt_utils import RTStructBuilder
 
-from zrad.logic.toolbox_logic import (Image, extract_dicom, extract_nifti_image,
-                                      extract_nifti_mask, list_folders_in_range)
+from .toolbox_logic import Image, extract_dicom, extract_nifti_image, extract_nifti_mask, list_folders_in_range
 
 
 class Preprocessing:
@@ -117,12 +116,11 @@ class Preprocessing:
                         mask_roi = mask_roi * 1
                         mask_roi = mask_roi.transpose(2, 0, 1)
                         self.pat_original_image_and_masks[instance_key] = Image(
-                            array=mask_roi.tobytes(),
+                            array=mask_roi,
                             origin=self.pat_original_image_and_masks['IMAGE'].origin,
                             spacing=self.pat_original_image_and_masks['IMAGE'].spacing,
                             direction=self.pat_original_image_and_masks['IMAGE'].direction,
-                            shape=self.pat_original_image_and_masks['IMAGE'].shape,
-                            dtype=mask_roi.dtype
+                            shape=self.pat_original_image_and_masks['IMAGE'].shape
                         )
 
     # -----------------Preprocessing pypeline------------------------
@@ -160,11 +158,7 @@ class Preprocessing:
 
         for instance_key in list(self.pat_original_image_and_masks.keys()):
 
-            sitk_image = sitk.GetImageFromArray(
-                np.frombuffer(
-                    self.pat_original_image_and_masks[instance_key].array,
-                    dtype=self.pat_original_image_and_masks[instance_key].dtype).reshape(input_shape[::-1])
-            )
+            sitk_image = sitk.GetImageFromArray(self.pat_original_image_and_masks[instance_key].array)
             sitk_image.SetSpacing(input_spacing)
             sitk_image.SetOrigin(input_origin)
             sitk_image.SetDirection(input_direction)
@@ -191,8 +185,7 @@ class Preprocessing:
                                                                      origin=output_origin,
                                                                      spacing=output_spacing,
                                                                      direction=input_direction,
-                                                                     shape=output_shape,
-                                                                     dtype=None)
+                                                                     shape=output_shape)
             del self.pat_original_image_and_masks[instance_key]
 
     def _get_interpolator(self, instance_key):

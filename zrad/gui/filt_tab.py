@@ -2,10 +2,10 @@ import json
 import multiprocessing
 
 from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QFileDialog)
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QFileDialog
 
-from zrad.gui.toolbox_gui import (CustomButton, CustomLabel, CustomBox, CustomTextField, CustomWarningBox)
-from zrad.logic.filtering import Filtering, Mean, LoG, Wavelets2D, Wavelets3D, Laws
+from .toolbox_gui import CustomButton, CustomLabel, CustomBox, CustomTextField, CustomWarningBox
+from ..logic.filtering import Filtering, Mean, LoG, Wavelets2D, Wavelets3D, Laws
 
 
 class FilteringTab(QWidget):
@@ -127,7 +127,7 @@ class FilteringTab(QWidget):
                 CustomWarningBox("Enter Response Map").response()
                 return
             if self.laws_filter_rot_inv_combo_box.currentText() == 'Pseudo-rot. inv:':
-                CustomWarningBox("Select Pseudo-rotational invariance")
+                CustomWarningBox("Select Pseudo-rotational invariance").response()
                 return
             if not self.laws_filter_distance_text_field.text().strip():
                 CustomWarningBox("Enter Distance").response()
@@ -146,9 +146,9 @@ class FilteringTab(QWidget):
 
         if filter_type == 'Wavelets':
             if ((self.wavelet_filter_response_map_2d_combo_box.currentText() == 'Response Map:'
-                 and self.filter_dimension_combo_box == '2D')
+                 and self.filter_dimension_combo_box.currentText() == '2D')
                 or (self.wavelet_filter_response_map_3d_combo_box.currentText() == 'Response Map:'
-                    and self.filter_dimension_combo_box == '3D')
+                    and self.filter_dimension_combo_box.currentText() == '3D')
                     or (self.wavelet_filter_response_map_combo_box.currentText() == 'Response Map:')):
                 CustomWarningBox("Select Response Map").response()
                 return
@@ -194,7 +194,7 @@ class FilteringTab(QWidget):
                              rotation_invariance=laws_filter_rot_inv,
                              pooling=laws_filter_pooling,
                              energy_map=laws_filter_energy_map,
-                             distance=laws_filter_distance
+                             distance=int(laws_filter_distance)
                              )
         else:
             if filter_dimension == '2D':
@@ -241,7 +241,23 @@ class FilteringTab(QWidget):
             'Self Filter Type': self.filter_combo_box.currentText(),
             'Filter Dimension': self.filter_dimension_combo_box.currentText(),
             'Padding Type': self.padding_type_combo_box.currentText(),
-            'Mean filter_type mean_filter_support': self.mean_filter_support_text_field.text()
+            # Mean
+            'Mean support': self.mean_filter_support_text_field.text(),
+            # LoG
+            'LoG sigma': self.log_filter_sigma_text_field.text(),
+            'LoG cutoff': self.log_filter_cutoff_text_field.text(),
+            # Laws
+            'Laws response map': self.laws_filter_response_map_text_field.text(),
+            'Laws rot inv': self.laws_filter_rot_inv_combo_box.currentText(),
+            'Laws distance': self.laws_filter_distance_text_field.text(),
+            'Laws pooling': self.laws_filter_pooling_combo_box.currentText(),
+            'Laws energy map': self.laws_filter_energy_map_combo_box.currentText(),
+            # Wavelet
+            'Wavelet response map 2D': self.wavelet_filter_response_map_2d_combo_box.currentText(),
+            'Wavelet response map 3D': self.wavelet_filter_response_map_3d_combo_box.currentText(),
+            'Wavelet type': self.wavelet_filter_type_combo_box.currentText(),
+            'Wavelet decomp lvl': self.wavelet_filter_decomposition_level_combo_box.currentText(),
+            'Wavelet rot inv': self.wavelet_filter_rot_inv_combo_box.currentText()
         }
 
         with open('zrad/input/last_saved_filt_user_input.json', 'w') as file:
@@ -263,7 +279,19 @@ class FilteringTab(QWidget):
                 self.filter_combo_box.setCurrentText(data.get('Self Filter Type', ''))
                 self.filter_dimension_combo_box.setCurrentText(data.get('Filter Dimension', ''))
                 self.padding_type_combo_box.setCurrentText(data.get('Padding Type', ''))
-                self.mean_filter_support_text_field.setText(data.get('Mean filter_type mean_filter_support', ''))
+                self.mean_filter_support_text_field.setText(data.get('Mean support', ''))
+                self.log_filter_sigma_text_field.setText(data.get('LoG sigma', ''))
+                self.log_filter_cutoff_text_field.setText(data.get('LoG cutoff', ''))
+                self.laws_filter_response_map_text_field.setText(data.get('Laws response map', ''))
+                self.laws_filter_rot_inv_combo_box.setCurrentText(data.get('Laws rot inv', ''))
+                self.laws_filter_distance_text_field.setText(data.get('Laws distance', ''))
+                self.laws_filter_pooling_combo_box.setCurrentText(data.get('Laws pooling', ''))
+                self.laws_filter_energy_map_combo_box.setCurrentText(data.get('Laws energy map', ''))
+                self.wavelet_filter_response_map_2d_combo_box.setCurrentText(data.get('Wavelet response map 2D', ''))
+                self.wavelet_filter_response_map_3d_combo_box.setCurrentText(data.get('Wavelet response map 3D', ''))
+                self.wavelet_filter_type_combo_box.setCurrentText(data.get('Wavelet type', ''))
+                self.wavelet_filter_decomposition_level_combo_box.setCurrentText(data.get('Wavelet decomp lvl', ''))
+                self.wavelet_filter_rot_inv_combo_box.setCurrentText(data.get('Wavelet rot inv', ''))
 
         except FileNotFoundError:
             print("No previous data found!")
@@ -370,7 +398,7 @@ class FilteringTab(QWidget):
         )
         self.nifti_image_text_field = CustomTextField(
             "E.g. imageCT.nii.gz",
-            14, 1080 - 890 + 320, 300, 350, 50, self
+            14, 510, 300, 350, 50, self
         )
         self.nifti_image_label.hide()
         self.nifti_image_text_field.hide()
@@ -454,7 +482,7 @@ class FilteringTab(QWidget):
         )
         self.laws_filter_pooling_combo_box = CustomBox(
             14, 1370, 380, 180, 50, self,
-            item_list=['Pooling:'])
+            item_list=['Pooling:', 'max'])
         self.laws_filter_energy_map_combo_box = CustomBox(
             14, 1560, 380, 140, 50, self,
             item_list=[
@@ -504,7 +532,7 @@ class FilteringTab(QWidget):
         self.wavelet_filter_response_map_3d_combo_box.hide()
 
         self.wavelet_filter_decomposition_level_combo_box = CustomBox(
-            14, 320 + 350 + 380, 380, 200, 50, self,
+            14, 1050, 380, 200, 50, self,
             item_list=[
                 'Decomposition Lvl.:', '1', '2'
             ]

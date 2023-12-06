@@ -1,18 +1,16 @@
 import os
 import time
-
 import SimpleITK as sitk
 import numpy as np
 
 
 class Image:
-    def __init__(self, array, origin, spacing, direction, shape, dtype):
+    def __init__(self, array, origin, spacing, direction, shape):
         self.array = array
         self.origin = origin
         self.spacing = spacing
         self.direction = direction
         self.shape = shape
-        self.dtype = dtype
 
     def save_as_nifti(self, instance, key):
         output_path = os.path.join(instance.save_dir, instance.patient_number, key + '.nii.gz')
@@ -104,12 +102,11 @@ def extract_dicom(instance):
     reader.SetFileNames(dicom_series)
     image = reader.Execute()
     array = sitk.GetArrayFromImage(image)
-    return Image(array=array.tobytes(),
+    return Image(array=array,
                  origin=image.GetOrigin(),
                  spacing=np.array(image.GetSpacing()),
                  direction=image.GetDirection(),
-                 shape=image.GetSize(),
-                 dtype=array.dtype
+                 shape=image.GetSize()
                  )
 
 
@@ -121,12 +118,11 @@ def extract_nifti_image(instance, sitk_reader):
     image = sitk_reader.Execute()
     array = sitk.GetArrayFromImage(image)
 
-    return Image(array=array.tobytes(),
+    return Image(array=array,
                  origin=image.GetOrigin(),
                  spacing=np.array(image.GetSpacing()),
                  direction=image.GetDirection(),
-                 shape=image.GetSize(),
-                 dtype=array.dtype
+                 shape=image.GetSize()
                  )
 
 
@@ -139,10 +135,9 @@ def extract_nifti_mask(instance, sitk_reader, mask):
     image = sitk_reader.Execute()
     array = sitk.GetArrayFromImage(image)
 
-    return Image(array=array.tobytes(),
+    return Image(array=array,
                  origin=instance.pat_original_image_and_masks['IMAGE'].origin,
                  spacing=instance.pat_original_image_and_masks['IMAGE'].spacing,
                  direction=instance.pat_original_image_and_masks['IMAGE'].direction,
                  shape=instance.pat_original_image_and_masks['IMAGE'].shape,
-                 dtype=array.dtype
                  )

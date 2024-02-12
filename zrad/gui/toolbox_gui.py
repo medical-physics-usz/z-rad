@@ -6,7 +6,7 @@ class CustomButton(QPushButton):
 
     def __init__(self, text, font, pos_x, pos_y, size_x, size_y, parent, style=True):
         super().__init__(text, parent)
-        self.setFont(QFont('SansSerif', font))
+        self.setFont(QFont('Arial', font))
         self.setGeometry(pos_x, pos_y, size_x, size_y)
         if style:
             self.setStyleSheet("QPushButton {" 
@@ -28,7 +28,7 @@ class CustomBox(QComboBox):
         for item in item_list:
             self.addItem(item)
         self.setGeometry(pos_x, pos_y, size_x, size_y)
-        self.setFont(QFont('SansSerif', font))
+        self.setFont(QFont('Arial', font))
         self.setStyleSheet("QComboBox:hover {"
                            "background-color: #27408B;"
                            "color: yellow; "
@@ -41,7 +41,7 @@ class CustomLabel(QLabel):
     def __init__(self, text, font, pos_x, pos_y, size_x, size_y, parent,
                  style="background-color: white; color: black; border: none; border-radius: 25px;"):
         super().__init__(text, parent)
-        self.setFont(QFont('SansSerif', font))
+        self.setFont(QFont('Arial', font))
         self.setGeometry(pos_x, pos_y, size_x, size_y)
         self.setStyleSheet(style)
 
@@ -54,7 +54,7 @@ class CustomEditLine(QLineEdit):
         self.setGeometry(pos_x, pos_y, size_x, size_y)
         self.setStyleSheet(
             "background-color: white; color: black;")
-        self.PrefixTextField.setFont(QFont('SansSerif', font))
+        self.PrefixTextField.setFont(QFont('Arial', font))
 
 
 class CustomTextField(QLineEdit):
@@ -65,7 +65,7 @@ class CustomTextField(QLineEdit):
         self.setGeometry(pos_x, pos_y, size_x, size_y)
         self.setStyleSheet(
             "background-color: white; color: black;")
-        self.setFont(QFont('SansSerif', font))
+        self.setFont(QFont('Arial', font))
 
 
 class CustomCheckBox(QCheckBox):
@@ -73,7 +73,7 @@ class CustomCheckBox(QCheckBox):
     def __init__(self, text, font, pos_x, pos_y, size_x, size_y, parent):
         super().__init__(text, parent)
         self.setGeometry(pos_x, pos_y, size_x, size_y)
-        self.setFont(QFont('SansSerif', font))
+        self.setFont(QFont('Arial', font))
         self.setStyleSheet("""
                     QCheckBox::indicator {
                         width: 25px;
@@ -113,7 +113,7 @@ class CustomWarningBox(QMessageBox):
                            "  background-color: #505050;"
                            "}"
                            )
-        font = QFont()
+        font = QFont('Arial')
         font.setPointSize(14)
         self.setFont(font)
 

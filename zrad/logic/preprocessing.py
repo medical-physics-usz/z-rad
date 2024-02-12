@@ -1,86 +1,154 @@
 import os
 
 import SimpleITK as sitk
-import multiprocess
 import numpy as np
 import pydicom
-from rt_utils import RTStructBuilder
+from joblib import Parallel, delayed, cpu_count
 
-from .toolbox_logic import Image, extract_dicom, extract_nifti_image, extract_nifti_mask, list_folders_in_range
+from .toolbox_logic import Image, extract_nifti_image, extract_nifti_mask, list_folders_in_defined_range, extract_dicom
 
 
 class Preprocessing:
 
-    def __init__(self, load_dir, folder_prefix, start_folder, stop_folder, list_of_patient_folders,
-                 input_data_type, dicom_structures, nifti_image, nifti_structures, mask_interpolation_method,
-                 mask_interpolation_threshold, image_interpolation_method, resample_resolution,
-                 resample_dimension, save_dir, output_data_type, output_imaging_type, number_of_threads):
+    def __init__(self, load_dir,
+                 input_data_type, input_imaging_mod,
+                 image_interpolation_method, mask_interpolation_method, resample_resolution,
+                 resample_dimension, save_dir, number_of_threads,
+                 start_folder='', stop_folder='', list_of_patient_folders=None, structure_set=None,
+                 nifti_image=None, mask_interpolation_threshold=0.5):
 
-        self.load_dir = load_dir
-        self.folder_prefix = folder_prefix
-        self.list_of_patient_folders = (
-            [self.folder_prefix + str(patient) for patient in list_of_patient_folders]
-            if list_of_patient_folders else
-            list_folders_in_range(
-                self.folder_prefix + str(start_folder),
-                self.folder_prefix + str(stop_folder),
-                self.load_dir
-            )
-        )
+        if os.path.exists(load_dir):
+            self.load_dir = load_dir
+        else:
+            print("Load directory does not exist.")
+            return
 
-        self.number_of_threads = number_of_threads
-        self.save_dir = save_dir
-        self.input_data_type = input_data_type
-        self.output_data_type = output_data_type
+        if os.path.exists(save_dir):
+            self.save_dir = save_dir
+        else:
+            print("Save directory does not exist.")
+            return
 
-        # ------NIFTI specific-------------
-        self.nifti_image = nifti_image
-        self.nifti_structures = nifti_structures
+        if (list_of_patient_folders is None and os.path.exists(os.path.join(self.load_dir, str(start_folder)))
+                and os.path.exists(os.path.join(self.load_dir, str(stop_folder)))
+                and start_folder != '' and stop_folder != ''):
+            self.list_of_patient_folders = list_folders_in_defined_range(start_folder, stop_folder, self.load_dir)
+        elif list_of_patient_folders is not None and list_of_patient_folders != [] and list_of_patient_folders != ['']:
+            all_folders_exist = True
+            for pat_folder in list_of_patient_folders:
+                if not os.path.exists(os.path.join(self.load_dir, str(pat_folder))):
+                    print('Folder {} does not exists!'.format(os.path.join(self.load_dir, str(pat_folder))))
+                    all_folders_exist = False
+            if all_folders_exist:
+                self.list_of_patient_folders = list_of_patient_folders
+            else:
+                print('One or more selected patient folders do not exist!')
+                print('ABORTION!')
+                return
+        else:
+            print('Incorrectly selected patient folders')
+            return
 
-        # ------DICOM specific-------------
-        self.dicom_structures = dicom_structures
-        self.output_imaging_type = output_imaging_type
+            # ---------------------
+        if not list_of_patient_folders:
+            self.list_of_patient_folders = list_folders_in_defined_range(start_folder, stop_folder, self.load_dir)
+        else:
+            self.list_of_patient_folders = list_of_patient_folders
+            # ----------------------------
 
-        # ------Resampling specific-------------
-        self.resample_resolution = resample_resolution
-        self.image_interpolation_method = image_interpolation_method
-        self.resample_dimension = resample_dimension
-        self.mask_interpolation_method = mask_interpolation_method
-        if self.mask_interpolation_method in ["Linear", "BSpline", "Gaussian"]:
-            self.mask_threshold = float(mask_interpolation_threshold)
-        elif self.mask_interpolation_method == "NN":
-            self.mask_threshold = 1.0
+        if input_data_type in ['DICOM', 'NIFTI']:
+            self.input_data_type = input_data_type
+        else:
+            print("Wrong input data types, available types: 'DICOM', 'NIFTI'")
+            return
 
-        # ------------Patient specific parameters-----------------
+        if input_imaging_mod in ['CT', 'PT', 'MR']:
+            self.input_imaging_mod = input_imaging_mod
+        else:
+            print("Wrong input imaging type, available types: 'CT', 'PT', 'MR'")
+            return
 
+        if self.input_data_type == 'NIFTI':
+            if nifti_image is not None:
+                image_exists = True
+                for folder in self.list_of_patient_folders:
+                    if not os.path.exists(os.path.join(load_dir, str(folder), nifti_image)):
+                        image_exists = False
+                        if not image_exists:
+                            print('The NIFTI image file does not exists: '
+                                  + os.path.join(load_dir, str(folder), nifti_image))
+                if image_exists:
+                    self.nifti_image = nifti_image
+            else:
+                print('Select the NIFTI image file')
+                return
+
+        if (mask_interpolation_method in ['NN', 'Linear', 'BSpline', 'Gaussian']
+                and image_interpolation_method in ['NN', 'Linear', 'BSpline', 'Gaussian']):
+            self.mask_interpolation_method = mask_interpolation_method
+            self.image_interpolation_method = image_interpolation_method
+            if mask_interpolation_method == 'NN':
+                self.mask_threshold = 1.0
+            else:
+                if type(mask_interpolation_threshold) in [float, int] and 0 <= mask_interpolation_threshold <= 1:
+                    self.mask_threshold = float(mask_interpolation_threshold)
+                else:
+                    print('Selected threshold not in range [0,1] or not float/integer data type')
+        else:
+            print("Wrong mask and/or image interpolation method, "
+                  "available methods: 'NN', 'Linear', 'BSpline', 'Gaussian'")
+            return
+
+        if type(number_of_threads) == int and 0 < number_of_threads <= cpu_count():
+            self.number_of_threads = number_of_threads
+        else:
+            print('Number of threads is not an integer or selected nubmer is greater than maximum number of available '
+                  'CPU. (Max available {} units)'.format(str(cpu_count())))
+            return
+
+        if structure_set is not None:
+            self.structure_set = structure_set
+        else:
+            self.structure_set = ['']
+            return
+
+        if type(resample_resolution) in [float, int] and resample_resolution > 0:
+            self.resample_resolution = resample_resolution
+        else:
+            print('Resample resolution is not int/float or non-positive')
+            print('ABORTED!')
+            return
+        if resample_dimension in ['3D', '2D']:
+            self.resample_dimension = resample_dimension
+        else:
+            print("Resample dimension is not '2D' or '3D'!")
+            print('ABORTED!')
+            return
+
+        # ------Patient specific parameters-----
         self.patient_folder = None
         self.patient_number = None
 
     def resample(self):
-        with multiprocess.Pool(self.number_of_threads) as pool:
-            pool.map(self._load_patient, self.list_of_patient_folders)
+        Parallel(n_jobs=self.number_of_threads)(
+            delayed(self._load_patient)(patient_folder) for patient_folder in self.list_of_patient_folders)
 
     def _load_patient(self, patient_number):
-        self.patient_number = patient_number
+
+        self.patient_number = str(patient_number)
         self.patient_folder = os.path.join(self.load_dir, self.patient_number)
         self.pat_original_image_and_masks = {}
         self.pat_resampled_image_and_masks = {}
 
         if self.input_data_type == 'NIFTI':
             self._process_nifti_files()
-        elif self.input_data_type == 'DICOM':
+        else:
             self._process_dicom_files()
 
         self._resampling()
+        self._save_as_nifti()
 
-        if self.output_data_type == 'NIFTI':
-            self._save_as_nifti()
-        elif self.output_data_type == 'DICOM':
-            self._save_as_dicom()
-
-    # ------------------NIFTI pypeline--------------------------
     def _process_nifti_files(self):
-
         def extract_nifti(key, mask_file_name=None):
 
             reader = sitk.ImageFileReader()
@@ -89,43 +157,44 @@ class Preprocessing:
                 return extract_nifti_image(self, reader)
 
             elif key.startswith('MASK'):
-                return extract_nifti_mask(self, reader, mask_file_name)
+                return extract_nifti_mask(self, reader, mask_file_name, self.pat_original_image_and_masks['IMAGE'])
 
         self.pat_original_image_and_masks['IMAGE'] = extract_nifti('IMAGE')
-        if self.nifti_structures != ['']:
-            for nifti_file_name in self.nifti_structures:
+        if self.structure_set != ['']:
+            for nifti_file_name in self.structure_set:
                 instance_key = 'MASK_' + nifti_file_name
-                self.pat_original_image_and_masks[instance_key] = extract_nifti(instance_key, nifti_file_name)
-
-    # -----------------DICOM pypeline-----------------------------
+                file_found, mask = extract_nifti(instance_key, nifti_file_name)
+                if file_found:
+                    self.pat_original_image_and_masks[instance_key] = mask
 
     def _process_dicom_files(self):
-        self.pat_original_image_and_masks['IMAGE'] = extract_dicom(self)
-        if self.dicom_structures != ['']:
+        self.pat_original_image_and_masks['IMAGE'] = extract_dicom(dicom_dir=self.patient_folder, rtstract=False,
+                                                                   modality=self.input_imaging_mod)
+
+        if self.structure_set != ['']:
             for dicom_file in os.listdir(self.patient_folder):
                 dcm_data = pydicom.dcmread(os.path.join(self.patient_folder, dicom_file))
                 if dcm_data.Modality == 'RTSTRUCT':
-                    rtstruct = RTStructBuilder.create_from(dicom_series_path=self.patient_folder,
-                                                           rt_struct_path=os.path.join(self.patient_folder,
-                                                                                       dicom_file
-                                                                                       )
-                                                           )
-                    for ROI in self.dicom_structures:
-                        instance_key = 'MASK_' + ROI
-                        mask_roi = rtstruct.get_roi_mask_by_name(ROI)
-                        mask_roi = mask_roi * 1
-                        mask_roi = mask_roi.transpose(2, 0, 1)
-                        self.pat_original_image_and_masks[instance_key] = Image(
-                            array=mask_roi,
-                            origin=self.pat_original_image_and_masks['IMAGE'].origin,
-                            spacing=self.pat_original_image_and_masks['IMAGE'].spacing,
-                            direction=self.pat_original_image_and_masks['IMAGE'].direction,
-                            shape=self.pat_original_image_and_masks['IMAGE'].shape
-                        )
-
-    # -----------------Preprocessing pypeline------------------------
+                    masks = extract_dicom(dicom_dir=self.patient_folder, rtstract=True,
+                                          rtstruct_file=os.path.join(self.patient_folder, dicom_file),
+                                          selected_structures=self.structure_set,
+                                          modality=self.input_imaging_mod)
+                    for instance_key in masks.keys():
+                        self.pat_original_image_and_masks['MASK_'+instance_key] = masks[instance_key]
 
     def _resampling(self):
+
+        def interpolator(instance_key):
+            interpolators = {
+                'Linear': sitk.sitkLinear,
+                'NN': sitk.sitkNearestNeighbor,
+                'BSpline': sitk.sitkBSpline,
+                'Gaussian': sitk.sitkGaussian
+            }
+            if instance_key.startswith('IMAGE'):
+                return interpolators.get(self.image_interpolation_method)
+            elif instance_key.startswith('MASK'):
+                return interpolators.get(self.mask_interpolation_method)
 
         def resampled_origin(initial_shape, initial_spacing, resulted_spacing, initial_origin, axis=0):
             """
@@ -142,6 +211,7 @@ class Preprocessing:
         input_origin = self.pat_original_image_and_masks['IMAGE'].origin
         input_direction = self.pat_original_image_and_masks['IMAGE'].direction
         input_shape = self.pat_original_image_and_masks['IMAGE'].shape
+
 
         if self.resample_dimension == '3D':
             output_spacing = [self.resample_resolution] * 3
@@ -169,17 +239,22 @@ class Preprocessing:
             resample.SetOutputDirection(input_direction)
             resample.SetSize(output_shape.tolist())
             resample.SetOutputPixelType(sitk.sitkFloat64)
-            resample.SetInterpolator(self._get_interpolator(instance_key))
+            resample.SetInterpolator(interpolator(instance_key))
             resampled_sitk_image = resample.Execute(sitk_image)
 
             resampled_array = None
 
             if instance_key.startswith('IMAGE'):
-                resampled_sitk_image = sitk.Round(resampled_sitk_image)
-                resampled_sitk_image = sitk.Cast(resampled_sitk_image, sitk.sitkInt16)
+                if self.input_imaging_mod == 'CT':
+                    resampled_sitk_image = sitk.Round(resampled_sitk_image)
+                    resampled_sitk_image = sitk.Cast(resampled_sitk_image, sitk.sitkInt16)
+                elif self.input_imaging_mod in ['MR', 'PT']:
+                    resampled_sitk_image = sitk.Cast(resampled_sitk_image, sitk.sitkFloat64)
                 resampled_array = sitk.GetArrayFromImage(resampled_sitk_image)
+
             elif instance_key.startswith('MASK'):
                 resampled_array = np.where(sitk.GetArrayFromImage(resampled_sitk_image) >= self.mask_threshold, 1, 0)
+                resampled_array = resampled_array.astype(np.int16)
 
             self.pat_resampled_image_and_masks[instance_key] = Image(array=resampled_array,
                                                                      origin=output_origin,
@@ -188,30 +263,8 @@ class Preprocessing:
                                                                      shape=output_shape)
             del self.pat_original_image_and_masks[instance_key]
 
-    def _get_interpolator(self, instance_key):
-        interpolators = {
-            'Linear': sitk.sitkLinear,
-            'NN': sitk.sitkNearestNeighbor,
-            'BSpline': sitk.sitkBSpline,
-            'Gaussian': sitk.sitkGaussian
-        }
-        if instance_key.startswith('IMAGE'):
-            return interpolators.get(self.image_interpolation_method)
-        elif instance_key.startswith('MASK'):
-            return interpolators.get(self.mask_interpolation_method)
 
     # -----------------------Saving pypeline-----------------------------
     def _save_as_nifti(self):
         for key, img in self.pat_resampled_image_and_masks.items():
             img.save_as_nifti(instance=self, key=key)
-
-    def _save_as_dicom(self):
-        self.pat_resampled_image_and_masks['IMAGE'].save_image_as_dicom(instance=self)
-
-        rtstruct_save = RTStructBuilder.create_new(dicom_series_path=self.save_dir + '/' + self.patient_number)
-
-        for instance_key, img in self.pat_resampled_image_and_masks.items():
-            if instance_key.startswith('MASK'):
-                img.save_mask_as_dicom(key=instance_key, rtstruct_file=rtstruct_save)
-
-        rtstruct_save.save(os.path.join(self.save_dir + '/' + self.patient_number, 'rt-struct'))

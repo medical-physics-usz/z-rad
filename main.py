@@ -1,9 +1,11 @@
-# Import required PyQt5 modules for GUI creation
 import sys
-
+from PyQt5.QtGui import QFont
+# Import required PyQt5 modules for GUI creation
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QPalette, QColor
+from PyQt5.QtGui import QPixmap
 from PyQt5.QtWidgets import QApplication, QMainWindow, QTabWidget, QAction
+from PyQt5.QtWidgets import QLabel
 from PyQt5.QtWidgets import QStyleFactory
 
 from zrad.gui.filt_tab import FilteringTab
@@ -25,6 +27,16 @@ class Zrad(QMainWindow):
         self.load_action = None
         self.save_action = None
         self.exit_action = None
+
+    def add_logo_to_tab(self, tab):
+        logo_label = QLabel(tab)
+        logo_pixmap = QPixmap('zrad/logo/logo.png')
+        desiredWidth = 300  # Set this to your desired width
+        desiredHeight = 150  # Set this to your desired height
+        logo_pixmap = logo_pixmap.scaled(desiredWidth, desiredHeight, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+        logo_label.setPixmap(logo_pixmap)
+        logo_label.setGeometry(1750 - logo_pixmap.width(), 660 - logo_pixmap.height(),
+                               logo_pixmap.width(), logo_pixmap.height())
 
     def init_gui(self):
         """
@@ -50,6 +62,10 @@ class Zrad(QMainWindow):
         self.tab_widget.addTab(self.tab_one, "Resampling")
         self.tab_widget.addTab(self.tab_two, "Filtering")
         self.tab_widget.addTab(self.tab_three, "Radiomics")
+
+        self.add_logo_to_tab(self.tab_one)
+        self.add_logo_to_tab(self.tab_two)
+        self.add_logo_to_tab(self.tab_three)
 
         # Create the menu bar
         self.create_menu()
@@ -78,6 +94,9 @@ class Zrad(QMainWindow):
         # Add actions to the File menu
         self.file_menu.addAction(self.load_action)
         self.file_menu.addAction(self.save_action)
+
+        self.load_action.setShortcut('Ctrl+O')
+        self.save_action.setShortcut('Ctrl+S')
 
         # Add a separator
         self.file_menu.addSeparator()
@@ -128,6 +147,8 @@ if __name__ == '__main__':
     palette.setColor(QPalette.Text, Qt.white)
     palette.setColor(QPalette.ButtonText, Qt.white)
     app.setPalette(palette)
+
+    app.setFont(QFont('Arial', 10))
 
     # Create and display the main window
     ex = Zrad()

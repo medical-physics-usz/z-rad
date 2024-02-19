@@ -2,19 +2,29 @@ import os
 from itertools import permutations
 
 import SimpleITK as sitk
-import multiprocess
+from joblib import Parallel, delayed, cpu_count
 import numpy as np
 import pywt
 from scipy import ndimage as ndi
 
-from .toolbox_logic import extract_dicom, extract_nifti_image, Image, list_folders_in_range
+from .toolbox_logic import extract_nifti_image, Image, list_folders_in_defined_range, extract_dicom
 
 
 class Mean:
     def __init__(self, padding_type, support, dimensionality):
-        self.dimensionality = dimensionality
-        self.support = support
-        self.padding_type = padding_type
+
+        if dimensionality in ['2D', '3D']:
+            self.dimensionality = dimensionality
+        else:
+            print("Wrong dimensionality. Available dimensions '2D' and '3D'.")
+        if type(support) in [int]:
+            self.support = support
+        else:
+            print(f'Support should be int but {type(support)} detected.')
+        if padding_type in ['constant', 'nearest', 'wrap', 'reflect']:
+            self.padding_type = padding_type
+        else:
+            print("Wrong padding type. Available padding types are: 'constant', 'nearest', 'wrap', and 'reflect'.")
 
     def implement(self, img):
         if self.dimensionality == "2D":
@@ -35,14 +45,27 @@ class Mean:
 class LoG:
     """LoG"""
 
-    def __init__(self, padding_type, sigma_mm=3.0, cutoff=4, padding_constant=0.0, res_mm=1.0,
-                 dimensionality="3D"):
-        self.padding_type = padding_type
-        self.sigma_mm = sigma_mm
-        self.cutoff = cutoff
-        self.padding_constant = padding_constant
-        self.res_mm = res_mm
-        self.dimensionality = dimensionality
+    def __init__(self, padding_type, sigma_mm, cutoff, dimensionality):
+
+        if dimensionality in ['2D', '3D']:
+            self.dimensionality = dimensionality
+        else:
+            print("Wrong dimensionality. Available dimensions '2D' and '3D'.")
+        if padding_type in ['constant', 'nearest', 'wrap', 'reflect']:
+            self.padding_type = padding_type
+        else:
+            print("Wrong padding type. Available padding types are: 'constant', 'nearest', 'wrap', and 'reflect'.")
+        if type(sigma_mm) in [int, float]:
+            self.sigma_mm = sigma_mm
+        else:
+            print(f'Sigma (in mm) should be int or float but {type(sigma_mm)} detected.')
+        if type(cutoff) in [int, float]:
+            self.cutoff = cutoff
+        else:
+            print(f'Cutoff should be int or float but {type(cutoff)} detected.')
+
+        self.padding_constant = 0.0
+        self.res_mm = 1.0
 
     def implement(self, img):
         sigma = self.sigma_mm / self.res_mm
@@ -213,15 +236,31 @@ class Wavelets3D:
 class Laws:
     """Laws2"""
 
-    def __init__(self, response_map, padding_type, dimensionality="3D",
-                 rotation_invariance=False, pooling=None, energy_map=False, distance=7):
+    def __init__(self, response_map, padding_type, distance, energy_map, dimensionality,
+                 rotation_invariance=False, pooling=None):
+
+        if dimensionality in ['2D', '3D']:
+            self.dimensionality = dimensionality
+        else:
+            print("Wrong dimensionality. Available dimensions '2D' and '3D'.")
+        if padding_type in ['constant', 'nearest', 'wrap', 'reflect']:
+            self.padding_type = padding_type
+        else:
+            print("Wrong padding type. Available padding types are: 'constant', 'nearest', 'wrap', and 'reflect'.")
+
+        if type(distance) in [int]:
+            self.distance = distance
+        else:
+            print(f'Distance should be int but {type(distance)} detected.')
+
+        if energy_map == True or energy_map == False:
+            self.energy_map = energy_map
+        else:
+            print('Enerfy map can be only True or False.')
+
         self.response_map = response_map
-        self.padding_type = padding_type
-        self.dimensionality = dimensionality
         self.rotation_invariance = rotation_invariance
         self.pooling = pooling
-        self.energy_map = energy_map
-        self.distance = distance
 
     def _get_kernel(self, l_type, support):
         if l_type == "L":
@@ -326,34 +365,89 @@ class Laws:
 
 class Filtering:
 
-    def __init__(self, load_dir, folder_prefix, start_folder, stop_folder, list_of_patient_folders, input_data_type,
-                 nifti_image, filter_type, my_filter, save_dir, number_of_threads):
+    def __init__(self, load_dir, list_of_patient_folders, input_imaging_mod, input_data_type,
+                 nifti_image, filter_type, my_filter, save_dir, number_of_threads, start_folder='', stop_folder=''):
 
-        # --------Load/Save data part-------
-        self.load_dir = load_dir
-        self.folder_prefix = folder_prefix
-        self.list_of_patient_folders = [self.folder_prefix + str(pat) for pat in list_of_patient_folders] if list_of_patient_folders else \
-            list_folders_in_range(self.folder_prefix + str(start_folder),
-                                  self.folder_prefix + str(stop_folder),
-                                  self.load_dir)
-        self.number_of_threads = int(number_of_threads)
-        self.save_dir = save_dir
-        self.input_data_type = input_data_type
+        if os.path.exists(load_dir):
+            self.load_dir = load_dir
+        else:
+            print("Load directory does not exist.")
+            return
+
+        if os.path.exists(save_dir):
+            self.save_dir = save_dir
+        else:
+            print("Save directory does not exist.")
+            return
+
+        if (list_of_patient_folders is None and os.path.exists(os.path.join(self.load_dir, str(start_folder)))
+                and os.path.exists(os.path.join(self.load_dir, str(stop_folder)))
+                and start_folder != '' and stop_folder != ''):
+            self.list_of_patient_folders = list_folders_in_defined_range(start_folder, stop_folder, self.load_dir)
+        elif list_of_patient_folders is not None and list_of_patient_folders != [] and list_of_patient_folders != ['']:
+            all_folders_exist = True
+            for pat_folder in list_of_patient_folders:
+                if not os.path.exists(os.path.join(self.load_dir, str(pat_folder))):
+                    print('Folder {} does not exists!'.format(os.path.join(self.load_dir, str(pat_folder))))
+                    all_folders_exist = False
+            if all_folders_exist:
+                self.list_of_patient_folders = list_of_patient_folders
+            else:
+                print('One or more selected patient folders do not exist!')
+                print('ABORTION!')
+                return
+        else:
+            print('Incorrectly selected patient folders')
+            return
+
+        if input_data_type in ['DICOM', 'NIFTI']:
+            self.input_data_type = input_data_type
+        else:
+            print("Wrong input data types, available types: 'DICOM', 'NIFTI'")
+            return
+
+        if type(number_of_threads) == int and 0 < number_of_threads <= cpu_count():
+            self.number_of_threads = number_of_threads
+        else:
+            print('Number of threads is not an integer or selected nubmer is greater than maximum number of available '
+                  'CPU. (Max available {} units)'.format(str(cpu_count())))
+            return
+
+        if self.input_data_type == 'NIFTI':
+            if nifti_image is not None:
+                image_exists = True
+                for folder in self.list_of_patient_folders:
+                    if not os.path.exists(os.path.join(load_dir, str(folder), nifti_image)):
+                        image_exists = False
+                        if not image_exists:
+                            print('The NIFTI image file does not exists: '
+                                  + os.path.join(load_dir, str(folder), nifti_image))
+                if image_exists:
+                    self.nifti_image = nifti_image
+            else:
+                print('Select the NIFTI image file')
+                return
+
+        if input_imaging_mod in ['CT', 'PT', 'MR']:
+            self.input_imaging_mod = input_imaging_mod
+        else:
+            print("Wrong input imaging type, available types: 'CT', 'PT', 'MR'")
+            return
+
         self.filter_type = filter_type
         self.filter = my_filter
-        # ------NIFTI specific-------------
-        self.nifti_image = nifti_image
-        # ------------Patient specific parameters-----------------------
+
         self.patient_folder = None
         self.patient_number = None
 
     def filtering(self):
-        with multiprocess.Pool(self.number_of_threads) as pool:
-            pool.map(self._load_patient, self.list_of_patient_folders)
+
+        Parallel(n_jobs=self.number_of_threads)(delayed(self._load_patient)(patient_folder)
+                                                for patient_folder in self.list_of_patient_folders)
 
     def _load_patient(self, patient_number):
-        self.patient_number = patient_number
-        self.patient_folder = os.path.join(self.load_dir, self.patient_number)
+        self.patient_number = str(patient_number)
+        self.patient_folder = os.path.join(self.load_dir, str(self.patient_number))
         self.pat_image = None
         self.filtered_image = None
         if self.input_data_type == 'NIFTI':
@@ -362,8 +456,6 @@ class Filtering:
             self._process_dicom_files()
         self._apply_filter()
         self._save_as_nifti()
-
-        # ------------------NIFTI pypeline--------------------------
 
     def _process_nifti_files(self):
         self.pat_image = self._extract_nifti('IMAGE')
@@ -374,10 +466,8 @@ class Filtering:
         if key == 'IMAGE':
             return extract_nifti_image(self, reader)
 
-        # -----------------DICOM pypeline-----------------------------
-
     def _process_dicom_files(self):
-        self.pat_image = extract_dicom(self)
+        self.pat_image = extract_dicom(dicom_dir=self.patient_folder, rtstract=False, modality=self.input_imaging_mod)
 
     def _apply_filter(self):
         if self.filter_type == 'Laplacian of Gaussian':
@@ -387,8 +477,7 @@ class Filtering:
                                             origin=self.pat_image.origin,
                                             spacing=self.pat_image.spacing,
                                             direction=self.pat_image.direction,
-                                            shape=self.pat_image.shape,
-                                            )
+                                            shape=self.pat_image.shape)
 
     def _save_as_nifti(self):
-        self.filtered_image_to_save.save_as_nifti(instance=self, key='Filtered_with_'+self.filter_type+'_Image')
+        self.filtered_image_to_save.save_as_nifti(instance=self, key='FILTERED_IMAGE')

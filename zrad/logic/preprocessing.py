@@ -13,7 +13,7 @@ class Preprocessing:
     def __init__(self, load_dir,
                  input_data_type, input_imaging_mod,
                  image_interpolation_method, mask_interpolation_method, resample_resolution,
-                 resample_dimension, save_dir, number_of_threads,
+                 resample_dimension, save_dir, number_of_threads=1,
                  start_folder='', stop_folder='', list_of_patient_folders=None, structure_set=None,
                  nifti_image=None, mask_interpolation_threshold=0.5):
 
@@ -46,15 +46,8 @@ class Preprocessing:
                 print('ABORTION!')
                 return
         else:
-            print('Incorrectly selected patient folders')
+            print('Incorrectly selected patient folders. Program terminated!')
             return
-
-            # ---------------------
-        if not list_of_patient_folders:
-            self.list_of_patient_folders = list_folders_in_defined_range(start_folder, stop_folder, self.load_dir)
-        else:
-            self.list_of_patient_folders = list_of_patient_folders
-            # ----------------------------
 
         if input_data_type in ['DICOM', 'NIFTI']:
             self.input_data_type = input_data_type
@@ -125,7 +118,6 @@ class Preprocessing:
             print('ABORTED!')
             return
 
-        # ------Patient specific parameters-----
         self.patient_folder = None
         self.patient_number = None
 
@@ -184,16 +176,16 @@ class Preprocessing:
 
     def _resampling(self):
 
-        def interpolator(instance_key):
+        def interpolator(key):
             interpolators = {
                 'Linear': sitk.sitkLinear,
                 'NN': sitk.sitkNearestNeighbor,
                 'BSpline': sitk.sitkBSpline,
                 'Gaussian': sitk.sitkGaussian
             }
-            if instance_key.startswith('IMAGE'):
+            if key.startswith('IMAGE'):
                 return interpolators.get(self.image_interpolation_method)
-            elif instance_key.startswith('MASK'):
+            elif key.startswith('MASK'):
                 return interpolators.get(self.mask_interpolation_method)
 
         def resampled_origin(initial_shape, initial_spacing, resulted_spacing, initial_origin, axis=0):
@@ -211,7 +203,6 @@ class Preprocessing:
         input_origin = self.pat_original_image_and_masks['IMAGE'].origin
         input_direction = self.pat_original_image_and_masks['IMAGE'].direction
         input_shape = self.pat_original_image_and_masks['IMAGE'].shape
-
 
         if self.resample_dimension == '3D':
             output_spacing = [self.resample_resolution] * 3
@@ -263,8 +254,6 @@ class Preprocessing:
                                                                      shape=output_shape)
             del self.pat_original_image_and_masks[instance_key]
 
-
-    # -----------------------Saving pypeline-----------------------------
     def _save_as_nifti(self):
         for key, img in self.pat_resampled_image_and_masks.items():
             img.save_as_nifti(instance=self, key=key)

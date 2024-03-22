@@ -6,61 +6,57 @@ import pandas as pd
 import pydicom
 from joblib import Parallel, delayed, cpu_count
 
-from .radiomics_defenitions import MorfologicalFeatures, LocalIntensityFeatures, IntensityBasedStatFeatures, \
+from .radiomics_defenitions import MorphologicalFeatures, LocalIntensityFeatures, IntensityBasedStatFeatures, \
     IntensityVolumeHistogramFeatures, GLCM, GLRLM_GLSZM_GLDZM_NGLDM, NGTDM
 from .toolbox_logic import Image, extract_dicom, extract_nifti_image, extract_nifti_mask, list_folders_in_defined_range
 
 
 class Radiomics:
 
-    def __init__(self, load_dir, start_folder, stop_folder, list_of_patient_folders,
-                 input_data_type, structure_set, nifti_image, intensity_range, outlier_range, bin_number, bin_size,
-                 aggr_dim, aggr_method, input_imaging_mod, save_dir, number_of_threads, slice_weighting=False):
+    def __init__(self, load_dir, save_dir,
+                 input_data_type, input_imaging_mod,
+                 intensity_range, outlier_range,
+                 bin_number, bin_size, aggr_dim, aggr_method,
+                 slice_weighting=False, slice_median=False,
+                 start_folder=None, stop_folder=None, list_of_patient_folders=None,
+                 structure_set=None, nifti_image=None,
+                 number_of_threads=1):
 
         if os.path.exists(load_dir):
             self.load_dir = load_dir
         else:
-            print("Load directory does not exist.")
+            print(f"Load directory '{load_dir}' does not exist. Aborted!")
             return
 
         if os.path.exists(save_dir):
             self.save_dir = save_dir
         else:
-            print("Save directory does not exist.")
+            print(f"Save directory '{save_dir}' does not exist. Aborted!")
             return
 
-        if (list_of_patient_folders is None and os.path.exists(os.path.join(self.load_dir, str(start_folder)))
-                and os.path.exists(os.path.join(self.load_dir, str(stop_folder)))
-                and start_folder != '' and stop_folder != ''):
+        if not list_of_patient_folders:
             self.list_of_patient_folders = list_folders_in_defined_range(start_folder, stop_folder, self.load_dir)
-        elif list_of_patient_folders is not None and list_of_patient_folders != [] and list_of_patient_folders != ['']:
-            all_folders_exist = True
-            for pat_folder in list_of_patient_folders:
-                if not os.path.exists(os.path.join(self.load_dir, str(pat_folder))):
-                    print('Folder {} does not exists!'.format(os.path.join(self.load_dir, str(pat_folder))))
-                    all_folders_exist = False
-            if all_folders_exist:
-                self.list_of_patient_folders = list_of_patient_folders
-            else:
-                print('One or more selected patient folders do not exist!')
-                print('ABORTION!')
-                return
         else:
-            print('Incorrectly selected patient folders. Program terminated!')
-            return
+            self.list_of_patient_folders = list_of_patient_folders
 
-        print(list_of_patient_folders)
+        if list_of_patient_folders is None and start_folder is not None and stop_folder is not None:
+            self.list_of_patient_folders = list_folders_in_defined_range(start_folder, stop_folder, self.load_dir)
+        elif list_of_patient_folders is not None and list_of_patient_folders not in [[], ['']]:
+            self.list_of_patient_folders = list_of_patient_folders
+        else:
+            print('Incorrectly selected patient folders. Aborted!')
+            return
 
         if input_data_type in ['DICOM', 'NIFTI']:
             self.input_data_type = input_data_type
         else:
-            print("Wrong input data types, available types: 'DICOM', 'NIFTI'")
+            print(f"Wrong input data type '{input_data_type}', available types: 'DICOM', 'NIFTI'. Aborted!")
             return
 
         if input_imaging_mod in ['CT', 'PT', 'MR']:
             self.input_imaging_mod = input_imaging_mod
         else:
-            print("Wrong input imaging type, available types: 'CT', 'PT', 'MR'")
+            print(f"Wrong input imaging type '{input_imaging_mod}', available types: 'CT', 'PT', 'MR'. Aborted!")
             return
 
         if self.input_data_type == 'NIFTI':
@@ -70,28 +66,34 @@ class Radiomics:
                     if not os.path.exists(os.path.join(load_dir, str(folder), nifti_image)):
                         image_exists = False
                         if not image_exists:
-                            print('The NIFTI image file does not exists: '
-                                  + os.path.join(load_dir, str(folder), nifti_image))
+                            print(f"The NIFTI image file does not exist "
+                                  f"'{os.path.join(load_dir, str(folder), nifti_image)}'")
                 if image_exists:
                     self.nifti_image = nifti_image
             else:
-                print('Select the NIFTI image file')
+                print('Select the NIFTI image file. Aborted!')
                 return
 
-        if type(number_of_threads) == int and 0 < number_of_threads <= cpu_count():
+        if isinstance(number_of_threads, (int, float)) and 0 < number_of_threads <= cpu_count():
             self.number_of_threads = number_of_threads
         else:
-            print('Number of threads is not an integer or selected nubmer is greater than maximum number of available '
-                  'CPU. (Max available {} units)'.format(str(cpu_count())))
+            print('Number of threads is not an integer or selected nubmer is greater than maximum number of available'
+                  f'CPU. (Max available {cpu_count()} units)')
             return
 
-        self.slice_weighting = slice_weighting
+        if slice_weighting and slice_median:
+            print('Only one slice median averaging is not supported with weighting strategy. Aborted!')
+            return
+        else:
+            self.slice_weighting = slice_weighting
+            self.slice_median = slice_median
 
         self.calc_intensity_mask = False
         if intensity_range != '':
             self.calc_intensity_mask = True
             self.intensity_range = intensity_range
             self.discret_min_val = intensity_range[0]
+
         self.calc_outlier_mask = False
         if str(outlier_range).strip().replace('.', '').isdigit():
             self.calc_outlier_mask = True
@@ -107,15 +109,31 @@ class Radiomics:
         if bin_size != '':
             self.calc_discr_bin_size = True
             self.bin_size = bin_size
-        self.aggr_dim = aggr_dim
-        self.aggr_method = aggr_method
-        self.structure_set = structure_set
+
+        if aggr_dim in ['2D', '3D']:
+            self.aggr_dim = aggr_dim
+        else:
+            print(f"Wrong aggregation dim {aggr_dim}. Available '2D' and '3D'. Aborted! ")
+            return
+
+        if aggr_method in ['MERG', 'AVER', 'SLICE_MERG', 'DIR_MERG']:
+            self.aggr_method = aggr_method
+        else:
+            print(f"Wrong aggregation dim {aggr_method}. Available 'MERG', 'AVER', 'SLICE_MERG', and 'DIR_MERG'. "
+                  f"Aborted! ")
+            return
+
+        if structure_set is not None:
+            self.structure_set = structure_set
+        else:
+            self.structure_set = ['']
 
         self.patient_folder = None
         self.patient_number = None
 
         self.columns = [
-            'PAT::ROI', 'vol_mesh', 'vol_count', 'area_mesh', 'surf_to_vol_ratio', 'compactness_1', 'compactness_2',
+            'PAT::ROI',
+            'vol_mesh', 'vol_count', 'area_mesh', 'surf_to_vol_ratio', 'compactness_1', 'compactness_2',
             'spherical_disproportion', 'sphericity', 'asphericity', 'centre_of_shift', 'max_diameter', 'major_axis_len',
             'minor_axis_len', 'least_axis_len', 'elongation', 'flatness', 'vol_density_aabb', 'area_density_aabb',
             'vol_density_aee', 'area_density_aee', 'vol_density_ch', 'area_density_ch', 'integrated_intensity',
@@ -175,7 +193,6 @@ class Radiomics:
         print('STOPPED!')
 
     def _load_patient(self, patient_number):
-        print(f'Started patient {patient_number}')
         self.patient_number = str(patient_number)
         self.patient_folder = os.path.join(self.load_dir, self.patient_number)
         self.pat_binned_masked_image = {}
@@ -198,7 +215,8 @@ class Radiomics:
 
         all_features_list = [self.patient_mort_features_list, self.patient_local_intensity_features_list,
                              self.intensity_features_list, self.discr_intensity_features_list,
-                             self.intensity_volume_features_list, self.glcm_features_list,
+                             self.intensity_volume_features_list,
+                             self.glcm_features_list,
                              self.glrlm_features_list, self.glszm_features_list,
                              self.gldzm_features_list, self.ngtdm_features_list, self.ngldm_features_list]
         radiomics_features_df = pd.DataFrame(columns=self.columns)
@@ -261,7 +279,8 @@ class Radiomics:
             file_found, mask = extract_nifti(instance_key, nifti_mask)
             if file_found:
                 print(f'Patient {self.patient_number}. Mask {instance_key[5:]}.')
-                self.patient_morphological_mask = Image(mask.array.astype(np.int8),
+
+                self.patient_morphological_mask = Image(array=mask.array.astype(np.int8),
                                                         origin=self.patient_image.origin,
                                                         spacing=self.patient_image.spacing,
                                                         direction=self.patient_image.direction,
@@ -286,10 +305,10 @@ class Radiomics:
                              & (self.patient_morphological_mask.array > 0),
                              self.patient_image.array, np.nan)
             self.patient_intensity_mask = Image(array=array,
-                                                origin=self.patient_image.origin,
-                                                spacing=self.patient_image.spacing,
-                                                direction=self.patient_image.direction,
-                                                shape=self.patient_image.shape)
+                                                origin=self.patient_intensity_mask.origin,
+                                                spacing=self.patient_intensity_mask.spacing,
+                                                direction=self.patient_intensity_mask.direction,
+                                                shape=self.patient_intensity_mask.shape)
         if self.calc_outlier_mask:
             flattened_image = np.where(self.patient_morphological_mask.array > 0,
                                        self.patient_image.array, np.nan).ravel()
@@ -302,10 +321,10 @@ class Radiomics:
                              self.patient_image.array, np.nan)
 
             self.patient_intensity_mask = Image(array=array,
-                                                origin=self.patient_image.origin,
-                                                spacing=self.patient_image.spacing,
-                                                direction=self.patient_image.direction,
-                                                shape=self.patient_image.shape)
+                                                origin=self.patient_intensity_mask.origin,
+                                                spacing=self.patient_intensity_mask.spacing,
+                                                direction=self.patient_intensity_mask.direction,
+                                                shape=self.patient_intensity_mask.shape)
 
         local_intensity_features = LocalIntensityFeatures(self.patient_image.array,
                                                           self.patient_intensity_mask.array,
@@ -317,7 +336,7 @@ class Radiomics:
 
         intensity_features = IntensityBasedStatFeatures()
         intensity_features.calc_mean_intensity(self.patient_intensity_mask.array)
-        intensity_features.calc_intensity_varaince(self.patient_intensity_mask.array)
+        intensity_features.calc_intensity_variance(self.patient_intensity_mask.array)
         intensity_features.calc_intensity_skewness(self.patient_intensity_mask.array)
         intensity_features.calc_intensity_kurtosis(self.patient_intensity_mask.array)
         intensity_features.calc_median_intensity(self.patient_intensity_mask.array)
@@ -336,7 +355,7 @@ class Radiomics:
         intensity_features.calc_root_mean_square_intensity(self.patient_intensity_mask.array)
 
         self.intensity_based_features = [intensity_features.mean_intensity,
-                                         intensity_features.intensity_varaince,
+                                         intensity_features.intensity_variance,
                                          intensity_features.intensity_skewness,
                                          intensity_features.intensity_kurtosis,
                                          intensity_features.median_intensity,
@@ -399,7 +418,7 @@ class Radiomics:
 
         discr_intensity_features = IntensityBasedStatFeatures()
         discr_intensity_features.calc_mean_intensity(self.patient_intensity_mask.array)
-        discr_intensity_features.calc_intensity_varaince(self.patient_intensity_mask.array)
+        discr_intensity_features.calc_intensity_variance(self.patient_intensity_mask.array)
         discr_intensity_features.calc_intensity_skewness(self.patient_intensity_mask.array)
         discr_intensity_features.calc_intensity_kurtosis(self.patient_intensity_mask.array)
         discr_intensity_features.calc_median_intensity(self.patient_intensity_mask.array)
@@ -423,7 +442,7 @@ class Radiomics:
         discr_intensity_features.calc_min_hist_gradient_intensity(self.patient_intensity_mask.array)  # 3.4.23
 
         self.discr_intensity_based_features = [discr_intensity_features.mean_intensity,
-                                               discr_intensity_features.intensity_varaince,
+                                               discr_intensity_features.intensity_variance,
                                                discr_intensity_features.intensity_skewness,
                                                discr_intensity_features.intensity_kurtosis,
                                                discr_intensity_features.median_intensity,
@@ -449,7 +468,8 @@ class Radiomics:
         self.discr_intensity_features_list.append(self.discr_intensity_based_features)
 
     def _calc_texture_features(self):
-        glcm = GLCM(self.patient_intensity_mask.array.T, self.slice_weighting)
+        glcm = GLCM(image=self.patient_intensity_mask.array.T, slice_weight=self.slice_weighting,
+                    slice_median=self.slice_median)
         if self.aggr_dim == '3D':
             glcm.calc_glc_3d_matrix()
             if self.aggr_method == 'AVER':
@@ -494,8 +514,8 @@ class Radiomics:
                               glcm.inf_cor_1,
                               glcm.inf_cor_2]
         self.glcm_features_list.append(self.glcm_features)
-
-        glrlm = GLRLM_GLSZM_GLDZM_NGLDM(self.patient_intensity_mask.array.T, self.slice_weighting)
+        glrlm = GLRLM_GLSZM_GLDZM_NGLDM(image=self.patient_intensity_mask.array.T, slice_weight=self.slice_weighting,
+                                        slice_median=self.slice_median)
         if self.aggr_dim == '3D':
 
             glrlm.calc_glrl_3d_matrix()
@@ -534,7 +554,8 @@ class Radiomics:
                                glrlm.entropy]
         self.glrlm_features_list.append(self.glrlm_features)
 
-        glszm_gldzm = GLRLM_GLSZM_GLDZM_NGLDM(self.patient_intensity_mask.array.T, self.slice_weighting)
+        glszm_gldzm = GLRLM_GLSZM_GLDZM_NGLDM(image=self.patient_intensity_mask.array.T,
+                                              slice_weight=self.slice_weighting, slice_median=self.slice_median)
         if self.aggr_dim == '3D':
             glszm_gldzm.calc_glsz_gldz_3d_matrices(self.patient_morphological_mask.array.T)
             glszm_gldzm.calc_3d_glszm_features()
@@ -663,7 +684,8 @@ class Radiomics:
                                        glszm_gldzm.entropy]
                 self.gldzm_features_list.append(self.gldzm_features)
 
-        ngtdm = NGTDM(self.patient_intensity_mask.array.T, self.slice_weighting)
+        ngtdm = NGTDM(image=self.patient_intensity_mask.array.T, slice_weight=self.slice_weighting,
+                      slice_median=self.slice_median)
         if self.aggr_dim == '3D':
             ngtdm.calc_ngtd_3d_matrix()
             ngtdm.calc_3d_ngtdm_features()
@@ -674,14 +696,15 @@ class Radiomics:
             ngtdm.calc_ngtd_2d_matrices()
             ngtdm.calc_2d_ngtdm_features()
 
-        self.ngtdm_features = [ngtdm.coarsness,
+        self.ngtdm_features = [ngtdm.coarseness,
                                ngtdm.contrast,
                                ngtdm.busyness,
                                ngtdm.complexity,
                                ngtdm.strength]
         self.ngtdm_features_list.append(self.ngtdm_features)
 
-        ngldm = GLRLM_GLSZM_GLDZM_NGLDM(self.patient_intensity_mask.array.T, self.slice_weighting)
+        ngldm = GLRLM_GLSZM_GLDZM_NGLDM(image=self.patient_intensity_mask.array.T, slice_weight=self.slice_weighting,
+                                        slice_median=self.slice_median)
         if self.aggr_dim == '3D':
             ngldm.calc_ngld_3d_matrix()
             ngldm.calc_3d_ngldm_features()
@@ -712,8 +735,8 @@ class Radiomics:
         self.ngldm_features_list.append(self.ngldm_features)
 
     def _calc_mask_morphological_features(self, key):
-        morf_features = MorfologicalFeatures(self.patient_morphological_mask.array,
-                                             (self.patient_morphological_mask.spacing[::-1]))
+        morf_features = MorphologicalFeatures(self.patient_morphological_mask.array,
+                                              (self.patient_morphological_mask.spacing[::-1]))
         morf_features.calc_mesh()
         morf_features.calc_vol_and_area_mesh()
         morf_features.calc_vol_count()
@@ -760,6 +783,7 @@ class Radiomics:
                               morf_features.area_density_aee,
                               morf_features.vol_density_ch,
                               morf_features.area_density_ch,
-                              morf_features.integrated_intensity]
+                              morf_features.integrated_intensity
+                              ]
 
         self.patient_mort_features_list.append(self.mort_features)

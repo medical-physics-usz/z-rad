@@ -1,6 +1,6 @@
 import os
 import random
-
+from datetime import datetime
 import SimpleITK as sitk
 import numpy as np
 import pydicom
@@ -75,11 +75,11 @@ def extract_nifti_mask(instance, sitk_reader, mask, patient_image):
 
 
 def extract_dicom(dicom_dir, rtstract, modality, rtstruct_file='', selected_structures=None):
-    def generate(contours, dicom_image):
-        dimensions = dicom_image.GetSize()
+    def generate(contours, dcm_im):
+        dimensions = dcm_im.GetSize()
 
         initial_mask = sitk.Image(dimensions, sitk.sitkUInt8)
-        initial_mask.CopyInformation(dicom_image)
+        initial_mask.CopyInformation(dcm_im)
 
         mask_array = sitk.GetArrayFromImage(initial_mask)
         mask_array.fill(0)
@@ -91,7 +91,7 @@ def extract_dicom(dicom_dir, rtstract, modality, rtstruct_file='', selected_stru
 
             points = contour['points']
             transformed_points = np.array(
-                [dicom_image.TransformPhysicalPointToContinuousIndex((points['x'][i], points['y'][i], points['z'][i]))
+                [dcm_im.TransformPhysicalPointToContinuousIndex((points['x'][i], points['y'][i], points['z'][i]))
                  for i in range(len(points['x']))])
 
             z_coord = int(round(transformed_points[0, 2]))
@@ -136,10 +136,10 @@ def extract_dicom(dicom_dir, rtstract, modality, rtstruct_file='', selected_stru
     def process_dicom_series(directory):
 
         # Function to check if a DICOM file is not an RT struct file
-        def is_not_rt_struct(dicom_path, UID):
+        def is_not_rt_struct(dicom_path, uid):
             try:
-                dicom = pydicom.dcmread(dicom_path, stop_before_pixels=True)
-                return dicom.SOPClassUID != UID
+                dcm = pydicom.dcmread(dicom_path, stop_before_pixels=True)
+                return dcm.SOPClassUID != uid
             except Exception:
                 return False
 
@@ -175,52 +175,63 @@ def extract_dicom(dicom_dir, rtstract, modality, rtstruct_file='', selected_stru
 
     dicom_image = process_dicom_series(dicom_dir)
 
+    def calculate_suv(dicom_file_path):
+
+        def parse_time(time_str):
+
+            for fmt in ('%H%M%S.%f', '%H%M%S'):
+                try:
+                    return datetime.strptime(time_str, fmt)
+                except ValueError:
+                    continue
+            raise ValueError(f"time data '{time_str}' does not match expected formats")
+
+        ds = pydicom.dcmread(dicom_file_path)
+
+        unit = ds.Units
+
+        if unit != 'BQML':
+            raise ValueError(f"Expected unit to be 'BQML', but got {unit}")
+
+        patient_weight = float(ds.PatientWeight)
+        injected_dose = float(ds.RadiopharmaceuticalInformationSequence[0].RadionuclideTotalDose)
+        injection_time_str = ds.RadiopharmaceuticalInformationSequence[0].RadiopharmaceuticalStartTime
+        acquisition_time_str = ds.AcquisitionTime
+
+        injection_time = parse_time(injection_time_str)
+        acquisition_time = parse_time(acquisition_time_str)
+        elapsed_time = (acquisition_time - injection_time).total_seconds()
+
+        half_life = 109.8 * 60
+        decay_factor = np.exp(-1 * ((np.log(2) * elapsed_time) / half_life))
+
+        decay_corrected_dose = injected_dose * decay_factor
+
+        image_data = ds.pixel_array
+        activity_concentration = (image_data * ds.RescaleSlope) + ds.RescaleIntercept
+        suv = activity_concentration / (decay_corrected_dose / (patient_weight * 1000))
+
+        # 90 degree rotation
+        suv = suv.T
+
+        return suv
+
     def process_pet_dicom(pat_folder, suv_image):
-        suv_array = sitk.GetArrayFromImage(suv_image).T
-        intensity_array = np.zeros(suv_array.shape)
-
+        intensity_array = np.zeros(suv_image.GetSize())
         for dicom_file in os.listdir(pat_folder):
-
-            activity = None
-            weight = None
-
             dcm_data = pydicom.dcmread(os.path.join(pat_folder, dicom_file))
+
             if dcm_data.Modality != 'RTSTRUCT':
                 z_slice_id = int(dcm_data.InstanceNumber) - 1
-                slope = float(dcm_data.RescaleSlope)
-                intercept = float(dcm_data.RescaleIntercept)
-                if dcm_data.Units == 'BQML':
-                    if dcm_data.RadiopharmaceuticalInformationSequence[0].RadionuclideTotalDose != '':
-                        dose = float(dcm_data.RadiopharmaceuticalInformationSequence[0].RadionuclideTotalDose)
-                    else:
-                        dose = 0
-                    HL = float(dcm_data.RadiopharmaceuticalInformationSequence[0].RadionuclideHalfLife)
-                    h_start = 3600 * float(
-                        dcm_data.RadiopharmaceuticalInformationSequence[0].RadiopharmaceuticalStartTime[:2])
-                    h_stop = 3600 * float(dcm_data.AcquisitionTime[:2])
-                    m_start = 60 * float(
-                        dcm_data.RadiopharmaceuticalInformationSequence[0].RadiopharmaceuticalStartTime[2:4])
-                    m_stop = 60 * float(dcm_data.AcquisitionTime[2:4])
-                    s_start = float(dcm_data.RadiopharmaceuticalInformationSequence[0].RadiopharmaceuticalStartTime[4:])
-                    s_stop = float(dcm_data.AcquisitionTime[4:])
-                    time = (h_stop + m_stop + s_stop - h_start - m_start - s_start)
-                    activity = dose * np.exp(-time * np.log(2) / HL)
-                    if dcm_data.PatientWeight != '' and float(dcm_data.PatientWeight) != 0.0:
-                        weight = float(dcm_data.PatientWeight) * 1000
-                    else:
-                        print('There is no weight in a DICOM file')
-                elif dcm_data.Units == 'GML':
-                    activity = 1.
-                    weight = 1.
+                intensity_array[:, :, z_slice_id] = calculate_suv(os.path.join(pat_folder, dicom_file))
 
-
-                intensity_array[:, :, z_slice_id] = (suv_array[:, :, z_slice_id] * slope + intercept) / (
-                            activity / weight)
+        # Flip from head to toe
+        intensity_array = np.flip(intensity_array, axis=2)
 
         intensity_image = sitk.GetImageFromArray(intensity_array.T)
         intensity_image.SetOrigin(suv_image.GetOrigin())
         intensity_image.SetSpacing(np.array(suv_image.GetSpacing()))
-        intensity_image.SetDirection(suv_image.GetDirection())
+        intensity_image.SetDirection(np.array(suv_image.GetDirection()))
 
         return intensity_image
 
@@ -235,16 +246,28 @@ def extract_dicom(dicom_dir, rtstract, modality, rtstruct_file='', selected_stru
 
         masks = {}
         for rt_struct in rt_structs:
-            if rt_struct['name'] in selected_structures:
+            if selected_structures == 'ALL':
                 if 'sequence' not in rt_struct:
                     continue
 
                 mask = generate(rt_struct['sequence'], dicom_image)
-                masks[rt_struct['name']] = Image(array = mask,
+                masks[rt_struct['name']] = Image(array=mask,
                                                  origin=dicom_image.GetOrigin(),
                                                  spacing=np.array(dicom_image.GetSpacing()),
                                                  direction=dicom_image.GetDirection(),
                                                  shape=dicom_image.GetSize())
+
+            else:
+                if rt_struct['name'] in selected_structures:
+                    if 'sequence' not in rt_struct:
+                        continue
+
+                    mask = generate(rt_struct['sequence'], dicom_image)
+                    masks[rt_struct['name']] = Image(array=mask,
+                                                     origin=dicom_image.GetOrigin(),
+                                                     spacing=np.array(dicom_image.GetSpacing()),
+                                                     direction=dicom_image.GetDirection(),
+                                                     shape=dicom_image.GetSize())
 
         return masks
     else:

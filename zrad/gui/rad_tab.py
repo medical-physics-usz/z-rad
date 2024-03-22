@@ -5,7 +5,8 @@ import numpy as np
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QFileDialog
 
-from .toolbox_gui import CustomButton, CustomLabel, CustomBox, CustomTextField, CustomCheckBox, CustomWarningBox
+from .toolbox_gui import CustomButton, CustomLabel, CustomBox, CustomTextField, CustomCheckBox, CustomWarningBox, \
+    resource_path
 from ..logic.radiomics import Radiomics
 
 
@@ -136,16 +137,24 @@ class RadiomicsTab(QWidget):
             structure_set = nifti_structures
 
         slice_weighting = None
+        slice_median = None
         if (self.aggr_dim_and_method_combo_box.currentText().split(',')[0] == '2D'
-                and self.weighting_combo_box.currentText() == 'Slice Weighting:'):
-            CustomWarningBox("Select Weighting!").response()
+                and self.weighting_combo_box.currentText() == 'Slice Averaging:'):
+            CustomWarningBox("Select Slice Averaging:!").response()
             return
         elif (self.aggr_dim_and_method_combo_box.currentText().split(',')[0] == '2D'
-                and self.weighting_combo_box.currentText() == 'NO'):
+                and self.weighting_combo_box.currentText() == 'Mean'):
             slice_weighting = False
+            slice_median = False
         elif (self.aggr_dim_and_method_combo_box.currentText().split(',')[0] == '2D'
-                and self.weighting_combo_box.currentText() == 'YES'):
+                and self.weighting_combo_box.currentText() == 'Weighted Mean'):
             slice_weighting = True
+            slice_median = False
+
+        elif (self.aggr_dim_and_method_combo_box.currentText().split(',')[0] == '2D'
+                and self.weighting_combo_box.currentText() == 'Median'):
+            slice_weighting = False
+            slice_median = True
 
         if structure_set == ['']:
             CustomWarningBox("Enter Structures").response()
@@ -162,11 +171,14 @@ class RadiomicsTab(QWidget):
         elif aggr_method.strip() == 'direction-merged':
             aggr_method = 'DIR_MERG'
 
-        rad_instance = Radiomics(
-            load_dir, start_folder, stop_folder, list_of_patient_folders,
-            input_data_type, structure_set, nifti_image,
-            intensity_range, outlier_range, bin_number, bin_size, aggr_dim,
-            aggr_method, input_imaging_mod, save_dir, number_of_threads, slice_weighting)
+        rad_instance = Radiomics(load_dir, save_dir,
+                                 input_data_type, input_imaging_mod,
+                                 intensity_range, outlier_range,
+                                 bin_number, bin_size, aggr_dim,
+                                 aggr_method, slice_weighting, slice_median,
+                                 start_folder, stop_folder, list_of_patient_folders,
+                                 structure_set, nifti_image,
+                                 number_of_threads)
 
         rad_instance.extract_radiomics()
 
@@ -201,12 +213,14 @@ class RadiomicsTab(QWidget):
             'weighting': self.weighting_combo_box.currentText(),
             'input im modality': self.input_imaging_mod_combo_box.currentText()
         }
-        with open('zrad/input/last_saved_rad_user_input.json', 'w') as file:
+        file_path = resource_path('zrad/input/last_saved_rad_user_input.json')
+        with open(file_path, 'w') as file:
             json.dump(data, file)
 
     def load_input_data(self):
+        file_path = resource_path('zrad/input/last_saved_rad_user_input.json')
         try:
-            with open('zrad/input/last_saved_rad_user_input.json', 'r') as file:
+            with open(file_path, 'r') as file:
                 data = json.load(file)
                 self.load_dir_label.setText(data.get('Data location', ''))
                 self.start_folder_text_field.setText(data.get('Start folder', ''))
@@ -425,7 +439,7 @@ class RadiomicsTab(QWidget):
         self.weighting_combo_box = CustomBox(
             14, 1450, 375, 175, 50, self,
             item_list=[
-                "Slice Weighting:", "NO", "YES"]
+                "Slice Averaging:", "Mean", "Weighted Mean", "Median"]
         )
 
         self.weighting_combo_box.hide()

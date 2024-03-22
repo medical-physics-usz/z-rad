@@ -1,4 +1,8 @@
-from PyQt5.QtGui import QFont
+import os
+import sys
+
+from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QFont, QPixmap
 from PyQt5.QtWidgets import QLineEdit, QLabel, QPushButton, QComboBox, QCheckBox, QMessageBox
 
 
@@ -120,3 +124,22 @@ class CustomWarningBox(QMessageBox):
     def response(self):
         get_response = self.exec_()
         return get_response == QMessageBox.Retry
+
+
+def resource_path(relative_path):
+    try:
+        base_path = getattr(sys, '_MEIPASS', os.path.abspath("."))
+    except Exception:
+        base_path = os.path.abspath(".")
+    return os.path.join(base_path, relative_path)
+
+
+def add_logo_to_tab(tab):
+    logo_label = QLabel(tab)
+    logo_pixmap = QPixmap(resource_path('zrad/logo/logo.png'))
+    desired_width = 300
+    desired_height = 150
+    logo_pixmap = logo_pixmap.scaled(desired_width, desired_height, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+    logo_label.setPixmap(logo_pixmap)
+    logo_label.setGeometry(1750 - logo_pixmap.width(), 660 - logo_pixmap.height(),
+                           logo_pixmap.width(), logo_pixmap.height())

@@ -1,10 +1,10 @@
 import json
-from joblib import cpu_count
 
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QFileDialog
+from joblib import cpu_count
 
-from .toolbox_gui import CustomButton, CustomLabel, CustomBox, CustomTextField, CustomWarningBox
+from .toolbox_gui import CustomButton, CustomLabel, CustomBox, CustomTextField, CustomWarningBox, resource_path
 from ..logic.filtering import Filtering, Mean, LoG, Wavelets2D, Wavelets3D, Laws
 
 
@@ -219,17 +219,18 @@ class FilteringTab(QWidget):
                                        )
 
         filt_instance = Filtering(load_dir,
-                                  list_of_patient_folders,
-                                  input_imaging_mod,
+                                  save_dir,
                                   input_data_type,
-                                  nifti_image,
+                                  input_imaging_mod,
                                   filter_type,
                                   my_filter,
-                                  save_dir,
-                                  number_of_threads,
                                   start_folder,
-                                  stop_folder
+                                  stop_folder,
+                                  list_of_patient_folders,
+                                  nifti_image,
+                                  number_of_threads
                                   )
+
         filt_instance.filtering()
 
     def open_directory(self, key):
@@ -272,13 +273,14 @@ class FilteringTab(QWidget):
             'Wavelet decomp lvl': self.wavelet_filter_decomposition_level_combo_box.currentText(),
             'Wavelet rot inv': self.wavelet_filter_rot_inv_combo_box.currentText()
         }
-
-        with open('zrad/input/last_saved_filt_user_input.json', 'w') as file:
+        file_path = resource_path('zrad/input/last_saved_filt_user_input.json')
+        with open(file_path, 'w') as file:
             json.dump(data, file)
 
     def load_input_data(self):
+        file_path = resource_path('zrad/input/last_saved_filt_user_input.json')
         try:
-            with open('zrad/input/last_saved_filt_user_input.json', 'r') as file:
+            with open(file_path, 'r') as file:
                 data = json.load(file)
                 self.load_dir_label.setText(data.get('Data location', ''))
                 self.start_folder_text_field.setText(data.get('Start folder', ''))

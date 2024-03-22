@@ -5,7 +5,7 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QFileDialog
 from joblib import cpu_count
 
-from .toolbox_gui import CustomButton, CustomLabel, CustomBox, CustomTextField, CustomWarningBox
+from .toolbox_gui import CustomButton, CustomLabel, CustomBox, CustomTextField, CustomWarningBox, resource_path
 from ..logic.preprocessing import Preprocessing
 
 
@@ -123,20 +123,20 @@ class PreprocessingTab(QWidget):
     # Create a Preprocessing instance
         prep_instance = Preprocessing(
             load_dir=load_dir,
+            save_dir=save_dir,
             input_data_type=input_data_type,
             input_imaging_mod=input_imaging_mod,
-            image_interpolation_method=image_interpolation_method,
-            mask_interpolation_method=mask_interpolation_method,
             resample_resolution=resample_resolution,
             resample_dimension=resample_dimension,
-            save_dir=save_dir,
-            number_of_threads=number_of_threads,
+            image_interpolation_method=image_interpolation_method,
+            mask_interpolation_method=mask_interpolation_method,
+            mask_interpolation_threshold=mask_interpolation_threshold,
             start_folder=start_folder,
             stop_folder=stop_folder,
             list_of_patient_folders=list_of_patient_folders,
             structure_set=structure_set,
             nifti_image=nifti_image,
-            mask_interpolation_threshold=mask_interpolation_threshold)
+            number_of_threads=number_of_threads)
 
     # Start the resampling process
         prep_instance.resample()
@@ -177,15 +177,17 @@ class PreprocessingTab(QWidget):
             'input mod': self.input_imaging_mod_combo_box.currentText()
 
         }
-        with open('zrad/input/last_saved_prep_user_input.json', 'w') as file:
+        file_path = resource_path('zrad/input/last_saved_prep_user_input.json')
+        with open(file_path, 'w') as file:
             json.dump(data, file)
 
     def load_input_data(self):
         """
         Load input data from a JSON file.
         """
+        file_path = resource_path('zrad/input/last_saved_prep_user_input.json')
         try:
-            with open('zrad/input/last_saved_prep_user_input.json', 'r') as file:
+            with open(file_path, 'r') as file:
                 data = json.load(file)
                 self.load_dir_label.setText(data.get('Data Location', ''))
                 self.start_folder_text_field.setText(data.get('Start Folder', ''))
@@ -395,7 +397,7 @@ class PreprocessingTab(QWidget):
         self.run_button.clicked.connect(self.run_selected_input)
 
     def on_file_type_combo_box_changed(self, text):
-        # This slot will be called whenever the file type combobox's value is changed
+        # This slot will be called whenever the file type combobox value is changed
         if text == 'DICOM':
             self.nifti_image_label.hide()
             self.nifti_image_text_field.hide()

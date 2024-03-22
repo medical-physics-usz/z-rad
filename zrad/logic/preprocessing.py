@@ -10,55 +10,44 @@ from .toolbox_logic import Image, extract_nifti_image, extract_nifti_mask, list_
 
 class Preprocessing:
 
-    def __init__(self, load_dir,
+    def __init__(self, load_dir, save_dir,
                  input_data_type, input_imaging_mod,
-                 image_interpolation_method, mask_interpolation_method, resample_resolution,
-                 resample_dimension, save_dir, number_of_threads=1,
-                 start_folder='', stop_folder='', list_of_patient_folders=None, structure_set=None,
-                 nifti_image=None, mask_interpolation_threshold=0.5):
+                 resample_resolution, resample_dimension,
+                 image_interpolation_method, mask_interpolation_method, mask_interpolation_threshold=.5,
+                 start_folder=None, stop_folder=None, list_of_patient_folders=None,
+                 structure_set=None, nifti_image=None,
+                 number_of_threads=1):
 
         if os.path.exists(load_dir):
             self.load_dir = load_dir
         else:
-            print("Load directory does not exist.")
+            print(f"Load directory '{load_dir}' does not exist. Aborted!")
             return
 
         if os.path.exists(save_dir):
             self.save_dir = save_dir
         else:
-            print("Save directory does not exist.")
+            print(f"Save directory '{save_dir}' does not exist. Aborted!")
             return
 
-        if (list_of_patient_folders is None and os.path.exists(os.path.join(self.load_dir, str(start_folder)))
-                and os.path.exists(os.path.join(self.load_dir, str(stop_folder)))
-                and start_folder != '' and stop_folder != ''):
+        if list_of_patient_folders is None and start_folder is not None and stop_folder is not None:
             self.list_of_patient_folders = list_folders_in_defined_range(start_folder, stop_folder, self.load_dir)
-        elif list_of_patient_folders is not None and list_of_patient_folders != [] and list_of_patient_folders != ['']:
-            all_folders_exist = True
-            for pat_folder in list_of_patient_folders:
-                if not os.path.exists(os.path.join(self.load_dir, str(pat_folder))):
-                    print('Folder {} does not exists!'.format(os.path.join(self.load_dir, str(pat_folder))))
-                    all_folders_exist = False
-            if all_folders_exist:
-                self.list_of_patient_folders = list_of_patient_folders
-            else:
-                print('One or more selected patient folders do not exist!')
-                print('ABORTION!')
-                return
+        elif list_of_patient_folders is not None and list_of_patient_folders not in [[], ['']]:
+            self.list_of_patient_folders = list_of_patient_folders
         else:
-            print('Incorrectly selected patient folders. Program terminated!')
+            print('Incorrectly selected patient folders. Aborted!')
             return
 
         if input_data_type in ['DICOM', 'NIFTI']:
             self.input_data_type = input_data_type
         else:
-            print("Wrong input data types, available types: 'DICOM', 'NIFTI'")
+            print(f"Wrong input data type '{input_data_type}', available types: 'DICOM', 'NIFTI'. Aborted!")
             return
 
         if input_imaging_mod in ['CT', 'PT', 'MR']:
             self.input_imaging_mod = input_imaging_mod
         else:
-            print("Wrong input imaging type, available types: 'CT', 'PT', 'MR'")
+            print(f"Wrong input imaging type '{input_imaging_mod}', available types: 'CT', 'PT', 'MR'. Aborted!")
             return
 
         if self.input_data_type == 'NIFTI':
@@ -68,12 +57,12 @@ class Preprocessing:
                     if not os.path.exists(os.path.join(load_dir, str(folder), nifti_image)):
                         image_exists = False
                         if not image_exists:
-                            print('The NIFTI image file does not exists: '
-                                  + os.path.join(load_dir, str(folder), nifti_image))
+                            print(f"The NIFTI image file does not exist "
+                                  f"'{os.path.join(load_dir, str(folder), nifti_image)}'")
                 if image_exists:
                     self.nifti_image = nifti_image
             else:
-                print('Select the NIFTI image file')
+                print('Select the NIFTI image file. Aborted!')
                 return
 
         if (mask_interpolation_method in ['NN', 'Linear', 'BSpline', 'Gaussian']
@@ -83,39 +72,39 @@ class Preprocessing:
             if mask_interpolation_method == 'NN':
                 self.mask_threshold = 1.0
             else:
-                if type(mask_interpolation_threshold) in [float, int] and 0 <= mask_interpolation_threshold <= 1:
+                if isinstance(mask_interpolation_threshold, (int, float)) and 0 <= mask_interpolation_threshold <= 1:
                     self.mask_threshold = float(mask_interpolation_threshold)
                 else:
-                    print('Selected threshold not in range [0,1] or not float/integer data type')
+                    print(f"Selected threshold '{mask_interpolation_threshold} not in range'"
+                          f'[0,1] or not float/integer data type')
         else:
-            print("Wrong mask and/or image interpolation method, "
+            print(f"Wrong mask and/or image interpolation method "
+                  f"(mask: {mask_interpolation_threshold}, image {image_interpolation_method}), "
                   "available methods: 'NN', 'Linear', 'BSpline', 'Gaussian'")
             return
 
-        if type(number_of_threads) == int and 0 < number_of_threads <= cpu_count():
+        if isinstance(number_of_threads, (int, float)) and 0 < number_of_threads <= cpu_count():
             self.number_of_threads = number_of_threads
         else:
-            print('Number of threads is not an integer or selected nubmer is greater than maximum number of available '
-                  'CPU. (Max available {} units)'.format(str(cpu_count())))
+            print('Number of threads is not an integer or selected nubmer is greater than maximum number of available'
+                  f'CPU. (Max available {cpu_count()} units)')
             return
 
         if structure_set is not None:
             self.structure_set = structure_set
         else:
             self.structure_set = ['']
-            return
 
         if type(resample_resolution) in [float, int] and resample_resolution > 0:
             self.resample_resolution = resample_resolution
         else:
-            print('Resample resolution is not int/float or non-positive')
-            print('ABORTED!')
+            print(f'Resample resolution {resample_resolution} is not int/float or non-positive. Aborted!')
             return
+
         if resample_dimension in ['3D', '2D']:
             self.resample_dimension = resample_dimension
         else:
-            print("Resample dimension is not '2D' or '3D'!")
-            print('ABORTED!')
+            print(f"Resample dimension '{resample_dimension}' is not '2D' or '3D'. Aborted!")
             return
 
         self.patient_folder = None

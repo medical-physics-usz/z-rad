@@ -1,19 +1,18 @@
-import sys
-from PyQt5.QtGui import QFont
 # Import required PyQt5 modules for GUI creation
+
+import sys
+
 from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QPalette, QColor
-from PyQt5.QtGui import QPixmap
-from PyQt5.QtWidgets import QApplication, QMainWindow, QTabWidget, QAction
-from PyQt5.QtWidgets import QLabel
-from PyQt5.QtWidgets import QStyleFactory
+from PyQt5.QtGui import QFont, QPalette, QColor
+from PyQt5.QtWidgets import QApplication, QMainWindow, QTabWidget, QAction, QStyleFactory
 
 from zrad.gui.filt_tab import FilteringTab
 from zrad.gui.prep_tab import PreprocessingTab
 from zrad.gui.rad_tab import RadiomicsTab
+from zrad.gui.toolbox_gui import add_logo_to_tab
 
 
-class Zrad(QMainWindow):
+class ZRad(QMainWindow):
     def __init__(self):
         super().__init__()
 
@@ -28,22 +27,12 @@ class Zrad(QMainWindow):
         self.save_action = None
         self.exit_action = None
 
-    def add_logo_to_tab(self, tab):
-        logo_label = QLabel(tab)
-        logo_pixmap = QPixmap('zrad/logo/logo.png')
-        desiredWidth = 300  # Set this to your desired width
-        desiredHeight = 150  # Set this to your desired height
-        logo_pixmap = logo_pixmap.scaled(desiredWidth, desiredHeight, Qt.KeepAspectRatio, Qt.SmoothTransformation)
-        logo_label.setPixmap(logo_pixmap)
-        logo_label.setGeometry(1750 - logo_pixmap.width(), 660 - logo_pixmap.height(),
-                               logo_pixmap.width(), logo_pixmap.height())
-
     def init_gui(self):
         """
         Initialize the main GUI components.
         """
         # Set window title and geometry
-        self.setWindowTitle('Z-rad-V8')
+        self.setWindowTitle('Z-Rad')
         self.setGeometry(0, 0, 1800, 750)
 
         # Create and set the central tab widget
@@ -63,9 +52,9 @@ class Zrad(QMainWindow):
         self.tab_widget.addTab(self.tab_two, "Filtering")
         self.tab_widget.addTab(self.tab_three, "Radiomics")
 
-        self.add_logo_to_tab(self.tab_one)
-        self.add_logo_to_tab(self.tab_two)
-        self.add_logo_to_tab(self.tab_three)
+        add_logo_to_tab(self.tab_one)
+        add_logo_to_tab(self.tab_two)
+        add_logo_to_tab(self.tab_three)
 
         # Create the menu bar
         self.create_menu()
@@ -151,6 +140,6 @@ if __name__ == '__main__':
     app.setFont(QFont('Arial', 10))
 
     # Create and display the main window
-    ex = Zrad()
+    ex = ZRad()
     ex.init_gui()
     sys.exit(app.exec_())

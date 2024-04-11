@@ -1,13 +1,13 @@
 import os
 from itertools import permutations
+from multiprocessing import Pool, cpu_count
 
 import SimpleITK as sitk
-from joblib import Parallel, delayed, cpu_count
 import numpy as np
 import pywt
 from scipy import ndimage as ndi
 
-from .toolbox_logic import extract_nifti_image, Image, list_folders_in_defined_range, extract_dicom
+from .toolbox_logic import extract_nifti_image, Image, list_folders_in_defined_range, extract_dicom, check_dicom_spacing
 
 
 class Mean:
@@ -462,13 +462,15 @@ class Filtering:
         if os.path.exists(save_dir):
             self.save_dir = save_dir
         else:
-            print(f"Save directory '{save_dir}' does not exist. Aborted!")
-            return
+            os.makedirs(save_dir)
+            self.save_dir = save_dir
 
-        if list_of_patient_folders is None and start_folder is not None and stop_folder is not None:
+        if start_folder is not None and stop_folder is not None:
             self.list_of_patient_folders = list_folders_in_defined_range(start_folder, stop_folder, self.load_dir)
-        elif list_of_patient_folders is not None:
+        elif list_of_patient_folders is not None and list_of_patient_folders not in [[], ['']]:
             self.list_of_patient_folders = list_of_patient_folders
+        elif list_of_patient_folders is None and start_folder is None and stop_folder is None:
+            self.list_of_patient_folders = os.listdir(load_dir)
         else:
             print('Incorrectly selected patient folders. Aborted!')
             return
@@ -478,6 +480,16 @@ class Filtering:
         else:
             print("Wrong input data types, available types: 'DICOM', 'NIFTI'. Aborted!")
             return
+
+        if self.input_data_type == 'DICOM':
+            list_to_del = set()
+            for pat_index, pat_path in enumerate(self.list_of_patient_folders):
+                pat_folder_path = os.path.join(load_dir, pat_path)
+                if check_dicom_spacing(os.path.join(pat_folder_path)):
+                    list_to_del.add(pat_index)
+            for index_to_del in list_to_del:
+                print(f'Patient {index_to_del} is excluded from the analysis due to the inconsistent z-spacing.')
+                del self.list_of_patient_folders[index_to_del]
 
         if isinstance(number_of_threads, int) and 0 < number_of_threads <= cpu_count():
             self.number_of_threads = number_of_threads
@@ -522,11 +534,13 @@ class Filtering:
         self.patient_number = None
 
     def filtering(self):
+        with Pool(self.number_of_threads) as pool:
+            pool.map(self._load_patient, sorted(self.list_of_patient_folders))
 
-        Parallel(n_jobs=self.number_of_threads)(delayed(self._load_patient)(patient_folder)
-                                                for patient_folder in self.list_of_patient_folders)
+        print('COMPLETED!')
 
     def _load_patient(self, patient_number):
+        print(f'Current patient: {patient_number}')
         self.patient_number = str(patient_number)
         self.patient_folder = os.path.join(self.load_dir, str(self.patient_number))
         self.pat_image = None

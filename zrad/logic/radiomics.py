@@ -1,14 +1,15 @@
 import os
+from multiprocessing import Pool, cpu_count
 
 import SimpleITK as sitk
 import numpy as np
 import pandas as pd
 import pydicom
-from joblib import Parallel, delayed, cpu_count
 
 from .radiomics_defenitions import MorphologicalFeatures, LocalIntensityFeatures, IntensityBasedStatFeatures, \
     IntensityVolumeHistogramFeatures, GLCM, GLRLM_GLSZM_GLDZM_NGLDM, NGTDM
-from .toolbox_logic import Image, extract_dicom, extract_nifti_image, extract_nifti_mask, list_folders_in_defined_range
+from .toolbox_logic import Image, extract_dicom, extract_nifti_image, extract_nifti_mask, \
+    list_folders_in_defined_range, check_dicom_spacing
 
 
 class Radiomics:
@@ -31,18 +32,15 @@ class Radiomics:
         if os.path.exists(save_dir):
             self.save_dir = save_dir
         else:
-            print(f"Save directory '{save_dir}' does not exist. Aborted!")
-            return
+            os.makedirs(save_dir)
+            self.save_dir = save_dir
 
-        if not list_of_patient_folders:
-            self.list_of_patient_folders = list_folders_in_defined_range(start_folder, stop_folder, self.load_dir)
-        else:
-            self.list_of_patient_folders = list_of_patient_folders
-
-        if list_of_patient_folders is None and start_folder is not None and stop_folder is not None:
+        if start_folder is not None and stop_folder is not None:
             self.list_of_patient_folders = list_folders_in_defined_range(start_folder, stop_folder, self.load_dir)
         elif list_of_patient_folders is not None and list_of_patient_folders not in [[], ['']]:
             self.list_of_patient_folders = list_of_patient_folders
+        elif list_of_patient_folders is None and start_folder is None and stop_folder is None:
+            self.list_of_patient_folders = os.listdir(load_dir)
         else:
             print('Incorrectly selected patient folders. Aborted!')
             return
@@ -52,6 +50,16 @@ class Radiomics:
         else:
             print(f"Wrong input data type '{input_data_type}', available types: 'DICOM', 'NIFTI'. Aborted!")
             return
+
+        if self.input_data_type == 'DICOM':
+            list_to_del = set()
+            for pat_index, pat_path in enumerate(self.list_of_patient_folders):
+                pat_folder_path = os.path.join(load_dir, pat_path)
+                if check_dicom_spacing(os.path.join(pat_folder_path)):
+                    list_to_del.add(pat_index)
+            for index_to_del in list_to_del:
+                print(f'Patient {index_to_del} is excluded from the analysis due to the inconsistent z-spacing.')
+                del self.list_of_patient_folders[index_to_del]
 
         if input_imaging_mod in ['CT', 'PT', 'MR']:
             self.input_imaging_mod = input_imaging_mod
@@ -187,10 +195,10 @@ class Radiomics:
 
     def extract_radiomics(self):
 
-        Parallel(n_jobs=self.number_of_threads)(delayed(self._load_patient)(patient_folder)
-                                                for patient_folder in self.list_of_patient_folders)
+        with Pool(self.number_of_threads) as pool:
+            pool.map(self._load_patient, sorted(self.list_of_patient_folders))
 
-        print('STOPPED!')
+        print('COMPLETED!')
 
     def _load_patient(self, patient_number):
         self.patient_number = str(patient_number)

@@ -8,5 +8,4 @@ PyWavelets
 openpyxl
 scikit-image
 scikit-learn
-joblib
 opencv-python-headless

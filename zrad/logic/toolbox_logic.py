@@ -1,6 +1,6 @@
 import os
-import random
 from datetime import datetime
+
 import SimpleITK as sitk
 import numpy as np
 import pydicom
@@ -154,17 +154,16 @@ def extract_dicom(dicom_dir, rtstract, modality, rtstruct_file='', selected_stru
                        f.endswith('.dcm') and is_not_rt_struct(os.path.join(directory, f), series_ids[0])]
 
         # Randomly select a DICOM file from the filtered list
-        if dicom_files:
-            dicom_file_path = os.path.join(directory, random.choice(dicom_files))
+        slice_z_origin = []
+        for dcm_file in dicom_files:
+            dicom_file_path = os.path.join(directory, dcm_file)
             dicom = pydicom.dcmread(dicom_file_path)
-
-            # Retrieve pixel spacing (Row Spacing, Column Spacing)
-            pixel_spacing = dicom.PixelSpacing
-
-            # Retrieve slice thickness if available
-            slice_thickness = dicom.get('SliceThickness', 'Not available')
-        else:
-            print("No suitable DICOM file found in the directory.")
+            if dicom.Modality in ['CT', 'PT', 'MR']:
+                pixel_spacing = dicom.PixelSpacing
+                slice_z_origin.append(float(dicom.ImagePositionPatient[2]))
+        slice_z_origin = sorted(slice_z_origin)
+        slice_thickness = abs(np.median([slice_z_origin[i] - slice_z_origin[i + 1]
+                                         for i in range(len(slice_z_origin) - 1)]))
 
         reader.SetFileNames(file_names)
 
@@ -172,8 +171,6 @@ def extract_dicom(dicom_dir, rtstract, modality, rtstruct_file='', selected_stru
         image.SetSpacing((float(pixel_spacing[0]), float(pixel_spacing[1]), float(slice_thickness)))
 
         return image
-
-    dicom_image = process_dicom_series(dicom_dir)
 
     def calculate_suv(dicom_file_path):
 
@@ -196,13 +193,14 @@ def extract_dicom(dicom_dir, rtstract, modality, rtstruct_file='', selected_stru
         patient_weight = float(ds.PatientWeight)
         injected_dose = float(ds.RadiopharmaceuticalInformationSequence[0].RadionuclideTotalDose)
         injection_time_str = ds.RadiopharmaceuticalInformationSequence[0].RadiopharmaceuticalStartTime
-        acquisition_time_str = ds.AcquisitionTime
+        if ds.DecayCorrection == 'START':
+            acquisition_time_str = ds.SeriesTime
 
         injection_time = parse_time(injection_time_str)
         acquisition_time = parse_time(acquisition_time_str)
         elapsed_time = (acquisition_time - injection_time).total_seconds()
 
-        half_life = 109.8 * 60
+        half_life = float(ds.RadiopharmaceuticalInformationSequence[0].RadionuclideHalfLife)
         decay_factor = np.exp(-1 * ((np.log(2) * elapsed_time) / half_life))
 
         decay_corrected_dose = injected_dose * decay_factor
@@ -221,7 +219,7 @@ def extract_dicom(dicom_dir, rtstract, modality, rtstruct_file='', selected_stru
         for dicom_file in os.listdir(pat_folder):
             dcm_data = pydicom.dcmread(os.path.join(pat_folder, dicom_file))
 
-            if dcm_data.Modality != 'RTSTRUCT':
+            if dcm_data.Modality == 'PT':
                 z_slice_id = int(dcm_data.InstanceNumber) - 1
                 intensity_array[:, :, z_slice_id] = calculate_suv(os.path.join(pat_folder, dicom_file))
 
@@ -246,7 +244,7 @@ def extract_dicom(dicom_dir, rtstract, modality, rtstruct_file='', selected_stru
 
         masks = {}
         for rt_struct in rt_structs:
-            if selected_structures == 'ALL':
+            if 'ExtractAllMasks' in selected_structures:
                 if 'sequence' not in rt_struct:
                     continue
 
@@ -276,3 +274,30 @@ def extract_dicom(dicom_dir, rtstract, modality, rtstruct_file='', selected_stru
                      spacing=np.array(dicom_image.GetSpacing()),
                      direction=dicom_image.GetDirection(),
                      shape=dicom_image.GetSize())
+
+
+def check_dicom_spacing(directory):
+    def is_not_rt_struct(dicom_path):
+        try:
+            dcm = pydicom.dcmread(dicom_path, stop_before_pixels=True)
+            return dcm.Modality != 'RTSTRUCT'
+        except Exception:
+            return False
+
+    dicom_files = [f for f in os.listdir(directory) if
+                   f.endswith('.dcm') and is_not_rt_struct(os.path.join(directory, f))]
+
+    slice_z_origin = []
+    for dcm_file in dicom_files:
+        dicom_file_path = os.path.join(directory, dcm_file)
+        dicom = pydicom.dcmread(dicom_file_path)
+        if dicom.Modality in ['CT', 'PT', 'MR']:
+            slice_z_origin.append(float(dicom.ImagePositionPatient[2]))
+    slice_z_origin = sorted(slice_z_origin)
+    slice_thickness = [abs(slice_z_origin[i] - slice_z_origin[i + 1])
+                       for i in range(len(slice_z_origin) - 1)]
+    slice_inhomogeneity_detected = False
+    for i in range(len(slice_thickness) - 1):
+        if abs((slice_thickness[i] - slice_thickness[i + 1])) > 10 ** (-3):
+            slice_inhomogeneity_detected = True
+    return slice_inhomogeneity_detected

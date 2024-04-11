@@ -1,8 +1,8 @@
 import numpy as np
+from scipy.ndimage import distance_transform_cdt
 from scipy.spatial import ConvexHull
 from scipy.special import legendre
 from scipy.stats import iqr, skew, kurtosis
-from scipy.ndimage import distance_transform_cdt
 from skimage import measure
 from sklearn.decomposition import PCA
 
@@ -1188,6 +1188,7 @@ class GLCM:
         self.inf_cor_1 = self.calc_information_correlation_1(M)
         self.inf_cor_2 = self.calc_information_correlation_2(M)
 
+
 class GLRLM_GLSZM_GLDZM_NGLDM:
     def __init__(self, image, slice_weight=False, slice_median=False):
 
@@ -1303,8 +1304,8 @@ class GLRLM_GLSZM_GLDZM_NGLDM:
                         visited_array[i, j] = True
 
                         new_i, new_j = i + dx, j + dy
-                        while 0 <= new_i < x and 0 <= new_j < y and not np.isnan(z_slice[new_i, new_j]) and z_slice[
-                            new_i, new_j] == gr_lvl and not visited_array[new_i, new_j]:
+                        while (0 <= new_i < x and 0 <= new_j < y and not np.isnan(z_slice[new_i, new_j])
+                               and z_slice[new_i, new_j] == gr_lvl and not visited_array[new_i, new_j]):
                             run_len += 1
                             visited_array[new_i, new_j] = True
                             new_i += dx
@@ -1567,10 +1568,10 @@ class GLRLM_GLSZM_GLDZM_NGLDM:
 
     def calc_long_high_gr_lvl_emphasis(self, M):
 
-        Ns = np.sum(M)
+        n_s = np.sum(M)
         i, j = np.indices(M.shape)
 
-        return np.sum(M * (j + 1) ** 2 * i ** 2) / Ns
+        return np.sum(M * (j + 1) ** 2 * i ** 2) / n_s
 
     def calc_non_uniformity(self, M):
 
@@ -2108,29 +2109,29 @@ class GLRLM_GLSZM_GLDZM_NGLDM:
         weights = []
 
         for i in range(number_of_slices):
-            M = self.ngldm_2d_matrices[i]
+            ngldm_matrix = self.ngldm_2d_matrices[i]
             weight = 1
             if self.slice_weight:
                 weight = self.no_of_roi_voxels[i] / self.tot_no_of_roi_voxels
             weights.append(weight)
 
-            self.short_runs_emphasis_list.append(self.calc_short_emphasis(M))
-            self.long_runs_emphasis_list.append(self.calc_long_emphasis(M))
-            self.low_grey_level_run_emphasis_list.append(self.calc_low_gr_lvl_emphasis(M))
-            self.high_gr_lvl_emphasis_list.append(self.calc_high_gr_lvl_emphasis(M))
-            self.short_low_gr_lvl_emphasis_list.append(self.calc_short_low_gr_lvl_emphasis(M))
-            self.short_high_gr_lvl_emphasis_list.append(self.calc_short_high_gr_lvl_emphasis(M))
-            self.long_low_gr_lvl_emphasis_list.append(self.calc_long_low_gr_lvl_emphasis(M))
-            self.long_high_gr_lvl_emphasis_list.append(self.calc_long_high_gr_lvl_emphasis(M))
-            self.non_uniformity_list.append(self.calc_non_uniformity(M))
-            self.norm_non_uniformity_list.append(self.calc_norm_non_uniformity(M))
-            self.length_non_uniformity_list.append(self.calc_length_non_uniformity(M))
-            self.norm_length_non_uniformity_list.append(self.calc_norm_length_non_uniformity(M))
-            self.percentage_list.append(self.calc_percentage(M, self.no_of_roi_voxels[i]))
-            self.gr_lvl_var_list.append(self.calc_gr_lvl_var(M))
-            self.length_var_list.append(self.calc_length_var(M))
-            self.entropy_list.append(self.calc_entropy(M))
-            self.energy_list.append(self.calc_energy(M))
+            self.short_runs_emphasis_list.append(self.calc_short_emphasis(ngldm_matrix))
+            self.long_runs_emphasis_list.append(self.calc_long_emphasis(ngldm_matrix))
+            self.low_grey_level_run_emphasis_list.append(self.calc_low_gr_lvl_emphasis(ngldm_matrix))
+            self.high_gr_lvl_emphasis_list.append(self.calc_high_gr_lvl_emphasis(ngldm_matrix))
+            self.short_low_gr_lvl_emphasis_list.append(self.calc_short_low_gr_lvl_emphasis(ngldm_matrix))
+            self.short_high_gr_lvl_emphasis_list.append(self.calc_short_high_gr_lvl_emphasis(ngldm_matrix))
+            self.long_low_gr_lvl_emphasis_list.append(self.calc_long_low_gr_lvl_emphasis(ngldm_matrix))
+            self.long_high_gr_lvl_emphasis_list.append(self.calc_long_high_gr_lvl_emphasis(ngldm_matrix))
+            self.non_uniformity_list.append(self.calc_non_uniformity(ngldm_matrix))
+            self.norm_non_uniformity_list.append(self.calc_norm_non_uniformity(ngldm_matrix))
+            self.length_non_uniformity_list.append(self.calc_length_non_uniformity(ngldm_matrix))
+            self.norm_length_non_uniformity_list.append(self.calc_norm_length_non_uniformity(ngldm_matrix))
+            self.percentage_list.append(self.calc_percentage(ngldm_matrix, self.no_of_roi_voxels[i]))
+            self.gr_lvl_var_list.append(self.calc_gr_lvl_var(ngldm_matrix))
+            self.length_var_list.append(self.calc_length_var(ngldm_matrix))
+            self.entropy_list.append(self.calc_entropy(ngldm_matrix))
+            self.energy_list.append(self.calc_energy(ngldm_matrix))
 
         if self.slice_median and not self.slice_weight:
             self.short_runs_emphasis = np.median(self.short_runs_emphasis_list)
@@ -2171,25 +2172,25 @@ class GLRLM_GLSZM_GLDZM_NGLDM:
 
     def calc_2_5d_ngldm_features(self):
 
-        M = np.sum(self.ngldm_2d_matrices, axis=0)
+        ngld_matrix = np.sum(self.ngldm_2d_matrices, axis=0)
 
-        self.short_runs_emphasis = self.calc_short_emphasis(M)
-        self.long_runs_emphasis = self.calc_long_emphasis(M)
-        self.low_grey_level_run_emphasis = self.calc_low_gr_lvl_emphasis(M)
-        self.high_gr_lvl_emphasis = self.calc_high_gr_lvl_emphasis(M)
-        self.short_low_gr_lvl_emphasis = self.calc_short_low_gr_lvl_emphasis(M)
-        self.short_high_gr_lvl_emphasis = self.calc_short_high_gr_lvl_emphasis(M)
-        self.long_low_gr_lvl_emphasis = self.calc_long_low_gr_lvl_emphasis(M)
-        self.long_high_gr_lvl_emphasis = self.calc_long_high_gr_lvl_emphasis(M)
-        self.non_uniformity = self.calc_non_uniformity(M)
-        self.norm_non_uniformity = self.calc_norm_non_uniformity(M)
-        self.length_non_uniformity = self.calc_length_non_uniformity(M)
-        self.norm_length_non_uniformity = self.calc_norm_length_non_uniformity(M)
-        self.percentage = self.calc_percentage(M, np.sum(self.no_of_roi_voxels))
-        self.gr_lvl_var = self.calc_gr_lvl_var(M)
-        self.length_var = self.calc_length_var(M)
-        self.entropy = self.calc_entropy(M)
-        self.energy = self.calc_energy(M)
+        self.short_runs_emphasis = self.calc_short_emphasis(ngld_matrix)
+        self.long_runs_emphasis = self.calc_long_emphasis(ngld_matrix)
+        self.low_grey_level_run_emphasis = self.calc_low_gr_lvl_emphasis(ngld_matrix)
+        self.high_gr_lvl_emphasis = self.calc_high_gr_lvl_emphasis(ngld_matrix)
+        self.short_low_gr_lvl_emphasis = self.calc_short_low_gr_lvl_emphasis(ngld_matrix)
+        self.short_high_gr_lvl_emphasis = self.calc_short_high_gr_lvl_emphasis(ngld_matrix)
+        self.long_low_gr_lvl_emphasis = self.calc_long_low_gr_lvl_emphasis(ngld_matrix)
+        self.long_high_gr_lvl_emphasis = self.calc_long_high_gr_lvl_emphasis(ngld_matrix)
+        self.non_uniformity = self.calc_non_uniformity(ngld_matrix)
+        self.norm_non_uniformity = self.calc_norm_non_uniformity(ngld_matrix)
+        self.length_non_uniformity = self.calc_length_non_uniformity(ngld_matrix)
+        self.norm_length_non_uniformity = self.calc_norm_length_non_uniformity(ngld_matrix)
+        self.percentage = self.calc_percentage(ngld_matrix, np.sum(self.no_of_roi_voxels))
+        self.gr_lvl_var = self.calc_gr_lvl_var(ngld_matrix)
+        self.length_var = self.calc_length_var(ngld_matrix)
+        self.entropy = self.calc_entropy(ngld_matrix)
+        self.energy = self.calc_energy(ngld_matrix)
 
     def calc_3d_ngldm_features(self):
 

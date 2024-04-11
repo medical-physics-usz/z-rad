@@ -1,21 +1,28 @@
 import os
+from multiprocessing import Pool, cpu_count
 
 import SimpleITK as sitk
 import numpy as np
 import pydicom
-from joblib import Parallel, delayed, cpu_count
 
-from .toolbox_logic import Image, extract_nifti_image, extract_nifti_mask, list_folders_in_defined_range, extract_dicom
+from .toolbox_logic import Image, extract_nifti_image, extract_nifti_mask, list_folders_in_defined_range, \
+    extract_dicom, check_dicom_spacing
+
+
+# from joblib import Parallel, delayed, cpu_count
 
 
 class Preprocessing:
 
     def __init__(self, load_dir, save_dir,
                  input_data_type, input_imaging_mod,
-                 resample_resolution, resample_dimension,
-                 image_interpolation_method, mask_interpolation_method, mask_interpolation_threshold=.5,
+                 structure_set=None,
+                 just_save_as_nifti=False,
+                 resample_resolution=1.0, resample_dimension='3D',
+                 image_interpolation_method='Linear',
+                 mask_interpolation_method='Linear', mask_interpolation_threshold=.5,
                  start_folder=None, stop_folder=None, list_of_patient_folders=None,
-                 structure_set=None, nifti_image=None,
+                 nifti_image=None,
                  number_of_threads=1):
 
         if os.path.exists(load_dir):
@@ -27,13 +34,15 @@ class Preprocessing:
         if os.path.exists(save_dir):
             self.save_dir = save_dir
         else:
-            print(f"Save directory '{save_dir}' does not exist. Aborted!")
-            return
+            os.makedirs(save_dir)
+            self.save_dir = save_dir
 
-        if list_of_patient_folders is None and start_folder is not None and stop_folder is not None:
+        if start_folder is not None and stop_folder is not None:
             self.list_of_patient_folders = list_folders_in_defined_range(start_folder, stop_folder, self.load_dir)
         elif list_of_patient_folders is not None and list_of_patient_folders not in [[], ['']]:
             self.list_of_patient_folders = list_of_patient_folders
+        elif list_of_patient_folders is None and start_folder is None and stop_folder is None:
+            self.list_of_patient_folders = os.listdir(load_dir)
         else:
             print('Incorrectly selected patient folders. Aborted!')
             return
@@ -49,6 +58,16 @@ class Preprocessing:
         else:
             print(f"Wrong input imaging type '{input_imaging_mod}', available types: 'CT', 'PT', 'MR'. Aborted!")
             return
+
+        if self.input_data_type == 'DICOM':
+            list_to_del = set()
+            for pat_index, pat_path in enumerate(self.list_of_patient_folders):
+                pat_folder_path = os.path.join(load_dir, pat_path)
+                if check_dicom_spacing(os.path.join(pat_folder_path)):
+                    list_to_del.add(pat_index)
+            for index_to_del in list_to_del:
+                print(f'Patient {index_to_del} is excluded from the analysis due to the inconsistent z-spacing.')
+                del self.list_of_patient_folders[index_to_del]
 
         if self.input_data_type == 'NIFTI':
             if nifti_image is not None:
@@ -86,7 +105,7 @@ class Preprocessing:
         if isinstance(number_of_threads, (int, float)) and 0 < number_of_threads <= cpu_count():
             self.number_of_threads = number_of_threads
         else:
-            print('Number of threads is not an integer or selected nubmer is greater than maximum number of available'
+            print('Number of threads is not an integer or selected number is greater than maximum number of available'
                   f'CPU. (Max available {cpu_count()} units)')
             return
 
@@ -107,26 +126,29 @@ class Preprocessing:
             print(f"Resample dimension '{resample_dimension}' is not '2D' or '3D'. Aborted!")
             return
 
+        self.just_save_as_nifti = just_save_as_nifti
         self.patient_folder = None
         self.patient_number = None
 
     def resample(self):
-        Parallel(n_jobs=self.number_of_threads)(
-            delayed(self._load_patient)(patient_folder) for patient_folder in self.list_of_patient_folders)
+        with Pool(self.number_of_threads) as pool:
+            pool.map(self._load_patient, sorted(self.list_of_patient_folders))
+
+        print('Completed!')
 
     def _load_patient(self, patient_number):
-
+        print(f'Current patient: {patient_number}')
         self.patient_number = str(patient_number)
         self.patient_folder = os.path.join(self.load_dir, self.patient_number)
         self.pat_original_image_and_masks = {}
         self.pat_resampled_image_and_masks = {}
-
         if self.input_data_type == 'NIFTI':
             self._process_nifti_files()
+            self._resampling()
         else:
             self._process_dicom_files()
-
-        self._resampling()
+            if not self.just_save_as_nifti:
+                self._resampling()
         self._save_as_nifti()
 
     def _process_nifti_files(self):
@@ -244,5 +266,9 @@ class Preprocessing:
             del self.pat_original_image_and_masks[instance_key]
 
     def _save_as_nifti(self):
-        for key, img in self.pat_resampled_image_and_masks.items():
+        if self.just_save_as_nifti:
+            save_pat_image_and_masks = self.pat_original_image_and_masks
+        else:
+            save_pat_image_and_masks = self.pat_resampled_image_and_masks
+        for key, img in save_pat_image_and_masks.items():
             img.save_as_nifti(instance=self, key=key)

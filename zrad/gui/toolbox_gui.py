@@ -63,12 +63,15 @@ class CustomEditLine(QLineEdit):
 
 class CustomTextField(QLineEdit):
 
-    def __init__(self, text, font, pos_x, pos_y, size_x, size_y, parent):
+    def __init__(self, text, font, pos_x, pos_y, size_x, size_y, parent, style=False):
         super().__init__(parent)
         self.setPlaceholderText(text)
         self.setGeometry(pos_x, pos_y, size_x, size_y)
-        self.setStyleSheet(
-            "background-color: white; color: black;")
+        if style:
+            self.setStyleSheet("background-color: white; color: black; border: none; border-radius: 25px;")
+        else:
+            self.setStyleSheet(
+                "background-color: white; color: black;")
         self.setFont(QFont('Arial', font))
 
 
@@ -93,12 +96,19 @@ class CustomCheckBox(QCheckBox):
 
 
 class CustomWarningBox(QMessageBox):
-    def __init__(self, text):
+    def __init__(self, text, warning=True):
         super().__init__()
-        self.setIcon(QMessageBox.Warning)
-        self.setWindowTitle('Warning!')
-        self.setText(text)
-        self.setStandardButtons(QMessageBox.Retry)
+        self.warning_key = warning
+        if self.warning_key:
+            self.setIcon(QMessageBox.Warning)
+            self.setWindowTitle('Warning!')
+            self.setText(text)
+            self.setStandardButtons(QMessageBox.Retry)
+        else:
+            self.setIcon(QMessageBox.Information)
+            self.setWindowTitle('Help & Support')
+            self.setText(text)
+            self.setStandardButtons(QMessageBox.Close)
 
         self.setStyleSheet("QPushButton {"
                            "  background-color: #FFD700;"  
@@ -136,7 +146,7 @@ def resource_path(relative_path):
 
 def add_logo_to_tab(tab):
     logo_label = QLabel(tab)
-    logo_pixmap = QPixmap(resource_path('zrad/logo/logo.png'))
+    logo_pixmap = QPixmap(resource_path('logo.png'))
     desired_width = 300
     desired_height = 150
     logo_pixmap = logo_pixmap.scaled(desired_width, desired_height, Qt.KeepAspectRatio, Qt.SmoothTransformation)

@@ -1,6 +1,6 @@
 # Import required PyQt5 modules for GUI creation
-
 import sys
+from multiprocessing import freeze_support
 
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont, QPalette, QColor
@@ -9,7 +9,7 @@ from PyQt5.QtWidgets import QApplication, QMainWindow, QTabWidget, QAction, QSty
 from zrad.gui.filt_tab import FilteringTab
 from zrad.gui.prep_tab import PreprocessingTab
 from zrad.gui.rad_tab import RadiomicsTab
-from zrad.gui.toolbox_gui import add_logo_to_tab
+from zrad.gui.toolbox_gui import add_logo_to_tab, CustomWarningBox
 
 
 class ZRad(QMainWindow):
@@ -25,6 +25,7 @@ class ZRad(QMainWindow):
         self.file_menu = None
         self.load_action = None
         self.save_action = None
+        self.help_action = None
         self.exit_action = None
 
     def init_gui(self):
@@ -32,7 +33,7 @@ class ZRad(QMainWindow):
         Initialize the main GUI components.
         """
         # Set window title and geometry
-        self.setWindowTitle('Z-Rad')
+        self.setWindowTitle('Z-Rad V8.0.0')
         self.setGeometry(0, 0, 1800, 750)
 
         # Create and set the central tab widget
@@ -72,6 +73,13 @@ class ZRad(QMainWindow):
         """
         Create and configure the menu bar.
         """
+
+        def display_help():
+            text = ('Z-Rad version: 8.0.0 \n\nDeveloped at the University Hospital Zurich '
+                    'by the Department of Radiation Oncology'
+                    '\n\nAll relevant information about Z-Rad: ...')
+            CustomWarningBox(text, False).response()
+
         # Initialize the menu bar
         self.menubar = self.menuBar()
         self.file_menu = self.menubar.addMenu('File')
@@ -89,6 +97,12 @@ class ZRad(QMainWindow):
 
         # Add a separator
         self.file_menu.addSeparator()
+
+        # Create 'Help' action
+
+        self.help_action = QAction('Help', self)
+        self.file_menu.addAction(self.help_action)
+        self.help_action.triggered.connect(display_help)
 
         # Create and add the exit action
         self.exit_action = QAction('Exit', self)
@@ -124,6 +138,9 @@ class ZRad(QMainWindow):
 
 
 if __name__ == '__main__':
+    if sys.platform.startswith('win'):
+        freeze_support()
+
     # Initialize and configure the application
     app = QApplication(sys.argv)
     app.setStyle(QStyleFactory.create('Fusion'))

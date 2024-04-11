@@ -1,8 +1,8 @@
 import json
+from multiprocessing import cpu_count
 
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QFileDialog
-from joblib import cpu_count
 
 from .toolbox_gui import CustomButton, CustomLabel, CustomBox, CustomTextField, CustomWarningBox, resource_path
 from ..logic.filtering import Filtering, Mean, LoG, Wavelets2D, Wavelets3D, Laws
@@ -81,28 +81,31 @@ class FilteringTab(QWidget):
         if (self.input_imaging_mod_combo_box.currentText() == 'Imaging Mod.:'
                 and CustomWarningBox("Select Input Imaging Modality").response()):
             return
+
         input_imaging_mod = self.input_imaging_mod_combo_box.currentText()
 
         # Collect values from GUI elements
         load_dir = self.load_dir_label.text()
         save_dir = self.save_dir_label.text()
-        start_folder = self.start_folder_text_field.text().strip()
-        stop_folder = self.stop_folder_text_field.text().strip()
         number_of_threads = int(self.number_of_threads_combo_box.currentText().split(" ")[0])
         input_data_type = self.input_data_type_combo_box.currentText()
         filter_type = self.filter_combo_box.currentText()
         filter_dimension = self.filter_dimension_combo_box.currentText()
         filter_padding_type = self.padding_type_combo_box.currentText()
 
-        list_of_patient_folders = []
+        start_folder = None
+        if self.start_folder_text_field.text().strip() != '':
+            start_folder = self.start_folder_text_field.text().strip()
+
+        stop_folder = None
+        if self.stop_folder_text_field.text().strip() != '':
+            stop_folder = self.stop_folder_text_field.text().strip()
+
         if self.list_of_patient_folders_text_field.text() != '':
             list_of_patient_folders = [
-                int(pat) for pat in str(self.list_of_patient_folders_text_field.text()).split(",")
-            ]
-
-        if (not start_folder or not stop_folder) and not list_of_patient_folders:
-            CustomWarningBox("Incorrectly selected patient folders!").response()
-            return
+                int(pat) for pat in str(self.list_of_patient_folders_text_field.text()).split(",")]
+        else:
+            list_of_patient_folders = None
 
         if (not self.nifti_image_text_field.text().strip()
                 and self.input_data_type_combo_box.currentText() == 'NIFTI'):
@@ -243,69 +246,88 @@ class FilteringTab(QWidget):
             self.save_dir_label.setText(directory)
 
     def save_input_data(self):
+        """
+        Update specific fields in the config.json file related to filtering settings
+        without overwriting existing data.
+        """
         data = {
-            'Data location': self.load_dir_label.text(),
-            'Start folder': self.start_folder_text_field.text(),
-            'Stop folder': self.stop_folder_text_field.text(),
-            'List of patients': self.list_of_patient_folders_text_field.text(),
-            'Data Type': self.input_data_type_combo_box.currentText(),
-            'Save directory': self.save_dir_label.text(),
-            '# of cores': self.number_of_threads_combo_box.currentText(),
-            'Save NII Image': self.nifti_image_text_field.text(),
-            'Self Filter Type': self.filter_combo_box.currentText(),
-            'Filter Dimension': self.filter_dimension_combo_box.currentText(),
-            'Padding Type': self.padding_type_combo_box.currentText(),
-            # Mean
-            'Mean support': self.mean_filter_support_text_field.text(),
-            # LoG
-            'LoG sigma': self.log_filter_sigma_text_field.text(),
-            'LoG cutoff': self.log_filter_cutoff_text_field.text(),
-            # Laws
-            'Laws response map': self.laws_filter_response_map_text_field.text(),
-            'Laws rot inv': self.laws_filter_rot_inv_combo_box.currentText(),
-            'Laws distance': self.laws_filter_distance_text_field.text(),
-            'Laws pooling': self.laws_filter_pooling_combo_box.currentText(),
-            'Laws energy map': self.laws_filter_energy_map_combo_box.currentText(),
-            # Wavelet
-            'Wavelet response map 2D': self.wavelet_filter_response_map_2d_combo_box.currentText(),
-            'Wavelet response map 3D': self.wavelet_filter_response_map_3d_combo_box.currentText(),
-            'Wavelet type': self.wavelet_filter_type_combo_box.currentText(),
-            'Wavelet decomp lvl': self.wavelet_filter_decomposition_level_combo_box.currentText(),
-            'Wavelet rot inv': self.wavelet_filter_rot_inv_combo_box.currentText()
+            'filt_load_dir_label': self.load_dir_label.text(),
+            'filt_start_folder': self.start_folder_text_field.text(),
+            'filt_stop_folder': self.stop_folder_text_field.text(),
+            'filt_list_of_patients': self.list_of_patient_folders_text_field.text(),
+            'filt_input_image_modality': self.input_imaging_mod_combo_box.currentText(),
+            'filt_input_data_type': self.input_data_type_combo_box.currentText(),
+            'filt_save_dir_label': self.save_dir_label.text(),
+            'filt_no_of_threads': self.number_of_threads_combo_box.currentText(),
+            'filt_NIFTI_image': self.nifti_image_text_field.text(),
+            'filt_filter_type': self.filter_combo_box.currentText(),
+            'filt_filter_dimension': self.filter_dimension_combo_box.currentText(),
+            'filt_padding_type': self.padding_type_combo_box.currentText(),
+            'filt_Mean_support': self.mean_filter_support_text_field.text(),
+            'filt_LoG_sigma': self.log_filter_sigma_text_field.text(),
+            'filt_LoG_cutoff': self.log_filter_cutoff_text_field.text(),
+            'filt_Laws_response_map': self.laws_filter_response_map_text_field.text(),
+            'filt_Laws_rot_inv': self.laws_filter_rot_inv_combo_box.currentText(),
+            'filt_Laws_distance': self.laws_filter_distance_text_field.text(),
+            'filt_Laws_pooling': self.laws_filter_pooling_combo_box.currentText(),
+            'filt_Laws_energy_map': self.laws_filter_energy_map_combo_box.currentText(),
+            'filt_Wavelet_resp_map_2D': self.wavelet_filter_response_map_2d_combo_box.currentText(),
+            'filt_Wavelet_resp_map_3D': self.wavelet_filter_response_map_3d_combo_box.currentText(),
+            'filt_Wavelet_type': self.wavelet_filter_type_combo_box.currentText(),
+            'filt_Wavelet_decomp_lvl': self.wavelet_filter_decomposition_level_combo_box.currentText(),
+            'filt_Wavelet_rot_inv': self.wavelet_filter_rot_inv_combo_box.currentText()
         }
-        file_path = resource_path('zrad/input/last_saved_filt_user_input.json')
+
+        file_path = resource_path('config.json')
+
+        # Attempt to read the existing data from the file
+        try:
+            with open(file_path, 'r') as file:
+                existing_data = json.load(file)
+        except FileNotFoundError:
+            existing_data = {}
+
+        # Update the existing data with the new data
+        existing_data.update(data)
+
+        # Write the updated data back to the file
         with open(file_path, 'w') as file:
-            json.dump(data, file)
+            json.dump(existing_data, file, indent=4)
 
     def load_input_data(self):
-        file_path = resource_path('zrad/input/last_saved_filt_user_input.json')
+        file_path = resource_path('config.json')
         try:
             with open(file_path, 'r') as file:
                 data = json.load(file)
-                self.load_dir_label.setText(data.get('Data location', ''))
-                self.start_folder_text_field.setText(data.get('Start folder', ''))
-                self.stop_folder_text_field.setText(data.get('Stop folder', ''))
-                self.list_of_patient_folders_text_field.setText(data.get('List of patients', ''))
-                self.input_data_type_combo_box.setCurrentText(data.get('Data Type', ''))
-                self.save_dir_label.setText(data.get('Save directory', ''))
-                self.number_of_threads_combo_box.setCurrentText(data.get('# of cores', ''))
-                self.nifti_image_text_field.setText(data.get('Save NII Image', ''))
-                self.filter_combo_box.setCurrentText(data.get('Self Filter Type', ''))
-                self.filter_dimension_combo_box.setCurrentText(data.get('Filter Dimension', ''))
-                self.padding_type_combo_box.setCurrentText(data.get('Padding Type', ''))
-                self.mean_filter_support_text_field.setText(data.get('Mean support', ''))
-                self.log_filter_sigma_text_field.setText(data.get('LoG sigma', ''))
-                self.log_filter_cutoff_text_field.setText(data.get('LoG cutoff', ''))
-                self.laws_filter_response_map_text_field.setText(data.get('Laws response map', ''))
-                self.laws_filter_rot_inv_combo_box.setCurrentText(data.get('Laws rot inv', ''))
-                self.laws_filter_distance_text_field.setText(data.get('Laws distance', ''))
-                self.laws_filter_pooling_combo_box.setCurrentText(data.get('Laws pooling', ''))
-                self.laws_filter_energy_map_combo_box.setCurrentText(data.get('Laws energy map', ''))
-                self.wavelet_filter_response_map_2d_combo_box.setCurrentText(data.get('Wavelet response map 2D', ''))
-                self.wavelet_filter_response_map_3d_combo_box.setCurrentText(data.get('Wavelet response map 3D', ''))
-                self.wavelet_filter_type_combo_box.setCurrentText(data.get('Wavelet type', ''))
-                self.wavelet_filter_decomposition_level_combo_box.setCurrentText(data.get('Wavelet decomp lvl', ''))
-                self.wavelet_filter_rot_inv_combo_box.setCurrentText(data.get('Wavelet rot inv', ''))
+                self.load_dir_label.setText(data.get('filt_load_dir_label', ''))
+                self.start_folder_text_field.setText(data.get('filt_start_folder', ''))
+                self.stop_folder_text_field.setText(data.get('filt_stop_folder', ''))
+                self.list_of_patient_folders_text_field.setText(data.get('filt_list_of_patients', ''))
+                self.input_data_type_combo_box.setCurrentText(data.get('filt_input_data_type', 'Data Type:'))
+                self.save_dir_label.setText(data.get('filt_save_dir_label', ''))
+                self.input_imaging_mod_combo_box.setCurrentText(data.get('filt_input_image_modality', 'Imaging Mod.:'))
+                self.number_of_threads_combo_box.setCurrentText(data.get('filt_no_of_threads', 'No. of Threads:'))
+                self.nifti_image_text_field.setText(data.get('filt_NIFTI_image', ''))
+                self.filter_combo_box.setCurrentText(data.get('filt_filter_type', 'Filter Type:'))
+                self.filter_dimension_combo_box.setCurrentText(data.get('filt_filter_dimension', 'Dimension:'))
+                self.padding_type_combo_box.setCurrentText(data.get('filt_padding_type', 'Padding Type:'))
+                self.mean_filter_support_text_field.setText(data.get('filt_Mean_support', ''))
+                self.log_filter_sigma_text_field.setText(data.get('filt_LoG_sigma', ''))
+                self.log_filter_cutoff_text_field.setText(data.get('filt_LoG_cutoff', ''))
+                self.laws_filter_response_map_text_field.setText(data.get('filt_Laws_response_map', ''))
+                self.laws_filter_rot_inv_combo_box.setCurrentText(data.get('filt_Laws_rot_inv', 'Pseudo-rot. inv:'))
+                self.laws_filter_distance_text_field.setText(data.get('filt_Laws_distance', ''))
+                self.laws_filter_pooling_combo_box.setCurrentText(data.get('filt_Laws_pooling', 'Pooling:'))
+                self.laws_filter_energy_map_combo_box.setCurrentText(data.get('filt_Laws_energy_map', 'Energy map:'))
+                self.wavelet_filter_response_map_2d_combo_box.setCurrentText(
+                    data.get('filt_Wavelet_resp_map_2D', 'Response Map:'))
+                self.wavelet_filter_response_map_3d_combo_box.setCurrentText(
+                    data.get('filt_Wavelet_resp_map_3D', 'Response Map:'))
+                self.wavelet_filter_type_combo_box.setCurrentText(data.get('filt_Wavelet_type', 'Wavelet type:'))
+                self.wavelet_filter_decomposition_level_combo_box.setCurrentText(
+                    data.get('filt_Wavelet_decomp_lvl', 'Decomposition Lvl.:'))
+                self.wavelet_filter_rot_inv_combo_box.setCurrentText(
+                    data.get('filt_Wavelet_rot_inv', 'Pseudo-rot. inv:'))
 
         except FileNotFoundError:
             print("No previous data found!")
@@ -320,7 +342,11 @@ class FilteringTab(QWidget):
             14, 30, 50, 200, 50, self,
             style=True
         )
-        self.load_dir_label = CustomLabel('', 14, 300, 50, 1400, 50, self)
+        self.load_dir_label = CustomTextField(
+            '',
+            14, 300, 50, 1400, 50,
+            self,
+            style=True)
         self.load_dir_label.setAlignment(Qt.AlignCenter)
         self.load_dir_button.clicked.connect(lambda: self.open_directory(key=True))
 
@@ -395,11 +421,14 @@ class FilteringTab(QWidget):
             style=True
         )
 
-        self.save_dir_label = CustomLabel('', 14, 300, 220, 1400, 50, self)
+        self.save_dir_label = CustomTextField(
+            '',
+            14, 300, 220, 1400, 50,
+            self,
+            style=True)
         self.save_dir_label.setAlignment(Qt.AlignCenter)
         self.save_dir_button.clicked.connect(lambda: self.open_directory(key=False))
 
-        # WHAT?
         self.nifti_image_label = CustomLabel(
             'NIFTI image file:',
             18, 320, 300, 200, 50, self,

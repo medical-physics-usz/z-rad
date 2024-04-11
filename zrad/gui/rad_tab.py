@@ -1,5 +1,5 @@
 import json
-import multiprocessing
+from multiprocessing import cpu_count
 
 import numpy as np
 from PyQt5.QtCore import Qt
@@ -78,19 +78,20 @@ class RadiomicsTab(QWidget):
         # Collect values from GUI elements
         load_dir = self.load_dir_label.text()
         save_dir = self.save_dir_label.text()
-        start_folder = self.start_folder_text_field.text().strip()
-        stop_folder = self.stop_folder_text_field.text().strip()
 
-        list_of_patient_folders = []
+        start_folder = None
+        if self.start_folder_text_field.text().strip() != '':
+            start_folder = self.start_folder_text_field.text().strip()
+
+        stop_folder = None
+        if self.stop_folder_text_field.text().strip() != '':
+            stop_folder = self.stop_folder_text_field.text().strip()
+
         if self.list_of_patient_folders_text_field.text() != '':
             list_of_patient_folders = [
-                int(pat) for pat in str(self.list_of_patient_folders_text_field.text()).split(",")
-            ]
-
-        input_imaging_mod = self.input_imaging_mod_combo_box.currentText()
-        if (not start_folder or not stop_folder) and not list_of_patient_folders:
-            CustomWarningBox("Incorrectly selected patient folders!").response()
-            return
+                int(pat) for pat in str(self.list_of_patient_folders_text_field.text()).split(",")]
+        else:
+            list_of_patient_folders = None
 
         number_of_threads = int(self.number_of_threads_combo_box.currentText().split(" ")[0])
         input_data_type = self.input_data_type_combo_box.currentText()
@@ -171,6 +172,11 @@ class RadiomicsTab(QWidget):
         elif aggr_method.strip() == 'direction-merged':
             aggr_method = 'DIR_MERG'
 
+        if (self.input_imaging_mod_combo_box.currentText() == 'Imaging Mod.:'
+                and CustomWarningBox("Select Input Imaging Modality").response()):
+            return
+        input_imaging_mod = self.input_imaging_mod_combo_box.currentText()
+
         rad_instance = Radiomics(load_dir, save_dir,
                                  input_data_type, input_imaging_mod,
                                  intensity_range, outlier_range,
@@ -192,55 +198,73 @@ class RadiomicsTab(QWidget):
             self.save_dir_label.setText(directory)
 
     def save_input_data(self):
+        """
+        Update specific radiology-related fields in the config.json file without
+        overwriting existing data.
+        """
         data = {
-            'Data location': self.load_dir_label.text(),
-            'Start folder': self.start_folder_text_field.text(),
-            'Stop folder': self.stop_folder_text_field.text(),
-            'List of patients': self.list_of_patient_folders_text_field.text(),
-            'Data Type': self.input_data_type_combo_box.currentText(),
-            'Save directory': self.save_dir_label.text(),
-            '# of cores': self.number_of_threads_combo_box.currentText(),
-            'DICOM mask': self.dicom_structures_text_field.text(),
-            'Nifti mask': self.nifti_structure_text_field.text(),
-            'Nifti image': self.nifti_image_text_field.text(),
-            'Intensity range': self.intensity_range_text_field.text(),
-            'Agr. strategy': self.aggr_dim_and_method_combo_box.currentText(),
-            'Binning': self.discretization_combo_box.currentText(),
-            'bin no.': self.bin_number_text_field.text(),
-            'bin size': self.bin_size_text_field.text(),
-            'int range: y/n': self.intensity_range_check_box.checkState(),
-            'outlier detection': self.outlier_detection_check_box.checkState(),
-            'weighting': self.weighting_combo_box.currentText(),
-            'input im modality': self.input_imaging_mod_combo_box.currentText()
+            'rad_load_dir_label': self.load_dir_label.text(),
+            'rad_start_folder': self.start_folder_text_field.text(),
+            'rad_stop_folder': self.stop_folder_text_field.text(),
+            'rad_list_of_patients': self.list_of_patient_folders_text_field.text(),
+            'rad_input_data_type': self.input_data_type_combo_box.currentText(),
+            'rad_save_dir_label': self.save_dir_label.text(),
+            'rad_no_of_threads': self.number_of_threads_combo_box.currentText(),
+            'rad_DICOM_structures': self.dicom_structures_text_field.text(),
+            'rad_NIFTI_structures': self.nifti_structure_text_field.text(),
+            'rad_NIFTI_image': self.nifti_image_text_field.text(),
+            'rad_intensity_range': self.intensity_range_text_field.text(),
+            'rad_agr_strategy': self.aggr_dim_and_method_combo_box.currentText(),
+            'rad_binning': self.discretization_combo_box.currentText(),
+            'rad_number_of_bins': self.bin_number_text_field.text(),
+            'rad_bin_size': self.bin_size_text_field.text(),
+            'rad_intensity_range_check_box': self.intensity_range_check_box.checkState(),
+            'rad_outlier_detection_check_box': self.outlier_detection_check_box.checkState(),
+            'rad_weighting': self.weighting_combo_box.currentText(),
+            'rad_input_image_modality': self.input_imaging_mod_combo_box.currentText()
         }
-        file_path = resource_path('zrad/input/last_saved_rad_user_input.json')
+
+        file_path = resource_path('config.json')
+
+        # Attempt to read the existing data from the file
+        try:
+            with open(file_path, 'r') as file:
+                existing_data = json.load(file)
+        except FileNotFoundError:
+            existing_data = {}
+
+        # Update the existing data with the new data
+        existing_data.update(data)
+
+        # Write the updated data back to the file
         with open(file_path, 'w') as file:
-            json.dump(data, file)
+            json.dump(existing_data, file, indent=4)
 
     def load_input_data(self):
-        file_path = resource_path('zrad/input/last_saved_rad_user_input.json')
+        file_path = resource_path('config.json')
         try:
             with open(file_path, 'r') as file:
                 data = json.load(file)
-                self.load_dir_label.setText(data.get('Data location', ''))
-                self.start_folder_text_field.setText(data.get('Start folder', ''))
-                self.stop_folder_text_field.setText(data.get('Stop folder', ''))
-                self.list_of_patient_folders_text_field.setText(data.get('List of patients', ''))
-                self.input_data_type_combo_box.setCurrentText(data.get('Data Type', ''))
-                self.save_dir_label.setText(data.get('Save directory', ''))
-                self.number_of_threads_combo_box.setCurrentText(data.get('# of cores', ''))
-                self.nifti_structure_text_field.setText(data.get('Nifti mask', ''))
-                self.dicom_structures_text_field.setText(data.get('DICOM mask', ''))
-                self.nifti_image_text_field.setText(data.get('Nifti image', ''))
-                self.intensity_range_text_field.setText(data.get('Intensity range', ''))
-                self.aggr_dim_and_method_combo_box.setCurrentText(data.get('Agr. strategy', ''))
-                self.discretization_combo_box.setCurrentText(data.get('Binning', ''))
-                self.bin_number_text_field.setText(data.get('bin no.', ''))
-                self.bin_size_text_field.setText(data.get('bin size', ''))
-                self.intensity_range_check_box.setCheckState(data.get('int range: y/n', ''))
-                self.outlier_detection_check_box.setCheckState(data.get('outlier detection', ''))
-                self.weighting_combo_box.setCurrentText(data.get('weighting', ''))
-                self.input_imaging_mod_combo_box.setCurrentText(data.get('input im modality', ''))
+                self.load_dir_label.setText(data.get('rad_load_dir_label', ''))
+                self.start_folder_text_field.setText(data.get('rad_start_folder', ''))
+                self.stop_folder_text_field.setText(data.get('rad_stop_folder', ''))
+                self.list_of_patient_folders_text_field.setText(data.get('rad_list_of_patients', ''))
+                self.input_data_type_combo_box.setCurrentText(data.get('rad_input_data_type', 'Data Type:'))
+                self.save_dir_label.setText(data.get('rad_save_dir_label', ''))
+                self.number_of_threads_combo_box.setCurrentText(data.get('rad_no_of_threads', 'No. of Threads:'))
+                self.nifti_structure_text_field.setText(data.get('rad_NIFTI_structures', ''))
+                self.dicom_structures_text_field.setText(data.get('rad_DICOM_structures', ''))
+                self.nifti_image_text_field.setText(data.get('rad_NIFTI_image', ''))
+                self.intensity_range_text_field.setText(data.get('rad_intensity_range', ''))
+                self.aggr_dim_and_method_combo_box.setCurrentText(
+                    data.get('rad_agr_strategy', 'Texture Features Aggr. Method:'))
+                self.discretization_combo_box.setCurrentText(data.get('rad_binning', 'Discretization:'))
+                self.bin_number_text_field.setText(data.get('rad_number_of_bins', ''))
+                self.bin_size_text_field.setText(data.get('rad_bin_size', ''))
+                self.intensity_range_check_box.setCheckState(data.get('rad_intensity_range_check_box', 0))
+                self.outlier_detection_check_box.setCheckState(data.get('rad_outlier_detection_check_box', 0))
+                self.weighting_combo_box.setCurrentText(data.get('rad_weighting', 'Slice Averaging:'))
+                self.input_imaging_mod_combo_box.setCurrentText(data.get('rad_input_image_modality', 'Imaging Mod.:'))
         except FileNotFoundError:
             print("No previous data found!")
 
@@ -254,11 +278,12 @@ class RadiomicsTab(QWidget):
             14, 30, 50, 200, 50, self,
             style="background-color: #4CAF50; color: white; border: none; border-radius: 25px;"
         )
-        self.load_dir_label = CustomLabel(
+        self.load_dir_label = CustomTextField(
             '',
-            14, 300, 50, 1400, 50, self)
+            14, 300, 50, 1400, 50,
+            self,
+            style=True)
         self.load_dir_label.setAlignment(Qt.AlignCenter)
-
         self.load_dir_button.clicked.connect(lambda: self.open_directory(key=True))
 
         # Set used data type
@@ -309,7 +334,7 @@ class RadiomicsTab(QWidget):
 
         # Set # of used cores
         no_of_threads = ['No. of Threads:']
-        for core in range(multiprocessing.cpu_count()):
+        for core in range(cpu_count()):
             if core == 0:
                 no_of_threads.append(str(core + 1) + " thread")
             else:
@@ -325,7 +350,11 @@ class RadiomicsTab(QWidget):
             14, 30, 220, 200, 50, self,
             style="background-color: #4CAF50; color: white; border: none; border-radius: 25px;"
         )
-        self.save_dir_label = CustomLabel('', 14, 300, 220, 1400, 50, self)
+        self.save_dir_label = CustomTextField(
+            '',
+            14, 300, 220, 1400, 50,
+            self,
+            style=True)
         self.save_dir_label.setAlignment(Qt.AlignCenter)
         self.save_dir_button.clicked.connect(lambda: self.open_directory(key=False))
 
@@ -335,7 +364,7 @@ class RadiomicsTab(QWidget):
             style="color: white;"
         )
         self.dicom_structures_text_field = CustomTextField(
-            "E.g. CTV, liver...",
+            "E.g. CTV, liver... or ExtractAllMasks",
             14, 510, 300, 475, 50, self
         )
         self.dicom_structures_label.hide()

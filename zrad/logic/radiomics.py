@@ -16,8 +16,9 @@ class Radiomics:
 
     def __init__(self, load_dir, save_dir,
                  input_data_type, input_imaging_mod,
-                 intensity_range, outlier_range,
-                 bin_number, bin_size, aggr_dim, aggr_method,
+                 aggr_dim, aggr_method,
+                 intensity_range=None, outlier_range=None,
+                 number_of_bins=None, bin_size=None,
                  slice_weighting=False, slice_median=False,
                  start_folder=None, stop_folder=None, list_of_patient_folders=None,
                  structure_set=None, nifti_image=None,
@@ -26,8 +27,7 @@ class Radiomics:
         if os.path.exists(load_dir):
             self.load_dir = load_dir
         else:
-            print(f"Load directory '{load_dir}' does not exist. Aborted!")
-            return
+            raise ValueError(f"Load directory '{load_dir}' does not exist.")
 
         if os.path.exists(save_dir):
             self.save_dir = save_dir
@@ -35,21 +35,20 @@ class Radiomics:
             os.makedirs(save_dir)
             self.save_dir = save_dir
 
-        if start_folder is not None and stop_folder is not None:
+        if (start_folder is not None and stop_folder is not None
+                and isinstance(start_folder, int) and isinstance(stop_folder, int)):
             self.list_of_patient_folders = list_folders_in_defined_range(start_folder, stop_folder, self.load_dir)
         elif list_of_patient_folders is not None and list_of_patient_folders not in [[], ['']]:
             self.list_of_patient_folders = list_of_patient_folders
         elif list_of_patient_folders is None and start_folder is None and stop_folder is None:
             self.list_of_patient_folders = os.listdir(load_dir)
         else:
-            print('Incorrectly selected patient folders. Aborted!')
-            return
+            raise ValueError('Incorrectly selected patient folders.')
 
         if input_data_type in ['DICOM', 'NIFTI']:
             self.input_data_type = input_data_type
         else:
-            print(f"Wrong input data type '{input_data_type}', available types: 'DICOM', 'NIFTI'. Aborted!")
-            return
+            raise ValueError(f"Wrong input data type '{input_data_type}', available types: 'DICOM', 'NIFTI'.")
 
         if self.input_data_type == 'DICOM':
             list_to_del = set()
@@ -64,8 +63,7 @@ class Radiomics:
         if input_imaging_mod in ['CT', 'PT', 'MR']:
             self.input_imaging_mod = input_imaging_mod
         else:
-            print(f"Wrong input imaging type '{input_imaging_mod}', available types: 'CT', 'PT', 'MR'. Aborted!")
-            return
+            raise ValueError(f"Wrong input imaging type '{input_imaging_mod}', available types: 'CT', 'PT', 'MR'.")
 
         if self.input_data_type == 'NIFTI':
             if nifti_image is not None:
@@ -79,25 +77,23 @@ class Radiomics:
                 if image_exists:
                     self.nifti_image = nifti_image
             else:
-                print('Select the NIFTI image file. Aborted!')
-                return
+                raise ValueError('Select the NIFTI image file.')
 
         if isinstance(number_of_threads, (int, float)) and 0 < number_of_threads <= cpu_count():
             self.number_of_threads = number_of_threads
         else:
-            print('Number of threads is not an integer or selected nubmer is greater than maximum number of available'
-                  f'CPU. (Max available {cpu_count()} units)')
-            return
+            raise ValueError(f'Number of threads is not an integer or selected nubmer '
+                             f'is greater than maximum number of available CPU. (Max available {cpu_count()} units)')
 
         if slice_weighting and slice_median:
-            print('Only one slice median averaging is not supported with weighting strategy. Aborted!')
-            return
+            raise ValueError('Only one slice median averaging is not supported with weighting strategy.')
+
         else:
             self.slice_weighting = slice_weighting
             self.slice_median = slice_median
 
         self.calc_intensity_mask = False
-        if intensity_range != '':
+        if intensity_range is not None:
             self.calc_intensity_mask = True
             self.intensity_range = intensity_range
             self.discret_min_val = intensity_range[0]
@@ -110,26 +106,24 @@ class Radiomics:
         self.calc_discr_bin_number = False
         self.calc_discr_bin_size = False
 
-        if bin_number != '':
+        if number_of_bins is not None:
             self.calc_discr_bin_number = True
-            self.bin_number = bin_number
+            self.bin_number = number_of_bins
 
-        if bin_size != '':
+        if bin_size is not None:
             self.calc_discr_bin_size = True
             self.bin_size = bin_size
 
         if aggr_dim in ['2D', '3D']:
             self.aggr_dim = aggr_dim
         else:
-            print(f"Wrong aggregation dim {aggr_dim}. Available '2D' and '3D'. Aborted! ")
-            return
+            raise ValueError(f"Wrong aggregation dim {aggr_dim}. Available '2D' and '3D'.")
 
         if aggr_method in ['MERG', 'AVER', 'SLICE_MERG', 'DIR_MERG']:
             self.aggr_method = aggr_method
         else:
-            print(f"Wrong aggregation dim {aggr_method}. Available 'MERG', 'AVER', 'SLICE_MERG', and 'DIR_MERG'. "
-                  f"Aborted! ")
-            return
+            raise ValueError(f"Wrong aggregation dim {aggr_method}. "
+                             "Available 'MERG', 'AVER', 'SLICE_MERG', and 'DIR_MERG'.")
 
         if structure_set is not None:
             self.structure_set = structure_set
@@ -198,7 +192,7 @@ class Radiomics:
         with Pool(self.number_of_threads) as pool:
             pool.map(self._load_patient, sorted(self.list_of_patient_folders))
 
-        print('COMPLETED!')
+        print('Completed!')
 
     def _load_patient(self, patient_number):
         self.patient_number = str(patient_number)

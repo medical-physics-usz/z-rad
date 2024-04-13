@@ -9,9 +9,6 @@ from .toolbox_logic import Image, extract_nifti_image, extract_nifti_mask, list_
     extract_dicom, check_dicom_spacing
 
 
-# from joblib import Parallel, delayed, cpu_count
-
-
 class Preprocessing:
 
     def __init__(self, load_dir, save_dir,
@@ -28,8 +25,7 @@ class Preprocessing:
         if os.path.exists(load_dir):
             self.load_dir = load_dir
         else:
-            print(f"Load directory '{load_dir}' does not exist. Aborted!")
-            return
+            raise ValueError(f"Load directory '{load_dir}' does not exist.")
 
         if os.path.exists(save_dir):
             self.save_dir = save_dir
@@ -37,27 +33,25 @@ class Preprocessing:
             os.makedirs(save_dir)
             self.save_dir = save_dir
 
-        if start_folder is not None and stop_folder is not None:
+        if (start_folder is not None and stop_folder is not None
+                and isinstance(start_folder, int) and isinstance(stop_folder, int)):
             self.list_of_patient_folders = list_folders_in_defined_range(start_folder, stop_folder, self.load_dir)
         elif list_of_patient_folders is not None and list_of_patient_folders not in [[], ['']]:
             self.list_of_patient_folders = list_of_patient_folders
         elif list_of_patient_folders is None and start_folder is None and stop_folder is None:
             self.list_of_patient_folders = os.listdir(load_dir)
         else:
-            print('Incorrectly selected patient folders. Aborted!')
-            return
+            raise ValueError('Incorrectly selected patient folders.')
 
         if input_data_type in ['DICOM', 'NIFTI']:
             self.input_data_type = input_data_type
         else:
-            print(f"Wrong input data type '{input_data_type}', available types: 'DICOM', 'NIFTI'. Aborted!")
-            return
+            raise ValueError(f"Wrong input data type '{input_data_type}', available types: 'DICOM', 'NIFTI'.")
 
         if input_imaging_mod in ['CT', 'PT', 'MR']:
             self.input_imaging_mod = input_imaging_mod
         else:
-            print(f"Wrong input imaging type '{input_imaging_mod}', available types: 'CT', 'PT', 'MR'. Aborted!")
-            return
+            raise ValueError(f"Wrong input imaging type '{input_imaging_mod}', available types: 'CT', 'PT', 'MR'.")
 
         if self.input_data_type == 'DICOM':
             list_to_del = set()
@@ -81,8 +75,7 @@ class Preprocessing:
                 if image_exists:
                     self.nifti_image = nifti_image
             else:
-                print('Select the NIFTI image file. Aborted!')
-                return
+                raise ValueError('Select the NIFTI image file.')
 
         if (mask_interpolation_method in ['NN', 'Linear', 'BSpline', 'Gaussian']
                 and image_interpolation_method in ['NN', 'Linear', 'BSpline', 'Gaussian']):
@@ -94,20 +87,18 @@ class Preprocessing:
                 if isinstance(mask_interpolation_threshold, (int, float)) and 0 <= mask_interpolation_threshold <= 1:
                     self.mask_threshold = float(mask_interpolation_threshold)
                 else:
-                    print(f"Selected threshold '{mask_interpolation_threshold} not in range'"
+                    raise ValueError(f"Selected threshold '{mask_interpolation_threshold} not in range'"
                           f'[0,1] or not float/integer data type')
         else:
-            print(f"Wrong mask and/or image interpolation method "
-                  f"(mask: {mask_interpolation_threshold}, image {image_interpolation_method}), "
-                  "available methods: 'NN', 'Linear', 'BSpline', 'Gaussian'")
-            return
+            raise ValueError(
+                f"Wrong mask and/or image interpolation method (mask: {mask_interpolation_threshold}, "
+                f"image {image_interpolation_method}), available methods: 'NN', 'Linear', 'BSpline', 'Gaussian'")
 
         if isinstance(number_of_threads, (int, float)) and 0 < number_of_threads <= cpu_count():
             self.number_of_threads = number_of_threads
         else:
-            print('Number of threads is not an integer or selected number is greater than maximum number of available'
-                  f'CPU. (Max available {cpu_count()} units)')
-            return
+            raise ValueError(f'Provided number of threads: {number_of_threads}, is not an integer or selected number '
+                             f'is greater than maximum number of available CPU. (Max available {cpu_count()} units)')
 
         if structure_set is not None:
             self.structure_set = structure_set
@@ -117,14 +108,12 @@ class Preprocessing:
         if type(resample_resolution) in [float, int] and resample_resolution > 0:
             self.resample_resolution = resample_resolution
         else:
-            print(f'Resample resolution {resample_resolution} is not int/float or non-positive. Aborted!')
-            return
+            raise ValueError(f'Resample resolution {resample_resolution} is not int/float or non-positive.')
 
         if resample_dimension in ['3D', '2D']:
             self.resample_dimension = resample_dimension
         else:
-            print(f"Resample dimension '{resample_dimension}' is not '2D' or '3D'. Aborted!")
-            return
+            raise ValueError(f"Resample dimension '{resample_dimension}' is not '2D' or '3D'.")
 
         self.just_save_as_nifti = just_save_as_nifti
         self.patient_folder = None

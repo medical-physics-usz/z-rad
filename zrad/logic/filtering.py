@@ -12,25 +12,23 @@ from .toolbox_logic import extract_nifti_image, Image, list_folders_in_defined_r
 
 class Mean:
     def __init__(self, padding_type, support, dimensionality):
+        self.filter_type = 'Mean'
 
         if dimensionality in ['2D', '3D']:
             self.dimensionality = dimensionality
         else:
-            print(f"Wrong dimensionality '{dimensionality}'. Available dimensions '2D' and '3D'. Aborted!")
-            return
+            raise ValueError(f"Wrong dimensionality '{dimensionality}'. Available dimensions '2D' and '3D'.")
 
         if isinstance(support, int):
             self.support = support
         else:
-            print(f"Support should be int but '{type(support)}' detected. Aborted!")
-            return
+            raise ValueError(f"Support should be int but '{type(support)}' detected.")
 
         if padding_type in ['constant', 'nearest', 'wrap', 'reflect']:
             self.padding_type = padding_type
         else:
-            print(f"Wrong padding type '{padding_type}'. Available padding types are: 'constant', 'nearest', "
-                  f"'wrap', and 'reflect'. Aborted!")
-            return
+            raise ValueError(f"Wrong padding type '{padding_type}'. "
+                             "Available padding types are: 'constant', 'nearest', 'wrap', and 'reflect'.")
 
     def implement(self, img):
         if self.dimensionality == "2D":
@@ -52,30 +50,28 @@ class LoG:
     """LoG"""
 
     def __init__(self, padding_type, sigma_mm, cutoff, dimensionality, res_mm=1.0):
+        self.filter_type = 'Laplacian of Gaussian'
 
         if dimensionality in ['2D', '3D']:
             self.dimensionality = dimensionality
         else:
-            print(f"Wrong dimensionality '{dimensionality}'. Available dimensions '2D' and '3D'. Aborted!")
-            return
+            raise ValueError(f"Wrong dimensionality '{dimensionality}'. Available dimensions '2D' and '3D'.")
 
         if padding_type in ['constant', 'nearest', 'wrap', 'reflect']:
             self.padding_type = padding_type
         else:
-            print(f"Wrong padding type '{padding_type}'. "
-                  f"Available padding types are: 'constant', 'nearest', 'wrap', and 'reflect'. Aborted!")
-            return
+            raise ValueError(f"Wrong padding type '{padding_type}'. "
+                  f"Available padding types are: 'constant', 'nearest', 'wrap', and 'reflect'.")
+
         if isinstance(sigma_mm, (int, float)):
             self.sigma_mm = sigma_mm
         else:
-            print(f'Sigma (in mm) should be int or float but {type(sigma_mm)} detected.')
-            return
+            raise ValueError(f'Sigma (in mm) should be int or float but {type(sigma_mm)} detected.')
 
         if isinstance(cutoff, (int, float)):
             self.cutoff = cutoff
         else:
-            print(f'Cutoff should be int or float but {type(cutoff)} detected.')
-            return
+            raise ValueError(f'Cutoff should be int or float but {type(cutoff)} detected.')
 
         self.padding_constant = 0.0
         self.res_mm = res_mm
@@ -99,40 +95,36 @@ class Wavelets2D:
     """Wavelet filtering in 2D."""
 
     def __init__(self, wavelet_type, padding_type, response_map, decomposition_level, rotation_invariance=False):
+        self.filter_type = 'Wavelets'
 
         if padding_type in ['constant', 'nearest', 'wrap', 'reflect']:
             self.padding_type = padding_type
         else:
-            print(f"Wrong padding type '{padding_type}'. "
-                  f"Available padding types are: 'constant', 'nearest', 'wrap', and 'reflect'. Aborted!")
-            return
+            raise ValueError(f"Wrong padding type '{padding_type}'. "
+                  f"Available padding types are: 'constant', 'nearest', 'wrap', and 'reflect'.")
 
         if wavelet_type in ['db3', 'db2', 'coif1', 'haar']:
             self.wavelet_type = wavelet_type
         else:
-            print(f"Wrong wavelet type '{wavelet_type}'. "
-                  f"Available wavelet types are: 'db3', 'db2', 'coif1', 'haar'. Aborted!")
-            return
+            raise ValueError(f"Wrong wavelet type '{wavelet_type}'. "
+                  f"Available wavelet types are: 'db3', 'db2', 'coif1', 'haar'.")
 
         if decomposition_level in [1, 2]:
             self.decomposition_level = decomposition_level
         else:
-            print(f"Wrong decomposition_level' {decomposition_level}'. Decomposition level should be integer. "
-                  f"Available decomposition levels are: 1 and 2. Aborted!")
-            return
+            raise ValueError(f"Wrong decomposition_level' {decomposition_level}'. Decomposition level should be integer. "
+                  f"Available decomposition levels are: 1 and 2.")
 
         if response_map in ['LL', 'HL', 'LH', 'HH']:
             self.response_map = response_map
         else:
-            print(f"Wrong response_map' {response_map}'. "
-                  f"Available response_maps are: 'LL', 'HL', 'LH', 'HH'. Aborted!")
-            return
+            raise ValueError(f"Wrong response_map' {response_map}'. "
+                             f"Available response_maps are: 'LL', 'HL', 'LH', 'HH'.")
 
         if isinstance(rotation_invariance, bool):
             self.rotation_invariance = rotation_invariance
         else:
-            print(f"Rotation Invariance should be True or False but '{type(rotation_invariance)}' detected. Aborted!")
-            return
+            raise ValueError(f"Rotation Invariance should be True or False but '{type(rotation_invariance)}' detected.")
 
     def _get_kernel(self, response, decomposition_level=1):
         if response == "L":
@@ -187,40 +179,36 @@ class Wavelets3D:
     """Wavelet filtering."""
 
     def __init__(self, wavelet_type, padding_type, response_map, decomposition_level, rotation_invariance=False):
+        self.filter_type = 'Wavelets'
 
         if padding_type in ['constant', 'nearest', 'wrap', 'reflect']:
             self.padding_type = padding_type
         else:
-            print(f"Wrong padding type '{padding_type}'. "
-                  f"Available padding types are: 'constant', 'nearest', 'wrap', and 'reflect'. Aborted!")
-            return
+            raise ValueError(f"Wrong padding type '{padding_type}'. "
+                  f"Available padding types are: 'constant', 'nearest', 'wrap', and 'reflect'.")
 
         if wavelet_type in ['db3', 'db2', 'coif1', 'haar']:
             self.wavelet_type = wavelet_type
         else:
-            print(f"Wrong wavelet type '{wavelet_type}'. "
-                  f"Available wavelet types are: 'db3', 'db2', 'coif1', 'haar'. Aborted!")
-            return
+            raise ValueError(f"Wrong wavelet type '{wavelet_type}'. "
+                  "Available wavelet types are: 'db3', 'db2', 'coif1', 'haar'.")
 
         if decomposition_level in [1, 2]:
             self.decomposition_level = decomposition_level
         else:
-            print(f"Wrong decomposition_level' {decomposition_level}'. Decomposition level should be integer. "
-                  f"Available decomposition levels are: 1 and 2. Aborted!")
-            return
+            raise ValueError(f"Wrong decomposition_level' {decomposition_level}'. "
+                             "Decomposition level should be integer. Available decomposition levels are: 1 and 2.")
 
         if response_map in ['LLL', 'LLH', 'LHL', 'HLL', 'LHH', 'HHL', 'HLH', 'HHH']:
             self.response_map = response_map
         else:
-            print(f"Wrong response_map' {response_map}'. "
-                  f"Available response_maps are: 'LLL', 'LLH', 'LHL', 'HLL', 'LHH', 'HHL', 'HLH', 'HHH'. Aborted!")
-            return
+            raise ValueError(f"Wrong response_map' {response_map}'. "
+                  "Available response_maps are: 'LLL', 'LLH', 'LHL', 'HLL', 'LHH', 'HHL', 'HLH', 'HHH'.")
 
         if isinstance(rotation_invariance, bool):
             self.rotation_invariance = rotation_invariance
         else:
-            print(f"Rotation Invariance should be True or False but '{type(rotation_invariance)}' detected. Aborted!")
-            return
+            raise ValueError(f"Rotation Invariance should be True or False but '{type(rotation_invariance)}' detected.")
 
         self.pooling = None
 
@@ -309,37 +297,33 @@ class Laws:
 
     def __init__(self, response_map, padding_type, distance, energy_map, dimensionality,
                  rotation_invariance=False, pooling=None):
+        self.filter_type = 'Laws Kernels'
 
         if dimensionality in ['2D', '3D']:
             self.dimensionality = dimensionality
         else:
-            print(f"Wrong dimensionality '{dimensionality}'. Available dimensions '2D' and '3D'. Aborted!")
-            return
+            raise ValueError(f"Wrong dimensionality '{dimensionality}'. Available dimensions '2D' and '3D'.")
 
         if padding_type in ['constant', 'nearest', 'wrap', 'reflect']:
             self.padding_type = padding_type
         else:
-            print(f"Wrong padding type '{padding_type}'. "
-                  f"Available padding types are: 'constant', 'nearest', 'wrap', and 'reflect'. Aborted!")
-            return
+            raise ValueError(f"Wrong padding type '{padding_type}'. "
+                  "Available padding types are: 'constant', 'nearest', 'wrap', and 'reflect'.")
 
         if isinstance(distance, int):
             self.distance = distance
         else:
-            print(f"Distance should be 'int' but '{type(distance)}' detected. Aborted!")
-            return
+            raise ValueError(f"Distance should be 'int' but '{type(distance)}' detected.")
 
         if isinstance(energy_map, bool):
             self.energy_map = energy_map
         else:
-            print('Energy map can be only True or False.')
-            return
+            raise ValueError('Energy map can be only True or False.')
 
         if isinstance(rotation_invariance, bool):
             self.rotation_invariance = rotation_invariance
         else:
-            print(f"Rotation Invariance should be True or False but '{type(rotation_invariance)}' detected. Aborted!")
-            return
+            raise ValueError(f"Rotation Invariance should be True or False but '{type(rotation_invariance)}' detected.")
 
         self.response_map = response_map
         self.pooling = pooling
@@ -448,7 +432,8 @@ class Laws:
 class Filtering:
 
     def __init__(self, load_dir, save_dir,
-                 input_data_type, input_imaging_mod, filter_type, my_filter,
+                 input_data_type, input_imaging_mod,
+                 my_filter,
                  start_folder=None, stop_folder=None, list_of_patient_folders=None,
                  nifti_image=None,
                  number_of_threads=1):
@@ -456,8 +441,7 @@ class Filtering:
         if os.path.exists(load_dir):
             self.load_dir = load_dir
         else:
-            print(f"Load directory '{load_dir}' does not exist. Aborted!")
-            return
+            raise ValueError(f"Load directory '{load_dir}' does not exist.")
 
         if os.path.exists(save_dir):
             self.save_dir = save_dir
@@ -465,21 +449,20 @@ class Filtering:
             os.makedirs(save_dir)
             self.save_dir = save_dir
 
-        if start_folder is not None and stop_folder is not None:
+        if (start_folder is not None and stop_folder is not None
+                and isinstance(start_folder, int) and isinstance(stop_folder, int)):
             self.list_of_patient_folders = list_folders_in_defined_range(start_folder, stop_folder, self.load_dir)
         elif list_of_patient_folders is not None and list_of_patient_folders not in [[], ['']]:
             self.list_of_patient_folders = list_of_patient_folders
         elif list_of_patient_folders is None and start_folder is None and stop_folder is None:
             self.list_of_patient_folders = os.listdir(load_dir)
         else:
-            print('Incorrectly selected patient folders. Aborted!')
-            return
+            raise ValueError('Incorrectly selected patient folders.')
 
         if input_data_type in ['DICOM', 'NIFTI']:
             self.input_data_type = input_data_type
         else:
-            print("Wrong input data types, available types: 'DICOM', 'NIFTI'. Aborted!")
-            return
+            raise ValueError("Wrong input data types, available types: 'DICOM', 'NIFTI'.")
 
         if self.input_data_type == 'DICOM':
             list_to_del = set()
@@ -494,9 +477,8 @@ class Filtering:
         if isinstance(number_of_threads, int) and 0 < number_of_threads <= cpu_count():
             self.number_of_threads = number_of_threads
         else:
-            print('Number of threads is not an integer or selected number is greater than maximum number of available '
-                  'CPU. (Max available {} units). Aborted!'.format(str(cpu_count())))
-            return
+            raise ValueError('Number of threads is not an integer or selected number is greater '
+                             f'than maximum number of available СPU. (Max available {cpu_count()} units).')
 
         if self.input_data_type == 'NIFTI':
             if nifti_image is not None:
@@ -510,23 +492,18 @@ class Filtering:
                 if image_exists:
                     self.nifti_image = nifti_image
             else:
-                print('Select the NIFTI image file')
-                return
+                raise ValueError('Select the NIFTI image file')
 
         if input_imaging_mod in ['CT', 'PT', 'MR']:
             self.input_imaging_mod = input_imaging_mod
         else:
-            print("Wrong input imaging type, available types: 'CT', 'PT', 'MR'. Aborted!")
-            return
+            raise ValueError("Wrong input imaging type, available types: 'CT', 'PT', 'MR'.")
 
-        self.filter_type = filter_type
-
-        if filter_type in ['Mean', 'Laplacian of Gaussian', 'Laws Kernels', 'Wavelets']:
-            self.filter_type = filter_type
+        if my_filter.filter_type in ['Mean', 'Laplacian of Gaussian', 'Laws Kernels', 'Wavelets']:
+            self.filter_type = my_filter.filter_type
         else:
-            print(f"Wrong filter_type: {filter_type}, available types: 'Mean', 'Laplacian of Gaussian', 'Laws Kernels',"
-                  f" and 'Wavelets'. Aborted!")
-            return
+            raise ValueError(f"Wrong filter_type: {my_filter.filter_type}, available types: "
+                             "'Mean', 'Laplacian of Gaussian', 'Laws Kernels', and 'Wavelets'.")
 
         self.filter = my_filter
 
@@ -537,7 +514,7 @@ class Filtering:
         with Pool(self.number_of_threads) as pool:
             pool.map(self._load_patient, sorted(self.list_of_patient_folders))
 
-        print('COMPLETED!')
+        print('Completed!')
 
     def _load_patient(self, patient_number):
         print(f'Current patient: {patient_number}')

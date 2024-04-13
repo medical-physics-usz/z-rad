@@ -195,6 +195,10 @@ def extract_dicom(dicom_dir, rtstract, modality, rtstruct_file='', selected_stru
         injection_time_str = ds.RadiopharmaceuticalInformationSequence[0].RadiopharmaceuticalStartTime
         if ds.DecayCorrection == 'START':
             acquisition_time_str = ds.SeriesTime
+        elif ds.DecayCorrection == 'ADMIN':
+            acquisition_time_str = injection_time_str
+        else:
+            raise ValueError(f'Supported Decay Corrections: "START" and "ADMIN", but {ds.DecayCorrection} was provided')
 
         injection_time = parse_time(injection_time_str)
         acquisition_time = parse_time(acquisition_time_str)

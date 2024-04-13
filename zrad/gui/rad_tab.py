@@ -118,13 +118,13 @@ class RadiomicsTab(QWidget):
                 CustomWarningBox("Enter Confidence Interval").response()
                 return
             outlier_range = float(self.outlier_detection_text_field.text())
-        bin_number = ''
+        number_of_bins = ''
         bin_size = ''
         if self.discretization_combo_box.currentText() == 'Number of Bins':
             if self.bin_number_text_field.text() == '':
                 CustomWarningBox("Enter Number of Bins").response()
                 return
-            bin_number = int(self.bin_number_text_field.text())
+            number_of_bins = int(self.bin_number_text_field.text())
 
         if self.discretization_combo_box.currentText() == 'Bin Size':
             if self.bin_size_text_field.text() == '':
@@ -179,9 +179,10 @@ class RadiomicsTab(QWidget):
 
         rad_instance = Radiomics(load_dir, save_dir,
                                  input_data_type, input_imaging_mod,
+                                 aggr_dim, aggr_method,
                                  intensity_range, outlier_range,
-                                 bin_number, bin_size, aggr_dim,
-                                 aggr_method, slice_weighting, slice_median,
+                                 number_of_bins, bin_size,
+                                 slice_weighting, slice_median,
                                  start_folder, stop_folder, list_of_patient_folders,
                                  structure_set, nifti_image,
                                  number_of_threads)

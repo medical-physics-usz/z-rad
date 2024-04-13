@@ -225,7 +225,6 @@ class FilteringTab(QWidget):
                                   save_dir,
                                   input_data_type,
                                   input_imaging_mod,
-                                  filter_type,
                                   my_filter,
                                   start_folder,
                                   stop_folder,

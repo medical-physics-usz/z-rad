@@ -546,21 +546,21 @@ class FilteringTab(QWidget):
         )
         self.wavelet_filter_response_map_combo_box.hide()
         self.wavelet_filter_response_map_2d_combo_box = CustomBox(
-            14, 670, 380, 150, 50, self,
+            14, 645, 380, 150, 50, self,
             item_list=[
                 'Response Map:', 'LL', 'HL', 'LH', 'HH'
             ]
         )
         self.wavelet_filter_response_map_2d_combo_box.hide()
         self.wavelet_filter_response_map_3d_combo_box = CustomBox(
-            14, 670, 380, 150, 50, self,
+            14, 645, 380, 150, 50, self,
             item_list=['Response Map:', 'LLL', 'LLH', 'LHL', 'HLL', 'LHH', 'HHL', "HLH", "HHH"
                        ]
         )
         self.wavelet_filter_response_map_3d_combo_box.hide()
 
         self.wavelet_filter_response_map_3d_combo_box = CustomBox(
-            14, 670, 380, 150, 50, self,
+            14, 645, 380, 150, 50, self,
             item_list=[
                  'Response Map:', 'LLL', 'LLH', 'LHL', 'HLL', 'LHH', 'HHL', "HLH", "HHH"
              ]

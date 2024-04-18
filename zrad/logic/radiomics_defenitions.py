@@ -48,18 +48,17 @@ class MorphologicalFeatures:
         self.vol_density_aabb = None  # 3.1.17
         self.area_density_aabb = None  # 3.1.18
         # -------------------------------------
-        # 3.1.19 and 3.1.20 do not exist
+        # 3.1.19 and 3.1.20 no cross-center validation
         # ------------AEE-----------------------
         self.vol_density_aee = None  # 3.1.21
         self.area_density_aee = None  # 3.1.22
         # -----------------------------------
-        # 3.1.23 and 3.1.24 do not exist
+        # 3.1.23 and 3.1.24 no cross-center validation
         # --------convex hull based-------------
         self.vol_density_ch = None  # 3.1.25
         self.area_density_ch = None  # 3.1.26
         # --------------------------------------
         self.integrated_intensity = None  # 3.1.27
-        # 3.1.27 and 3.1.28 do not make sense
 
     def calc_mesh(self):
         self.mesh_verts, self.mesh_faces, self.mesh_normals, self.mesh_values = measure.marching_cubes(self.array_mask,

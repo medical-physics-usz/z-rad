@@ -115,7 +115,8 @@ class FilteringTab(QWidget):
         if filter_type == 'Mean' and not self.mean_filter_support_text_field.text().strip():
             CustomWarningBox("Enter Support!").response()
             return
-        mean_filter_support = int(self.mean_filter_support_text_field.text().strip())
+        if filter_type == 'Mean':
+            mean_filter_support = int(self.mean_filter_support_text_field.text().strip())
 
         if filter_type == 'Laplacian of Gaussian':
             if not self.log_filter_sigma_text_field.text().strip():

@@ -189,11 +189,11 @@ class Radiomics:
         ]
 
     def extract_radiomics(self):
-
+        print('Radiomics Calculation Started')
         with Pool(self.number_of_threads) as pool:
             pool.map(self._load_patient, sorted(self.list_of_patient_folders))
 
-        print('Completed!')
+        print('Radiomics Calculation Completed!')
 
     def _load_patient(self, patient_number):
         self.patient_number = str(patient_number)

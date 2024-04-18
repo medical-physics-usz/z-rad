@@ -120,10 +120,11 @@ class Preprocessing:
         self.patient_number = None
 
     def resample(self):
+        print('Resampling Started')
         with Pool(self.number_of_threads) as pool:
             pool.map(self._load_patient, sorted(self.list_of_patient_folders))
 
-        print('Completed!')
+        print('Resampling Completed!')
 
     def _load_patient(self, patient_number):
         print(f'Current patient: {patient_number}')

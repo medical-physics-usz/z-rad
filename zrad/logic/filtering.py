@@ -49,7 +49,7 @@ class Mean:
 class LoG:
     """LoG"""
 
-    def __init__(self, padding_type, sigma_mm, cutoff, dimensionality, res_mm=1.0):
+    def __init__(self, padding_type, sigma_mm, cutoff, dimensionality):
         self.filter_type = 'Laplacian of Gaussian'
 
         if dimensionality in ['2D', '3D']:
@@ -74,7 +74,7 @@ class LoG:
             raise ValueError(f'Cutoff should be int or float but {type(cutoff)} detected.')
 
         self.padding_constant = 0.0
-        self.res_mm = res_mm
+        self.res_mm = None
 
     def implement(self, img):
         sigma = self.sigma_mm / self.res_mm
@@ -97,6 +97,8 @@ class Wavelets2D:
     def __init__(self, wavelet_type, padding_type, response_map, decomposition_level, rotation_invariance=False):
         self.filter_type = 'Wavelets'
 
+        self.dimensionality = '2D'
+
         if padding_type in ['constant', 'nearest', 'wrap', 'reflect']:
             self.padding_type = padding_type
         else:
@@ -112,8 +114,8 @@ class Wavelets2D:
         if decomposition_level in [1, 2]:
             self.decomposition_level = decomposition_level
         else:
-            raise ValueError(f"Wrong decomposition_level' {decomposition_level}'. Decomposition level should be integer. "
-                  f"Available decomposition levels are: 1 and 2.")
+            raise ValueError(f"Wrong decomposition_level' {decomposition_level}'. "
+                             "Decomposition level should be integer. Available decomposition levels are: 1 and 2.")
 
         if response_map in ['LL', 'HL', 'LH', 'HH']:
             self.response_map = response_map
@@ -180,6 +182,8 @@ class Wavelets3D:
 
     def __init__(self, wavelet_type, padding_type, response_map, decomposition_level, rotation_invariance=False):
         self.filter_type = 'Wavelets'
+
+        self.dimensionality = '3D'
 
         if padding_type in ['constant', 'nearest', 'wrap', 'reflect']:
             self.padding_type = padding_type
@@ -449,8 +453,7 @@ class Filtering:
             os.makedirs(save_dir)
             self.save_dir = save_dir
 
-        if (start_folder is not None and stop_folder is not None
-                and isinstance(start_folder, int) and isinstance(stop_folder, int)):
+        if start_folder is not None and stop_folder is not None:
             self.list_of_patient_folders = list_folders_in_defined_range(start_folder, stop_folder, self.load_dir)
         elif list_of_patient_folders is not None and list_of_patient_folders not in [[], ['']]:
             self.list_of_patient_folders = list_of_patient_folders
@@ -464,15 +467,16 @@ class Filtering:
         else:
             raise ValueError("Wrong input data types, available types: 'DICOM', 'NIFTI'.")
 
-        if self.input_data_type == 'DICOM':
-            list_to_del = set()
+        if self.input_data_type == 'DICOM' and my_filter.dimensionality == '3D':
+            list_pat_id_to_del = []
             for pat_index, pat_path in enumerate(self.list_of_patient_folders):
                 pat_folder_path = os.path.join(load_dir, pat_path)
                 if check_dicom_spacing(os.path.join(pat_folder_path)):
-                    list_to_del.add(pat_index)
-            for index_to_del in list_to_del:
-                print(f'Patient {index_to_del} is excluded from the analysis due to the inconsistent z-spacing.')
-                del self.list_of_patient_folders[index_to_del]
+                    list_pat_id_to_del.append(pat_path)
+            for pat_to_del in np.unique(list_pat_id_to_del):
+                print(f'Patient {pat_to_del} is excluded from the analysis'
+                      ' due to the inconsistent z-spacing. Absolute deviation is more than 0.001 mm.')
+                self.list_of_patient_folders.remove(pat_to_del)
 
         if isinstance(number_of_threads, int) and 0 < number_of_threads <= cpu_count():
             self.number_of_threads = number_of_threads

@@ -77,8 +77,7 @@ class PreprocessingTab(QWidget):
             stop_folder = self.stop_folder_text_field.text().strip()
 
         if self.list_of_patient_folders_text_field.text() != '':
-            list_of_patient_folders = [
-                int(pat) for pat in str(self.list_of_patient_folders_text_field.text()).split(",")]
+            list_of_patient_folders = [pat for pat in str(self.list_of_patient_folders_text_field.text()).split(",")]
         else:
             list_of_patient_folders = None
 
@@ -92,10 +91,10 @@ class PreprocessingTab(QWidget):
         dicom_structures = [ROI.strip() for ROI in self.dicom_structures_text_field.text().split(",")]
         nifti_structures = [ROI.strip() for ROI in self.nifti_structures_text_field.text().split(",")]
 
-        structure_set = []
-        if input_data_type == 'DICOM':
+        structure_set = None
+        if input_data_type == 'DICOM' and len(dicom_structures)>0:
             structure_set = dicom_structures
-        elif input_data_type == 'NIFTI':
+        elif input_data_type == 'NIFTI' and len(nifti_structures)>0:
             structure_set = nifti_structures
 
         if self.just_save_as_nifti_check_box.isChecked():

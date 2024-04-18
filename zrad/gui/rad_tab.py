@@ -88,8 +88,7 @@ class RadiomicsTab(QWidget):
             stop_folder = self.stop_folder_text_field.text().strip()
 
         if self.list_of_patient_folders_text_field.text() != '':
-            list_of_patient_folders = [
-                int(pat) for pat in str(self.list_of_patient_folders_text_field.text()).split(",")]
+            list_of_patient_folders = [pat for pat in str(self.list_of_patient_folders_text_field.text()).split(",")]
         else:
             list_of_patient_folders = None
 
@@ -97,6 +96,7 @@ class RadiomicsTab(QWidget):
         input_data_type = self.input_data_type_combo_box.currentText()
         dicom_structures = [ROI.strip() for ROI in self.dicom_structures_text_field.text().split(",")]
 
+        nifti_image = None
         if (not self.nifti_image_text_field.text().strip()
                 and self.input_data_type_combo_box.currentText() == 'NIFTI'):
             CustomWarningBox("Enter NIFTI image").response()
@@ -105,21 +105,21 @@ class RadiomicsTab(QWidget):
 
         # Collect values from GUI elements
         nifti_structures = [ROI.strip() for ROI in self.nifti_structure_text_field.text().split(",")]
-        intensity_range = ''
+        intensity_range = None
         if self.intensity_range_check_box.isChecked():
             if self.intensity_range_text_field.text() == '':
                 CustomWarningBox("Enter intensity range").response()
                 return
             intensity_range = [np.inf if intensity.strip() == '' else float(intensity)
                                for intensity in self.intensity_range_text_field.text().split(',')]
-        outlier_range = ''
+        outlier_range = None
         if self.outlier_detection_check_box.isChecked():
             if self.outlier_detection_text_field.text() == '':
                 CustomWarningBox("Enter Confidence Interval").response()
                 return
             outlier_range = float(self.outlier_detection_text_field.text())
-        number_of_bins = ''
-        bin_size = ''
+        number_of_bins = None
+        bin_size = None
         if self.discretization_combo_box.currentText() == 'Number of Bins':
             if self.bin_number_text_field.text() == '':
                 CustomWarningBox("Enter Number of Bins").response()
@@ -137,8 +137,8 @@ class RadiomicsTab(QWidget):
         elif input_data_type == 'NIFTI':
             structure_set = nifti_structures
 
-        slice_weighting = None
-        slice_median = None
+        slice_weighting = False
+        slice_median = False
         if (self.aggr_dim_and_method_combo_box.currentText().split(',')[0] == '2D'
                 and self.weighting_combo_box.currentText() == 'Slice Averaging:'):
             CustomWarningBox("Select Slice Averaging:!").response()
@@ -179,12 +179,13 @@ class RadiomicsTab(QWidget):
 
         rad_instance = Radiomics(load_dir, save_dir,
                                  input_data_type, input_imaging_mod,
+                                 structure_set,
                                  aggr_dim, aggr_method,
                                  intensity_range, outlier_range,
                                  number_of_bins, bin_size,
                                  slice_weighting, slice_median,
                                  start_folder, stop_folder, list_of_patient_folders,
-                                 structure_set, nifti_image,
+                                 nifti_image,
                                  number_of_threads)
 
         rad_instance.extract_radiomics()
@@ -422,7 +423,7 @@ class RadiomicsTab(QWidget):
             style="color: white;"
         )
         self.intensity_range_text_field = CustomTextField(
-            "E.g. 50, inf",
+            "E.g. -1000, 400",
             14, 820, 375, 210, 50, self
         )
 

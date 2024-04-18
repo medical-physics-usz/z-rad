@@ -102,7 +102,29 @@ def extract_dicom(dicom_dir, rtstract, modality, rtstruct_file='', selected_stru
 
         return mask_array
 
-    def process_rt_struct(file_path, skip_contours=False):
+    def process_rt_struct(file_path, selected_structures, skip_contours=False):
+
+        def get_contour_coord(metadata, current_roi_sequence, skip_contours_bool=False):
+            contour_info = {
+                'name': getattr(metadata[current_roi_sequence.ReferencedROINumber], 'ROIName', 'unknown'),
+                'roi_number': current_roi_sequence.ReferencedROINumber,
+                'referenced_frame': getattr(metadata[current_roi_sequence.ReferencedROINumber],
+                                            'ReferencedFrameOfReferenceUID', 'unknown'),
+                'display_color': getattr(current_roi_sequence, 'ROIDisplayColor', [])
+            }
+
+            if not skip_contours_bool and hasattr(current_roi_sequence, 'ContourSequence'):
+                contour_info['sequence'] = [{
+                    'type': getattr(contour, 'ContourGeometricType', 'unknown'),
+                    'points': {
+                        'x': [contour.ContourData[i] for i in range(0, len(contour.ContourData), 3)],
+                        'y': [contour.ContourData[i + 1] for i in range(0, len(contour.ContourData), 3)],
+                        'z': [contour.ContourData[i + 2] for i in range(0, len(contour.ContourData), 3)]
+                    }
+                } for contour in current_roi_sequence.ContourSequence]
+
+            return contour_info
+
         dicom_data = pydicom.read_file(file_path)
         if not hasattr(dicom_data, 'StructureSetROISequence'):
             raise InvalidDicomError()
@@ -111,25 +133,13 @@ def extract_dicom(dicom_dir, rtstract, modality, rtstruct_file='', selected_stru
         metadata_map = {data.ROINumber: data for data in dicom_data.StructureSetROISequence}
 
         for roi_sequence in dicom_data.ROIContourSequence:
-            contour_info = {
-                'name': getattr(metadata_map[roi_sequence.ReferencedROINumber], 'ROIName', 'unknown'),
-                'roi_number': roi_sequence.ReferencedROINumber,
-                'referenced_frame': getattr(metadata_map[roi_sequence.ReferencedROINumber],
-                                            'ReferencedFrameOfReferenceUID', 'unknown'),
-                'display_color': getattr(roi_sequence, 'ROIDisplayColor', [])
-            }
+            if 'ExtractAllMasks' in selected_structures:
+                contours_data.append(get_contour_coord(metadata_map, roi_sequence))
 
-            if not skip_contours and hasattr(roi_sequence, 'ContourSequence'):
-                contour_info['sequence'] = [{
-                    'type': getattr(contour, 'ContourGeometricType', 'unknown'),
-                    'points': {
-                        'x': [contour.ContourData[i] for i in range(0, len(contour.ContourData), 3)],
-                        'y': [contour.ContourData[i + 1] for i in range(0, len(contour.ContourData), 3)],
-                        'z': [contour.ContourData[i + 2] for i in range(0, len(contour.ContourData), 3)]
-                    }
-                } for contour in roi_sequence.ContourSequence]
+            elif ('ExtractAllMasks' not in selected_structures
+                  and getattr(metadata_map[roi_sequence.ReferencedROINumber], 'ROIName', 'unknown') in selected_structures):
 
-            contours_data.append(contour_info)
+                contours_data.append(get_contour_coord(metadata_map, roi_sequence))
 
         return contours_data
 
@@ -149,9 +159,8 @@ def extract_dicom(dicom_dir, rtstract, modality, rtstruct_file='', selected_stru
             raise ValueError("No DICOM series found in the directory.")
         file_names = reader.GetGDCMSeriesFileNames(directory, series_ids[0])
 
-        # List all DICOM files in the directory that are not RT struct files
-        dicom_files = [f for f in os.listdir(directory) if
-                       f.endswith('.dcm') and is_not_rt_struct(os.path.join(directory, f), series_ids[0])]
+        dicom_files = [f for f in os.listdir(directory) if (os.path.splitext(f)[-1] == '' or f.endswith('.dcm')) and
+                       is_not_rt_struct(os.path.join(directory, f), series_ids[0])]
 
         # Randomly select a DICOM file from the filtered list
         slice_z_origin = []
@@ -244,7 +253,7 @@ def extract_dicom(dicom_dir, rtstract, modality, rtstruct_file='', selected_stru
         dicom_image = process_pet_dicom(dicom_dir, process_dicom_series(dicom_dir))
 
     if rtstract:
-        rt_structs = process_rt_struct(rtstruct_file)
+        rt_structs = process_rt_struct(rtstruct_file, selected_structures)
 
         masks = {}
         for rt_struct in rt_structs:
@@ -288,8 +297,8 @@ def check_dicom_spacing(directory):
         except Exception:
             return False
 
-    dicom_files = [f for f in os.listdir(directory) if
-                   f.endswith('.dcm') and is_not_rt_struct(os.path.join(directory, f))]
+    dicom_files = [f for f in os.listdir(directory) if (os.path.splitext(f)[-1] == '' or f.endswith('.dcm'))
+                   and is_not_rt_struct(os.path.join(directory, f))]
 
     slice_z_origin = []
     for dcm_file in dicom_files:

@@ -33,8 +33,7 @@ class Preprocessing:
             os.makedirs(save_dir)
             self.save_dir = save_dir
 
-        if (start_folder is not None and stop_folder is not None
-                and isinstance(start_folder, int) and isinstance(stop_folder, int)):
+        if start_folder is not None and stop_folder is not None:
             self.list_of_patient_folders = list_folders_in_defined_range(start_folder, stop_folder, self.load_dir)
         elif list_of_patient_folders is not None and list_of_patient_folders not in [[], ['']]:
             self.list_of_patient_folders = list_of_patient_folders
@@ -53,15 +52,16 @@ class Preprocessing:
         else:
             raise ValueError(f"Wrong input imaging type '{input_imaging_mod}', available types: 'CT', 'PT', 'MR'.")
 
-        if self.input_data_type == 'DICOM':
-            list_to_del = set()
+        if self.input_data_type == 'DICOM' and resample_dimension == '3D':
+            list_pat_id_to_del = []
             for pat_index, pat_path in enumerate(self.list_of_patient_folders):
                 pat_folder_path = os.path.join(load_dir, pat_path)
                 if check_dicom_spacing(os.path.join(pat_folder_path)):
-                    list_to_del.add(pat_index)
-            for index_to_del in list_to_del:
-                print(f'Patient {index_to_del} is excluded from the analysis due to the inconsistent z-spacing.')
-                del self.list_of_patient_folders[index_to_del]
+                    list_pat_id_to_del.append(pat_path)
+            for pat_to_del in np.unique(list_pat_id_to_del):
+                print(f'Patient {pat_to_del} is excluded from the analysis'
+                      ' due to the inconsistent z-spacing. Absolute deviation is more than 0.001 mm.')
+                self.list_of_patient_folders.remove(pat_to_del)
 
         if self.input_data_type == 'NIFTI':
             if nifti_image is not None:

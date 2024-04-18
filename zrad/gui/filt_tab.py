@@ -102,8 +102,7 @@ class FilteringTab(QWidget):
             stop_folder = self.stop_folder_text_field.text().strip()
 
         if self.list_of_patient_folders_text_field.text() != '':
-            list_of_patient_folders = [
-                int(pat) for pat in str(self.list_of_patient_folders_text_field.text()).split(",")]
+            list_of_patient_folders = [pat for pat in str(self.list_of_patient_folders_text_field.text()).split(",")]
         else:
             list_of_patient_folders = None
 

@@ -16,12 +16,13 @@ class Radiomics:
 
     def __init__(self, load_dir, save_dir,
                  input_data_type, input_imaging_mod,
-                 aggr_dim, aggr_method,
+                 structure_set,
+                 aggr_dim='3D', aggr_method='AVER',
                  intensity_range=None, outlier_range=None,
                  number_of_bins=None, bin_size=None,
                  slice_weighting=False, slice_median=False,
                  start_folder=None, stop_folder=None, list_of_patient_folders=None,
-                 structure_set=None, nifti_image=None,
+                 nifti_image=None,
                  number_of_threads=1):
 
         if os.path.exists(load_dir):
@@ -35,8 +36,7 @@ class Radiomics:
             os.makedirs(save_dir)
             self.save_dir = save_dir
 
-        if (start_folder is not None and stop_folder is not None
-                and isinstance(start_folder, int) and isinstance(stop_folder, int)):
+        if start_folder is not None and stop_folder is not None:
             self.list_of_patient_folders = list_folders_in_defined_range(start_folder, stop_folder, self.load_dir)
         elif list_of_patient_folders is not None and list_of_patient_folders not in [[], ['']]:
             self.list_of_patient_folders = list_of_patient_folders
@@ -50,15 +50,16 @@ class Radiomics:
         else:
             raise ValueError(f"Wrong input data type '{input_data_type}', available types: 'DICOM', 'NIFTI'.")
 
-        if self.input_data_type == 'DICOM':
-            list_to_del = set()
+        if self.input_data_type == 'DICOM' and aggr_dim == '3D':
+            list_pat_id_to_del = []
             for pat_index, pat_path in enumerate(self.list_of_patient_folders):
                 pat_folder_path = os.path.join(load_dir, pat_path)
                 if check_dicom_spacing(os.path.join(pat_folder_path)):
-                    list_to_del.add(pat_index)
-            for index_to_del in list_to_del:
-                print(f'Patient {index_to_del} is excluded from the analysis due to the inconsistent z-spacing.')
-                del self.list_of_patient_folders[index_to_del]
+                    list_pat_id_to_del.append(pat_path)
+            for pat_to_del in np.unique(list_pat_id_to_del):
+                print(f'Patient {pat_to_del} is excluded from the analysis'
+                      ' due to the inconsistent z-spacing. Absolute deviation is more than 0.001 mm.')
+                self.list_of_patient_folders.remove(pat_to_del)
 
         if input_imaging_mod in ['CT', 'PT', 'MR']:
             self.input_imaging_mod = input_imaging_mod
@@ -114,10 +115,10 @@ class Radiomics:
             self.calc_discr_bin_size = True
             self.bin_size = bin_size
 
-        if aggr_dim in ['2D', '3D']:
+        if aggr_dim in ['2D', '2.5D', '3D']:
             self.aggr_dim = aggr_dim
         else:
-            raise ValueError(f"Wrong aggregation dim {aggr_dim}. Available '2D' and '3D'.")
+            raise ValueError(f"Wrong aggregation dim {aggr_dim}. Available '2D', '2.5D', and '3D'.")
 
         if aggr_method in ['MERG', 'AVER', 'SLICE_MERG', 'DIR_MERG']:
             self.aggr_method = aggr_method
@@ -762,7 +763,7 @@ class Radiomics:
         morf_features.calc_area_density_ch()
         morf_features.calc_integrated_intensity(self.patient_intensity_mask.array)
 
-        self.mort_features = [self.patient_number + '::' + key[5:],
+        self.mort_features = [self.patient_number + '::' + key,
                               morf_features.vol_mesh,
                               morf_features.vol_count,
                               morf_features.area_mesh,

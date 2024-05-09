@@ -453,7 +453,7 @@ class PreprocessingTab(QWidget):
         self.run_button = CustomButton(
             'Run',
             20, 910, 590, 80, 50, self,
-            style=False
+            style=False, run=True
         )
         self.run_button.clicked.connect(self.run_selected_input)
 

@@ -519,7 +519,7 @@ class FilteringTab(QWidget):
         )
         self.laws_filter_pooling_combo_box = CustomBox(
             14, 1370, 380, 120, 50, self,
-            item_list=['Pooling:', 'max'])
+            item_list=['Pooling:', 'max', 'min', 'average'])
         self.laws_filter_energy_map_combo_box = CustomBox(
             14, 1515, 380, 140, 50, self,
             item_list=[
@@ -587,7 +587,7 @@ class FilteringTab(QWidget):
         self.run_button = CustomButton(
             'Run',
             20, 910, 590, 80, 50, self,
-            style=False
+            style=False, run=True
         )
         self.run_button.clicked.connect(self.run_selected_option)
 

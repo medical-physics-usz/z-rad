@@ -154,8 +154,8 @@ class Radiomics:
             'discr_intensity_based_variation_coef', 'discr_intensity_based_quartile_coef_dispersion',
             'discr_intensity_entropy', 'discr_intensity_uniformity', 'discr_max_hist_gradient',
             'discr_max_hist_gradient_intensity', 'discr_min_hist_gradient', 'discr_min_hist_gradient_intensity',
-            'vol_10%_intensity_frac', 'vol_90%_intensity_frac', 'intensity_10%_vol_frac', 'intensity_90%_vol_frac',
-            'volume_frac_diff_between_intensity_frac', 'intensity_frac_diff_between_vol_frac',
+            #'vol_10%_intensity_frac', 'vol_90%_intensity_frac', 'intensity_10%_vol_frac', 'intensity_90%_vol_frac',
+            #'volume_frac_diff_between_intensity_frac', 'intensity_frac_diff_between_vol_frac',
             'glcm_joint_max', 'glcm_joint_average', 'glcm_joint_var', 'glcm_joint_entropy', 'glcm_dif_average',
             'glcm_dif_var', 'glcm_dif_entropy', 'glcm_sum_average', 'glcm_sum_var', 'glcm_sum_entropy',
             'glcm_ang_second_moment', 'glcm_contrast', 'glcm_dissimilarity', 'glcm_inv_diff', 'glcm_norm_inv_diff',
@@ -202,7 +202,7 @@ class Radiomics:
         self.patient_mort_features_list = []
         self.patient_local_intensity_features_list = []
         self.intensity_features_list = []
-        self.intensity_volume_features_list = []
+        #self.intensity_volume_features_list = []
         self.discr_intensity_features_list = []
         self.glcm_features_list = []
         self.glrlm_features_list = []
@@ -218,7 +218,7 @@ class Radiomics:
 
         all_features_list = [self.patient_mort_features_list, self.patient_local_intensity_features_list,
                              self.intensity_features_list, self.discr_intensity_features_list,
-                             self.intensity_volume_features_list,
+                             #self.intensity_volume_features_list,
                              self.glcm_features_list,
                              self.glrlm_features_list, self.glszm_features_list,
                              self.gldzm_features_list, self.ngtdm_features_list, self.ngldm_features_list]
@@ -378,15 +378,15 @@ class Radiomics:
 
         self.intensity_features_list.append(self.intensity_based_features)
 
-        intensity_vol_hist_features = IntensityVolumeHistogramFeatures(self.patient_intensity_mask.array.T)
-        self.intensity_volume_features_list.append([
-            intensity_vol_hist_features.calc_volume_at_intensity_fraction(10),
-            intensity_vol_hist_features.calc_volume_at_intensity_fraction(90),
-            intensity_vol_hist_features.calc_intensity_at_volume_fraction(10),
-            intensity_vol_hist_features.calc_intensity_at_volume_fraction(90),
-            intensity_vol_hist_features.calc_volume_fraction_diff_intensity_fractions(),
-            intensity_vol_hist_features.calc_intensity_fraction_diff_volume_fractions()
-            ])
+        #intensity_vol_hist_features = IntensityVolumeHistogramFeatures(self.patient_intensity_mask.array.T)
+        #self.intensity_volume_features_list.append([
+        #    0,# intensity_vol_hist_features.calc_volume_at_intensity_fraction(10),
+        #    0,# intensity_vol_hist_features.calc_volume_at_intensity_fraction(90),
+        #    0,# intensity_vol_hist_features.calc_intensity_at_volume_fraction(10),
+        #    0,# intensity_vol_hist_features.calc_intensity_at_volume_fraction(90),
+        #    0,# intensity_vol_hist_features.calc_volume_fraction_diff_intensity_fractions(),
+        #    0 # intensity_vol_hist_features.calc_intensity_fraction_diff_volume_fractions()
+        #    ])
 
     def _calc_discretized_intensity_features(self):
         if self.calc_discr_bin_size:

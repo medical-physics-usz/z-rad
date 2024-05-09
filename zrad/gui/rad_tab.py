@@ -476,7 +476,8 @@ class RadiomicsTab(QWidget):
         self.weighting_combo_box.hide()
         self.aggr_dim_and_method_combo_box.currentTextChanged.connect(self.changed_aggr_dim)
 
-        self.run_button = CustomButton('Run', 20, 910, 590, 80, 50, self, style=False)
+        self.run_button = CustomButton('Run', 20,
+                                       910, 590, 80, 50, self, style=False, run=True)
         self.run_button.clicked.connect(self.run_selected_option)
 
     def on_file_type_combo_box_changed(self, text):

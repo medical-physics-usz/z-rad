@@ -137,13 +137,14 @@ def extract_dicom(dicom_dir, rtstract, modality, rtstruct_file='', selected_stru
                 contours_data.append(get_contour_coord(metadata_map, roi_sequence))
 
             elif ('ExtractAllMasks' not in selected_structures
-                  and getattr(metadata_map[roi_sequence.ReferencedROINumber], 'ROIName', 'unknown') in selected_structures):
+                  and getattr(metadata_map[roi_sequence.ReferencedROINumber], 'ROIName', 'unknown')
+                  in selected_structures):
 
                 contours_data.append(get_contour_coord(metadata_map, roi_sequence))
 
         return contours_data
 
-    def process_dicom_series(directory):
+    def process_dicom_series(directory, imaging_modality):
 
         # Function to check if a DICOM file is not an RT struct file
         def is_not_rt_struct(dicom_path, uid):
@@ -163,20 +164,40 @@ def extract_dicom(dicom_dir, rtstract, modality, rtstruct_file='', selected_stru
                        is_not_rt_struct(os.path.join(directory, f), series_ids[0])]
 
         # Randomly select a DICOM file from the filtered list
+        ct_raw_intensity = []
         slice_z_origin = []
+        HU_intercept = []
+        HU_slope = []
         for dcm_file in dicom_files:
             dicom_file_path = os.path.join(directory, dcm_file)
             dicom = pydicom.dcmread(dicom_file_path)
             if dicom.Modality in ['CT', 'PT', 'MR']:
                 pixel_spacing = dicom.PixelSpacing
                 slice_z_origin.append(float(dicom.ImagePositionPatient[2]))
+                if dicom.Modality == 'CT' and dicom.PixelRepresentation == 0:
+                    ct_raw_intensity.append(True)
+                    HU_intercept.append(float(dicom.RescaleIntercept))
+                    HU_slope.append(float(dicom.RescaleSlope))
+
         slice_z_origin = sorted(slice_z_origin)
         slice_thickness = abs(np.median([slice_z_origin[i] - slice_z_origin[i + 1]
                                          for i in range(len(slice_z_origin) - 1)]))
 
         reader.SetFileNames(file_names)
-
         image = reader.Execute()
+
+        if imaging_modality == 'CT' and np.unique(ct_raw_intensity) == [True]:
+            if len(np.unique(HU_intercept)) == 1 and len(np.unique(HU_intercept)) == 1:
+                origin = image.GetOrigin()
+                direction = image.GetDirection()
+                array = sitk.GetArrayFromImage(image) * HU_slope[0] + HU_intercept[0]
+                array = array.astype(np.float64)
+                image = sitk.GetImageFromArray(array)
+                image.SetOrigin(origin)
+                image.SetDirection(direction)
+            else:
+                print('CT with raw intensity but have different slopes and intercepts among slices')
+
         image.SetSpacing((float(pixel_spacing[0]), float(pixel_spacing[1]), float(slice_thickness)))
 
         return image
@@ -247,10 +268,10 @@ def extract_dicom(dicom_dir, rtstract, modality, rtstruct_file='', selected_stru
         return intensity_image
 
     if modality in ['CT', 'MR']:
-        dicom_image = process_dicom_series(dicom_dir)
+        dicom_image = process_dicom_series(dicom_dir, modality)
 
     elif modality == 'PT':
-        dicom_image = process_pet_dicom(dicom_dir, process_dicom_series(dicom_dir))
+        dicom_image = process_pet_dicom(dicom_dir, process_dicom_series(dicom_dir, modality))
 
     if rtstract:
         rt_structs = process_rt_struct(rtstruct_file, selected_structures)

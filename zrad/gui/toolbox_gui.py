@@ -1,15 +1,15 @@
 import os
 import sys
-import tkinter as tk
 
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont, QPixmap
+from PyQt5.QtGui import QGuiApplication
 from PyQt5.QtWidgets import QLineEdit, QLabel, QPushButton, QComboBox, QCheckBox, QMessageBox
 
+
 def adjust_fonts():
-    root = tk.Tk()
-    height = root.winfo_screenheight()
-    root.destroy()
+    screen = QGuiApplication.primaryScreen()
+    height = screen.size().height()
     font_size = int(height * 0.013)
     return font_size
 

@@ -1,12 +1,15 @@
 import os
+import sys
 from multiprocessing import Pool, cpu_count
-
+from datetime import datetime
 import SimpleITK as sitk
 import numpy as np
 import pydicom
 
 from .toolbox_logic import Image, extract_nifti_image, extract_nifti_mask, list_folders_in_defined_range, \
-    extract_dicom, check_dicom_spacing
+    extract_dicom, check_dicom_tags, get_logger, handle_uncaught_exception, close_all_loggers
+
+sys.excepthook = handle_uncaught_exception
 
 
 class Preprocessing:
@@ -22,9 +25,14 @@ class Preprocessing:
                  nifti_image=None,
                  number_of_threads=1):
 
+        close_all_loggers()
+        self.logger_date_time = datetime.now().strftime("%Y-%m-%d_%H%M%S")
+        self.logger = get_logger(self.logger_date_time+'_Preprocessing')
+        self.logger.info("Preliminary Data Check Started")
         if os.path.exists(load_dir):
             self.load_dir = load_dir
         else:
+            self.logger.error(f"Load directory '{load_dir}' does not exist.")
             raise ValueError(f"Load directory '{load_dir}' does not exist.")
 
         if os.path.exists(save_dir):
@@ -40,6 +48,7 @@ class Preprocessing:
         elif list_of_patient_folders is None and start_folder is None and stop_folder is None:
             self.list_of_patient_folders = os.listdir(load_dir)
         else:
+            self.logger.error('Incorrectly selected patient folders.')
             raise ValueError('Incorrectly selected patient folders.')
 
         if input_data_type in ['DICOM', 'NIFTI']:
@@ -50,31 +59,34 @@ class Preprocessing:
         if input_imaging_mod in ['CT', 'PT', 'MR']:
             self.input_imaging_mod = input_imaging_mod
         else:
+            self.logger.error(f"Wrong input imaging type '{input_imaging_mod}', available types: 'CT', 'PT', 'MR'.")
             raise ValueError(f"Wrong input imaging type '{input_imaging_mod}', available types: 'CT', 'PT', 'MR'.")
 
-        if self.input_data_type == 'DICOM' and resample_dimension == '3D':
+        if self.input_data_type == 'DICOM':
             list_pat_id_to_del = []
             for pat_index, pat_path in enumerate(self.list_of_patient_folders):
-                pat_folder_path = os.path.join(load_dir, pat_path)
-                if check_dicom_spacing(os.path.join(pat_folder_path)):
+                if check_dicom_tags(os.path.join(load_dir, pat_path), pat_path, self.logger, resample_dimension):
+
                     list_pat_id_to_del.append(pat_path)
             for pat_to_del in np.unique(list_pat_id_to_del):
-                print(f'Patient {pat_to_del} is excluded from the analysis'
-                      ' due to the inconsistent z-spacing. Absolute deviation is more than 0.001 mm.')
                 self.list_of_patient_folders.remove(pat_to_del)
 
         if self.input_data_type == 'NIFTI':
             if nifti_image is not None:
                 image_exists = True
                 for folder in self.list_of_patient_folders:
-                    if not os.path.exists(os.path.join(load_dir, str(folder), nifti_image)):
+                    if (not os.path.isfile(os.path.join(load_dir, str(folder), nifti_image + '.nii.gz'))
+                       and not os.path.isfile(os.path.join(load_dir, str(folder), nifti_image + '.nii'))):
                         image_exists = False
                         if not image_exists:
-                            print(f"The NIFTI image file does not exist "
-                                  f"'{os.path.join(load_dir, str(folder), nifti_image)}'")
+                            self.logger.info(f"The NIFTI image file does not exist "
+                                             f"'{os.path.join(load_dir, str(folder), nifti_image)}'. "
+                                             f"The patient {folder} is skipped")
+                            self.list_of_patient_folders.remove(folder)
                 if image_exists:
                     self.nifti_image = nifti_image
             else:
+                self.logger.error('Select the NIFTI image file.')
                 raise ValueError('Select the NIFTI image file.')
 
         if (mask_interpolation_method in ['NN', 'Linear', 'BSpline', 'Gaussian']
@@ -87,16 +99,23 @@ class Preprocessing:
                 if isinstance(mask_interpolation_threshold, (int, float)) and 0 <= mask_interpolation_threshold <= 1:
                     self.mask_threshold = float(mask_interpolation_threshold)
                 else:
+                    self.logger.error(f"Selected threshold '{mask_interpolation_threshold} not in range'"
+                                      f'[0,1] or not float/integer data type')
                     raise ValueError(f"Selected threshold '{mask_interpolation_threshold} not in range'"
-                          f'[0,1] or not float/integer data type')
+                                     f'[0,1] or not float/integer data type')
         else:
-            raise ValueError(
-                f"Wrong mask and/or image interpolation method (mask: {mask_interpolation_threshold}, "
-                f"image {image_interpolation_method}), available methods: 'NN', 'Linear', 'BSpline', 'Gaussian'")
+            self.logger.error(f"Wrong mask and/or image interpolation method (mask: {mask_interpolation_threshold}, "
+                              f"image {image_interpolation_method}), available methods: "
+                              "'NN', 'Linear', 'BSpline', 'Gaussian'")
+            raise ValueError(f"Wrong mask and/or image interpolation method (mask: {mask_interpolation_threshold}, "
+                             f"image {image_interpolation_method}), available methods: "
+                             "'NN', 'Linear', 'BSpline', 'Gaussian'")
 
         if isinstance(number_of_threads, (int, float)) and 0 < number_of_threads <= cpu_count():
             self.number_of_threads = number_of_threads
         else:
+            self.logger.error(f'Provided number of threads: {number_of_threads}, is not an integer or selected number '
+                              f'is greater than maximum number of available CPU. (Max available {cpu_count()} units)')
             raise ValueError(f'Provided number of threads: {number_of_threads}, is not an integer or selected number '
                              f'is greater than maximum number of available CPU. (Max available {cpu_count()} units)')
 
@@ -108,26 +127,43 @@ class Preprocessing:
         if type(resample_resolution) in [float, int] and resample_resolution > 0:
             self.resample_resolution = resample_resolution
         else:
+            self.logger.error(f'Resample resolution {resample_resolution} is not int/float or non-positive.')
             raise ValueError(f'Resample resolution {resample_resolution} is not int/float or non-positive.')
 
         if resample_dimension in ['3D', '2D']:
             self.resample_dimension = resample_dimension
         else:
+            self.logger.error(f"Resample dimension '{resample_dimension}' is not '2D' or '3D'.")
             raise ValueError(f"Resample dimension '{resample_dimension}' is not '2D' or '3D'.")
 
         self.just_save_as_nifti = just_save_as_nifti
         self.patient_folder = None
         self.patient_number = None
 
-    def resample(self):
-        print('Resampling Started')
-        with Pool(self.number_of_threads) as pool:
-            pool.map(self._load_patient, sorted(self.list_of_patient_folders))
+        self.logger.info("Preliminary Data Check Completed")
 
-        print('Resampling Completed!')
+    def resample(self):
+
+        if len(self.list_of_patient_folders) > 0:
+            try:
+                if self.just_save_as_nifti:
+                    self.logger.info('Conversion Started')
+                else:
+                    self.logger.info('Resampling Started')
+                with Pool(self.number_of_threads) as pool:
+                    pool.map(self._load_patient, sorted(self.list_of_patient_folders))
+                if self.just_save_as_nifti:
+                    self.logger.info('Conversion Completed')
+                else:
+                    self.logger.info('Resampling Completed')
+            except Exception:
+                self.logger.error("Caught an exception", exc_info=True)
+        else:
+            self.logger.info('No patients to resample.')
 
     def _load_patient(self, patient_number):
-        print(f'Current patient: {patient_number}')
+        self.patient_logger = get_logger(self.logger_date_time+'_Preprocessing')
+        self.patient_logger.info(f'Working on patient: {patient_number}')
         self.patient_number = str(patient_number)
         self.patient_folder = os.path.join(self.load_dir, self.patient_number)
         self.pat_original_image_and_masks = {}
@@ -140,6 +176,7 @@ class Preprocessing:
             if not self.just_save_as_nifti:
                 self._resampling()
         self._save_as_nifti()
+        self.patient_logger.info(f'Completed patient: {patient_number}')
 
     def _process_nifti_files(self):
         def extract_nifti(key, mask_file_name=None):
@@ -209,8 +246,6 @@ class Preprocessing:
             output_spacing = [self.resample_resolution] * 3
         elif self.resample_dimension == '2D':
             output_spacing = [self.resample_resolution] * 2 + [self.pat_original_image_and_masks['IMAGE'].spacing[2]]
-        else:
-            raise ValueError(f"Unsupported resize_dim: {self.resample_dimension}")
 
         output_origin = [
             resampled_origin(input_shape, input_spacing, output_spacing, input_origin, axis) for axis in range(3)

@@ -1,12 +1,12 @@
 import json
+import os
 from multiprocessing import cpu_count
 
 import numpy as np
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QFileDialog
 
-from .toolbox_gui import CustomButton, CustomLabel, CustomBox, CustomTextField, CustomCheckBox, CustomWarningBox, \
-    resource_path
+from .toolbox_gui import CustomButton, CustomLabel, CustomBox, CustomTextField, CustomCheckBox, CustomWarningBox
 from ..logic.radiomics import Radiomics
 
 
@@ -88,7 +88,7 @@ class RadiomicsTab(QWidget):
             stop_folder = self.stop_folder_text_field.text().strip()
 
         if self.list_of_patient_folders_text_field.text() != '':
-            list_of_patient_folders = [pat for pat in str(self.list_of_patient_folders_text_field.text()).split(",")]
+            list_of_patient_folders = [pat.strip() for pat in str(self.list_of_patient_folders_text_field.text()).split(",")]
         else:
             list_of_patient_folders = None
 
@@ -96,12 +96,11 @@ class RadiomicsTab(QWidget):
         input_data_type = self.input_data_type_combo_box.currentText()
         dicom_structures = [ROI.strip() for ROI in self.dicom_structures_text_field.text().split(",")]
 
-        nifti_image = None
         if (not self.nifti_image_text_field.text().strip()
                 and self.input_data_type_combo_box.currentText() == 'NIFTI'):
             CustomWarningBox("Enter NIFTI image").response()
             return
-        nifti_image = self.nifti_image_text_field.text()
+        nifti_image = [file_name.strip() for file_name in self.nifti_image_text_field.text().split(',')]
 
         # Collect values from GUI elements
         nifti_structures = [ROI.strip() for ROI in self.nifti_structure_text_field.text().split(",")]
@@ -226,7 +225,7 @@ class RadiomicsTab(QWidget):
             'rad_input_image_modality': self.input_imaging_mod_combo_box.currentText()
         }
 
-        file_path = resource_path('config.json')
+        file_path = os.path.join(os.getcwd(), 'config.json')
 
         # Attempt to read the existing data from the file
         try:
@@ -243,7 +242,7 @@ class RadiomicsTab(QWidget):
             json.dump(existing_data, file, indent=4)
 
     def load_input_data(self):
-        file_path = resource_path('config.json')
+        file_path = os.path.join(os.getcwd(), 'config.json')
         try:
             with open(file_path, 'r') as file:
                 data = json.load(file)
@@ -373,7 +372,7 @@ class RadiomicsTab(QWidget):
         self.dicom_structures_text_field.hide()
 
         self.nifti_structures_label = CustomLabel(
-            'NIFTI Str. Files:',
+            'NIFTI Str. File(s):',
             18, 370, 300, 200, 50, self,
             style="color: white;"
         )
@@ -385,13 +384,13 @@ class RadiomicsTab(QWidget):
         self.nifti_structure_text_field.hide()
 
         self.nifti_image_label = CustomLabel(
-            'NIFTI Image File:',
-            18, 800, 300, 200, 50, self,
+            'NIFTI Image File(s):',
+            18, 800, 300, 400, 50, self,
             style="color: white;"
         )
         self.nifti_image_text_field = CustomTextField(
-            "E.g. imageCT.nii.gz",
-            14, 990, 300, 220, 50, self
+            "E.g. filtered_imageCT.nii.gz, imageCT.nii.gz",
+            14, 990, 300, 410, 50, self
         )
         self.nifti_image_label.hide()
         self.nifti_image_text_field.hide()

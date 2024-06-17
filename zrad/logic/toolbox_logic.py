@@ -1,6 +1,7 @@
 import os
 from datetime import datetime
-
+import logging
+import sys
 import SimpleITK as sitk
 import numpy as np
 import pydicom
@@ -38,9 +39,18 @@ def list_folders_in_defined_range(folder_to_start, folder_to_stop, directory_pat
     return list_of_folders
 
 
-def extract_nifti_image(instance, sitk_reader):
+def extract_nifti_image(instance, sitk_reader, key=None):
 
-    sitk_reader.SetFileName(os.path.join(instance.patient_folder, instance.nifti_image))
+    if key is None or key == 'IMAGE':
+        if os.path.isfile(os.path.join(instance.patient_folder, instance.nifti_image + '.nii.gz')):
+            sitk_reader.SetFileName(os.path.join(instance.patient_folder, instance.nifti_image + '.nii.gz'))
+        elif os.path.isfile(os.path.join(instance.patient_folder, instance.nifti_image + '.nii')):
+            sitk_reader.SetFileName(os.path.join(instance.patient_folder, instance.nifti_image + '.nii'))
+    elif key == 'ORIG_IMAGE':
+        if os.path.isfile(os.path.join(instance.patient_folder, instance.nifti_image_orig + '.nii.gz')):
+            sitk_reader.SetFileName(os.path.join(instance.patient_folder, instance.nifti_image_orig + '.nii.gz'))
+        elif os.path.isfile(os.path.join(instance.patient_folder, instance.nifti_image_orig + '.nii')):
+            sitk_reader.SetFileName(os.path.join(instance.patient_folder, instance.nifti_image_orig + '.nii'))
     image = sitk_reader.Execute()
     array = sitk.GetArrayFromImage(image)
 
@@ -75,6 +85,14 @@ def extract_nifti_mask(instance, sitk_reader, mask, patient_image):
 
 
 def extract_dicom(dicom_dir, rtstract, modality, rtstruct_file='', selected_structures=None):
+    def parse_time(time_str):
+        for fmt in ('%H%M%S.%f', '%H%M%S', '%Y%m%d%H%M%S.%f'):
+            try:
+                return datetime.strptime(time_str, fmt)
+            except ValueError:
+                continue
+        raise ValueError(f"time data '{time_str}' does not match expected formats")
+
     def generate(contours, dcm_im):
         dimensions = dcm_im.GetSize()
 
@@ -102,7 +120,7 @@ def extract_dicom(dicom_dir, rtstract, modality, rtstruct_file='', selected_stru
 
         return mask_array
 
-    def process_rt_struct(file_path, selected_structures, skip_contours=False):
+    def process_rt_struct(file_path, selected_ROIs):  # , skip_contours=False):
 
         def get_contour_coord(metadata, current_roi_sequence, skip_contours_bool=False):
             contour_info = {
@@ -133,12 +151,12 @@ def extract_dicom(dicom_dir, rtstract, modality, rtstruct_file='', selected_stru
         metadata_map = {data.ROINumber: data for data in dicom_data.StructureSetROISequence}
 
         for roi_sequence in dicom_data.ROIContourSequence:
-            if 'ExtractAllMasks' in selected_structures:
+            if 'ExtractAllMasks' in selected_ROIs:
                 contours_data.append(get_contour_coord(metadata_map, roi_sequence))
 
-            elif ('ExtractAllMasks' not in selected_structures
+            elif ('ExtractAllMasks' not in selected_ROIs
                   and getattr(metadata_map[roi_sequence.ReferencedROINumber], 'ROIName', 'unknown')
-                  in selected_structures):
+                  in selected_ROIs):
 
                 contours_data.append(get_contour_coord(metadata_map, roi_sequence))
 
@@ -163,11 +181,11 @@ def extract_dicom(dicom_dir, rtstract, modality, rtstruct_file='', selected_stru
         dicom_files = [f for f in os.listdir(directory) if (os.path.splitext(f)[-1] == '' or f.endswith('.dcm')) and
                        is_not_rt_struct(os.path.join(directory, f), series_ids[0])]
 
-        # Randomly select a DICOM file from the filtered list
         ct_raw_intensity = []
         slice_z_origin = []
         HU_intercept = []
         HU_slope = []
+
         for dcm_file in dicom_files:
             dicom_file_path = os.path.join(directory, dcm_file)
             dicom = pydicom.dcmread(dicom_file_path)
@@ -187,51 +205,51 @@ def extract_dicom(dicom_dir, rtstract, modality, rtstruct_file='', selected_stru
         image = reader.Execute()
 
         if imaging_modality == 'CT' and np.unique(ct_raw_intensity) == [True]:
-            if len(np.unique(HU_intercept)) == 1 and len(np.unique(HU_intercept)) == 1:
-                origin = image.GetOrigin()
-                direction = image.GetDirection()
-                array = sitk.GetArrayFromImage(image) * HU_slope[0] + HU_intercept[0]
-                array = array.astype(np.float64)
-                image = sitk.GetImageFromArray(array)
-                image.SetOrigin(origin)
-                image.SetDirection(direction)
-            else:
-                print('CT with raw intensity but have different slopes and intercepts among slices')
+            # if len(np.unique(HU_intercept)) == 1 and len(np.unique(HU_intercept)) == 1:
+            origin = image.GetOrigin()
+            direction = image.GetDirection()
+            array = sitk.GetArrayFromImage(image) * HU_slope[0] + HU_intercept[0]
+            array = array.astype(np.float64)
+            image = sitk.GetImageFromArray(array)
+            image.SetOrigin(origin)
+            image.SetDirection(direction)
+            # else:
+            # print('CT with raw intensity but have different slopes and intercepts among slices')
 
         image.SetSpacing((float(pixel_spacing[0]), float(pixel_spacing[1]), float(slice_thickness)))
 
         return image
 
-    def calculate_suv(dicom_file_path):
-
-        def parse_time(time_str):
-
-            for fmt in ('%H%M%S.%f', '%H%M%S'):
-                try:
-                    return datetime.strptime(time_str, fmt)
-                except ValueError:
-                    continue
-            raise ValueError(f"time data '{time_str}' does not match expected formats")
+    def calculate_suv(dicom_file_path, min_acquisition_time):
 
         ds = pydicom.dcmread(dicom_file_path)
+        units = ds.Units
+        injection_time = parse_time(ds.RadiopharmaceuticalInformationSequence[0].RadiopharmaceuticalStartTime)
 
-        unit = ds.Units
-
-        if unit != 'BQML':
-            raise ValueError(f"Expected unit to be 'BQML', but got {unit}")
+        if ds.DecayCorrection == 'START':
+            if 'PHILIPS' in ds.Manufacturer.upper():
+                if units == 'BQML':
+                    acquisition_time = min_acquisition_time
+            elif 'SIEMENS' in ds.Manufacturer.upper():
+                try:
+                    acquisition_time = parse_time(ds[(0x0071, 0x1022)].value).replace(year=injection_time.year,
+                                                                                  month=injection_time.month,
+                                                                                  day=injection_time.day)
+                except Exception:
+                    acquisition_time = min_acquisition_time
+            elif 'GE' in ds.Manufacturer.upper():
+                try:
+                    acquisition_time = parse_time(ds[(0x0009, 0x100d)].value).replace(year=injection_time.year,
+                                                                                      month=injection_time.month,
+                                                                                      day=injection_time.day)
+                except Exception:
+                    acquisition_time = min_acquisition_time
+        elif ds.DecayCorrection == 'ADMIN':
+            acquisition_time = injection_time
 
         patient_weight = float(ds.PatientWeight)
         injected_dose = float(ds.RadiopharmaceuticalInformationSequence[0].RadionuclideTotalDose)
-        injection_time_str = ds.RadiopharmaceuticalInformationSequence[0].RadiopharmaceuticalStartTime
-        if ds.DecayCorrection == 'START':
-            acquisition_time_str = ds.SeriesTime
-        elif ds.DecayCorrection == 'ADMIN':
-            acquisition_time_str = injection_time_str
-        else:
-            raise ValueError(f'Supported Decay Corrections: "START" and "ADMIN", but {ds.DecayCorrection} was provided')
 
-        injection_time = parse_time(injection_time_str)
-        acquisition_time = parse_time(acquisition_time_str)
         elapsed_time = (acquisition_time - injection_time).total_seconds()
 
         half_life = float(ds.RadiopharmaceuticalInformationSequence[0].RadionuclideHalfLife)
@@ -243,19 +261,24 @@ def extract_dicom(dicom_dir, rtstract, modality, rtstruct_file='', selected_stru
         activity_concentration = (image_data * ds.RescaleSlope) + ds.RescaleIntercept
         suv = activity_concentration / (decay_corrected_dose / (patient_weight * 1000))
 
-        # 90 degree rotation
         suv = suv.T
 
         return suv
 
     def process_pet_dicom(pat_folder, suv_image):
         intensity_array = np.zeros(suv_image.GetSize())
+        acquisition_time_list = []
         for dicom_file in os.listdir(pat_folder):
             dcm_data = pydicom.dcmread(os.path.join(pat_folder, dicom_file))
-
+            if dcm_data.Modality == 'PT':
+                acquisition_time_list.append(parse_time(dcm_data.AcquisitionTime))
+        min_acquisition_time = np.min(acquisition_time_list)
+        for dicom_file in os.listdir(pat_folder):
+            dcm_data = pydicom.dcmread(os.path.join(pat_folder, dicom_file))
             if dcm_data.Modality == 'PT':
                 z_slice_id = int(dcm_data.InstanceNumber) - 1
-                intensity_array[:, :, z_slice_id] = calculate_suv(os.path.join(pat_folder, dicom_file))
+                intensity_array[:, :, z_slice_id] = calculate_suv(os.path.join(pat_folder, dicom_file),
+                                                                  min_acquisition_time)
 
         # Flip from head to toe
         intensity_array = np.flip(intensity_array, axis=2)
@@ -310,7 +333,16 @@ def extract_dicom(dicom_dir, rtstract, modality, rtstruct_file='', selected_stru
                      shape=dicom_image.GetSize())
 
 
-def check_dicom_spacing(directory):
+def check_dicom_tags(directory, pat_index, logger, image_vol='3D'):
+    def parse_time(time_str):
+        for fmt in ('%H%M%S.%f', '%H%M%S', '%Y%m%d%H%M%S.%f'):
+            try:
+                return datetime.strptime(time_str, fmt)
+            except ValueError:
+                continue
+        logger.error(f"Time data '{time_str}' does not match expected formats")
+        raise ValueError(f"Time data '{time_str}' does not match expected formats")
+
     def is_not_rt_struct(dicom_path):
         try:
             dcm = pydicom.dcmread(dicom_path, stop_before_pixels=True)
@@ -318,20 +350,161 @@ def check_dicom_spacing(directory):
         except Exception:
             return False
 
+    for f in os.listdir(directory):
+        if os.path.splitext(f)[-1] != '':
+            if not f.endswith('.dcm'):
+                logger.warning(f'Patient {pat_index} contains not only DICOM files '
+                               f'but also other extentions, e.g. {os.path.splitext(f)[-1]}. '
+                               'Excluded from the analysis.')
+                return True
+
     dicom_files = [f for f in os.listdir(directory) if (os.path.splitext(f)[-1] == '' or f.endswith('.dcm'))
                    and is_not_rt_struct(os.path.join(directory, f))]
 
-    slice_z_origin = []
+    if image_vol == '3D':
+        slice_z_origin = []
+        for dcm_file in dicom_files:
+            dicom_file_path = os.path.join(directory, dcm_file)
+            dicom = pydicom.dcmread(dicom_file_path)
+            if dicom.Modality in ['CT', 'PT', 'MR']:
+                slice_z_origin.append(float(dicom.ImagePositionPatient[2]))
+        slice_z_origin = sorted(slice_z_origin)
+        slice_thickness = [abs(slice_z_origin[i] - slice_z_origin[i + 1])
+                           for i in range(len(slice_z_origin) - 1)]
+        for i in range(len(slice_thickness) - 1):
+            if abs((slice_thickness[i] - slice_thickness[i + 1])) > 10 ** (-3):
+                logger.warning(f'Patient {pat_index} is excluded from the analysis'
+                               ' due to the inconsistent z-spacing. Absolute deviation is more than 0.001 mm.')
+                return True
+
+    acquisition_time_list = []
     for dcm_file in dicom_files:
         dicom_file_path = os.path.join(directory, dcm_file)
         dicom = pydicom.dcmread(dicom_file_path)
-        if dicom.Modality in ['CT', 'PT', 'MR']:
-            slice_z_origin.append(float(dicom.ImagePositionPatient[2]))
-    slice_z_origin = sorted(slice_z_origin)
-    slice_thickness = [abs(slice_z_origin[i] - slice_z_origin[i + 1])
-                       for i in range(len(slice_z_origin) - 1)]
-    slice_inhomogeneity_detected = False
-    for i in range(len(slice_thickness) - 1):
-        if abs((slice_thickness[i] - slice_thickness[i + 1])) > 10 ** (-3):
-            slice_inhomogeneity_detected = True
-    return slice_inhomogeneity_detected
+        if dicom.Modality == 'PT':
+            acquisition_time_list.append(parse_time(dicom.AcquisitionTime))
+    time_mismatch = False
+    for dcm_file in dicom_files:
+        dicom_file_path = os.path.join(directory, dcm_file)
+        dicom = pydicom.dcmread(dicom_file_path)
+        if dicom.Modality == 'PT':
+            if dicom.Units != 'BQML':  # or (dicom.Units == 'CNTS' and 'PHILIPS' not in dicom.Manufacturer.upper()):
+                logger.warning(f'Patient {pat_index} is excluded, only supported PET Units are "BQML" for Philips, '
+                               'Siemens and GE or "CNTS" for Philips')
+                return True
+            injection_time = parse_time(dicom.RadiopharmaceuticalInformationSequence[0].RadiopharmaceuticalStartTime)
+            if dicom.DecayCorrection == 'START':
+                if 'PHILIPS' in dicom.Manufacturer.upper():
+                    acquisition_time = np.min(acquisition_time_list)
+                elif 'SIEMENS' in dicom.Manufacturer.upper():
+                    try:
+                        acquisition_time = parse_time(dicom[(0x0071, 0x1022)].value).replace(year=injection_time.year,
+                                                                                             month=injection_time.month,
+                                                                                             day=injection_time.day)
+                        if (acquisition_time != np.min(acquisition_time_list)
+                           or acquisition_time != parse_time(dicom.SeriesTime) and not time_mismatch):
+                            time_mismatch = True
+                            logger.warning(f'For the patient {pat_index} there is a mismatch between the earliest '
+                                           'acquisition time, series time and Siemens private tag (0071, 1022). '
+                                           'Time from the Siemens private tag was used.')
+                    except Exception:
+                        acquisition_time = np.min(acquisition_time_list)
+                        if not time_mismatch:
+                            time_mismatch = True
+                            logger.warning(f'For the patient {pat_index} private Siemens tag (0071, 1022)'
+                                           ' is not present. The earliest of all acquisition times was used.')
+                        if acquisition_time != parse_time(dicom.SeriesTime) and time_mismatch:
+                            time_mismatch = True
+                            logger.warning(f'For the patient {pat_index} a mismatch present between the earliest '
+                                           'acquisition time and series time. Earliest acquisition time was used.')
+                elif 'GE' in dicom.Manufacturer.upper():
+                    try:
+                        acquisition_time = parse_time(dicom[(0x0009, 0x100d)].value).replace(year=injection_time.year,
+                                                                                             month=injection_time.month,
+                                                                                             day=injection_time.day)
+                        if (acquisition_time != np.min(acquisition_time_list)
+                                or acquisition_time != parse_time(dicom.SeriesTime) and not time_mismatch):
+                            time_mismatch = True
+                            logger.warning(f'For the patient {pat_index} a mismatch present between '
+                                           'the earliest acquisition time, series time, and GE private tag. '
+                                           'Time from the GE private tag was used.')
+                    except Exception:
+                        acquisition_time = np.min(acquisition_time_list)
+                        if not time_mismatch:
+                            time_mismatch = True
+                            logger.warning(f'For the patient {pat_index} private GE tag (0009, 100d)'
+                                           ' is not present. The earliest of all acquisition times was used.')
+                        if acquisition_time != parse_time(dicom.SeriesTime) and time_mismatch:
+                            time_mismatch = True
+                            logger.warning(f'For the patient {pat_index} a mismatch present between the earliest '
+                                           'acquisition time and series time. Earliest acquisition time was used.')
+                else:
+                    logger.warning(f'For the patient {pat_index} the unknown PET scaner manufacturer is present. '
+                                   'Z-Rad only supports Philips, Siemens, and GE.')
+                    return True
+
+            elif dicom.DecayCorrection == 'ADMIN':
+                acquisition_time = injection_time
+
+            else:
+                logger.warning(f'For the patient {pat_index} the unsupported Decay Correction {dicom.DecayCorrection} '
+                               'is present. Only supported are "START" and "ADMIN". '
+                               'Patient is excluded from the analysis.')
+                return True
+            elapsed_time = (acquisition_time - injection_time).total_seconds()
+            if elapsed_time < 0:
+                logger.warning(f'Patient {pat_index} is excluded from the analysis '
+                               'due to the negative time difference in the decay factor.')
+                return True
+            elif elapsed_time > 0 and abs(elapsed_time) < 1800 and dicom.DecayCorrection != 'ADMIN':
+                logger.warning(f'Only {abs(elapsed_time)/60} minutes after the injection')
+    return False
+
+
+def get_logger(logger_date_time):
+    logger = logging.getLogger()
+    logger.setLevel(logging.DEBUG)
+
+    if not logger.handlers:
+        # File handler with UTF-8 encoding
+        if not os.path.exists(os.path.join(os.getcwd(), 'Log files')):
+            os.makedirs(os.path.join(os.getcwd(), 'Log files'))
+        file_handler = logging.FileHandler(os.path.join(os.getcwd(), 'Log files', f'{logger_date_time}.log'),
+                                           encoding='utf-8')
+        #formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+        file_handler.setFormatter(formatter)
+        file_handler.setLevel(logging.DEBUG)
+        logger.addHandler(file_handler)
+
+        # Console handler with UTF-8 encoding
+        console_handler = logging.StreamHandler(sys.stdout)
+        console_handler.setLevel(logging.INFO)
+        console_handler.setFormatter(formatter)
+        logger.addHandler(console_handler)
+
+    return logger
+
+
+def handle_uncaught_exception(exc_type, exc_value, exc_traceback):
+    if issubclass(exc_type, KeyboardInterrupt):
+        sys.__excepthook__(exc_type, exc_value, exc_traceback)
+        return
+    logger = logging.getLogger()
+    logger.critical("Uncaught exception", exc_info=(exc_type, exc_value, exc_traceback))
+    logging.shutdown()
+
+
+def close_all_loggers():
+    # Close all handlers of the root logger
+    root_logger = logging.getLogger()
+    for handler in root_logger.handlers[:]:
+        handler.close()
+        root_logger.removeHandler(handler)
+
+    # Iterate over all loggers and close their handlers
+    for logger_name in logging.root.manager.loggerDict:
+        logger = logging.getLogger(logger_name)
+        for handler in logger.handlers[:]:
+            handler.close()
+            logger.removeHandler(handler)

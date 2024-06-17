@@ -1,4 +1,6 @@
 import os
+import sys
+from datetime import datetime
 from multiprocessing import Pool, cpu_count
 
 import SimpleITK as sitk
@@ -7,9 +9,11 @@ import pandas as pd
 import pydicom
 
 from .radiomics_defenitions import MorphologicalFeatures, LocalIntensityFeatures, IntensityBasedStatFeatures, \
-    IntensityVolumeHistogramFeatures, GLCM, GLRLM_GLSZM_GLDZM_NGLDM, NGTDM
+    GLCM, GLRLM_GLSZM_GLDZM_NGLDM, NGTDM  # , IntensityVolumeHistogramFeatures
 from .toolbox_logic import Image, extract_dicom, extract_nifti_image, extract_nifti_mask, \
-    list_folders_in_defined_range, check_dicom_spacing
+    list_folders_in_defined_range, check_dicom_tags, get_logger, handle_uncaught_exception, close_all_loggers
+
+sys.excepthook = handle_uncaught_exception
 
 
 class Radiomics:
@@ -22,12 +26,18 @@ class Radiomics:
                  number_of_bins=None, bin_size=None,
                  slice_weighting=False, slice_median=False,
                  start_folder=None, stop_folder=None, list_of_patient_folders=None,
-                 nifti_image=None,
+                 nifti_images=None,
                  number_of_threads=1):
+
+        close_all_loggers()
+        self.logger_date_time = datetime.now().strftime("%Y-%m-%d_%H%M%S")
+        self.logger = get_logger(self.logger_date_time+'_Radiomics')
+        self.logger.info("Preliminary Data Check Started")
 
         if os.path.exists(load_dir):
             self.load_dir = load_dir
         else:
+            self.logger.error(f"Load directory '{load_dir}' does not exist.")
             raise ValueError(f"Load directory '{load_dir}' does not exist.")
 
         if os.path.exists(save_dir):
@@ -43,50 +53,74 @@ class Radiomics:
         elif list_of_patient_folders is None and start_folder is None and stop_folder is None:
             self.list_of_patient_folders = os.listdir(load_dir)
         else:
+            self.logger.error('Incorrectly selected patient folders.')
             raise ValueError('Incorrectly selected patient folders.')
 
         if input_data_type in ['DICOM', 'NIFTI']:
             self.input_data_type = input_data_type
         else:
+            self.logger.error(f"Wrong input data type '{input_data_type}', available types: 'DICOM', 'NIFTI'.")
             raise ValueError(f"Wrong input data type '{input_data_type}', available types: 'DICOM', 'NIFTI'.")
 
-        if self.input_data_type == 'DICOM' and aggr_dim == '3D':
+        if self.input_data_type == 'DICOM':
             list_pat_id_to_del = []
             for pat_index, pat_path in enumerate(self.list_of_patient_folders):
                 pat_folder_path = os.path.join(load_dir, pat_path)
-                if check_dicom_spacing(os.path.join(pat_folder_path)):
+                if check_dicom_tags(os.path.join(pat_folder_path), pat_path, aggr_dim):
                     list_pat_id_to_del.append(pat_path)
             for pat_to_del in np.unique(list_pat_id_to_del):
-                print(f'Patient {pat_to_del} is excluded from the analysis'
-                      ' due to the inconsistent z-spacing. Absolute deviation is more than 0.001 mm.')
                 self.list_of_patient_folders.remove(pat_to_del)
 
         if input_imaging_mod in ['CT', 'PT', 'MR']:
             self.input_imaging_mod = input_imaging_mod
         else:
+            self.logger.error(f"Wrong input imaging type '{input_imaging_mod}', available types: 'CT', 'PT', 'MR'.")
             raise ValueError(f"Wrong input imaging type '{input_imaging_mod}', available types: 'CT', 'PT', 'MR'.")
 
+        self.filtered_image_provided = False
         if self.input_data_type == 'NIFTI':
-            if nifti_image is not None:
-                image_exists = True
-                for folder in self.list_of_patient_folders:
-                    if not os.path.exists(os.path.join(load_dir, str(folder), nifti_image)):
-                        image_exists = False
-                        if not image_exists:
-                            print(f"The NIFTI image file does not exist "
-                                  f"'{os.path.join(load_dir, str(folder), nifti_image)}'")
-                if image_exists:
-                    self.nifti_image = nifti_image
+            if nifti_images is not None and isinstance(nifti_images, list):
+                for i in range(len(nifti_images)):
+                    image = nifti_images[i]
+                    image_exists = True
+                    for folder in self.list_of_patient_folders:
+                        if (not os.path.isfile(os.path.join(load_dir, str(folder), image + '.nii.gz'))
+                                and not os.path.isfile(os.path.join(load_dir, str(folder), image + '.nii'))):
+                            image_exists = False
+                            if not image_exists:
+                                self.logger.warning("The NIFTI image/filtered mask file does not exist "
+                                                    f"'{os.path.join(load_dir, str(folder), image)}'")
+                    if image_exists and i == 0:
+                        self.nifti_image = nifti_images[i]
+                    elif image_exists and i == 1:
+                        self.filtered_image_provided = True
+                        self.nifti_image_orig = nifti_images[i]
+
+            elif nifti_images is not None and isinstance(nifti_images, str):
+                    image_exists = True
+                    for folder in self.list_of_patient_folders:
+                        if (not os.path.isfile(os.path.join(load_dir, str(folder), nifti_images + '.nii.gz'))
+                                and not os.path.isfile(os.path.join(load_dir, str(folder), nifti_images + '.nii'))):
+                            image_exists = False
+                            if not image_exists:
+                                self.logger.warning("The NIFTI image/filtered mask file does not exist "
+                                                    f"'{os.path.join(load_dir, str(folder), nifti_images)}'")
+                    if image_exists:
+                        self.nifti_image = nifti_images
             else:
-                raise ValueError('Select the NIFTI image file.')
+                self.logger.error('Provide the NIFTI image file.')
+                raise ValueError('Provide the NIFTI image file.')
 
         if isinstance(number_of_threads, (int, float)) and 0 < number_of_threads <= cpu_count():
             self.number_of_threads = number_of_threads
         else:
-            raise ValueError(f'Number of threads is not an integer or selected nubmer '
+            self.logger.error('Number of threads is not an integer or selected nubmer '
+                              f'is greater than maximum number of available CPU. (Max available {cpu_count()} units)')
+            raise ValueError('Number of threads is not an integer or selected nubmer '
                              f'is greater than maximum number of available CPU. (Max available {cpu_count()} units)')
 
         if slice_weighting and slice_median:
+            self.logger.error('Only one slice median averaging is not supported with weighting strategy.')
             raise ValueError('Only one slice median averaging is not supported with weighting strategy.')
 
         else:
@@ -118,11 +152,14 @@ class Radiomics:
         if aggr_dim in ['2D', '2.5D', '3D']:
             self.aggr_dim = aggr_dim
         else:
+            self.logger.error(f"Wrong aggregation dim {aggr_dim}. Available '2D', '2.5D', and '3D'.")
             raise ValueError(f"Wrong aggregation dim {aggr_dim}. Available '2D', '2.5D', and '3D'.")
 
         if aggr_method in ['MERG', 'AVER', 'SLICE_MERG', 'DIR_MERG']:
             self.aggr_method = aggr_method
         else:
+            self.logger.error(f"Wrong aggregation dim {aggr_method}. "
+                              "Available 'MERG', 'AVER', 'SLICE_MERG', and 'DIR_MERG'.")
             raise ValueError(f"Wrong aggregation dim {aggr_method}. "
                              "Available 'MERG', 'AVER', 'SLICE_MERG', and 'DIR_MERG'.")
 
@@ -130,6 +167,10 @@ class Radiomics:
             self.structure_set = structure_set
         else:
             self.structure_set = ['']
+
+        image_is_filtered = False
+        if image_is_filtered:
+            pass
 
         self.patient_folder = None
         self.patient_number = None
@@ -154,8 +195,8 @@ class Radiomics:
             'discr_intensity_based_variation_coef', 'discr_intensity_based_quartile_coef_dispersion',
             'discr_intensity_entropy', 'discr_intensity_uniformity', 'discr_max_hist_gradient',
             'discr_max_hist_gradient_intensity', 'discr_min_hist_gradient', 'discr_min_hist_gradient_intensity',
-            #'vol_10%_intensity_frac', 'vol_90%_intensity_frac', 'intensity_10%_vol_frac', 'intensity_90%_vol_frac',
-            #'volume_frac_diff_between_intensity_frac', 'intensity_frac_diff_between_vol_frac',
+            # 'vol_10%_intensity_frac', 'vol_90%_intensity_frac', 'intensity_10%_vol_frac', 'intensity_90%_vol_frac',
+            # 'volume_frac_diff_between_intensity_frac', 'intensity_frac_diff_between_vol_frac',
             'glcm_joint_max', 'glcm_joint_average', 'glcm_joint_var', 'glcm_joint_entropy', 'glcm_dif_average',
             'glcm_dif_var', 'glcm_dif_entropy', 'glcm_sum_average', 'glcm_sum_var', 'glcm_sum_entropy',
             'glcm_ang_second_moment', 'glcm_contrast', 'glcm_dissimilarity', 'glcm_inv_diff', 'glcm_norm_inv_diff',
@@ -188,21 +229,30 @@ class Radiomics:
             'ngldm_gr_lvl_var', 'ngldm_depend_count_var', 'ngldm_entropy', 'ngldm_energy'
         ]
 
-    def extract_radiomics(self):
-        print('Radiomics Calculation Started')
-        with Pool(self.number_of_threads) as pool:
-            pool.map(self._load_patient, sorted(self.list_of_patient_folders))
+        self.logger.info("Preliminary Data Check Completed")
 
-        print('Radiomics Calculation Completed!')
+    def extract_radiomics(self):
+        if len(self.list_of_patient_folders) > 0:
+            try:
+                self.logger.info('Radiomics Calculation Started')
+                with Pool(self.number_of_threads) as pool:
+                    pool.map(self._load_patient, sorted(self.list_of_patient_folders))
+                self.logger.info('Radiomics Calculation Completed!')
+            except Exception:
+                self.logger.error("Caught an exception", exc_info=True)
+        else:
+            self.logger.info('No patients to calculate radiomics from.')
 
     def _load_patient(self, patient_number):
+        self.patient_logger = get_logger(self.logger_date_time+'_Radiomics')
+
         self.patient_number = str(patient_number)
         self.patient_folder = os.path.join(self.load_dir, self.patient_number)
         self.pat_binned_masked_image = {}
-        self.patient_mort_features_list = []
+        self.patient_morf_features_list = []
         self.patient_local_intensity_features_list = []
         self.intensity_features_list = []
-        #self.intensity_volume_features_list = []
+        # self.intensity_volume_features_list = []
         self.discr_intensity_features_list = []
         self.glcm_features_list = []
         self.glrlm_features_list = []
@@ -216,14 +266,14 @@ class Radiomics:
         else:
             self._process_dicom_files()
 
-        all_features_list = [self.patient_mort_features_list, self.patient_local_intensity_features_list,
+        all_features_list = [self.patient_morf_features_list, self.patient_local_intensity_features_list,
                              self.intensity_features_list, self.discr_intensity_features_list,
-                             #self.intensity_volume_features_list,
+                             # self.intensity_volume_features_list,
                              self.glcm_features_list,
                              self.glrlm_features_list, self.glszm_features_list,
                              self.gldzm_features_list, self.ngtdm_features_list, self.ngldm_features_list]
         radiomics_features_df = pd.DataFrame(columns=self.columns)
-        for mask_index in range(len(self.patient_mort_features_list)):
+        for mask_index in range(len(self.patient_morf_features_list)):
             save_list = []
             for feature_list in all_features_list:
                 save_list += feature_list[mask_index]
@@ -245,8 +295,7 @@ class Radiomics:
                                           modality=self.input_imaging_mod)
 
                     for instance_key in masks.keys():
-
-                        print(f'Patient {self.patient_number}. Mask {instance_key}.')
+                        self.patient_logger.info(f'Working on patient {self.patient_number} with mask {instance_key}.')
                         self.patient_morphological_mask = Image(masks[instance_key].array.astype(np.int8),
                                                                 origin=self.patient_image.origin,
                                                                 spacing=self.patient_image.spacing,
@@ -264,24 +313,29 @@ class Radiomics:
                         self._calc_mask_morphological_features(instance_key)
                         self._calc_discretized_intensity_features()
                         self._calc_texture_features()
+                        self.patient_logger.info(f'Completed patient {self.patient_number} with mask {instance_key}.')
 
     def _process_nifti_files(self):
         def extract_nifti(key, mask_file_name=None):
             reader = sitk.ImageFileReader()
             reader.SetImageIO("NiftiImageIO")
 
-            if key == 'IMAGE':
-                return extract_nifti_image(self, reader)
+            if key in ['IMAGE', 'ORIG_IMAGE']:
+                return extract_nifti_image(self, reader, key)
 
             elif key.startswith('MASK'):
                 return extract_nifti_mask(self, reader, mask_file_name, self.patient_image)
 
         self.patient_image = extract_nifti('IMAGE')
+        if self.filtered_image_provided:
+            self.orig_patient_image = extract_nifti('ORIG_IMAGE')
+        else:
+            self.orig_patient_image = self.patient_image
         for nifti_mask in self.structure_set:
             instance_key = 'MASK_' + nifti_mask
             file_found, mask = extract_nifti(instance_key, nifti_mask)
             if file_found:
-                print(f'Patient {self.patient_number}. Mask {instance_key[5:]}.')
+                self.patient_logger.info(f'Working on patient {self.patient_number} with mask {instance_key[5:]}.')
 
                 self.patient_morphological_mask = Image(array=mask.array.astype(np.int8),
                                                         origin=self.patient_image.origin,
@@ -301,29 +355,60 @@ class Radiomics:
                 self._calc_discretized_intensity_features()
                 self._calc_texture_features()
 
+                self.patient_logger.info(f'Completed patient {self.patient_number} with mask {instance_key[5:]}.')
+
     def _calc_mask_intensity_features(self):
+        #if self.calc_intensity_mask:
+        #    array = np.where((self.patient_intensity_mask.array <= self.intensity_range[1])
+        #                     & (self.patient_intensity_mask.array >= self.intensity_range[0])
+        #                     & (self.patient_morphological_mask.array > 0),
+        #                     self.patient_image.array, np.nan)
+        #    self.patient_intensity_mask = Image(array=array,
+        #                                        origin=self.patient_intensity_mask.origin,
+        #                                        spacing=self.patient_intensity_mask.spacing,
+        #                                        direction=self.patient_intensity_mask.direction,
+        #                                        shape=self.patient_intensity_mask.shape)
+        #if self.calc_outlier_mask:
+        #    flattened_image = np.where(self.patient_morphological_mask.array > 0,
+        #                               self.patient_image.array, np.nan).ravel()
+        #    valid_values = flattened_image[~np.isnan(flattened_image)]
+        #    mean = np.mean(valid_values)
+        #    std = np.std(valid_values)
+        #    array = np.where((self.patient_intensity_mask.array <= mean + self.outlier_range * std)
+        #                     & (self.patient_intensity_mask.array >= mean - self.outlier_range * std)
+        #                     & (self.patient_morphological_mask.array > 0),
+        #                     self.patient_image.array, np.nan)
+        #    self.patient_intensity_mask = Image(array=array,
+        #                                        origin=self.patient_intensity_mask.origin,
+        #                                        spacing=self.patient_intensity_mask.spacing,
+        #                                        direction=self.patient_intensity_mask.direction,
+        #                                        shape=self.patient_intensity_mask.shape)
+
         if self.calc_intensity_mask:
-            array = np.where((self.patient_intensity_mask.array <= self.intensity_range[1])
-                             & (self.patient_intensity_mask.array >= self.intensity_range[0])
-                             & (self.patient_morphological_mask.array > 0),
-                             self.patient_image.array, np.nan)
-            self.patient_intensity_mask = Image(array=array,
+            intensity_range_mask = np.where((self.orig_patient_image.array <= self.intensity_range[1])
+                                            & (self.orig_patient_image.array >= self.intensity_range[0]),
+                                            1, 0)
+            self.patient_intensity_mask = Image(array=np.where((intensity_range_mask > 0)
+                                                               & (~np.isnan(self.patient_intensity_mask.array)),
+                                                               self.patient_intensity_mask.array, np.nan),
                                                 origin=self.patient_intensity_mask.origin,
                                                 spacing=self.patient_intensity_mask.spacing,
                                                 direction=self.patient_intensity_mask.direction,
                                                 shape=self.patient_intensity_mask.shape)
         if self.calc_outlier_mask:
             flattened_image = np.where(self.patient_morphological_mask.array > 0,
-                                       self.patient_image.array, np.nan).ravel()
+                                       self.orig_patient_image.array, np.nan).ravel()
             valid_values = flattened_image[~np.isnan(flattened_image)]
             mean = np.mean(valid_values)
             std = np.std(valid_values)
-            array = np.where((self.patient_intensity_mask.array <= mean + self.outlier_range * std)
-                             & (self.patient_intensity_mask.array >= mean - self.outlier_range * std)
-                             & (self.patient_morphological_mask.array > 0),
-                             self.patient_image.array, np.nan)
+            outlier_mask = np.where((self.orig_patient_image.array <= mean + self.outlier_range * std)
+                                    & (self.orig_patient_image.array >= mean - self.outlier_range * std)
+                                    & (~np.isnan(self.patient_intensity_mask.array)),
+                                    1, 0)
 
-            self.patient_intensity_mask = Image(array=array,
+            self.patient_intensity_mask = Image(array=np.where((outlier_mask > 0)
+                                                               & (~np.isnan(self.patient_intensity_mask.array)),
+                                                               self.patient_intensity_mask.array, np.nan),
                                                 origin=self.patient_intensity_mask.origin,
                                                 spacing=self.patient_intensity_mask.spacing,
                                                 direction=self.patient_intensity_mask.direction,
@@ -789,4 +874,4 @@ class Radiomics:
                               morf_features.integrated_intensity
                               ]
 
-        self.patient_mort_features_list.append(self.mort_features)
+        self.patient_morf_features_list.append(self.mort_features)

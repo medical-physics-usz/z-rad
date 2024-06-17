@@ -1,4 +1,5 @@
 import json
+import os
 from multiprocessing import cpu_count
 
 # Import required PyQt5 modules for GUI creation
@@ -77,7 +78,7 @@ class PreprocessingTab(QWidget):
             stop_folder = self.stop_folder_text_field.text().strip()
 
         if self.list_of_patient_folders_text_field.text() != '':
-            list_of_patient_folders = [pat for pat in str(self.list_of_patient_folders_text_field.text()).split(",")]
+            list_of_patient_folders = [pat.strip() for pat in str(self.list_of_patient_folders_text_field.text()).split(",")]
         else:
             list_of_patient_folders = None
 
@@ -92,12 +93,12 @@ class PreprocessingTab(QWidget):
         nifti_structures = [ROI.strip() for ROI in self.nifti_structures_text_field.text().split(",")]
 
         structure_set = None
-        if input_data_type == 'DICOM' and len(dicom_structures)>0:
+        if input_data_type == 'DICOM' and len(dicom_structures) > 0:
             structure_set = dicom_structures
-        elif input_data_type == 'NIFTI' and len(nifti_structures)>0:
+        elif input_data_type == 'NIFTI' and len(nifti_structures) > 0:
             structure_set = nifti_structures
 
-        if self.just_save_as_nifti_check_box.isChecked():
+        if self.just_save_as_nifti_check_box.isChecked() and input_data_type == 'DICOM':
             just_save_as_nifti = True
 
             prep_instance = Preprocessing(
@@ -128,7 +129,6 @@ class PreprocessingTab(QWidget):
 
             # Validate combo box selections
             selections_combo_box = [
-                ('Mask Interpolation:', self.mask_interpolation_method_combo_box),
                 ('Image Interpolation:', self.image_interpolation_method_combo_box),
                 ('Resample Dimension:', self.resample_dimension_combo_box)
             ]
@@ -136,6 +136,10 @@ class PreprocessingTab(QWidget):
                 if (combo_box.currentText() == message
                         and CustomWarningBox(f"Select {message.split(':')[0]}").response()):
                     return
+            if (self.mask_interpolation_method_combo_box.currentText() == 'Mask Interpolation:'
+                    and structure_set != ['']
+                    and CustomWarningBox("Select Mask Interpolation").response()):
+                return
 
             if (not self.nifti_image_text_field.text().strip()
                     and self.input_data_type_combo_box.currentText() == 'NIFTI'):
@@ -144,7 +148,10 @@ class PreprocessingTab(QWidget):
             nifti_image = self.nifti_image_text_field.text()
 
             # Collect values from GUI elements
-            mask_interpolation_method = self.mask_interpolation_method_combo_box.currentText()
+            if structure_set == ['']:
+                mask_interpolation_method = 'NN'
+            else:
+                mask_interpolation_method = self.mask_interpolation_method_combo_box.currentText()
             mask_interpolation_threshold = float(self.mask_interpolation_threshold_text_field.text())
             resample_resolution = float(self.resample_resolution_text_field.text())
 
@@ -171,7 +178,6 @@ class PreprocessingTab(QWidget):
                 list_of_patient_folders=list_of_patient_folders,
                 nifti_image=nifti_image,
                 number_of_threads=number_of_threads)
-
             prep_instance.resample()
 
     def open_directory(self, key):
@@ -212,7 +218,7 @@ class PreprocessingTab(QWidget):
             'prep_just_save_as_nifti': self.just_save_as_nifti_check_box.checkState()
         }
 
-        file_path = resource_path('config.json')
+        file_path = os.path.join(os.getcwd(), 'config.json')
 
         # Attempt to read the existing data from the file
         try:
@@ -232,7 +238,7 @@ class PreprocessingTab(QWidget):
         """
         Load input data from a JSON file.
         """
-        file_path = resource_path('config.json')
+        file_path = os.path.join(os.getcwd(), 'config.json')
         try:
             with open(file_path, 'r') as file:
                 data = json.load(file)

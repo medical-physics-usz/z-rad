@@ -1,4 +1,6 @@
+from datetime import datetime
 import os
+import sys
 from itertools import permutations
 from multiprocessing import Pool, cpu_count
 
@@ -7,28 +9,42 @@ import numpy as np
 import pywt
 from scipy import ndimage as ndi
 
-from .toolbox_logic import extract_nifti_image, Image, list_folders_in_defined_range, extract_dicom, check_dicom_spacing
+from .toolbox_logic import extract_nifti_image, Image, list_folders_in_defined_range, extract_dicom, \
+    check_dicom_tags, get_logger, handle_uncaught_exception, close_all_loggers
+
+sys.excepthook = handle_uncaught_exception
 
 
 class Mean:
     def __init__(self, padding_type, support, dimensionality):
+        close_all_loggers()
+        self.filter_logger_date_time = datetime.now().strftime("%Y-%m-%d_%H%M%S")
+        self.filter_logger = get_logger(self.filter_logger_date_time+"_Mean_filter")
+
         self.filter_type = 'Mean'
 
         if dimensionality in ['2D', '3D']:
             self.dimensionality = dimensionality
         else:
+            self.filter_logger.error(f"Wrong dimensionality '{dimensionality}'. Available dimensions '2D' and '3D'.")
             raise ValueError(f"Wrong dimensionality '{dimensionality}'. Available dimensions '2D' and '3D'.")
 
         if isinstance(support, int):
             self.support = support
         else:
+            self.filter_logger.error(f"Support should be int but '{type(support)}' detected.")
             raise ValueError(f"Support should be int but '{type(support)}' detected.")
 
         if padding_type in ['constant', 'nearest', 'wrap', 'reflect']:
             self.padding_type = padding_type
         else:
+            self.filter_logger.error(f"Wrong padding type '{padding_type}'. "
+                                     "Available padding types are: 'constant', 'nearest', 'wrap', and 'reflect'.")
             raise ValueError(f"Wrong padding type '{padding_type}'. "
                              "Available padding types are: 'constant', 'nearest', 'wrap', and 'reflect'.")
+
+        self.filter_logger.debug(f"Defined {dimensionality} mean filter with support of {support}, "
+                                 f"and {padding_type} padding type.")
 
     def implement(self, img):
         if self.dimensionality == "2D":
@@ -50,31 +66,44 @@ class LoG:
     """LoG"""
 
     def __init__(self, padding_type, sigma_mm, cutoff, dimensionality):
+
+        close_all_loggers()
+        self.filter_logger_date_time = datetime.now().strftime("%Y-%m-%d_%H%M%S")
+        self.filter_logger = get_logger(self.filter_logger_date_time+'_LoG_filter')
+
         self.filter_type = 'Laplacian of Gaussian'
 
         if dimensionality in ['2D', '3D']:
             self.dimensionality = dimensionality
         else:
+            self.filter_logger.error(f"Wrong dimensionality '{dimensionality}'. Available dimensions '2D' and '3D'.")
             raise ValueError(f"Wrong dimensionality '{dimensionality}'. Available dimensions '2D' and '3D'.")
 
         if padding_type in ['constant', 'nearest', 'wrap', 'reflect']:
             self.padding_type = padding_type
         else:
+            self.filter_logger.error(f"Wrong padding type '{padding_type}'. "
+                                     f"Available padding types are: 'constant', 'nearest', 'wrap', and 'reflect'.")
             raise ValueError(f"Wrong padding type '{padding_type}'. "
-                  f"Available padding types are: 'constant', 'nearest', 'wrap', and 'reflect'.")
+                             f"Available padding types are: 'constant', 'nearest', 'wrap', and 'reflect'.")
 
         if isinstance(sigma_mm, (int, float)):
             self.sigma_mm = sigma_mm
         else:
+            self.filter_logger.error(f'Sigma (in mm) should be int or float but {type(sigma_mm)} detected.')
             raise ValueError(f'Sigma (in mm) should be int or float but {type(sigma_mm)} detected.')
 
         if isinstance(cutoff, (int, float)):
             self.cutoff = cutoff
         else:
+            self.filter_logger.error(f'Cutoff should be int or float but {type(cutoff)} detected.')
             raise ValueError(f'Cutoff should be int or float but {type(cutoff)} detected.')
 
         self.padding_constant = 0.0
         self.res_mm = None
+
+        self.filter_logger.debug(f"Defined {dimensionality} LoG filter with sigma {sigma_mm}, cutoff {cutoff}, "
+                                 f"and {padding_type} padding type.")
 
     def implement(self, img):
         sigma = self.sigma_mm / self.res_mm
@@ -95,6 +124,11 @@ class Wavelets2D:
     """Wavelet filtering in 2D."""
 
     def __init__(self, wavelet_type, padding_type, response_map, decomposition_level, rotation_invariance=False):
+
+        close_all_loggers()
+        self.filter_logger_date_time = datetime.now().strftime("%Y-%m-%d_%H%M%S")
+        self.filter_logger = get_logger(self.filter_logger_date_time+'_Wavelets2D')
+
         self.filter_type = 'Wavelets'
 
         self.dimensionality = '2D'
@@ -102,31 +136,47 @@ class Wavelets2D:
         if padding_type in ['constant', 'nearest', 'wrap', 'reflect']:
             self.padding_type = padding_type
         else:
+            self.filter_logger.error(f"Wrong padding type '{padding_type}'. "
+                                     "Available padding types are: 'constant', 'nearest', 'wrap', and 'reflect'.")
             raise ValueError(f"Wrong padding type '{padding_type}'. "
-                  f"Available padding types are: 'constant', 'nearest', 'wrap', and 'reflect'.")
+                             "Available padding types are: 'constant', 'nearest', 'wrap', and 'reflect'.")
 
         if wavelet_type in ['db3', 'db2', 'coif1', 'haar']:
             self.wavelet_type = wavelet_type
         else:
+            self.filter_logger.error(f"Wrong wavelet type '{wavelet_type}'. "
+                                     "Available wavelet types are: 'db3', 'db2', 'coif1', 'haar'.")
             raise ValueError(f"Wrong wavelet type '{wavelet_type}'. "
-                  f"Available wavelet types are: 'db3', 'db2', 'coif1', 'haar'.")
+                             "Available wavelet types are: 'db3', 'db2', 'coif1', 'haar'.")
 
         if decomposition_level in [1, 2]:
             self.decomposition_level = decomposition_level
         else:
+            self.filter_logger.error(f"Wrong decomposition_level' {decomposition_level}'. "
+                                     "Decomposition level should be integer. "
+                                     "Available decomposition levels are: 1 and 2.")
             raise ValueError(f"Wrong decomposition_level' {decomposition_level}'. "
                              "Decomposition level should be integer. Available decomposition levels are: 1 and 2.")
 
         if response_map in ['LL', 'HL', 'LH', 'HH']:
             self.response_map = response_map
         else:
+            self.filter_logger.error(f"Wrong response_map' {response_map}'. "
+                                     "Available response_maps are: 'LL', 'HL', 'LH', 'HH'.")
             raise ValueError(f"Wrong response_map' {response_map}'. "
-                             f"Available response_maps are: 'LL', 'HL', 'LH', 'HH'.")
+                             "Available response_maps are: 'LL', 'HL', 'LH', 'HH'.")
 
         if isinstance(rotation_invariance, bool):
             self.rotation_invariance = rotation_invariance
         else:
+            self.filter_logger.error("Rotation Invariance should be "
+                                     f"True or False but '{type(rotation_invariance)}' detected.")
             raise ValueError(f"Rotation Invariance should be True or False but '{type(rotation_invariance)}' detected.")
+
+        self.filter_logger.debug(f"Defined 2D {wavelet_type} Wavelet filter with response map {response_map}, "
+                                 f"decomposition level {decomposition_level}, "
+                                 f"pseudo rotation invariance is {rotation_invariance}"
+                                 f"and {padding_type} padding type.")
 
     def _get_kernel(self, response, decomposition_level=1):
         if response == "L":
@@ -181,6 +231,11 @@ class Wavelets3D:
     """Wavelet filtering."""
 
     def __init__(self, wavelet_type, padding_type, response_map, decomposition_level, rotation_invariance=False):
+
+        close_all_loggers()
+        self.filter_logger_date_time = datetime.now().strftime("%Y-%m-%d_%H%M%S")
+        self.filter_logger = get_logger(self.filter_logger_date_time+'_Wavelets3D')
+
         self.filter_type = 'Wavelets'
 
         self.dimensionality = '3D'
@@ -188,33 +243,50 @@ class Wavelets3D:
         if padding_type in ['constant', 'nearest', 'wrap', 'reflect']:
             self.padding_type = padding_type
         else:
+            self.filter_logger.error(f"Wrong padding type '{padding_type}'. "
+                                     "Available padding types are: 'constant', 'nearest', 'wrap', and 'reflect'.")
             raise ValueError(f"Wrong padding type '{padding_type}'. "
-                  f"Available padding types are: 'constant', 'nearest', 'wrap', and 'reflect'.")
+                             "Available padding types are: 'constant', 'nearest', 'wrap', and 'reflect'.")
 
         if wavelet_type in ['db3', 'db2', 'coif1', 'haar']:
             self.wavelet_type = wavelet_type
         else:
+            self.filter_logger.error(f"Wrong wavelet type '{wavelet_type}'. "
+                                     "Available wavelet types are: 'db3', 'db2', 'coif1', 'haar'.")
             raise ValueError(f"Wrong wavelet type '{wavelet_type}'. "
-                  "Available wavelet types are: 'db3', 'db2', 'coif1', 'haar'.")
+                             "Available wavelet types are: 'db3', 'db2', 'coif1', 'haar'.")
 
         if decomposition_level in [1, 2]:
             self.decomposition_level = decomposition_level
         else:
+            self.filter_logger.error(f"Wrong decomposition_level' {decomposition_level}'. "
+                                     "Decomposition level should be integer. "
+                                     "Available decomposition levels are: 1 and 2.")
             raise ValueError(f"Wrong decomposition_level' {decomposition_level}'. "
                              "Decomposition level should be integer. Available decomposition levels are: 1 and 2.")
 
         if response_map in ['LLL', 'LLH', 'LHL', 'HLL', 'LHH', 'HHL', 'HLH', 'HHH']:
             self.response_map = response_map
         else:
+            self.filter_logger.error(f"Wrong response_map' {response_map}'. "
+                                     "Available response_maps are: "
+                                     "'LLL', 'LLH', 'LHL', 'HLL', 'LHH', 'HHL', 'HLH', 'HHH'.")
             raise ValueError(f"Wrong response_map' {response_map}'. "
-                  "Available response_maps are: 'LLL', 'LLH', 'LHL', 'HLL', 'LHH', 'HHL', 'HLH', 'HHH'.")
+                             "Available response_maps are: 'LLL', 'LLH', 'LHL', 'HLL', 'LHH', 'HHL', 'HLH', 'HHH'.")
 
         if isinstance(rotation_invariance, bool):
             self.rotation_invariance = rotation_invariance
         else:
+            self.filter_logger.error("Rotation Invariance should be "
+                                     f"True or False but '{type(rotation_invariance)}' detected.")
             raise ValueError(f"Rotation Invariance should be True or False but '{type(rotation_invariance)}' detected.")
 
         self.pooling = None
+
+        self.filter_logger.debug(f"Defined 3D {wavelet_type} Wavelet filter with response map {response_map}, "
+                                 f"decomposition level {decomposition_level}, "
+                                 f"pseudo rotation invariance is {rotation_invariance}"
+                                 f"and {padding_type} padding type.")
 
     def _get_kernel(self, response, decomposition_level=1):
         if response == "L":
@@ -301,36 +373,53 @@ class Laws:
 
     def __init__(self, response_map, padding_type, distance, energy_map, dimensionality,
                  rotation_invariance=False, pooling=None):
+
+        close_all_loggers()
+        self.filter_logger_date_time = datetime.now().strftime("%Y-%m-%d_%H%M%S")
+        self.filter_logger = get_logger(self.filter_logger_date_time+'_Laws_kernels')
+
         self.filter_type = 'Laws Kernels'
 
         if dimensionality in ['2D', '3D']:
             self.dimensionality = dimensionality
         else:
+            self.filter_logger.error(f"Wrong dimensionality '{dimensionality}'. Available dimensions '2D' and '3D'.")
             raise ValueError(f"Wrong dimensionality '{dimensionality}'. Available dimensions '2D' and '3D'.")
 
         if padding_type in ['constant', 'nearest', 'wrap', 'reflect']:
             self.padding_type = padding_type
         else:
+            self.filter_logger.error(f"Wrong padding type '{padding_type}'. "
+                                     "Available padding types are: 'constant', 'nearest', 'wrap', and 'reflect'.")
             raise ValueError(f"Wrong padding type '{padding_type}'. "
-                  "Available padding types are: 'constant', 'nearest', 'wrap', and 'reflect'.")
+                             "Available padding types are: 'constant', 'nearest', 'wrap', and 'reflect'.")
 
         if isinstance(distance, int):
             self.distance = distance
         else:
+            self.filter_logger.error(f"Distance should be 'int' but '{type(distance)}' detected.")
             raise ValueError(f"Distance should be 'int' but '{type(distance)}' detected.")
 
         if isinstance(energy_map, bool):
             self.energy_map = energy_map
         else:
+            self.filter_logger.error('Energy map can be only True or False.')
             raise ValueError('Energy map can be only True or False.')
 
         if isinstance(rotation_invariance, bool):
             self.rotation_invariance = rotation_invariance
         else:
+            self.filter_logger.error("Rotation Invariance should be "
+                                     f"True or False but '{type(rotation_invariance)}' detected.")
             raise ValueError(f"Rotation Invariance should be True or False but '{type(rotation_invariance)}' detected.")
 
         self.response_map = response_map
         self.pooling = pooling
+
+        self.filter_logger.debug(f"Defined {dimensionality} Laws Kernels filter with energy map is {energy_map}, "
+                                 f"response map {response_map}, distance {distance} "
+                                 f"pseudo rotation invariance is {rotation_invariance}, pooling {pooling},"
+                                 f"and {padding_type} padding type.")
 
     def _get_kernel(self, l_type, support):
         if l_type == "L":
@@ -442,9 +531,15 @@ class Filtering:
                  nifti_image=None,
                  number_of_threads=1):
 
+        close_all_loggers()
+        self.logger_date_time = datetime.now().strftime("%Y-%m-%d_%H%M%S")
+        self.logger = get_logger(self.logger_date_time+'_Filtering')
+        self.logger.info("Preliminary Data Check Started")
+
         if os.path.exists(load_dir):
             self.load_dir = load_dir
         else:
+            self.logger.error(f"Load directory '{load_dir}' does not exist.")
             raise ValueError(f"Load directory '{load_dir}' does not exist.")
 
         if os.path.exists(save_dir):
@@ -467,15 +562,12 @@ class Filtering:
         else:
             raise ValueError("Wrong input data types, available types: 'DICOM', 'NIFTI'.")
 
-        if self.input_data_type == 'DICOM' and my_filter.dimensionality == '3D':
+        if self.input_data_type == 'DICOM':
             list_pat_id_to_del = []
             for pat_index, pat_path in enumerate(self.list_of_patient_folders):
-                pat_folder_path = os.path.join(load_dir, pat_path)
-                if check_dicom_spacing(os.path.join(pat_folder_path)):
+                if check_dicom_tags(os.path.join(load_dir, pat_path), pat_path, self.logger, my_filter.dimensionality):
                     list_pat_id_to_del.append(pat_path)
             for pat_to_del in np.unique(list_pat_id_to_del):
-                print(f'Patient {pat_to_del} is excluded from the analysis'
-                      ' due to the inconsistent z-spacing. Absolute deviation is more than 0.001 mm.')
                 self.list_of_patient_folders.remove(pat_to_del)
 
         if isinstance(number_of_threads, int) and 0 < number_of_threads <= cpu_count():
@@ -488,7 +580,8 @@ class Filtering:
             if nifti_image is not None:
                 image_exists = True
                 for folder in self.list_of_patient_folders:
-                    if not os.path.exists(os.path.join(load_dir, str(folder), nifti_image)):
+                    if (not os.path.isfile(os.path.join(load_dir, str(folder), nifti_image + '.nii.gz'))
+                            and not os.path.isfile(os.path.join(load_dir, str(folder), nifti_image + '.nii'))):
                         image_exists = False
                         if not image_exists:
                             print('The NIFTI image file does not exists: '
@@ -513,16 +606,24 @@ class Filtering:
 
         self.patient_folder = None
         self.patient_number = None
+        self.logger.info("Preliminary Data Check Completed")
 
     def filtering(self):
-        print('Filtering Started')
-        with Pool(self.number_of_threads) as pool:
-            pool.map(self._load_patient, sorted(self.list_of_patient_folders))
-
-        print('Filtering Completed!')
+        if len(self.list_of_patient_folders) > 0:
+            try:
+                self.logger.info('Filtering Started')
+                with Pool(self.number_of_threads) as pool:
+                    pool.map(self._load_patient, sorted(self.list_of_patient_folders))
+                self.logger.info('Filtering Completed!')
+            except Exception:
+                self.logger.error("Caught an exception", exc_info=True)
+        else:
+            self.logger.info('No patients to filter.')
 
     def _load_patient(self, patient_number):
-        print(f'Current patient: {patient_number}')
+
+        self.patient_logger = get_logger(self.logger_date_time+'_Filtering')
+        self.patient_logger.info(f'Working on patient: {patient_number}')
         self.patient_number = str(patient_number)
         self.patient_folder = os.path.join(self.load_dir, str(self.patient_number))
         self.pat_image = None
@@ -533,6 +634,7 @@ class Filtering:
             self._process_dicom_files()
         self._apply_filter()
         self._save_as_nifti()
+        self.patient_logger.info(f'Completed patient: {patient_number}')
 
     def _process_nifti_files(self):
         self.pat_image = self._extract_nifti('IMAGE')

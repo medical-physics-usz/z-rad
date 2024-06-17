@@ -1,10 +1,11 @@
 import json
+import os
 from multiprocessing import cpu_count
 
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QFileDialog
 
-from .toolbox_gui import CustomButton, CustomLabel, CustomBox, CustomTextField, CustomWarningBox, resource_path
+from .toolbox_gui import CustomButton, CustomLabel, CustomBox, CustomTextField, CustomWarningBox
 from ..logic.filtering import Filtering, Mean, LoG, Wavelets2D, Wavelets3D, Laws
 
 
@@ -102,7 +103,7 @@ class FilteringTab(QWidget):
             stop_folder = self.stop_folder_text_field.text().strip()
 
         if self.list_of_patient_folders_text_field.text() != '':
-            list_of_patient_folders = [pat for pat in str(self.list_of_patient_folders_text_field.text()).split(",")]
+            list_of_patient_folders = [pat.strip() for pat in str(self.list_of_patient_folders_text_field.text()).split(",")]
         else:
             list_of_patient_folders = None
 
@@ -277,7 +278,7 @@ class FilteringTab(QWidget):
             'filt_Wavelet_rot_inv': self.wavelet_filter_rot_inv_combo_box.currentText()
         }
 
-        file_path = resource_path('config.json')
+        file_path = os.path.join(os.getcwd(), 'config.json')
 
         # Attempt to read the existing data from the file
         try:
@@ -294,7 +295,7 @@ class FilteringTab(QWidget):
             json.dump(existing_data, file, indent=4)
 
     def load_input_data(self):
-        file_path = resource_path('config.json')
+        file_path = os.path.join(os.getcwd(), 'config.json')
         try:
             with open(file_path, 'r') as file:
                 data = json.load(file)

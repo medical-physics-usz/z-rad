@@ -67,7 +67,7 @@ class RadiomicsTab(QWidget):
             ('Data Type:', self.input_data_type_combo_box),
             ('Discretization:', self.discretization_combo_box),
             ('Texture Features Aggr. Method:', self.aggr_dim_and_method_combo_box),
-            ('Imaging Mod.:', self.input_imaging_mod_combo_box)
+            ('Imaging Modality:', self.input_imaging_mod_combo_box)
         ]
 
         for message, combo_box in selections_combo_box:
@@ -88,7 +88,8 @@ class RadiomicsTab(QWidget):
             stop_folder = self.stop_folder_text_field.text().strip()
 
         if self.list_of_patient_folders_text_field.text() != '':
-            list_of_patient_folders = [pat.strip() for pat in str(self.list_of_patient_folders_text_field.text()).split(",")]
+            list_of_patient_folders = [pat.strip() for pat in
+                                       str(self.list_of_patient_folders_text_field.text()).split(",")]
         else:
             list_of_patient_folders = None
 
@@ -97,8 +98,8 @@ class RadiomicsTab(QWidget):
         dicom_structures = [ROI.strip() for ROI in self.dicom_structures_text_field.text().split(",")]
 
         if (not self.nifti_image_text_field.text().strip()
-                and self.input_data_type_combo_box.currentText() == 'NIFTI'):
-            CustomWarningBox("Enter NIFTI image").response()
+                and self.input_data_type_combo_box.currentText() == 'NIfTI'):
+            CustomWarningBox("Enter NIfTI image").response()
             return
         nifti_image = [file_name.strip() for file_name in self.nifti_image_text_field.text().split(',')]
 
@@ -133,7 +134,7 @@ class RadiomicsTab(QWidget):
         structure_set = None
         if input_data_type == 'DICOM':
             structure_set = dicom_structures
-        elif input_data_type == 'NIFTI':
+        elif input_data_type == 'NIfTI':
             structure_set = nifti_structures
 
         slice_weighting = False
@@ -143,16 +144,16 @@ class RadiomicsTab(QWidget):
             CustomWarningBox("Select Slice Averaging:!").response()
             return
         elif (self.aggr_dim_and_method_combo_box.currentText().split(',')[0] == '2D'
-                and self.weighting_combo_box.currentText() == 'Mean'):
+              and self.weighting_combo_box.currentText() == 'Mean'):
             slice_weighting = False
             slice_median = False
         elif (self.aggr_dim_and_method_combo_box.currentText().split(',')[0] == '2D'
-                and self.weighting_combo_box.currentText() == 'Weighted Mean'):
+              and self.weighting_combo_box.currentText() == 'Weighted Mean'):
             slice_weighting = True
             slice_median = False
 
         elif (self.aggr_dim_and_method_combo_box.currentText().split(',')[0] == '2D'
-                and self.weighting_combo_box.currentText() == 'Median'):
+              and self.weighting_combo_box.currentText() == 'Median'):
             slice_weighting = False
             slice_median = True
 
@@ -171,7 +172,7 @@ class RadiomicsTab(QWidget):
         elif aggr_method.strip() == 'direction-merged':
             aggr_method = 'DIR_MERG'
 
-        if (self.input_imaging_mod_combo_box.currentText() == 'Imaging Mod.:'
+        if (self.input_imaging_mod_combo_box.currentText() == 'Imaging Modality:'
                 and CustomWarningBox("Select Input Imaging Modality").response()):
             return
         input_imaging_mod = self.input_imaging_mod_combo_box.currentText()
@@ -212,8 +213,8 @@ class RadiomicsTab(QWidget):
             'rad_save_dir_label': self.save_dir_label.text(),
             'rad_no_of_threads': self.number_of_threads_combo_box.currentText(),
             'rad_DICOM_structures': self.dicom_structures_text_field.text(),
-            'rad_NIFTI_structures': self.nifti_structure_text_field.text(),
-            'rad_NIFTI_image': self.nifti_image_text_field.text(),
+            'rad_NIfTI_structures': self.nifti_structure_text_field.text(),
+            'rad_NIfTI_image': self.nifti_image_text_field.text(),
             'rad_intensity_range': self.intensity_range_text_field.text(),
             'rad_agr_strategy': self.aggr_dim_and_method_combo_box.currentText(),
             'rad_binning': self.discretization_combo_box.currentText(),
@@ -253,9 +254,9 @@ class RadiomicsTab(QWidget):
                 self.input_data_type_combo_box.setCurrentText(data.get('rad_input_data_type', 'Data Type:'))
                 self.save_dir_label.setText(data.get('rad_save_dir_label', ''))
                 self.number_of_threads_combo_box.setCurrentText(data.get('rad_no_of_threads', 'No. of Threads:'))
-                self.nifti_structure_text_field.setText(data.get('rad_NIFTI_structures', ''))
+                self.nifti_structure_text_field.setText(data.get('rad_NIfTI_structures', ''))
                 self.dicom_structures_text_field.setText(data.get('rad_DICOM_structures', ''))
-                self.nifti_image_text_field.setText(data.get('rad_NIFTI_image', ''))
+                self.nifti_image_text_field.setText(data.get('rad_NIfTI_image', ''))
                 self.intensity_range_text_field.setText(data.get('rad_intensity_range', ''))
                 self.aggr_dim_and_method_combo_box.setCurrentText(
                     data.get('rad_agr_strategy', 'Texture Features Aggr. Method:'))
@@ -265,7 +266,8 @@ class RadiomicsTab(QWidget):
                 self.intensity_range_check_box.setCheckState(data.get('rad_intensity_range_check_box', 0))
                 self.outlier_detection_check_box.setCheckState(data.get('rad_outlier_detection_check_box', 0))
                 self.weighting_combo_box.setCurrentText(data.get('rad_weighting', 'Slice Averaging:'))
-                self.input_imaging_mod_combo_box.setCurrentText(data.get('rad_input_image_modality', 'Imaging Mod.:'))
+                self.input_imaging_mod_combo_box.setCurrentText(
+                    data.get('rad_input_image_modality', 'Imaging Modality:'))
         except FileNotFoundError:
             print("No previous data found!")
 
@@ -276,12 +278,12 @@ class RadiomicsTab(QWidget):
         # Path to load the files
         self.load_dir_button = CustomButton(
             'Load Directory',
-            14, 30, 50, 200, 50, self,
+            30, 50, 200, 50, self,
             style="background-color: #4CAF50; color: white; border: none; border-radius: 25px;"
         )
         self.load_dir_label = CustomTextField(
             '',
-            14, 300, 50, 1400, 50,
+            300, 50, 1400, 50,
             self,
             style=True)
         self.load_dir_label.setAlignment(Qt.AlignCenter)
@@ -289,9 +291,9 @@ class RadiomicsTab(QWidget):
 
         # Set used data type
         self.input_data_type_combo_box = CustomBox(
-            14, 60, 300, 140, 50, self,
+            60, 300, 140, 50, self,
             item_list=[
-                "Data Type:", "DICOM", "NIFTI"
+                "Data Type:", "DICOM", "NIfTI"
             ]
         )
 
@@ -300,38 +302,38 @@ class RadiomicsTab(QWidget):
         #  Start and Stop Folder TextFields and Labels
         self.start_folder_label = CustomLabel(
             'Start Folder:',
-            18, 520, 140, 150, 50, self,
+            520, 140, 150, 50, self,
             style="color: white;"
         )
         self.start_folder_text_field = CustomTextField(
             "Enter...",
-            14, 660, 140, 100, 50, self
+            660, 140, 100, 50, self
         )
         self.stop_folder_label = CustomLabel(
             'Stop Folder:',
-            18, 780, 140, 150, 50, self,
+            780, 140, 150, 50, self,
             style="color: white;")
         self.stop_folder_text_field = CustomTextField(
             "Enter...",
-            14, 920, 140, 100, 50, self
+            920, 140, 100, 50, self
         )
 
         self.input_imaging_mod_combo_box = CustomBox(
-            14, 320, 140, 170, 50, self,
+            320, 140, 170, 50, self,
             item_list=[
-                "Imaging Mod.:", "CT", "MR", "PT"
+                "Imaging Modality:", "CT", "MR", "PT"
             ]
         )
 
         # List of Patient Folders TextField and Label
         self.list_of_patient_folders_label = CustomLabel(
             'List of Folders:',
-            18, 1050, 140, 210, 50, self,
+            1050, 140, 210, 50, self,
             style="color: white;"
         )
         self.list_of_patient_folders_text_field = CustomTextField(
             "E.g. 1, 5, 10, 34...",
-            14, 1220, 140, 210, 50, self)
+            1220, 140, 210, 50, self)
 
         # Set # of used cores
         no_of_threads = ['No. of Threads:']
@@ -341,73 +343,73 @@ class RadiomicsTab(QWidget):
             else:
                 no_of_threads.append(str(core + 1) + " threads")
         self.number_of_threads_combo_box = CustomBox(
-            14, 1450, 140, 210, 50, self,
+            1450, 140, 210, 50, self,
             item_list=no_of_threads
         )
 
         # Set save directory
         self.save_dir_button = CustomButton(
             'Save Directory',
-            14, 30, 220, 200, 50, self,
+            30, 220, 200, 50, self,
             style="background-color: #4CAF50; color: white; border: none; border-radius: 25px;"
         )
         self.save_dir_label = CustomTextField(
             '',
-            14, 300, 220, 1400, 50,
+            300, 220, 1400, 50,
             self,
             style=True)
         self.save_dir_label.setAlignment(Qt.AlignCenter)
         self.save_dir_button.clicked.connect(lambda: self.open_directory(key=False))
 
         self.dicom_structures_label = CustomLabel(
-            'Studied str.:',
-            18, 370, 300, 200, 50, self,
+            'Structures:',
+            370, 300, 200, 50, self,
             style="color: white;"
         )
         self.dicom_structures_text_field = CustomTextField(
             "E.g. CTV, liver... or ExtractAllMasks",
-            14, 510, 300, 475, 50, self
+            510, 300, 475, 50, self
         )
         self.dicom_structures_label.hide()
         self.dicom_structures_text_field.hide()
 
         self.nifti_structures_label = CustomLabel(
-            'NIFTI Str. File(s):',
-            18, 370, 300, 200, 50, self,
+            'NIfTI Mask Files:',
+            370, 300, 200, 50, self,
             style="color: white;"
         )
         self.nifti_structure_text_field = CustomTextField(
             "E.g. CTV, liver...",
-            14, 540, 300, 250, 50, self
+            540, 300, 250, 50, self
         )
         self.nifti_structures_label.hide()
         self.nifti_structure_text_field.hide()
 
         self.nifti_image_label = CustomLabel(
-            'NIFTI Image File(s):',
-            18, 800, 300, 400, 50, self,
+            'NIfTI Image File(s):',
+            800, 300, 400, 50, self,
             style="color: white;"
         )
         self.nifti_image_text_field = CustomTextField(
             "E.g. filtered_imageCT.nii.gz, imageCT.nii.gz",
-            14, 990, 300, 410, 50, self
+            990, 300, 410, 50, self
         )
         self.nifti_image_label.hide()
         self.nifti_image_text_field.hide()
 
         self.outlier_detection_check_box = CustomCheckBox(
             'Outlier Detection',
-            18, 375, 460, 250, 50, self
+            375, 460, 250, 50, self
         )
 
         self.outlier_detection_label = CustomLabel(
             'Confidence Interval (in \u03C3):',
-            18, 640, 460, 350, 50, self,
+            640, 460, 350, 50, self,
             style="color: white;"
         )
         self.outlier_detection_text_field = CustomTextField(
             "E.g. 3",
-            14, 930, 460, 100, 50, self
+            930, 460, 100, 50, self
         )
         self.outlier_detection_label.hide()
         self.outlier_detection_text_field.hide()
@@ -418,12 +420,12 @@ class RadiomicsTab(QWidget):
 
         self.intensity_range_label = CustomLabel(
             'Intensity range:',
-            18, 635, 375, 200, 50, self,
+            635, 375, 200, 50, self,
             style="color: white;"
         )
         self.intensity_range_text_field = CustomTextField(
             "E.g. -1000, 400",
-            14, 820, 375, 210, 50, self
+            820, 375, 210, 50, self
         )
 
         self.intensity_range_label.hide()
@@ -431,7 +433,7 @@ class RadiomicsTab(QWidget):
 
         self.intensity_range_check_box = CustomCheckBox(
             'Intensity Range',
-            18, 375, 380, 200, 50, self)
+            375, 380, 200, 50, self)
         self.intensity_range_check_box.stateChanged.connect(
             lambda: (self.intensity_range_label.show(), self.intensity_range_text_field.show())
             if self.intensity_range_check_box.isChecked()
@@ -439,22 +441,22 @@ class RadiomicsTab(QWidget):
         )
 
         self.discretization_combo_box = CustomBox(
-            14, 375, 540, 170, 50, self,
+            375, 540, 170, 50, self,
             item_list=[
                 "Discretization:", "Number of Bins", "Bin Size"
-                      ]
+            ]
         )
         self.bin_number_text_field = CustomTextField(
             "E.g. 5",
-            14, 555, 540, 100, 50, self
+            555, 540, 100, 50, self
         )
-        self.bin_size_text_field = CustomTextField("E.g. 50", 14, 555, 540, 100, 50, self)
+        self.bin_size_text_field = CustomTextField("E.g. 50", 555, 540, 100, 50, self)
         self.bin_number_text_field.hide()
         self.bin_size_text_field.hide()
         self.discretization_combo_box.currentTextChanged.connect(self.changed_discretization)
 
         self.aggr_dim_and_method_combo_box = CustomBox(
-            14, 1100, 375, 300, 50, self,
+            1100, 375, 300, 50, self,
             item_list=[
                 "Texture Features Aggr. Method:",
                 "2D, averaged",
@@ -467,7 +469,7 @@ class RadiomicsTab(QWidget):
         )
 
         self.weighting_combo_box = CustomBox(
-            14, 1450, 375, 175, 50, self,
+            1450, 375, 175, 50, self,
             item_list=[
                 "Slice Averaging:", "Mean", "Weighted Mean", "Median"]
         )
@@ -475,8 +477,8 @@ class RadiomicsTab(QWidget):
         self.weighting_combo_box.hide()
         self.aggr_dim_and_method_combo_box.currentTextChanged.connect(self.changed_aggr_dim)
 
-        self.run_button = CustomButton('Run', 20,
-                                       910, 590, 80, 50, self, style=False, run=True)
+        self.run_button = CustomButton('Run',
+                                       910, 590, 80, 50, self, style=False)
         self.run_button.clicked.connect(self.run_selected_option)
 
     def on_file_type_combo_box_changed(self, text):
@@ -488,7 +490,7 @@ class RadiomicsTab(QWidget):
             self.dicom_structures_text_field.show()
             self.nifti_image_label.hide()
             self.nifti_image_text_field.hide()
-        elif text == 'NIFTI':
+        elif text == 'NIfTI':
             self.nifti_structures_label.show()
             self.nifti_structure_text_field.show()
             self.dicom_structures_label.hide()

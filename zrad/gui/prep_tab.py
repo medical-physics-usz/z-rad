@@ -6,8 +6,7 @@ from multiprocessing import cpu_count
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QFileDialog
 
-from .toolbox_gui import CustomButton, CustomLabel, CustomBox, CustomTextField, CustomWarningBox, CustomCheckBox, \
-    resource_path
+from .toolbox_gui import CustomButton, CustomLabel, CustomBox, CustomTextField, CustomWarningBox, CustomCheckBox
 from ..logic.preprocessing import Preprocessing
 
 
@@ -273,11 +272,11 @@ class PreprocessingTab(QWidget):
         # Load Directory Button and Label
         self.load_dir_button = CustomButton(
             'Load Directory',
-            14, 30, 50, 200, 50, self,
+            30, 50, 200, 50, self,
             style=True)
         self.load_dir_label = CustomTextField(
             '',
-            14, 300, 50, 1400, 50,
+            300, 50, 1400, 50,
             self,
             style=True)
         self.load_dir_label.setAlignment(Qt.AlignCenter)
@@ -285,7 +284,7 @@ class PreprocessingTab(QWidget):
 
         # Input Data Type ComboBox
         self.input_data_type_combo_box = CustomBox(
-            14, 40, 300, 160, 50, self,
+            40, 300, 160, 50, self,
             item_list=[
                 "Data Type:", "DICOM", "NIFTI"
             ]
@@ -294,37 +293,37 @@ class PreprocessingTab(QWidget):
 
         self.just_save_as_nifti_check_box = CustomCheckBox(
             'Save as NIFTI without resampling',
-            18, 1250, 300, 400, 50, self)
+            1250, 300, 400, 50, self)
         self.just_save_as_nifti_check_box.hide()
 
         #  Start and Stop Folder TextFields and Labels
         self.start_folder_label = CustomLabel(
             'Start Folder:',
-            18, 520, 140, 150, 50, self,
+            520, 140, 150, 50, self,
             style="color: white;"
         )
         self.start_folder_text_field = CustomTextField(
             "Enter...",
-            14, 660, 140, 100, 50, self
+            660, 140, 100, 50, self
         )
         self.stop_folder_label = CustomLabel(
             'Stop Folder:',
-            18, 780, 140, 150, 50, self,
+            780, 140, 150, 50, self,
             style="color: white;")
         self.stop_folder_text_field = CustomTextField(
             "Enter...",
-            14, 920, 140, 100, 50, self
+            920, 140, 100, 50, self
         )
 
         # List of Patient Folders TextField and Label
         self.list_of_patient_folders_label = CustomLabel(
             'List of Folders:',
-            18, 1050, 140, 210, 50, self,
+            1050, 140, 210, 50, self,
             style="color: white;"
         )
         self.list_of_patient_folders_text_field = CustomTextField(
             "E.g. 1, 5, 10, 34...",
-            14, 1220, 140, 210, 50, self)
+            1220, 140, 210, 50, self)
 
         # Number of Threads ComboBox
         no_of_threads = ['No. of Threads:']
@@ -334,25 +333,25 @@ class PreprocessingTab(QWidget):
             else:
                 no_of_threads.append(str(core + 1) + " threads")
         self.number_of_threads_combo_box = CustomBox(
-            14, 1450, 140, 210, 50, self,
+            1450, 140, 210, 50, self,
             item_list=no_of_threads
         )
 
         # Save Directory Button and Label
         self.save_dir_button = CustomButton(
             'Save Directory',
-            14, 30, 220, 200, 50, self,
+            30, 220, 200, 50, self,
             style=True)
         self.save_dir_label = CustomTextField(
             '',
-            14, 300, 220, 1400, 50,
+            300, 220, 1400, 50,
             self,
             style=True)
         self.save_dir_label.setAlignment(Qt.AlignCenter)
         self.save_dir_button.clicked.connect(lambda: self.open_directory(key=False))
 
         self.input_imaging_mod_combo_box = CustomBox(
-            14, 320, 140, 170, 50, self,
+            320, 140, 170, 50, self,
             item_list=[
                 "Imaging Mod.:", "CT", "MR", "PT"
             ]
@@ -361,36 +360,36 @@ class PreprocessingTab(QWidget):
         # DICOM and NIFTI Structures TextFields and Labels
         self.dicom_structures_label = CustomLabel(
             'Studied str.:',
-            18, 595, 300, 200, 50, self,
+            595, 300, 200, 50, self,
             style="color: white;"
         )
         self.dicom_structures_text_field = CustomTextField(
             "E.g. CTV, liver... or ExtractAllMasks",
-            14, 735, 300, 475, 50, self
+            735, 300, 475, 50, self
         )
         self.dicom_structures_label.hide()
         self.dicom_structures_text_field.hide()
 
         self.nifti_structures_label = CustomLabel(
             'NIFTI Str. Files:',
-            18, 370, 300, 200, 50, self,
+            370, 300, 200, 50, self,
             style="color: white;"
         )
         self.nifti_structures_text_field = CustomTextField(
             "E.g. CTV, liver...",
-            14, 550, 300, 220, 50, self
+            550, 300, 220, 50, self
         )
         self.nifti_structures_label.hide()
         self.nifti_structures_text_field.hide()
 
         self.nifti_image_label = CustomLabel(
             'NIFTI Image File:',
-            18, 790, 300, 200, 50, self,
+            790, 300, 200, 50, self,
             style="color: white;"
         )
         self.nifti_image_text_field = CustomTextField(
             "E.g. imageCT.nii.gz",
-            14, 990, 300, 220, 50, self
+            990, 300, 220, 50, self
         )
         self.nifti_image_label.hide()
         self.nifti_image_text_field.hide()
@@ -398,16 +397,16 @@ class PreprocessingTab(QWidget):
         # Resample Resolution Label and TextField
         self.resample_resolution_label = CustomLabel(
             'Resample Resolution (mm):',
-            18, 370, 380, 300, 50, self,
+            370, 380, 300, 50, self,
             style="color: white;"
         )
         self.resample_resolution_text_field = CustomTextField(
-            "E.g. 1", 14, 675, 380, 90, 50, self
+            "E.g. 1", 675, 380, 90, 50, self
         )
 
         # Image Interpolation Method ComboBox
         self.image_interpolation_method_combo_box = CustomBox(
-            14, 775, 380, 210, 50, self,
+            775, 380, 210, 50, self,
             item_list=[
                 'Image Interpolation:', "NN", "Linear", "BSpline", "Gaussian"
             ]
@@ -415,7 +414,7 @@ class PreprocessingTab(QWidget):
 
         # Resample Dimension ComboBox
         self.resample_dimension_combo_box = CustomBox(
-            14, 1000, 380, 210, 50, self,
+            1000, 380, 210, 50, self,
             item_list=[
                 'Resample Dimension:', "2D", "3D"
             ]
@@ -423,7 +422,7 @@ class PreprocessingTab(QWidget):
 
         # Mask Interpolation Method ComboBox
         self.mask_interpolation_method_combo_box = CustomBox(
-            14, 370, 460, 210, 50, self,
+            370, 460, 210, 50, self,
             item_list=[
                 'Mask Interpolation:', "NN", "Linear", "BSpline", "Gaussian"
             ]
@@ -432,34 +431,34 @@ class PreprocessingTab(QWidget):
         # Mask Interpolation Threshold Label and TextField
         self.mask_interpolation_threshold_label = CustomLabel(
             'Mask Interpolation Threshold:',
-            18, 600, 460, 360, 50, self,
+            600, 460, 360, 50, self,
             style="color: white;"
         )
         self.mask_interpolation_threshold_text_field = CustomTextField(
             "E.g. 0.75",
-            14, 930, 460, 100, 50, self
+            930, 460, 100, 50, self
         )
         self.mask_interpolation_threshold_text_field.setText('0.5')
         self.mask_interpolation_threshold_label.hide()
         self.mask_interpolation_threshold_text_field.hide()
         self.mask_interpolation_method_combo_box.currentTextChanged.connect(
             lambda:
-                (
-                    self.mask_interpolation_threshold_label.show(),
-                    self.mask_interpolation_threshold_text_field.show()
-                )
-                if self.mask_interpolation_method_combo_box.currentText() not in ['NN', 'Mask Interpolation:']
-                else (
-                    self.mask_interpolation_threshold_label.hide(),
-                    self.mask_interpolation_threshold_text_field.hide()
-                )
+            (
+                self.mask_interpolation_threshold_label.show(),
+                self.mask_interpolation_threshold_text_field.show()
+            )
+            if self.mask_interpolation_method_combo_box.currentText() not in ['NN', 'Mask Interpolation:']
+            else (
+                self.mask_interpolation_threshold_label.hide(),
+                self.mask_interpolation_threshold_text_field.hide()
+            )
         )
 
         # Run Button
         self.run_button = CustomButton(
             'Run',
-            20, 910, 590, 80, 50, self,
-            style=False, run=True
+            910, 590, 80, 50, self,
+            style=False
         )
         self.run_button.clicked.connect(self.run_selected_input)
 

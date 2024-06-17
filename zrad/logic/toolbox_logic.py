@@ -230,14 +230,14 @@ def extract_dicom(dicom_dir, rtstract, modality, rtstruct_file='', selected_stru
             if 'PHILIPS' in ds.Manufacturer.upper():
                 if units == 'BQML':
                     acquisition_time = min_acquisition_time
-            elif 'SIEMENS' in ds.Manufacturer.upper():
+            elif 'SIEMENS' in ds.Manufacturer.upper() and units == 'BQML':
                 try:
                     acquisition_time = parse_time(ds[(0x0071, 0x1022)].value).replace(year=injection_time.year,
                                                                                   month=injection_time.month,
                                                                                   day=injection_time.day)
                 except Exception:
                     acquisition_time = min_acquisition_time
-            elif 'GE' in ds.Manufacturer.upper():
+            elif 'GE' in ds.Manufacturer.upper() and units == 'BQML':
                 try:
                     acquisition_time = parse_time(ds[(0x0009, 0x100d)].value).replace(year=injection_time.year,
                                                                                       month=injection_time.month,

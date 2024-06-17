@@ -1,127 +1,271 @@
-from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QFileDialog)
-from PyQt5.QtCore import Qt
-import multiprocessing
-import sys
 import json
+import os
+from multiprocessing import cpu_count
 
-from zrad.gui.toolbox_gui import (CustomButton, CustomLabel, CustomBox, CustomTextField, CustomCheckBox)
+import numpy as np
+from PyQt5.QtCore import Qt
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QFileDialog
+
+from .toolbox_gui import CustomButton, CustomLabel, CustomBox, CustomTextField, CustomCheckBox, CustomWarningBox
+from ..logic.radiomics import Radiomics
+
+
 class RadiomicsTab(QWidget):
     def __init__(self):
         super().__init__()
 
         self.layout = None
-        self.LoadDirButton = None
-        self.LoadDirLabel = None
-        self.fileTypeLabel = None
-        self.DataTypeComboBox = None
-        self.PrefixLabel = None
-        self.PrefixTextField = None
-        self.StartLabel = None
-        self.StartTextField = None
-        self.StopLabel = None
-        self.StopTextField = None
-        self.ListOfPatientsLabel = None
-        self.ListOfPatientsTextField = None
-        self.threadNoLabel = None
-        self.NoOfThreadsComboBox = None
-        self.SaveDirButton = None
-        self.SaveDirLabel = None
-        self.StructureNamesLabel = None
-        self.StructureNamesTextField = None
-        self.NiiImageFileLabel = None
-        self.NiiImageFileTextField = None
-        self.imTypeLabel = None
-        self.ImagingTypeComboBox = None
-        self.IntensityRangeLabel = None
-        self.IntensityRangeTextField = None
-        self.ImageInterpolationTypeComboBox = None
-        self.ResizeResolutionLabel = None
-        self.ResizeResolutionTextField = None
-        self.interpTypeLabel = None
-        self.ImageInterpolationTypeComboBox = None
-        self.resizeDimTypeLabel = None
-        self.ResizeDimComboBox = None
-        self.RunButton = None
-        self.is_wavelet_response_map_connected = False
+        self.load_dir_button = None
+        self.load_dir_label = None
+        self.input_data_type_combo_box = None
+        self.folder_prefix_label = None
+        self.start_folder_label = None
+        self.start_folder_text_field = None
+        self.stop_folder_label = None
+        self.stop_folder_text_field = None
+        self.list_of_patient_folders_label = None
+        self.list_of_patient_folders_text_field = None
+        self.number_of_threads_label = None
+        self.number_of_threads_combo_box = None
+        self.save_dir_button = None
+        self.save_dir_label = None
+        self.dicom_structures_label = None
+        self.dicom_structures_text_field = None
+        self.nifti_structures_label = None
+        self.nifti_structure_text_field = None
+        self.nifti_image_label = None
+        self.nifti_image_text_field = None
+        self.intensity_range_label = None
+        self.intensity_range_text_field = None
+        self.input_imaging_mod_combo_box = None
+        self.outlier_detection_check_box = None
+        self.outlier_detection_label = None
+        self.outlier_detection_text_field = None
+        self.intensity_range_check_box = None
+        self.discretization_combo_box = None
+        self.bin_size_text_field = None
+        self.bin_number_text_field = None
+        self.aggr_dim_and_method_combo_box = None
+        self.weighting_combo_box = None
+
+        self.run_button = None
 
     def run_selected_option(self):
-        if self.LoadDirLabel.text() == '':
-            print("Load directory not selected")
-            sys.exit()
-        else:
-            load_dir = self.LoadDirLabel.text()
-        folder_prefix = self.PrefixTextField.text()
-        start_folder = self.StartTextField.text()
-        stop_folder = self.StopTextField.text()
-        save_dir = self.SaveDirLabel.text()
-        if save_dir == '':
-            print("Save directory not selected")
-            sys.exit()
-        list_of_patient_folders = []
-        if self.ListOfPatientsTextField.text() !='':
-            list_of_patient_folders = [int(pat) for pat in str(self.ListOfPatientsTextField.text()).split(",")]
-        if start_folder == '' and stop_folder == '' and list_of_patient_folders == []:
-            print('Studied patients are not specified')
-            sys.exit()
-        elif (start_folder != '' and stop_folder == '' and list_of_patient_folders == []) or (start_folder == '' and stop_folder != '' and list_of_patient_folders == []):
-            print('Studied patients are not completely specified')
-            sys.exit()
-        number_of_threads = self.NoOfThreadsComboBox.currentText().split(" ")[0]
-        print(number_of_threads == 'No.')
-        if number_of_threads =='No.':
-            print('No. of cores was not specified, default value of 1 core is used')
-            number_of_threads = 1
-        input_data_type = self.DataTypeComboBox.currentText()
-        if input_data_type == "Data Type:":
-            print('Input Data Type was not specified')
-            sys.exit()
-        dicom_structures = [ROI.strip() for ROI in self.StructureNamesTextField.text().split(",")]
-        nifti_image = self.NiiImageFileTextField.text()
-        nifti_structures = [ROI.strip() for ROI in self.NiiStructureFilesTextField.text().split(",")]
-        if input_data_type == 'DICOM' and dicom_structures == []:
-            print('DICOM structures are not specified')
-        elif (input_data_type == 'NIFTI' and nifti_image == '') or (
-                input_data_type == 'NIFTI' and nifti_structures == []):
-            print('NIFTI structures or image are not specified')
 
-        print({'Data location': load_dir, 'Folder folder_prefix': folder_prefix, 'Start folder': start_folder, 'Stop folder': stop_folder})
+        selections_text = [
+            ('', self.load_dir_label.text().strip(), "Select Load Directory!"),
+            ('', self.save_dir_label.text().strip(), "Select Save Directory"),
+        ]
+
+        for message, text, warning in selections_text:
+            if text == message and CustomWarningBox(warning).response():
+                return
+
+        # Validate combo box selections
+        selections_combo_box = [
+            ('No. of Threads:', self.number_of_threads_combo_box),
+            ('Data Type:', self.input_data_type_combo_box),
+            ('Discretization:', self.discretization_combo_box),
+            ('Texture Features Aggr. Method:', self.aggr_dim_and_method_combo_box),
+            ('Imaging Mod.:', self.input_imaging_mod_combo_box)
+        ]
+
+        for message, combo_box in selections_combo_box:
+            if (combo_box.currentText() == message
+                    and CustomWarningBox(f"Select {message.split(':')[0]}").response()):
+                return
+
+        # Collect values from GUI elements
+        load_dir = self.load_dir_label.text()
+        save_dir = self.save_dir_label.text()
+
+        start_folder = None
+        if self.start_folder_text_field.text().strip() != '':
+            start_folder = self.start_folder_text_field.text().strip()
+
+        stop_folder = None
+        if self.stop_folder_text_field.text().strip() != '':
+            stop_folder = self.stop_folder_text_field.text().strip()
+
+        if self.list_of_patient_folders_text_field.text() != '':
+            list_of_patient_folders = [pat.strip() for pat in str(self.list_of_patient_folders_text_field.text()).split(",")]
+        else:
+            list_of_patient_folders = None
+
+        number_of_threads = int(self.number_of_threads_combo_box.currentText().split(" ")[0])
+        input_data_type = self.input_data_type_combo_box.currentText()
+        dicom_structures = [ROI.strip() for ROI in self.dicom_structures_text_field.text().split(",")]
+
+        if (not self.nifti_image_text_field.text().strip()
+                and self.input_data_type_combo_box.currentText() == 'NIFTI'):
+            CustomWarningBox("Enter NIFTI image").response()
+            return
+        nifti_image = [file_name.strip() for file_name in self.nifti_image_text_field.text().split(',')]
+
+        # Collect values from GUI elements
+        nifti_structures = [ROI.strip() for ROI in self.nifti_structure_text_field.text().split(",")]
+        intensity_range = None
+        if self.intensity_range_check_box.isChecked():
+            if self.intensity_range_text_field.text() == '':
+                CustomWarningBox("Enter intensity range").response()
+                return
+            intensity_range = [np.inf if intensity.strip() == '' else float(intensity)
+                               for intensity in self.intensity_range_text_field.text().split(',')]
+        outlier_range = None
+        if self.outlier_detection_check_box.isChecked():
+            if self.outlier_detection_text_field.text() == '':
+                CustomWarningBox("Enter Confidence Interval").response()
+                return
+            outlier_range = float(self.outlier_detection_text_field.text())
+        number_of_bins = None
+        bin_size = None
+        if self.discretization_combo_box.currentText() == 'Number of Bins':
+            if self.bin_number_text_field.text() == '':
+                CustomWarningBox("Enter Number of Bins").response()
+                return
+            number_of_bins = int(self.bin_number_text_field.text())
+
+        if self.discretization_combo_box.currentText() == 'Bin Size':
+            if self.bin_size_text_field.text() == '':
+                CustomWarningBox("Enter Bin Size").response()
+                return
+            bin_size = float(self.bin_size_text_field.text())
+        structure_set = None
+        if input_data_type == 'DICOM':
+            structure_set = dicom_structures
+        elif input_data_type == 'NIFTI':
+            structure_set = nifti_structures
+
+        slice_weighting = False
+        slice_median = False
+        if (self.aggr_dim_and_method_combo_box.currentText().split(',')[0] == '2D'
+                and self.weighting_combo_box.currentText() == 'Slice Averaging:'):
+            CustomWarningBox("Select Slice Averaging:!").response()
+            return
+        elif (self.aggr_dim_and_method_combo_box.currentText().split(',')[0] == '2D'
+                and self.weighting_combo_box.currentText() == 'Mean'):
+            slice_weighting = False
+            slice_median = False
+        elif (self.aggr_dim_and_method_combo_box.currentText().split(',')[0] == '2D'
+                and self.weighting_combo_box.currentText() == 'Weighted Mean'):
+            slice_weighting = True
+            slice_median = False
+
+        elif (self.aggr_dim_and_method_combo_box.currentText().split(',')[0] == '2D'
+                and self.weighting_combo_box.currentText() == 'Median'):
+            slice_weighting = False
+            slice_median = True
+
+        if structure_set == ['']:
+            CustomWarningBox("Enter Structures").response()
+            return
+
+        aggr_dim, aggr_method = self.aggr_dim_and_method_combo_box.currentText().split(',')
+
+        if aggr_method.strip() == 'merged':
+            aggr_method = 'MERG'
+        elif aggr_method.strip() == 'averaged':
+            aggr_method = 'AVER'
+        elif aggr_method.strip() == 'slice-merged':
+            aggr_method = 'SLICE_MERG'
+        elif aggr_method.strip() == 'direction-merged':
+            aggr_method = 'DIR_MERG'
+
+        if (self.input_imaging_mod_combo_box.currentText() == 'Imaging Mod.:'
+                and CustomWarningBox("Select Input Imaging Modality").response()):
+            return
+        input_imaging_mod = self.input_imaging_mod_combo_box.currentText()
+
+        rad_instance = Radiomics(load_dir, save_dir,
+                                 input_data_type, input_imaging_mod,
+                                 structure_set,
+                                 aggr_dim, aggr_method,
+                                 intensity_range, outlier_range,
+                                 number_of_bins, bin_size,
+                                 slice_weighting, slice_median,
+                                 start_folder, stop_folder, list_of_patient_folders,
+                                 nifti_image,
+                                 number_of_threads)
+
+        rad_instance.extract_radiomics()
 
     def open_directory(self, key):
         options = QFileDialog.Options()
         options |= QFileDialog.ShowDirsOnly
         directory = QFileDialog.getExistingDirectory(self, "Select Directory", "", options=options)
-        if directory and key == True:
-            self.LoadDirLabel.setText(directory)
-        elif directory and key == False:
-            self.SaveDirLabel.setText(directory)
+        if directory and key:
+            self.load_dir_label.setText(directory)
+        elif directory and not key:
+            self.save_dir_label.setText(directory)
 
     def save_input_data(self):
+        """
+        Update specific radiology-related fields in the config.json file without
+        overwriting existing data.
+        """
         data = {
-            'Data location': self.LoadDirLabel.text(),
-            'Folder folder_prefix': self.PrefixTextField.text(),
-            'Start folder': self.StartTextField.text(),
-            'Stop folder': self.StopTextField.text(),
-            'List of patients': self.ListOfPatientsTextField.text(),
-            'Data Type': self.DataTypeComboBox.currentText(),
-            'Save directory': self.SaveDirLabel.text(),
-            '# of cores': self.NoOfThreadsComboBox.currentText(),
-
+            'rad_load_dir_label': self.load_dir_label.text(),
+            'rad_start_folder': self.start_folder_text_field.text(),
+            'rad_stop_folder': self.stop_folder_text_field.text(),
+            'rad_list_of_patients': self.list_of_patient_folders_text_field.text(),
+            'rad_input_data_type': self.input_data_type_combo_box.currentText(),
+            'rad_save_dir_label': self.save_dir_label.text(),
+            'rad_no_of_threads': self.number_of_threads_combo_box.currentText(),
+            'rad_DICOM_structures': self.dicom_structures_text_field.text(),
+            'rad_NIFTI_structures': self.nifti_structure_text_field.text(),
+            'rad_NIFTI_image': self.nifti_image_text_field.text(),
+            'rad_intensity_range': self.intensity_range_text_field.text(),
+            'rad_agr_strategy': self.aggr_dim_and_method_combo_box.currentText(),
+            'rad_binning': self.discretization_combo_box.currentText(),
+            'rad_number_of_bins': self.bin_number_text_field.text(),
+            'rad_bin_size': self.bin_size_text_field.text(),
+            'rad_intensity_range_check_box': self.intensity_range_check_box.checkState(),
+            'rad_outlier_detection_check_box': self.outlier_detection_check_box.checkState(),
+            'rad_weighting': self.weighting_combo_box.currentText(),
+            'rad_input_image_modality': self.input_imaging_mod_combo_box.currentText()
         }
-        with open('input/last_saved_filt_user_input.json', 'w') as file:
-            json.dump(data, file)
+
+        file_path = os.path.join(os.getcwd(), 'config.json')
+
+        # Attempt to read the existing data from the file
+        try:
+            with open(file_path, 'r') as file:
+                existing_data = json.load(file)
+        except FileNotFoundError:
+            existing_data = {}
+
+        # Update the existing data with the new data
+        existing_data.update(data)
+
+        # Write the updated data back to the file
+        with open(file_path, 'w') as file:
+            json.dump(existing_data, file, indent=4)
 
     def load_input_data(self):
+        file_path = os.path.join(os.getcwd(), 'config.json')
         try:
-            with open('input/last_saved_filt_user_input.json', 'r') as file:
+            with open(file_path, 'r') as file:
                 data = json.load(file)
-                self.LoadDirLabel.setText(data.get('Data location', ''))
-                self.PrefixTextField.setText(data.get('Folder folder_prefix', ''))
-                self.StartTextField.setText(data.get('Start folder', ''))
-                self.StopTextField.setText(data.get('Stop folder', ''))
-                self.ListOfPatientsTextField.setText(data.get('List of patients', ''))
-                self.DataTypeComboBox.setCurrentText(data.get('Data Type', ''))
-                self.SaveDirLabel.setText(data.get('Save directory', ''))
-                self.NoOfThreadsComboBox.setCurrentText(data.get('# of cores', ''))
+                self.load_dir_label.setText(data.get('rad_load_dir_label', ''))
+                self.start_folder_text_field.setText(data.get('rad_start_folder', ''))
+                self.stop_folder_text_field.setText(data.get('rad_stop_folder', ''))
+                self.list_of_patient_folders_text_field.setText(data.get('rad_list_of_patients', ''))
+                self.input_data_type_combo_box.setCurrentText(data.get('rad_input_data_type', 'Data Type:'))
+                self.save_dir_label.setText(data.get('rad_save_dir_label', ''))
+                self.number_of_threads_combo_box.setCurrentText(data.get('rad_no_of_threads', 'No. of Threads:'))
+                self.nifti_structure_text_field.setText(data.get('rad_NIFTI_structures', ''))
+                self.dicom_structures_text_field.setText(data.get('rad_DICOM_structures', ''))
+                self.nifti_image_text_field.setText(data.get('rad_NIFTI_image', ''))
+                self.intensity_range_text_field.setText(data.get('rad_intensity_range', ''))
+                self.aggr_dim_and_method_combo_box.setCurrentText(
+                    data.get('rad_agr_strategy', 'Texture Features Aggr. Method:'))
+                self.discretization_combo_box.setCurrentText(data.get('rad_binning', 'Discretization:'))
+                self.bin_number_text_field.setText(data.get('rad_number_of_bins', ''))
+                self.bin_size_text_field.setText(data.get('rad_bin_size', ''))
+                self.intensity_range_check_box.setCheckState(data.get('rad_intensity_range_check_box', 0))
+                self.outlier_detection_check_box.setCheckState(data.get('rad_outlier_detection_check_box', 0))
+                self.weighting_combo_box.setCurrentText(data.get('rad_weighting', 'Slice Averaging:'))
+                self.input_imaging_mod_combo_box.setCurrentText(data.get('rad_input_image_modality', 'Imaging Mod.:'))
         except FileNotFoundError:
             print("No previous data found!")
 
@@ -130,133 +274,249 @@ class RadiomicsTab(QWidget):
         self.layout = QVBoxLayout(self)
 
         # Path to load the files
-        self.LoadDirButton = CustomButton('Load Directory', 14, 30, 50, 200, 50, self,
-                            style="background-color: #4CAF50; color: white; border: none; border-radius: 25px;")
-        self.LoadDirLabel = CustomLabel('', 14, 300, 50, 1400, 50, self)
-        self.LoadDirLabel.setAlignment(Qt.AlignCenter)
-
-        self.LoadDirButton.clicked.connect(lambda: self.open_directory(key=True))
+        self.load_dir_button = CustomButton(
+            'Load Directory',
+            14, 30, 50, 200, 50, self,
+            style="background-color: #4CAF50; color: white; border: none; border-radius: 25px;"
+        )
+        self.load_dir_label = CustomTextField(
+            '',
+            14, 300, 50, 1400, 50,
+            self,
+            style=True)
+        self.load_dir_label.setAlignment(Qt.AlignCenter)
+        self.load_dir_button.clicked.connect(lambda: self.open_directory(key=True))
 
         # Set used data type
-        self.DataTypeComboBox = CustomBox(14, 60, 300, 140, 50, self, item_list=["Data Type:", "DICOM", "NIFTI"])
+        self.input_data_type_combo_box = CustomBox(
+            14, 60, 300, 140, 50, self,
+            item_list=[
+                "Data Type:", "DICOM", "NIFTI"
+            ]
+        )
 
-        self.DataTypeComboBox.currentTextChanged.connect(self.on_file_type_combo_box_changed)
+        self.input_data_type_combo_box.currentTextChanged.connect(self.on_file_type_combo_box_changed)
 
-        # Set folder_prefix
-        self.PrefixLabel = CustomLabel('Prefix:', 18, 320, 140, 150, 50, self, style="color: white;")
-        self.PrefixTextField = CustomTextField("Enter...", 14, 400, 140, 100, 50, self)
+        #  Start and Stop Folder TextFields and Labels
+        self.start_folder_label = CustomLabel(
+            'Start Folder:',
+            18, 520, 140, 150, 50, self,
+            style="color: white;"
+        )
+        self.start_folder_text_field = CustomTextField(
+            "Enter...",
+            14, 660, 140, 100, 50, self
+        )
+        self.stop_folder_label = CustomLabel(
+            'Stop Folder:',
+            18, 780, 140, 150, 50, self,
+            style="color: white;")
+        self.stop_folder_text_field = CustomTextField(
+            "Enter...",
+            14, 920, 140, 100, 50, self
+        )
 
-        # Set start_folder folder
-        self.StartLabel = CustomLabel('Start:', 18, 520, 140, 150, 50, self, style="color: white;")
-        self.StartTextField = CustomTextField("Enter...", 14, 590, 140, 100, 50, self)
+        self.input_imaging_mod_combo_box = CustomBox(
+            14, 320, 140, 170, 50, self,
+            item_list=[
+                "Imaging Mod.:", "CT", "MR", "PT"
+            ]
+        )
 
-        # Set stop_folder folder
-        self.StopLabel = CustomLabel('Stop:', 18, 710, 140, 150, 50, self, style="color: white;")
-        self.StopTextField = CustomTextField("Enter...", 14, 775, 140, 100, 50, self)
+        # List of Patient Folders TextField and Label
+        self.list_of_patient_folders_label = CustomLabel(
+            'List of Folders:',
+            18, 1050, 140, 210, 50, self,
+            style="color: white;"
+        )
+        self.list_of_patient_folders_text_field = CustomTextField(
+            "E.g. 1, 5, 10, 34...",
+            14, 1220, 140, 210, 50, self)
 
-        # Set a list of studied patients
-        self.ListOfPatientsLabel = CustomLabel('List of Patients:', 18, 900, 140, 200, 50, self, style="color: white;")
-        self.ListOfPatientsTextField = CustomTextField("E.g. 1, 5, 10, 34...", 14, 1080, 140, 350, 50, self)
         # Set # of used cores
         no_of_threads = ['No. of Threads:']
-        for core in range(multiprocessing.cpu_count()):
+        for core in range(cpu_count()):
             if core == 0:
                 no_of_threads.append(str(core + 1) + " thread")
             else:
                 no_of_threads.append(str(core + 1) + " threads")
-        self.NoOfThreadsComboBox = CustomBox(14, 1450, 140, 210, 50, self, item_list=no_of_threads)
-
-        # Set save directory
-        self.SaveDirButton = CustomButton('Save Directory', 14, 30, 220, 200, 50, self,
-                                    style="background-color: #4CAF50; color: white; border: none; border-radius: 25px;")
-        self.SaveDirLabel = CustomLabel('', 14, 300, 220, 1400, 50, self)
-        self.SaveDirLabel.setAlignment(Qt.AlignCenter)
-        self.SaveDirButton.clicked.connect(lambda: self.open_directory(key=False))
-
-        self.StructureNamesLabel = CustomLabel('Studied str.:', 18, 370, 300, 200, 50, self, style="color: white;")
-        self.StructureNamesTextField = CustomTextField("E.g. CTV, liver...", 14, 510, 300, 475, 50, self)
-        self.StructureNamesLabel.hide()
-        self.StructureNamesTextField.hide()
-
-        self.NiiStructureFilesLabel = CustomLabel('NIFTI Str. Files:', 18,
-                                                  370, 300, 200, 50, self, style="color: white;")
-        self.NiiStructureFilesTextField = CustomTextField("E.g. CTV, liver...", 14,
-                                                          540, 300, 250, 50, self)
-        self.NiiStructureFilesLabel.hide()
-        self.NiiStructureFilesTextField.hide()
-
-        # WHAT?
-        self.NiiImageFileLabel = CustomLabel('NIFTI Image File:', 18, 800, 300, 200, 50, self, style="color: white;")
-        self.NiiImageFileTextField = CustomTextField("E.g. imageCT.nii.gz", 14, 990, 300, 220, 50, self)
-        self.NiiImageFileLabel.hide()
-        self.NiiImageFileTextField.hide()
-
-        self.OutlierDetectionCheckBox = CustomCheckBox('Outlier Detection', 18, 375, 460, 250, 50, self)
-
-        self.SigmaLabel = CustomLabel('Confidence Interval (in \u03C3):', 18, 640, 460, 350, 50, self,
-                                      style="color: white;")
-        self.SigmaTextField = CustomTextField("E.g. 3", 14, 930, 460, 100, 50, self)
-        self.SigmaLabel.hide()
-        self.SigmaTextField.hide()
-        self.OutlierDetectionCheckBox.stateChanged.connect(
-            lambda: (self.SigmaLabel.show(), self.SigmaTextField.show()) if self.OutlierDetectionCheckBox.isChecked()
-            else (self.SigmaLabel.hide(), self.SigmaTextField.hide()))
-
-        self.IntensityRangeLabel = CustomLabel('Intensity ranges:', 18,
-                                               635, 375, 200, 50, self, style="color: white;")
-        self.IntensityRangeTextField = CustomTextField("E.g. CTV: 0, 100; liver: 500, 1500", 14,
-                                                       820, 375, 350, 50, self)
-        self.IntensityRangeLabel.hide()
-        self.IntensityRangeTextField.hide()
-
-        self.IntensityRangeCheckBox = CustomCheckBox('Intensity Range', 18, 375, 380, 200, 50, self)
-        self.IntensityRangeCheckBox.stateChanged.connect(
-            lambda: (self.IntensityRangeLabel.show(), self.IntensityRangeTextField.show())
-            if self.IntensityRangeCheckBox.isChecked()
-            else (self.IntensityRangeLabel.hide(), self.IntensityRangeTextField.hide())
+        self.number_of_threads_combo_box = CustomBox(
+            14, 1450, 140, 210, 50, self,
+            item_list=no_of_threads
         )
 
-        self.DiscretizationComboBox = CustomBox(14, 375, 540, 150, 50, self, item_list=["Discretization:", "Disable", "Bin number", "Bin size"])
-        self.BinNumberTextField = CustomTextField("E.g. 5", 14, 375+170, 540, 100, 50, self)
-        self.BinSizeTextField = CustomTextField("E.g. 50", 14, 375 + 170, 540, 100, 50, self)
-        self.BinNumberTextField.hide()
-        self.BinSizeTextField.hide()
-        self.DiscretizationComboBox.currentTextChanged.connect(self.changed_discretization)
+        # Set save directory
+        self.save_dir_button = CustomButton(
+            'Save Directory',
+            14, 30, 220, 200, 50, self,
+            style="background-color: #4CAF50; color: white; border: none; border-radius: 25px;"
+        )
+        self.save_dir_label = CustomTextField(
+            '',
+            14, 300, 220, 1400, 50,
+            self,
+            style=True)
+        self.save_dir_label.setAlignment(Qt.AlignCenter)
+        self.save_dir_button.clicked.connect(lambda: self.open_directory(key=False))
 
-        self.RunButton = CustomButton('Run', 20, 910, 620, 80, 50, self, style=False)
-        self.RunButton.clicked.connect(self.run_selected_option)
+        self.dicom_structures_label = CustomLabel(
+            'Studied str.:',
+            18, 370, 300, 200, 50, self,
+            style="color: white;"
+        )
+        self.dicom_structures_text_field = CustomTextField(
+            "E.g. CTV, liver... or ExtractAllMasks",
+            14, 510, 300, 475, 50, self
+        )
+        self.dicom_structures_label.hide()
+        self.dicom_structures_text_field.hide()
+
+        self.nifti_structures_label = CustomLabel(
+            'NIFTI Str. File(s):',
+            18, 370, 300, 200, 50, self,
+            style="color: white;"
+        )
+        self.nifti_structure_text_field = CustomTextField(
+            "E.g. CTV, liver...",
+            14, 540, 300, 250, 50, self
+        )
+        self.nifti_structures_label.hide()
+        self.nifti_structure_text_field.hide()
+
+        self.nifti_image_label = CustomLabel(
+            'NIFTI Image File(s):',
+            18, 800, 300, 400, 50, self,
+            style="color: white;"
+        )
+        self.nifti_image_text_field = CustomTextField(
+            "E.g. filtered_imageCT.nii.gz, imageCT.nii.gz",
+            14, 990, 300, 410, 50, self
+        )
+        self.nifti_image_label.hide()
+        self.nifti_image_text_field.hide()
+
+        self.outlier_detection_check_box = CustomCheckBox(
+            'Outlier Detection',
+            18, 375, 460, 250, 50, self
+        )
+
+        self.outlier_detection_label = CustomLabel(
+            'Confidence Interval (in \u03C3):',
+            18, 640, 460, 350, 50, self,
+            style="color: white;"
+        )
+        self.outlier_detection_text_field = CustomTextField(
+            "E.g. 3",
+            14, 930, 460, 100, 50, self
+        )
+        self.outlier_detection_label.hide()
+        self.outlier_detection_text_field.hide()
+        self.outlier_detection_check_box.stateChanged.connect(
+            lambda: (self.outlier_detection_label.show(), self.outlier_detection_text_field.show())
+            if self.outlier_detection_check_box.isChecked()
+            else (self.outlier_detection_label.hide(), self.outlier_detection_text_field.hide()))
+
+        self.intensity_range_label = CustomLabel(
+            'Intensity range:',
+            18, 635, 375, 200, 50, self,
+            style="color: white;"
+        )
+        self.intensity_range_text_field = CustomTextField(
+            "E.g. -1000, 400",
+            14, 820, 375, 210, 50, self
+        )
+
+        self.intensity_range_label.hide()
+        self.intensity_range_text_field.hide()
+
+        self.intensity_range_check_box = CustomCheckBox(
+            'Intensity Range',
+            18, 375, 380, 200, 50, self)
+        self.intensity_range_check_box.stateChanged.connect(
+            lambda: (self.intensity_range_label.show(), self.intensity_range_text_field.show())
+            if self.intensity_range_check_box.isChecked()
+            else (self.intensity_range_label.hide(), self.intensity_range_text_field.hide())
+        )
+
+        self.discretization_combo_box = CustomBox(
+            14, 375, 540, 170, 50, self,
+            item_list=[
+                "Discretization:", "Number of Bins", "Bin Size"
+                      ]
+        )
+        self.bin_number_text_field = CustomTextField(
+            "E.g. 5",
+            14, 555, 540, 100, 50, self
+        )
+        self.bin_size_text_field = CustomTextField("E.g. 50", 14, 555, 540, 100, 50, self)
+        self.bin_number_text_field.hide()
+        self.bin_size_text_field.hide()
+        self.discretization_combo_box.currentTextChanged.connect(self.changed_discretization)
+
+        self.aggr_dim_and_method_combo_box = CustomBox(
+            14, 1100, 375, 300, 50, self,
+            item_list=[
+                "Texture Features Aggr. Method:",
+                "2D, averaged",
+                "2D, slice-merged",
+                "2.5D, direction-merged",
+                "2.5D, merged",
+                "3D, averaged",
+                "3D, merged"
+            ]
+        )
+
+        self.weighting_combo_box = CustomBox(
+            14, 1450, 375, 175, 50, self,
+            item_list=[
+                "Slice Averaging:", "Mean", "Weighted Mean", "Median"]
+        )
+
+        self.weighting_combo_box.hide()
+        self.aggr_dim_and_method_combo_box.currentTextChanged.connect(self.changed_aggr_dim)
+
+        self.run_button = CustomButton('Run', 20,
+                                       910, 590, 80, 50, self, style=False, run=True)
+        self.run_button.clicked.connect(self.run_selected_option)
+
     def on_file_type_combo_box_changed(self, text):
         # This slot will be called whenever the combo box's value is changed
         if text == 'DICOM':
-            self.NiiImageFileLabel.hide()
-            self.NiiImageFileTextField.hide()
-            self.StructureNamesLabel.show()
-            self.StructureNamesTextField.show()
-            self.NiiStructureFilesLabel.hide()
-            self.NiiStructureFilesTextField.hide()
+            self.nifti_structures_label.hide()
+            self.nifti_structure_text_field.hide()
+            self.dicom_structures_label.show()
+            self.dicom_structures_text_field.show()
+            self.nifti_image_label.hide()
+            self.nifti_image_text_field.hide()
         elif text == 'NIFTI':
-            self.NiiImageFileLabel.show()
-            self.NiiImageFileTextField.show()
-            self.StructureNamesLabel.hide()
-            self.StructureNamesTextField.hide()
-            self.NiiStructureFilesLabel.show()
-            self.NiiStructureFilesTextField.show()
+            self.nifti_structures_label.show()
+            self.nifti_structure_text_field.show()
+            self.dicom_structures_label.hide()
+            self.dicom_structures_text_field.hide()
+            self.nifti_image_label.show()
+            self.nifti_image_text_field.show()
 
         else:
-            self.StructureNamesLabel.hide()
-            self.StructureNamesTextField.hide()
-            self.NiiImageFileLabel.hide()
-            self.NiiImageFileTextField.hide()
-            self.NiiStructureFilesLabel.hide()
-            self.NiiStructureFilesTextField.hide()
+            self.dicom_structures_label.hide()
+            self.dicom_structures_text_field.hide()
+            self.nifti_structures_label.hide()
+            self.nifti_structure_text_field.hide()
+            self.nifti_image_label.hide()
+            self.nifti_image_text_field.hide()
 
     def changed_discretization(self, text):
-        if text == 'Bin number':
-            self.BinNumberTextField.show()
-            self.BinSizeTextField.hide()
-        elif text == 'Bin size':
-            self.BinNumberTextField.hide()
-            self.BinSizeTextField.show()
+        if text == 'Number of Bins':
+            self.bin_number_text_field.show()
+            self.bin_size_text_field.hide()
+        elif text == 'Bin Size':
+            self.bin_number_text_field.hide()
+            self.bin_size_text_field.show()
         else:
-            self.BinNumberTextField.hide()
-            self.BinSizeTextField.hide()
+            self.bin_number_text_field.hide()
+            self.bin_size_text_field.hide()
+
+    def changed_aggr_dim(self, text):
+        if text.split(',')[0] == '2D':
+            self.weighting_combo_box.show()
+        else:
+            self.weighting_combo_box.hide()

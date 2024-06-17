@@ -1,87 +1,93 @@
 import os
-
+import sys
+from multiprocessing import Pool, cpu_count
+from datetime import datetime
 import SimpleITK as sitk
 import numpy as np
 import pydicom
-from joblib import Parallel, delayed, cpu_count
 
-from .toolbox_logic import Image, extract_nifti_image, extract_nifti_mask, list_folders_in_defined_range, extract_dicom
+from .toolbox_logic import Image, extract_nifti_image, extract_nifti_mask, list_folders_in_defined_range, \
+    extract_dicom, check_dicom_tags, get_logger, handle_uncaught_exception, close_all_loggers
+
+sys.excepthook = handle_uncaught_exception
 
 
 class Preprocessing:
 
-    def __init__(self, load_dir,
+    def __init__(self, load_dir, save_dir,
                  input_data_type, input_imaging_mod,
-                 image_interpolation_method, mask_interpolation_method, resample_resolution,
-                 resample_dimension, save_dir, number_of_threads,
-                 start_folder='', stop_folder='', list_of_patient_folders=None, structure_set=None,
-                 nifti_image=None, mask_interpolation_threshold=0.5):
+                 structure_set=None,
+                 just_save_as_nifti=False,
+                 resample_resolution=1.0, resample_dimension='3D',
+                 image_interpolation_method='Linear',
+                 mask_interpolation_method='Linear', mask_interpolation_threshold=.5,
+                 start_folder=None, stop_folder=None, list_of_patient_folders=None,
+                 nifti_image=None,
+                 number_of_threads=1):
 
+        close_all_loggers()
+        self.logger_date_time = datetime.now().strftime("%Y-%m-%d_%H%M%S")
+        self.logger = get_logger(self.logger_date_time+'_Preprocessing')
+        self.logger.info("Preliminary Data Check Started")
         if os.path.exists(load_dir):
             self.load_dir = load_dir
         else:
-            print("Load directory does not exist.")
-            return
+            self.logger.error(f"Load directory '{load_dir}' does not exist.")
+            raise ValueError(f"Load directory '{load_dir}' does not exist.")
 
         if os.path.exists(save_dir):
             self.save_dir = save_dir
         else:
-            print("Save directory does not exist.")
-            return
+            os.makedirs(save_dir)
+            self.save_dir = save_dir
 
-        if (list_of_patient_folders is None and os.path.exists(os.path.join(self.load_dir, str(start_folder)))
-                and os.path.exists(os.path.join(self.load_dir, str(stop_folder)))
-                and start_folder != '' and stop_folder != ''):
+        if start_folder is not None and stop_folder is not None:
             self.list_of_patient_folders = list_folders_in_defined_range(start_folder, stop_folder, self.load_dir)
-        elif list_of_patient_folders is not None and list_of_patient_folders != [] and list_of_patient_folders != ['']:
-            all_folders_exist = True
-            for pat_folder in list_of_patient_folders:
-                if not os.path.exists(os.path.join(self.load_dir, str(pat_folder))):
-                    print('Folder {} does not exists!'.format(os.path.join(self.load_dir, str(pat_folder))))
-                    all_folders_exist = False
-            if all_folders_exist:
-                self.list_of_patient_folders = list_of_patient_folders
-            else:
-                print('One or more selected patient folders do not exist!')
-                print('ABORTION!')
-                return
-        else:
-            print('Incorrectly selected patient folders')
-            return
-
-            # ---------------------
-        if not list_of_patient_folders:
-            self.list_of_patient_folders = list_folders_in_defined_range(start_folder, stop_folder, self.load_dir)
-        else:
+        elif list_of_patient_folders is not None and list_of_patient_folders not in [[], ['']]:
             self.list_of_patient_folders = list_of_patient_folders
-            # ----------------------------
+        elif list_of_patient_folders is None and start_folder is None and stop_folder is None:
+            self.list_of_patient_folders = os.listdir(load_dir)
+        else:
+            self.logger.error('Incorrectly selected patient folders.')
+            raise ValueError('Incorrectly selected patient folders.')
 
         if input_data_type in ['DICOM', 'NIFTI']:
             self.input_data_type = input_data_type
         else:
-            print("Wrong input data types, available types: 'DICOM', 'NIFTI'")
-            return
+            raise ValueError(f"Wrong input data type '{input_data_type}', available types: 'DICOM', 'NIFTI'.")
 
         if input_imaging_mod in ['CT', 'PT', 'MR']:
             self.input_imaging_mod = input_imaging_mod
         else:
-            print("Wrong input imaging type, available types: 'CT', 'PT', 'MR'")
-            return
+            self.logger.error(f"Wrong input imaging type '{input_imaging_mod}', available types: 'CT', 'PT', 'MR'.")
+            raise ValueError(f"Wrong input imaging type '{input_imaging_mod}', available types: 'CT', 'PT', 'MR'.")
+
+        if self.input_data_type == 'DICOM':
+            list_pat_id_to_del = []
+            for pat_index, pat_path in enumerate(self.list_of_patient_folders):
+                if check_dicom_tags(os.path.join(load_dir, pat_path), pat_path, self.logger, resample_dimension):
+
+                    list_pat_id_to_del.append(pat_path)
+            for pat_to_del in np.unique(list_pat_id_to_del):
+                self.list_of_patient_folders.remove(pat_to_del)
 
         if self.input_data_type == 'NIFTI':
             if nifti_image is not None:
                 image_exists = True
                 for folder in self.list_of_patient_folders:
-                    if not os.path.exists(os.path.join(load_dir, str(folder), nifti_image)):
+                    if (not os.path.isfile(os.path.join(load_dir, str(folder), nifti_image + '.nii.gz'))
+                       and not os.path.isfile(os.path.join(load_dir, str(folder), nifti_image + '.nii'))):
                         image_exists = False
                         if not image_exists:
-                            print('The NIFTI image file does not exists: '
-                                  + os.path.join(load_dir, str(folder), nifti_image))
+                            self.logger.info(f"The NIFTI image file does not exist "
+                                             f"'{os.path.join(load_dir, str(folder), nifti_image)}'. "
+                                             f"The patient {folder} is skipped")
+                            self.list_of_patient_folders.remove(folder)
                 if image_exists:
                     self.nifti_image = nifti_image
             else:
-                print('Select the NIFTI image file')
-                return
+                self.logger.error('Select the NIFTI image file.')
+                raise ValueError('Select the NIFTI image file.')
 
         if (mask_interpolation_method in ['NN', 'Linear', 'BSpline', 'Gaussian']
                 and image_interpolation_method in ['NN', 'Linear', 'BSpline', 'Gaussian']):
@@ -90,63 +96,87 @@ class Preprocessing:
             if mask_interpolation_method == 'NN':
                 self.mask_threshold = 1.0
             else:
-                if type(mask_interpolation_threshold) in [float, int] and 0 <= mask_interpolation_threshold <= 1:
+                if isinstance(mask_interpolation_threshold, (int, float)) and 0 <= mask_interpolation_threshold <= 1:
                     self.mask_threshold = float(mask_interpolation_threshold)
                 else:
-                    print('Selected threshold not in range [0,1] or not float/integer data type')
+                    self.logger.error(f"Selected threshold '{mask_interpolation_threshold} not in range'"
+                                      f'[0,1] or not float/integer data type')
+                    raise ValueError(f"Selected threshold '{mask_interpolation_threshold} not in range'"
+                                     f'[0,1] or not float/integer data type')
         else:
-            print("Wrong mask and/or image interpolation method, "
-                  "available methods: 'NN', 'Linear', 'BSpline', 'Gaussian'")
-            return
+            self.logger.error(f"Wrong mask and/or image interpolation method (mask: {mask_interpolation_threshold}, "
+                              f"image {image_interpolation_method}), available methods: "
+                              "'NN', 'Linear', 'BSpline', 'Gaussian'")
+            raise ValueError(f"Wrong mask and/or image interpolation method (mask: {mask_interpolation_threshold}, "
+                             f"image {image_interpolation_method}), available methods: "
+                             "'NN', 'Linear', 'BSpline', 'Gaussian'")
 
-        if type(number_of_threads) == int and 0 < number_of_threads <= cpu_count():
+        if isinstance(number_of_threads, (int, float)) and 0 < number_of_threads <= cpu_count():
             self.number_of_threads = number_of_threads
         else:
-            print('Number of threads is not an integer or selected nubmer is greater than maximum number of available '
-                  'CPU. (Max available {} units)'.format(str(cpu_count())))
-            return
+            self.logger.error(f'Provided number of threads: {number_of_threads}, is not an integer or selected number '
+                              f'is greater than maximum number of available CPU. (Max available {cpu_count()} units)')
+            raise ValueError(f'Provided number of threads: {number_of_threads}, is not an integer or selected number '
+                             f'is greater than maximum number of available CPU. (Max available {cpu_count()} units)')
 
         if structure_set is not None:
             self.structure_set = structure_set
         else:
             self.structure_set = ['']
-            return
 
         if type(resample_resolution) in [float, int] and resample_resolution > 0:
             self.resample_resolution = resample_resolution
         else:
-            print('Resample resolution is not int/float or non-positive')
-            print('ABORTED!')
-            return
+            self.logger.error(f'Resample resolution {resample_resolution} is not int/float or non-positive.')
+            raise ValueError(f'Resample resolution {resample_resolution} is not int/float or non-positive.')
+
         if resample_dimension in ['3D', '2D']:
             self.resample_dimension = resample_dimension
         else:
-            print("Resample dimension is not '2D' or '3D'!")
-            print('ABORTED!')
-            return
+            self.logger.error(f"Resample dimension '{resample_dimension}' is not '2D' or '3D'.")
+            raise ValueError(f"Resample dimension '{resample_dimension}' is not '2D' or '3D'.")
 
-        # ------Patient specific parameters-----
+        self.just_save_as_nifti = just_save_as_nifti
         self.patient_folder = None
         self.patient_number = None
 
+        self.logger.info("Preliminary Data Check Completed")
+
     def resample(self):
-        Parallel(n_jobs=self.number_of_threads)(
-            delayed(self._load_patient)(patient_folder) for patient_folder in self.list_of_patient_folders)
+
+        if len(self.list_of_patient_folders) > 0:
+            try:
+                if self.just_save_as_nifti:
+                    self.logger.info('Conversion Started')
+                else:
+                    self.logger.info('Resampling Started')
+                with Pool(self.number_of_threads) as pool:
+                    pool.map(self._load_patient, sorted(self.list_of_patient_folders))
+                if self.just_save_as_nifti:
+                    self.logger.info('Conversion Completed')
+                else:
+                    self.logger.info('Resampling Completed')
+            except Exception:
+                self.logger.error("Caught an exception", exc_info=True)
+        else:
+            self.logger.info('No patients to resample.')
 
     def _load_patient(self, patient_number):
-
+        self.patient_logger = get_logger(self.logger_date_time+'_Preprocessing')
+        self.patient_logger.info(f'Working on patient: {patient_number}')
         self.patient_number = str(patient_number)
         self.patient_folder = os.path.join(self.load_dir, self.patient_number)
         self.pat_original_image_and_masks = {}
         self.pat_resampled_image_and_masks = {}
-
         if self.input_data_type == 'NIFTI':
             self._process_nifti_files()
+            self._resampling()
         else:
             self._process_dicom_files()
-
-        self._resampling()
+            if not self.just_save_as_nifti:
+                self._resampling()
         self._save_as_nifti()
+        self.patient_logger.info(f'Completed patient: {patient_number}')
 
     def _process_nifti_files(self):
         def extract_nifti(key, mask_file_name=None):
@@ -184,16 +214,16 @@ class Preprocessing:
 
     def _resampling(self):
 
-        def interpolator(instance_key):
+        def interpolator(key):
             interpolators = {
                 'Linear': sitk.sitkLinear,
                 'NN': sitk.sitkNearestNeighbor,
                 'BSpline': sitk.sitkBSpline,
                 'Gaussian': sitk.sitkGaussian
             }
-            if instance_key.startswith('IMAGE'):
+            if key.startswith('IMAGE'):
                 return interpolators.get(self.image_interpolation_method)
-            elif instance_key.startswith('MASK'):
+            elif key.startswith('MASK'):
                 return interpolators.get(self.mask_interpolation_method)
 
         def resampled_origin(initial_shape, initial_spacing, resulted_spacing, initial_origin, axis=0):
@@ -212,13 +242,10 @@ class Preprocessing:
         input_direction = self.pat_original_image_and_masks['IMAGE'].direction
         input_shape = self.pat_original_image_and_masks['IMAGE'].shape
 
-
         if self.resample_dimension == '3D':
             output_spacing = [self.resample_resolution] * 3
         elif self.resample_dimension == '2D':
             output_spacing = [self.resample_resolution] * 2 + [self.pat_original_image_and_masks['IMAGE'].spacing[2]]
-        else:
-            raise ValueError(f"Unsupported resize_dim: {self.resample_dimension}")
 
         output_origin = [
             resampled_origin(input_shape, input_spacing, output_spacing, input_origin, axis) for axis in range(3)
@@ -263,8 +290,10 @@ class Preprocessing:
                                                                      shape=output_shape)
             del self.pat_original_image_and_masks[instance_key]
 
-
-    # -----------------------Saving pypeline-----------------------------
     def _save_as_nifti(self):
-        for key, img in self.pat_resampled_image_and_masks.items():
+        if self.just_save_as_nifti:
+            save_pat_image_and_masks = self.pat_original_image_and_masks
+        else:
+            save_pat_image_and_masks = self.pat_resampled_image_and_masks
+        for key, img in save_pat_image_and_masks.items():
             img.save_as_nifti(instance=self, key=key)

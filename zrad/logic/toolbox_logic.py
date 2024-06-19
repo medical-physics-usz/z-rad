@@ -1,7 +1,8 @@
-import os
-from datetime import datetime
 import logging
+import os
 import sys
+from datetime import datetime
+
 import SimpleITK as sitk
 import numpy as np
 import pydicom
@@ -471,7 +472,7 @@ def get_logger(logger_date_time):
             os.makedirs(os.path.join(os.getcwd(), 'Log files'))
         file_handler = logging.FileHandler(os.path.join(os.getcwd(), 'Log files', f'{logger_date_time}.log'),
                                            encoding='utf-8')
-        #formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        # formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
         formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
         file_handler.setFormatter(formatter)
         file_handler.setLevel(logging.DEBUG)

@@ -1,6 +1,6 @@
-from datetime import datetime
 import os
 import sys
+from datetime import datetime
 from itertools import permutations
 from multiprocessing import Pool, cpu_count
 

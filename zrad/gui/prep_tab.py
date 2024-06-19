@@ -81,7 +81,7 @@ class PreprocessingTab(QWidget):
         else:
             list_of_patient_folders = None
 
-        if (self.input_imaging_mod_combo_box.currentText() == 'Imaging Mod.:'
+        if (self.input_imaging_mod_combo_box.currentText() == 'Imaging Modality:'
                 and CustomWarningBox("Select Input Imaging Modality").response()):
             return
         input_imaging_mod = self.input_imaging_mod_combo_box.currentText()
@@ -94,7 +94,7 @@ class PreprocessingTab(QWidget):
         structure_set = None
         if input_data_type == 'DICOM' and len(dicom_structures) > 0:
             structure_set = dicom_structures
-        elif input_data_type == 'NIFTI' and len(nifti_structures) > 0:
+        elif input_data_type == 'NIfTI' and len(nifti_structures) > 0:
             structure_set = nifti_structures
 
         if self.just_save_as_nifti_check_box.isChecked() and input_data_type == 'DICOM':
@@ -141,8 +141,8 @@ class PreprocessingTab(QWidget):
                 return
 
             if (not self.nifti_image_text_field.text().strip()
-                    and self.input_data_type_combo_box.currentText() == 'NIFTI'):
-                CustomWarningBox("Enter NIFTI image").response()
+                    and self.input_data_type_combo_box.currentText() == 'NIfTI'):
+                CustomWarningBox("Enter NIfTI image").response()
                 return
             nifti_image = self.nifti_image_text_field.text()
 
@@ -206,8 +206,8 @@ class PreprocessingTab(QWidget):
             'prep_save_dir_label': self.save_dir_label.text(),
             'prep_no_of_threads': self.number_of_threads_combo_box.currentText(),
             'prep_DICOM_structures': self.dicom_structures_text_field.text(),
-            'prep_NIFTI_image': self.nifti_image_text_field.text(),
-            'prep_NIFTI_structures': self.nifti_structures_text_field.text(),
+            'prep_NIfTI_image': self.nifti_image_text_field.text(),
+            'prep_NIfTI_structures': self.nifti_structures_text_field.text(),
             'prep_resample_resolution': self.resample_resolution_text_field.text(),
             'prep_interpolation_method': self.image_interpolation_method_combo_box.currentText(),
             'prep_resample_dim': self.resample_dimension_combo_box.currentText(),
@@ -249,8 +249,8 @@ class PreprocessingTab(QWidget):
                 self.save_dir_label.setText(data.get('prep_save_dir_label', ''))
                 self.number_of_threads_combo_box.setCurrentText(data.get('prep_no_of_threads', 'No. of Threads:'))
                 self.dicom_structures_text_field.setText(data.get('prep_DICOM_structures', ''))
-                self.nifti_image_text_field.setText(data.get('prep_NIFTI_image', ''))
-                self.nifti_structures_text_field.setText(data.get('prep_NIFTI_structures', ''))
+                self.nifti_image_text_field.setText(data.get('prep_NIfTI_image', ''))
+                self.nifti_structures_text_field.setText(data.get('prep_NIfTI_structures', ''))
                 self.resample_resolution_text_field.setText(data.get('prep_resample_resolution', ''))
                 self.image_interpolation_method_combo_box.setCurrentText(
                     data.get('prep_interpolation_method', 'Image Interpolation:'))
@@ -259,7 +259,7 @@ class PreprocessingTab(QWidget):
                     data.get('prep_mask_interpolation_method', 'Mask Interpolation:'))
                 self.mask_interpolation_threshold_text_field.setText(
                     data.get('prep_mask_interpolation_threshold', '0.5'))
-                self.input_imaging_mod_combo_box.setCurrentText(data.get('prep_input_image_modality', 'Imaging Mod.:'))
+                self.input_imaging_mod_combo_box.setCurrentText(data.get('prep_input_image_modality', 'Imaging Modality:'))
                 self.just_save_as_nifti_check_box.setCheckState(data.get('prep_just_save_as_nifti', 0))
 
         except FileNotFoundError:
@@ -286,13 +286,13 @@ class PreprocessingTab(QWidget):
         self.input_data_type_combo_box = CustomBox(
             40, 300, 160, 50, self,
             item_list=[
-                "Data Type:", "DICOM", "NIFTI"
+                "Data Type:", "DICOM", "NIfTI"
             ]
         )
         self.input_data_type_combo_box.currentTextChanged.connect(self.on_file_type_combo_box_changed)
 
         self.just_save_as_nifti_check_box = CustomCheckBox(
-            'Save as NIFTI without resampling',
+            'Save as NIfTI without resampling',
             1250, 300, 400, 50, self)
         self.just_save_as_nifti_check_box.hide()
 
@@ -353,13 +353,13 @@ class PreprocessingTab(QWidget):
         self.input_imaging_mod_combo_box = CustomBox(
             320, 140, 170, 50, self,
             item_list=[
-                "Imaging Mod.:", "CT", "MR", "PT"
+                "Imaging Modality:", "CT", "MR", "PT"
             ]
         )
 
-        # DICOM and NIFTI Structures TextFields and Labels
+        # DICOM and NIfTI Structures TextFields and Labels
         self.dicom_structures_label = CustomLabel(
-            'Studied str.:',
+            'Structures:',
             595, 300, 200, 50, self,
             style="color: white;"
         )
@@ -371,7 +371,7 @@ class PreprocessingTab(QWidget):
         self.dicom_structures_text_field.hide()
 
         self.nifti_structures_label = CustomLabel(
-            'NIFTI Str. Files:',
+            'NIfTI Mask Files:',
             370, 300, 200, 50, self,
             style="color: white;"
         )
@@ -383,7 +383,7 @@ class PreprocessingTab(QWidget):
         self.nifti_structures_text_field.hide()
 
         self.nifti_image_label = CustomLabel(
-            'NIFTI Image File:',
+            'NIfTI Image File:',
             790, 300, 200, 50, self,
             style="color: white;"
         )
@@ -472,7 +472,7 @@ class PreprocessingTab(QWidget):
             self.dicom_structures_text_field.show()
             self.nifti_structures_label.hide()
             self.nifti_structures_text_field.hide()
-        elif text == 'NIFTI':
+        elif text == 'NIfTI':
             self.just_save_as_nifti_check_box.hide()
             self.nifti_image_label.show()
             self.nifti_image_text_field.show()

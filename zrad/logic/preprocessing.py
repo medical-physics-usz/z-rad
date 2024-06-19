@@ -1,7 +1,8 @@
 import os
 import sys
-from multiprocessing import Pool, cpu_count
 from datetime import datetime
+from multiprocessing import Pool, cpu_count
+
 import SimpleITK as sitk
 import numpy as np
 import pydicom

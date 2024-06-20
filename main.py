@@ -26,10 +26,15 @@ class ZRad(QMainWindow):
         self.tabs = None
         self.menubar = None
         self.file_menu = None
+        self.help_menu = None
         self.load_action = None
         self.save_action = None
         self.help_action = None
         self.exit_action = None
+        self.help_documentation_action = None
+        self.help_git_action = None
+        self.help_contact_action = None
+        self.help_about_action = None
 
         self.init_gui()
 
@@ -82,32 +87,64 @@ class ZRad(QMainWindow):
 
         self.load_action = QAction('Load Input', self)
         self.save_action = QAction('Save Input', self)
-        self.help_action = QAction('Info', self)
         self.exit_action = QAction('Exit', self)
+        self.help_documentation_action = QAction('Documentation', self)
+        self.help_git_action = QAction('GitHub', self)
+        self.help_contact_action = QAction('Contact Us', self)
+        self.help_about_action = QAction('About', self)
 
         self.load_action.setShortcut('Ctrl+O')
         self.save_action.setShortcut('Ctrl+S')
         self.exit_action.triggered.connect(self.close)
-        self.help_action.triggered.connect(self.display_help)
+
+        self.help_documentation_action.triggered.connect(self.display_documentation)
+        self.help_git_action.triggered.connect(self.display_github)
+        self.help_contact_action.triggered.connect(self.display_contact)
+        self.help_about_action.triggered.connect(self.display_about)
 
         self.file_menu.addAction(self.load_action)
         self.file_menu.addAction(self.save_action)
-        self.file_menu.addSeparator()
         self.file_menu.addAction(self.exit_action)
-        self.help_menu.addAction(self.help_action)
+        self.file_menu.addSeparator()
+        self.help_menu.addAction(self.help_documentation_action)
+        self.help_menu.addAction(self.help_git_action)
+        self.help_menu.addAction(self.help_contact_action)
+        self.help_menu.addAction(self.help_about_action)
 
         self.load_action.triggered.connect(self.tabs[0][1].load_input_data)
         self.save_action.triggered.connect(self.tabs[0][1].save_input_data)
 
     @staticmethod
-    def display_help():
+    def display_documentation():
         """
-        Display help information.
+        Display documentation.
+        """
+        text = f'{WINDOW_TITLE} \n\nAll relevant information about Z-Rad: https://github.com/radiomics-usz/zrad'
+        CustomWarningBox(text, False).response()
+
+    @staticmethod
+    def display_github():
+        """
+        Display GitHub link.
+        """
+        text = f'{WINDOW_TITLE} \n\nhttps://github.com/radiomics-usz/zrad'
+        CustomWarningBox(text, False).response()
+
+    @staticmethod
+    def display_contact():
+        """
+        Display contact info.
+        """
+        text = f'{WINDOW_TITLE} \n\nContact Us: zrad@usz.ch'
+        CustomWarningBox(text, False).response()
+
+    @staticmethod
+    def display_about():
+        """
+        Display info about Z-Rad.
         """
         text = (f'{WINDOW_TITLE} \n\nDeveloped at the University Hospital Zurich '
-                'by the Department of Radiation Oncology\n\nAll relevant information about Z-Rad: '
-                'https://github.com/radiomics-usz/zrad'
-                '\n\nContact Us: zrad@usz.ch')
+                'by the Department of Radiation Oncology')
         CustomWarningBox(text, False).response()
 
     def tab_changed(self, index: int):

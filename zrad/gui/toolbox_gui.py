@@ -11,7 +11,7 @@ def tab_input(parent):
 
     # Load Directory Button and Label
     parent.load_dir_button = CustomButton(
-        'Load Directory',
+        'Input Directory',
         30, 50, 200, 50, parent,
         style=True)
     parent.load_dir_label = CustomTextField(
@@ -65,7 +65,7 @@ def tab_input(parent):
 
     # Save Directory Button and Label
     parent.save_dir_button = CustomButton(
-        'Save Directory',
+        'Output Directory',
         30, 220, 200, 50, parent,
         style=True)
     parent.save_dir_label = CustomTextField(

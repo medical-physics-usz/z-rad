@@ -1,9 +1,87 @@
 import os
 import sys
+from multiprocessing import cpu_count
 
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont, QPixmap
 from PyQt5.QtWidgets import QLineEdit, QLabel, QPushButton, QComboBox, QCheckBox, QMessageBox, QWidget
+
+
+def tab_input(parent):
+
+    # Load Directory Button and Label
+    parent.load_dir_button = CustomButton(
+        'Load Directory',
+        30, 50, 200, 50, parent,
+        style=True)
+    parent.load_dir_label = CustomTextField(
+        '',
+        300, 50, 1400, 50,
+        parent,
+        style=True)
+    parent.load_dir_label.setAlignment(Qt.AlignCenter)
+    parent.load_dir_button.clicked.connect(lambda: parent.open_directory(key=True))
+
+    #  Start and Stop Folder TextFields and Labels
+    parent.start_folder_label = CustomLabel(
+        'Start Folder:',
+        520, 140, 150, 50, parent,
+        style="color: white;"
+    )
+    parent.start_folder_text_field = CustomTextField(
+        "Enter...",
+        660, 140, 100, 50, parent
+    )
+    parent.stop_folder_label = CustomLabel(
+        'Stop Folder:',
+        780, 140, 150, 50, parent,
+        style="color: white;")
+    parent.stop_folder_text_field = CustomTextField(
+        "Enter...",
+        920, 140, 100, 50, parent
+    )
+
+    # List of Patient Folders TextField and Label
+    parent.list_of_patient_folders_label = CustomLabel(
+        'List of Folders:',
+        1050, 140, 210, 50, parent,
+        style="color: white;"
+    )
+    parent.list_of_patient_folders_text_field = CustomTextField(
+        "E.g. 1, 5, 10, 34...",
+        1220, 140, 210, 50, parent)
+
+    # Number of Threads ComboBox
+    no_of_threads = ['No. of Threads:']
+    for core in range(cpu_count()):
+        if core == 0:
+            no_of_threads.append(str(core + 1) + " thread")
+        else:
+            no_of_threads.append(str(core + 1) + " threads")
+    parent.number_of_threads_combo_box = CustomBox(
+        1450, 140, 210, 50, parent,
+        item_list=no_of_threads
+    )
+
+    # Save Directory Button and Label
+    parent.save_dir_button = CustomButton(
+        'Save Directory',
+        30, 220, 200, 50, parent,
+        style=True)
+    parent.save_dir_label = CustomTextField(
+        '',
+        300, 220, 1400, 50,
+        parent,
+        style=True)
+    parent.save_dir_label.setAlignment(Qt.AlignCenter)
+    parent.save_dir_button.clicked.connect(lambda: parent.open_directory(key=False))
+
+    parent.input_imaging_mod_combo_box = CustomBox(
+        320, 140, 170, 50, parent,
+        item_list=[
+            "Imaging Modality:", "CT", "MR", "PT"
+        ]
+    )
 
 
 class CustomButton(QPushButton):

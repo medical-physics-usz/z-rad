@@ -1,12 +1,11 @@
 import json
 import os
-from multiprocessing import cpu_count
 
 import numpy as np
-from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QFileDialog
 
-from .toolbox_gui import CustomButton, CustomLabel, CustomBox, CustomTextField, CustomCheckBox, CustomWarningBox
+from .toolbox_gui import CustomButton, CustomLabel, CustomBox, CustomTextField, CustomCheckBox, CustomWarningBox, \
+    tab_input
 from ..logic.radiomics import Radiomics
 
 
@@ -14,41 +13,140 @@ class RadiomicsTab(QWidget):
     def __init__(self):
         super().__init__()
 
-        self.layout = None
-        self.load_dir_button = None
-        self.load_dir_label = None
-        self.input_data_type_combo_box = None
-        self.folder_prefix_label = None
-        self.start_folder_label = None
-        self.start_folder_text_field = None
-        self.stop_folder_label = None
-        self.stop_folder_text_field = None
-        self.list_of_patient_folders_label = None
-        self.list_of_patient_folders_text_field = None
-        self.number_of_threads_label = None
-        self.number_of_threads_combo_box = None
-        self.save_dir_button = None
-        self.save_dir_label = None
-        self.dicom_structures_label = None
-        self.dicom_structures_text_field = None
-        self.nifti_structures_label = None
-        self.nifti_structure_text_field = None
-        self.nifti_image_label = None
-        self.nifti_image_text_field = None
-        self.intensity_range_label = None
-        self.intensity_range_text_field = None
-        self.input_imaging_mod_combo_box = None
-        self.outlier_detection_check_box = None
-        self.outlier_detection_label = None
-        self.outlier_detection_text_field = None
-        self.intensity_range_check_box = None
-        self.discretization_combo_box = None
-        self.bin_size_text_field = None
-        self.bin_number_text_field = None
-        self.aggr_dim_and_method_combo_box = None
-        self.weighting_combo_box = None
+        self.setMinimumSize(1750, 650)
+        self.layout = QVBoxLayout(self)
 
-        self.run_button = None
+        tab_input(self)
+
+        # Set used data type
+        self.input_data_type_combo_box = CustomBox(
+            60, 300, 140, 50, self,
+            item_list=[
+                "Data Type:", "DICOM", "NIfTI"
+            ]
+        )
+
+        self.input_data_type_combo_box.currentTextChanged.connect(self.on_file_type_combo_box_changed)
+
+        self.dicom_structures_label = CustomLabel(
+            'Structures:',
+            370, 300, 200, 50, self,
+            style="color: white;"
+        )
+        self.dicom_structures_text_field = CustomTextField(
+            "E.g. CTV, liver... or ExtractAllMasks",
+            510, 300, 475, 50, self
+        )
+        self.dicom_structures_label.hide()
+        self.dicom_structures_text_field.hide()
+
+        self.nifti_structures_label = CustomLabel(
+            'NIfTI Mask Files:',
+            370, 300, 200, 50, self,
+            style="color: white;"
+        )
+        self.nifti_structure_text_field = CustomTextField(
+            "E.g. CTV, liver...",
+            540, 300, 250, 50, self
+        )
+        self.nifti_structures_label.hide()
+        self.nifti_structure_text_field.hide()
+
+        self.nifti_image_label = CustomLabel(
+            'NIfTI Image File(s):',
+            800, 300, 400, 50, self,
+            style="color: white;"
+        )
+        self.nifti_image_text_field = CustomTextField(
+            "E.g. filtered_imageCT, imageCT",
+            990, 300, 410, 50, self
+        )
+        self.nifti_image_label.hide()
+        self.nifti_image_text_field.hide()
+
+        self.outlier_detection_check_box = CustomCheckBox(
+            'Outlier Detection',
+            375, 460, 250, 50, self
+        )
+
+        self.outlier_detection_label = CustomLabel(
+            'Confidence Interval (in \u03C3):',
+            640, 460, 350, 50, self,
+            style="color: white;"
+        )
+        self.outlier_detection_text_field = CustomTextField(
+            "E.g. 3",
+            930, 460, 100, 50, self
+        )
+        self.outlier_detection_label.hide()
+        self.outlier_detection_text_field.hide()
+        self.outlier_detection_check_box.stateChanged.connect(
+            lambda: (self.outlier_detection_label.show(), self.outlier_detection_text_field.show())
+            if self.outlier_detection_check_box.isChecked()
+            else (self.outlier_detection_label.hide(), self.outlier_detection_text_field.hide()))
+
+        self.intensity_range_label = CustomLabel(
+            'Intensity range:',
+            635, 375, 200, 50, self,
+            style="color: white;"
+        )
+        self.intensity_range_text_field = CustomTextField(
+            "E.g. -1000, 400",
+            820, 375, 210, 50, self
+        )
+
+        self.intensity_range_label.hide()
+        self.intensity_range_text_field.hide()
+
+        self.intensity_range_check_box = CustomCheckBox(
+            'Intensity Range',
+            375, 380, 200, 50, self)
+        self.intensity_range_check_box.stateChanged.connect(
+            lambda: (self.intensity_range_label.show(), self.intensity_range_text_field.show())
+            if self.intensity_range_check_box.isChecked()
+            else (self.intensity_range_label.hide(), self.intensity_range_text_field.hide())
+        )
+
+        self.discretization_combo_box = CustomBox(
+            375, 540, 170, 50, self,
+            item_list=[
+                "Discretization:", "Number of Bins", "Bin Size"
+            ]
+        )
+        self.bin_number_text_field = CustomTextField(
+            "E.g. 5",
+            555, 540, 100, 50, self
+        )
+        self.bin_size_text_field = CustomTextField("E.g. 50", 555, 540, 100, 50, self)
+        self.bin_number_text_field.hide()
+        self.bin_size_text_field.hide()
+        self.discretization_combo_box.currentTextChanged.connect(self.changed_discretization)
+
+        self.aggr_dim_and_method_combo_box = CustomBox(
+            1100, 375, 300, 50, self,
+            item_list=[
+                "Texture Features Aggr. Method:",
+                "2D, averaged",
+                "2D, slice-merged",
+                "2.5D, direction-merged",
+                "2.5D, merged",
+                "3D, averaged",
+                "3D, merged"
+            ]
+        )
+
+        self.weighting_combo_box = CustomBox(
+            1450, 375, 175, 50, self,
+            item_list=[
+                "Slice Averaging:", "Mean", "Weighted Mean", "Median"]
+        )
+
+        self.weighting_combo_box.hide()
+        self.aggr_dim_and_method_combo_box.currentTextChanged.connect(self.changed_aggr_dim)
+
+        self.run_button = CustomButton('Run',
+                                       910, 590, 80, 50, self, style=False)
+        self.run_button.clicked.connect(self.run_selected_option)
 
     def run_selected_option(self):
 
@@ -270,216 +368,6 @@ class RadiomicsTab(QWidget):
                     data.get('rad_input_image_modality', 'Imaging Modality:'))
         except FileNotFoundError:
             print("No previous data found!")
-
-    def init_tab(self):
-        # Create a QVBoxLayout
-        self.layout = QVBoxLayout(self)
-
-        # Path to load the files
-        self.load_dir_button = CustomButton(
-            'Load Directory',
-            30, 50, 200, 50, self,
-            style="background-color: #4CAF50; color: white; border: none; border-radius: 25px;"
-        )
-        self.load_dir_label = CustomTextField(
-            '',
-            300, 50, 1400, 50,
-            self,
-            style=True)
-        self.load_dir_label.setAlignment(Qt.AlignCenter)
-        self.load_dir_button.clicked.connect(lambda: self.open_directory(key=True))
-
-        # Set used data type
-        self.input_data_type_combo_box = CustomBox(
-            60, 300, 140, 50, self,
-            item_list=[
-                "Data Type:", "DICOM", "NIfTI"
-            ]
-        )
-
-        self.input_data_type_combo_box.currentTextChanged.connect(self.on_file_type_combo_box_changed)
-
-        #  Start and Stop Folder TextFields and Labels
-        self.start_folder_label = CustomLabel(
-            'Start Folder:',
-            520, 140, 150, 50, self,
-            style="color: white;"
-        )
-        self.start_folder_text_field = CustomTextField(
-            "Enter...",
-            660, 140, 100, 50, self
-        )
-        self.stop_folder_label = CustomLabel(
-            'Stop Folder:',
-            780, 140, 150, 50, self,
-            style="color: white;")
-        self.stop_folder_text_field = CustomTextField(
-            "Enter...",
-            920, 140, 100, 50, self
-        )
-
-        self.input_imaging_mod_combo_box = CustomBox(
-            320, 140, 170, 50, self,
-            item_list=[
-                "Imaging Modality:", "CT", "MR", "PT"
-            ]
-        )
-
-        # List of Patient Folders TextField and Label
-        self.list_of_patient_folders_label = CustomLabel(
-            'List of Folders:',
-            1050, 140, 210, 50, self,
-            style="color: white;"
-        )
-        self.list_of_patient_folders_text_field = CustomTextField(
-            "E.g. 1, 5, 10, 34...",
-            1220, 140, 210, 50, self)
-
-        # Set # of used cores
-        no_of_threads = ['No. of Threads:']
-        for core in range(cpu_count()):
-            if core == 0:
-                no_of_threads.append(str(core + 1) + " thread")
-            else:
-                no_of_threads.append(str(core + 1) + " threads")
-        self.number_of_threads_combo_box = CustomBox(
-            1450, 140, 210, 50, self,
-            item_list=no_of_threads
-        )
-
-        # Set save directory
-        self.save_dir_button = CustomButton(
-            'Save Directory',
-            30, 220, 200, 50, self,
-            style="background-color: #4CAF50; color: white; border: none; border-radius: 25px;"
-        )
-        self.save_dir_label = CustomTextField(
-            '',
-            300, 220, 1400, 50,
-            self,
-            style=True)
-        self.save_dir_label.setAlignment(Qt.AlignCenter)
-        self.save_dir_button.clicked.connect(lambda: self.open_directory(key=False))
-
-        self.dicom_structures_label = CustomLabel(
-            'Structures:',
-            370, 300, 200, 50, self,
-            style="color: white;"
-        )
-        self.dicom_structures_text_field = CustomTextField(
-            "E.g. CTV, liver... or ExtractAllMasks",
-            510, 300, 475, 50, self
-        )
-        self.dicom_structures_label.hide()
-        self.dicom_structures_text_field.hide()
-
-        self.nifti_structures_label = CustomLabel(
-            'NIfTI Mask Files:',
-            370, 300, 200, 50, self,
-            style="color: white;"
-        )
-        self.nifti_structure_text_field = CustomTextField(
-            "E.g. CTV, liver...",
-            540, 300, 250, 50, self
-        )
-        self.nifti_structures_label.hide()
-        self.nifti_structure_text_field.hide()
-
-        self.nifti_image_label = CustomLabel(
-            'NIfTI Image File(s):',
-            800, 300, 400, 50, self,
-            style="color: white;"
-        )
-        self.nifti_image_text_field = CustomTextField(
-            "E.g. filtered_imageCT.nii.gz, imageCT.nii.gz",
-            990, 300, 410, 50, self
-        )
-        self.nifti_image_label.hide()
-        self.nifti_image_text_field.hide()
-
-        self.outlier_detection_check_box = CustomCheckBox(
-            'Outlier Detection',
-            375, 460, 250, 50, self
-        )
-
-        self.outlier_detection_label = CustomLabel(
-            'Confidence Interval (in \u03C3):',
-            640, 460, 350, 50, self,
-            style="color: white;"
-        )
-        self.outlier_detection_text_field = CustomTextField(
-            "E.g. 3",
-            930, 460, 100, 50, self
-        )
-        self.outlier_detection_label.hide()
-        self.outlier_detection_text_field.hide()
-        self.outlier_detection_check_box.stateChanged.connect(
-            lambda: (self.outlier_detection_label.show(), self.outlier_detection_text_field.show())
-            if self.outlier_detection_check_box.isChecked()
-            else (self.outlier_detection_label.hide(), self.outlier_detection_text_field.hide()))
-
-        self.intensity_range_label = CustomLabel(
-            'Intensity range:',
-            635, 375, 200, 50, self,
-            style="color: white;"
-        )
-        self.intensity_range_text_field = CustomTextField(
-            "E.g. -1000, 400",
-            820, 375, 210, 50, self
-        )
-
-        self.intensity_range_label.hide()
-        self.intensity_range_text_field.hide()
-
-        self.intensity_range_check_box = CustomCheckBox(
-            'Intensity Range',
-            375, 380, 200, 50, self)
-        self.intensity_range_check_box.stateChanged.connect(
-            lambda: (self.intensity_range_label.show(), self.intensity_range_text_field.show())
-            if self.intensity_range_check_box.isChecked()
-            else (self.intensity_range_label.hide(), self.intensity_range_text_field.hide())
-        )
-
-        self.discretization_combo_box = CustomBox(
-            375, 540, 170, 50, self,
-            item_list=[
-                "Discretization:", "Number of Bins", "Bin Size"
-            ]
-        )
-        self.bin_number_text_field = CustomTextField(
-            "E.g. 5",
-            555, 540, 100, 50, self
-        )
-        self.bin_size_text_field = CustomTextField("E.g. 50", 555, 540, 100, 50, self)
-        self.bin_number_text_field.hide()
-        self.bin_size_text_field.hide()
-        self.discretization_combo_box.currentTextChanged.connect(self.changed_discretization)
-
-        self.aggr_dim_and_method_combo_box = CustomBox(
-            1100, 375, 300, 50, self,
-            item_list=[
-                "Texture Features Aggr. Method:",
-                "2D, averaged",
-                "2D, slice-merged",
-                "2.5D, direction-merged",
-                "2.5D, merged",
-                "3D, averaged",
-                "3D, merged"
-            ]
-        )
-
-        self.weighting_combo_box = CustomBox(
-            1450, 375, 175, 50, self,
-            item_list=[
-                "Slice Averaging:", "Mean", "Weighted Mean", "Median"]
-        )
-
-        self.weighting_combo_box.hide()
-        self.aggr_dim_and_method_combo_box.currentTextChanged.connect(self.changed_aggr_dim)
-
-        self.run_button = CustomButton('Run',
-                                       910, 590, 80, 50, self, style=False)
-        self.run_button.clicked.connect(self.run_selected_option)
 
     def on_file_type_combo_box_changed(self, text):
         # This slot will be called whenever the combo box's value is changed

@@ -3,7 +3,8 @@ from multiprocessing import freeze_support
 
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont, QPalette, QColor
-from PyQt5.QtWidgets import QApplication, QMainWindow, QTabWidget, QAction, QStyleFactory
+from PyQt5.QtWidgets import QApplication, QMainWindow, QTabWidget, QAction, QStyleFactory, QScrollArea, QWidget, \
+    QVBoxLayout
 
 from zrad.gui.filt_tab import FilteringTab
 from zrad.gui.prep_tab import PreprocessingTab
@@ -58,9 +59,15 @@ class ZRad(QMainWindow):
         ]
 
         for title, tab in self.tabs:
-            tab.init_tab()
-            self.tab_widget.addTab(tab, title)
+            scroll_area = QScrollArea()
+            scroll_area.setWidgetResizable(True)
             add_logo_to_tab(tab)
+            scroll_area.setWidget(tab)
+            scrollable_widget = QWidget()
+            scrollable_layout = QVBoxLayout()
+            scrollable_layout.addWidget(scroll_area)
+            scrollable_widget.setLayout(scrollable_layout)
+            self.tab_widget.addTab(scrollable_widget, title)
 
         self.tab_widget.currentChanged.connect(self.tab_changed)
         self.tab_widget.setStyleSheet(f"background-color: {BACKGROUND_COLOR};")
@@ -71,10 +78,11 @@ class ZRad(QMainWindow):
         """
         self.menubar = self.menuBar()
         self.file_menu = self.menubar.addMenu('File')
+        self.help_menu = self.menubar.addMenu('Help')
 
         self.load_action = QAction('Load Input', self)
         self.save_action = QAction('Save Input', self)
-        self.help_action = QAction('Help', self)
+        self.help_action = QAction('Info', self)
         self.exit_action = QAction('Exit', self)
 
         self.load_action.setShortcut('Ctrl+O')
@@ -85,8 +93,8 @@ class ZRad(QMainWindow):
         self.file_menu.addAction(self.load_action)
         self.file_menu.addAction(self.save_action)
         self.file_menu.addSeparator()
-        self.file_menu.addAction(self.help_action)
         self.file_menu.addAction(self.exit_action)
+        self.help_menu.addAction(self.help_action)
 
         self.load_action.triggered.connect(self.tabs[0][1].load_input_data)
         self.save_action.triggered.connect(self.tabs[0][1].save_input_data)
@@ -97,7 +105,9 @@ class ZRad(QMainWindow):
         Display help information.
         """
         text = (f'{WINDOW_TITLE} \n\nDeveloped at the University Hospital Zurich '
-                'by the Department of Radiation Oncology\n\nAll relevant information about Z-Rad: ...')
+                'by the Department of Radiation Oncology\n\nAll relevant information about Z-Rad: '
+                'https://github.com/radiomics-usz/zrad'
+                '\n\nContact Us: zrad@usz.ch')
         CustomWarningBox(text, False).response()
 
     def tab_changed(self, index: int):

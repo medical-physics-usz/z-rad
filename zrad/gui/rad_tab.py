@@ -174,8 +174,8 @@ class RadiomicsTab(QWidget):
                 return
 
         # Collect values from GUI elements
-        load_dir = self.load_dir_label.text()
-        save_dir = self.save_dir_label.text()
+        input_dir = self.load_dir_label.text()
+        output_dir = self.save_dir_label.text()
 
         start_folder = None
         if self.start_folder_text_field.text().strip() != '':
@@ -199,7 +199,7 @@ class RadiomicsTab(QWidget):
                 and self.input_data_type_combo_box.currentText() == 'NIfTI'):
             CustomWarningBox("Enter NIfTI image").response()
             return
-        nifti_image = [file_name.strip() for file_name in self.nifti_image_text_field.text().split(',')]
+        nifti_images = [file_name.strip() for file_name in self.nifti_image_text_field.text().split(',')]
 
         # Collect values from GUI elements
         nifti_structures = [ROI.strip() for ROI in self.nifti_structure_text_field.text().split(",")]
@@ -273,18 +273,27 @@ class RadiomicsTab(QWidget):
         if (self.input_imaging_mod_combo_box.currentText() == 'Imaging Modality:'
                 and CustomWarningBox("Select Input Imaging Modality").response()):
             return
-        input_imaging_mod = self.input_imaging_mod_combo_box.currentText()
+        input_imaging_modality = self.input_imaging_mod_combo_box.currentText()
 
-        rad_instance = Radiomics(load_dir, save_dir,
-                                 input_data_type, input_imaging_mod,
-                                 structure_set,
-                                 aggr_dim, aggr_method,
-                                 intensity_range, outlier_range,
-                                 number_of_bins, bin_size,
-                                 slice_weighting, slice_median,
-                                 start_folder, stop_folder, list_of_patient_folders,
-                                 nifti_image,
-                                 number_of_threads)
+        rad_instance = Radiomics(
+            input_dir=input_dir,
+            output_dir=output_dir,
+            input_data_type=input_data_type,
+            input_imaging_modality=input_imaging_modality,
+            structure_set=structure_set,
+            aggr_dim=aggr_dim,
+            aggr_method=aggr_method,
+            intensity_range=intensity_range,
+            outlier_range=outlier_range,
+            number_of_bins=number_of_bins,
+            bin_size=bin_size,
+            slice_weighting=slice_weighting,
+            slice_median=slice_median,
+            start_folder=start_folder,
+            stop_folder=stop_folder,
+            list_of_patient_folders=list_of_patient_folders,
+            nifti_images=nifti_images,
+            number_of_threads=number_of_threads)
 
         rad_instance.extract_radiomics()
 

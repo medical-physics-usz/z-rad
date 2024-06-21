@@ -12,6 +12,8 @@ class FilteringTab(QWidget):
     def __init__(self):
         super().__init__()
 
+        self.wavelet_filter_response_map_connected = False
+
         self.setMinimumSize(1750, 650)
         self.layout = QVBoxLayout(self)
 
@@ -228,8 +230,8 @@ class FilteringTab(QWidget):
         input_imaging_mod = self.input_imaging_mod_combo_box.currentText()
 
         # Collect values from GUI elements
-        load_dir = self.load_dir_label.text()
-        save_dir = self.save_dir_label.text()
+        input_dir = self.load_dir_label.text()
+        output_dir = self.save_dir_label.text()
         number_of_threads = int(self.number_of_threads_combo_box.currentText().split(" ")[0])
         input_data_type = self.input_data_type_combo_box.currentText()
         filter_type = self.filter_combo_box.currentText()
@@ -365,17 +367,18 @@ class FilteringTab(QWidget):
                                        rotation_invariance=wavelet_filter_pseudo_rot_inv
                                        )
 
-        filt_instance = Filtering(load_dir,
-                                  save_dir,
-                                  input_data_type,
-                                  input_imaging_mod,
-                                  my_filter,
-                                  start_folder,
-                                  stop_folder,
-                                  list_of_patient_folders,
-                                  nifti_image,
-                                  number_of_threads
-                                  )
+        filt_instance = Filtering(
+
+            input_dir=input_dir,
+            output_dir=output_dir,
+            input_data_type=input_data_type,
+            input_imaging_modality=input_imaging_mod,
+            my_filter=my_filter,
+            start_folder=start_folder,
+            stop_folder=stop_folder,
+            list_of_patient_folders=list_of_patient_folders,
+            nifti_image=nifti_image,
+            number_of_threads=number_of_threads)
 
         filt_instance.filtering()
 

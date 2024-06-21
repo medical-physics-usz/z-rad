@@ -158,8 +158,8 @@ class PreprocessingTab(QWidget):
                 return
 
         # Collect values from GUI elements
-        load_dir = self.load_dir_label.text()
-        save_dir = self.save_dir_label.text()
+        input_dir = self.load_dir_label.text()
+        output_dir = self.save_dir_label.text()
 
         start_folder = None
         if self.start_folder_text_field.text().strip() != '':
@@ -194,10 +194,10 @@ class PreprocessingTab(QWidget):
             just_save_as_nifti = True
 
             prep_instance = Preprocessing(
-                load_dir=load_dir,
-                save_dir=save_dir,
+                input_dir=input_dir,
+                output_dir=output_dir,
                 input_data_type=input_data_type,
-                input_imaging_mod=input_imaging_mod,
+                input_imaging_modality=input_imaging_mod,
                 structure_set=structure_set,
                 just_save_as_nifti=just_save_as_nifti,
                 start_folder=start_folder,
@@ -254,10 +254,10 @@ class PreprocessingTab(QWidget):
         # Create a Preprocessing instance
 
             prep_instance = Preprocessing(
-                load_dir=load_dir,
-                save_dir=save_dir,
+                input_dir=input_dir,
+                output_dir=output_dir,
                 input_data_type=input_data_type,
-                input_imaging_mod=input_imaging_mod,
+                input_imaging_modality=input_imaging_mod,
                 structure_set=structure_set,
                 just_save_as_nifti=just_save_as_nifti,
                 resample_resolution=resample_resolution,

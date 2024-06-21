@@ -524,8 +524,8 @@ class Laws:
 
 class Filtering:
 
-    def __init__(self, load_dir, save_dir,
-                 input_data_type, input_imaging_mod,
+    def __init__(self, input_dir, output_dir,
+                 input_data_type, input_imaging_modality,
                  my_filter,
                  start_folder=None, stop_folder=None, list_of_patient_folders=None,
                  nifti_image=None,
@@ -536,36 +536,36 @@ class Filtering:
         self.logger = get_logger(self.logger_date_time+'_Filtering')
         self.logger.info("Preliminary Data Check Started")
 
-        if os.path.exists(load_dir):
-            self.load_dir = load_dir
+        if os.path.exists(input_dir):
+            self.input_dir = input_dir
         else:
-            self.logger.error(f"Load directory '{load_dir}' does not exist.")
-            raise ValueError(f"Load directory '{load_dir}' does not exist.")
+            self.logger.error(f"Load directory '{input_dir}' does not exist.")
+            raise ValueError(f"Load directory '{input_dir}' does not exist.")
 
-        if os.path.exists(save_dir):
-            self.save_dir = save_dir
+        if os.path.exists(output_dir):
+            self.output_dir = output_dir
         else:
-            os.makedirs(save_dir)
-            self.save_dir = save_dir
+            os.makedirs(output_dir)
+            self.output_dir = output_dir
 
         if start_folder is not None and stop_folder is not None:
-            self.list_of_patient_folders = list_folders_in_defined_range(start_folder, stop_folder, self.load_dir)
+            self.list_of_patient_folders = list_folders_in_defined_range(start_folder, stop_folder, self.input_dir)
         elif list_of_patient_folders is not None and list_of_patient_folders not in [[], ['']]:
             self.list_of_patient_folders = list_of_patient_folders
         elif list_of_patient_folders is None and start_folder is None and stop_folder is None:
-            self.list_of_patient_folders = os.listdir(load_dir)
+            self.list_of_patient_folders = os.listdir(input_dir)
         else:
             raise ValueError('Incorrectly selected patient folders.')
 
-        if input_data_type in ['DICOM', 'NIFTI']:
+        if input_data_type in ['DICOM', 'NIfTI']:
             self.input_data_type = input_data_type
         else:
-            raise ValueError("Wrong input data types, available types: 'DICOM', 'NIFTI'.")
+            raise ValueError("Wrong input data types, available types: 'DICOM', 'NIfTI'.")
 
         if self.input_data_type == 'DICOM':
             list_pat_id_to_del = []
             for pat_index, pat_path in enumerate(self.list_of_patient_folders):
-                if check_dicom_tags(os.path.join(load_dir, pat_path), pat_path, self.logger, my_filter.dimensionality):
+                if check_dicom_tags(os.path.join(input_dir, pat_path), pat_path, self.logger, my_filter.dimensionality):
                     list_pat_id_to_del.append(pat_path)
             for pat_to_del in np.unique(list_pat_id_to_del):
                 self.list_of_patient_folders.remove(pat_to_del)
@@ -576,23 +576,23 @@ class Filtering:
             raise ValueError('Number of threads is not an integer or selected number is greater '
                              f'than maximum number of available СPU. (Max available {cpu_count()} units).')
 
-        if self.input_data_type == 'NIFTI':
+        if self.input_data_type == 'NIfTI':
             if nifti_image is not None:
                 image_exists = True
                 for folder in self.list_of_patient_folders:
-                    if (not os.path.isfile(os.path.join(load_dir, str(folder), nifti_image + '.nii.gz'))
-                            and not os.path.isfile(os.path.join(load_dir, str(folder), nifti_image + '.nii'))):
+                    if (not os.path.isfile(os.path.join(input_dir, str(folder), nifti_image + '.nii.gz'))
+                            and not os.path.isfile(os.path.join(input_dir, str(folder), nifti_image + '.nii'))):
                         image_exists = False
                         if not image_exists:
                             print('The NIFTI image file does not exists: '
-                                  + os.path.join(load_dir, str(folder), nifti_image))
+                                  + os.path.join(input_dir, str(folder), nifti_image))
                 if image_exists:
                     self.nifti_image = nifti_image
             else:
-                raise ValueError('Select the NIFTI image file')
+                raise ValueError('Select the NIfTI image file')
 
-        if input_imaging_mod in ['CT', 'PT', 'MR']:
-            self.input_imaging_mod = input_imaging_mod
+        if input_imaging_modality in ['CT', 'PT', 'MR']:
+            self.input_imaging_mod = input_imaging_modality
         else:
             raise ValueError("Wrong input imaging type, available types: 'CT', 'PT', 'MR'.")
 
@@ -625,10 +625,10 @@ class Filtering:
         self.patient_logger = get_logger(self.logger_date_time+'_Filtering')
         self.patient_logger.info(f'Working on patient: {patient_number}')
         self.patient_number = str(patient_number)
-        self.patient_folder = os.path.join(self.load_dir, str(self.patient_number))
+        self.patient_folder = os.path.join(self.input_dir, str(self.patient_number))
         self.pat_image = None
         self.filtered_image = None
-        if self.input_data_type == 'NIFTI':
+        if self.input_data_type == 'NIfTI':
             self._process_nifti_files()
         elif self.input_data_type == 'DICOM':
             self._process_dicom_files()

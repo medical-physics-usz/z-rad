@@ -19,7 +19,7 @@ class Image:
         self.shape = shape
 
     def save_as_nifti(self, instance, key):
-        output_path = os.path.join(instance.save_dir, instance.patient_number, key + '.nii.gz')
+        output_path = os.path.join(instance.output_dir, instance.patient_number, key + '.nii.gz')
         if not os.path.exists(os.path.dirname(output_path)):
             os.makedirs(os.path.dirname(output_path))
         img = sitk.GetImageFromArray(self.array)
@@ -234,8 +234,8 @@ def extract_dicom(dicom_dir, rtstract, modality, rtstruct_file='', selected_stru
             elif 'SIEMENS' in ds.Manufacturer.upper() and units == 'BQML':
                 try:
                     acquisition_time = parse_time(ds[(0x0071, 0x1022)].value).replace(year=injection_time.year,
-                                                                                  month=injection_time.month,
-                                                                                  day=injection_time.day)
+                                                                                      month=injection_time.month,
+                                                                                      day=injection_time.day)
                 except Exception:
                     acquisition_time = min_acquisition_time
             elif 'GE' in ds.Manufacturer.upper() and units == 'BQML':

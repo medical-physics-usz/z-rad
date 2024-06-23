@@ -5,7 +5,7 @@ import os
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QFileDialog
 
 from .toolbox_gui import CustomButton, CustomLabel, CustomBox, CustomTextField, CustomWarningBox, CustomCheckBox, \
-    tab_input
+    data_io
 from ..logic.preprocessing import Preprocessing
 
 
@@ -17,7 +17,7 @@ class PreprocessingTab(QWidget):
         self.setMinimumSize(1750, 650)
         self.layout = QVBoxLayout(self)
 
-        tab_input(self)
+        data_io(self)
 
         # Input Data Type ComboBox
         self.input_data_type_combo_box = CustomBox(

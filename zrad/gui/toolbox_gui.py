@@ -7,7 +7,7 @@ from PyQt5.QtGui import QFont, QPixmap
 from PyQt5.QtWidgets import QLineEdit, QLabel, QPushButton, QComboBox, QCheckBox, QMessageBox, QWidget
 
 
-def tab_input(parent):
+def data_io(parent):
 
     # Load Directory Button and Label
     parent.load_dir_button = CustomButton(

@@ -3,7 +3,7 @@ import os
 
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QFileDialog
 
-from .toolbox_gui import CustomButton, CustomLabel, CustomBox, CustomTextField, CustomWarningBox, tab_input
+from .toolbox_gui import CustomButton, CustomLabel, CustomBox, CustomTextField, CustomWarningBox, data_io
 from ..logic.filtering import Filtering, Mean, LoG, Wavelets2D, Wavelets3D, Laws
 
 
@@ -17,7 +17,7 @@ class FilteringTab(QWidget):
         self.setMinimumSize(1750, 650)
         self.layout = QVBoxLayout(self)
 
-        tab_input(self)
+        data_io(self)
 
         # Set used data type
         self.input_data_type_combo_box = CustomBox(

@@ -5,7 +5,7 @@ import numpy as np
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QFileDialog
 
 from .toolbox_gui import CustomButton, CustomLabel, CustomBox, CustomTextField, CustomCheckBox, CustomWarningBox, \
-    tab_input
+    data_io
 from ..logic.radiomics import Radiomics
 
 
@@ -16,7 +16,7 @@ class RadiomicsTab(QWidget):
         self.setMinimumSize(1750, 650)
         self.layout = QVBoxLayout(self)
 
-        tab_input(self)
+        data_io(self)
 
         # Set used data type
         self.input_data_type_combo_box = CustomBox(

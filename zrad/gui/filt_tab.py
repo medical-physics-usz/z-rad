@@ -373,7 +373,7 @@ class FilteringTab(QWidget):
             output_dir=output_dir,
             input_data_type=input_data_type,
             input_imaging_modality=input_imaging_mod,
-            my_filter=my_filter,
+            filter_type=my_filter,
             start_folder=start_folder,
             stop_folder=stop_folder,
             list_of_patient_folders=list_of_patient_folders,

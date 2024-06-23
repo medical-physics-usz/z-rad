@@ -526,7 +526,7 @@ class Filtering:
 
     def __init__(self, input_dir, output_dir,
                  input_data_type, input_imaging_modality,
-                 my_filter,
+                 filter_type,
                  start_folder=None, stop_folder=None, list_of_patient_folders=None,
                  nifti_image=None,
                  number_of_threads=1):
@@ -565,7 +565,7 @@ class Filtering:
         if self.input_data_type == 'DICOM':
             list_pat_id_to_del = []
             for pat_index, pat_path in enumerate(self.list_of_patient_folders):
-                if check_dicom_tags(os.path.join(input_dir, pat_path), pat_path, self.logger, my_filter.dimensionality):
+                if check_dicom_tags(os.path.join(input_dir, pat_path), pat_path, self.logger, filter_type.dimensionality):
                     list_pat_id_to_del.append(pat_path)
             for pat_to_del in np.unique(list_pat_id_to_del):
                 self.list_of_patient_folders.remove(pat_to_del)
@@ -596,13 +596,13 @@ class Filtering:
         else:
             raise ValueError("Wrong input imaging type, available types: 'CT', 'PT', 'MR'.")
 
-        if my_filter.filter_type in ['Mean', 'Laplacian of Gaussian', 'Laws Kernels', 'Wavelets']:
-            self.filter_type = my_filter.filter_type
+        if filter_type.filter_type in ['Mean', 'Laplacian of Gaussian', 'Laws Kernels', 'Wavelets']:
+            self.filter_type = filter_type.filter_type
         else:
-            raise ValueError(f"Wrong filter_type: {my_filter.filter_type}, available types: "
+            raise ValueError(f"Wrong filter_type: {filter_type.filter_type}, available types: "
                              "'Mean', 'Laplacian of Gaussian', 'Laws Kernels', and 'Wavelets'.")
 
-        self.filter = my_filter
+        self.filter = filter_type
 
         self.patient_folder = None
         self.patient_number = None

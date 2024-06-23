@@ -236,14 +236,14 @@ def extract_dicom(dicom_dir, rtstract, modality, rtstruct_file='', selected_stru
                     acquisition_time = parse_time(ds[(0x0071, 0x1022)].value).replace(year=injection_time.year,
                                                                                       month=injection_time.month,
                                                                                       day=injection_time.day)
-                except Exception:
+                except KeyError:
                     acquisition_time = min_acquisition_time
             elif 'GE' in ds.Manufacturer.upper() and units == 'BQML':
                 try:
                     acquisition_time = parse_time(ds[(0x0009, 0x100d)].value).replace(year=injection_time.year,
                                                                                       month=injection_time.month,
                                                                                       day=injection_time.day)
-                except Exception:
+                except KeyError:
                     acquisition_time = min_acquisition_time
         elif ds.DecayCorrection == 'ADMIN':
             acquisition_time = injection_time
@@ -408,7 +408,7 @@ def check_dicom_tags(directory, pat_index, logger, image_vol='3D'):
                             logger.warning(f'For the patient {pat_index} there is a mismatch between the earliest '
                                            'acquisition time, series time and Siemens private tag (0071, 1022). '
                                            'Time from the Siemens private tag was used.')
-                    except Exception:
+                    except KeyError:
                         acquisition_time = np.min(acquisition_time_list)
                         if not time_mismatch:
                             time_mismatch = True
@@ -429,7 +429,7 @@ def check_dicom_tags(directory, pat_index, logger, image_vol='3D'):
                             logger.warning(f'For the patient {pat_index} a mismatch present between '
                                            'the earliest acquisition time, series time, and GE private tag. '
                                            'Time from the GE private tag was used.')
-                    except Exception:
+                    except KeyError:
                         acquisition_time = np.min(acquisition_time_list)
                         if not time_mismatch:
                             time_mismatch = True

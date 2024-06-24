@@ -170,7 +170,7 @@ def extract_dicom(dicom_dir, rtstract, modality, rtstruct_file='', selected_stru
             try:
                 dcm = pydicom.dcmread(dicom_path, stop_before_pixels=True)
                 return dcm.SOPClassUID != uid
-            except Exception:
+            except InvalidDicomError:
                 return False
 
         reader = sitk.ImageSeriesReader()
@@ -348,7 +348,7 @@ def check_dicom_tags(directory, pat_index, logger, image_vol='3D'):
         try:
             dcm = pydicom.dcmread(dicom_path, stop_before_pixels=True)
             return dcm.Modality != 'RTSTRUCT'
-        except Exception:
+        except InvalidDicomError:
             return False
 
     for f in os.listdir(directory):

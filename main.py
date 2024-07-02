@@ -1,151 +1,174 @@
-# Import required PyQt5 modules for GUI creation
 import sys
 from multiprocessing import freeze_support
 
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont, QPalette, QColor
-from PyQt5.QtWidgets import QApplication, QMainWindow, QTabWidget, QAction, QStyleFactory
+from PyQt5.QtWidgets import QApplication, QMainWindow, QTabWidget, QAction, QStyleFactory, QScrollArea, QWidget, \
+    QVBoxLayout
 
 from zrad.gui.filt_tab import FilteringTab
 from zrad.gui.prep_tab import PreprocessingTab
 from zrad.gui.rad_tab import RadiomicsTab
 from zrad.gui.toolbox_gui import add_logo_to_tab, CustomWarningBox
 
+WINDOW_TITLE = 'Z-Rad v8.0.dev'
+WINDOW_WIDTH = 1800
+WINDOW_HEIGHT = 750
+BACKGROUND_COLOR = "#005ea8"
+FONT_FAMILY = 'Verdana'
+FONT_SIZE = 14
+
 
 class ZRad(QMainWindow):
     def __init__(self):
         super().__init__()
-
-        # Initialize GUI components
-        self.tab_one = None
-        self.tab_two = None
-        self.tab_three = None
         self.tab_widget = None
+        self.tabs = None
         self.menubar = None
         self.file_menu = None
+        self.help_menu = None
         self.load_action = None
         self.save_action = None
         self.help_action = None
         self.exit_action = None
+        self.help_documentation_action = None
+        self.help_git_action = None
+        self.help_contact_action = None
+        self.help_about_action = None
+
+        self.init_gui()
 
     def init_gui(self):
         """
         Initialize the main GUI components.
         """
-        # Set window title and geometry
-        self.setWindowTitle('Z-Rad V8.0.0')
-        self.setGeometry(0, 0, 1800, 750)
+        self.setWindowTitle(WINDOW_TITLE)
+        self.setGeometry(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT)
 
-        # Create and set the central tab widget
+        self.init_tabs()
+        self.create_menu()
+
+        self.show()
+
+    def init_tabs(self):
+        """
+        Initialize and add tabs to the main window.
+        """
         self.tab_widget = QTabWidget(self)
         self.setCentralWidget(self.tab_widget)
 
-        # Initialize and add tabs
-        self.tab_one = PreprocessingTab()
-        self.tab_one.init_tab()
-        self.tab_two = FilteringTab()
-        self.tab_two.init_tab()
-        self.tab_three = RadiomicsTab()
-        self.tab_three.init_tab()
+        self.tabs = [
+            ("Resampling", PreprocessingTab()),
+            ("Filtering", FilteringTab()),
+            ("Radiomics", RadiomicsTab())
+        ]
 
-        # Add tabs to the tab widget
-        self.tab_widget.addTab(self.tab_one, "Resampling")
-        self.tab_widget.addTab(self.tab_two, "Filtering")
-        self.tab_widget.addTab(self.tab_three, "Radiomics")
+        for title, tab in self.tabs:
+            scroll_area = QScrollArea()
+            scroll_area.setWidgetResizable(True)
+            add_logo_to_tab(tab)
+            scroll_area.setWidget(tab)
+            scrollable_widget = QWidget()
+            scrollable_layout = QVBoxLayout()
+            scrollable_layout.addWidget(scroll_area)
+            scrollable_widget.setLayout(scrollable_layout)
+            self.tab_widget.addTab(scrollable_widget, title)
 
-        add_logo_to_tab(self.tab_one)
-        add_logo_to_tab(self.tab_two)
-        add_logo_to_tab(self.tab_three)
-
-        # Create the menu bar
-        self.create_menu()
-
-        # Connect to tab change signal
         self.tab_widget.currentChanged.connect(self.tab_changed)
-
-        # Set style for the tab widget
-        self.tab_widget.setStyleSheet("background-color: #00008B;")
-
-        # Display the main window
-        self.show()
+        self.tab_widget.setStyleSheet(f"background-color: {BACKGROUND_COLOR};")
 
     def create_menu(self):
         """
         Create and configure the menu bar.
         """
-
-        def display_help():
-            text = ('Z-Rad version: 8.0.0 \n\nDeveloped at the University Hospital Zurich '
-                    'by the Department of Radiation Oncology'
-                    '\n\nAll relevant information about Z-Rad: ...')
-            CustomWarningBox(text, False).response()
-
-        # Initialize the menu bar
         self.menubar = self.menuBar()
         self.file_menu = self.menubar.addMenu('File')
+        self.help_menu = self.menubar.addMenu('Help')
 
-        # Create actions for loading and saving
         self.load_action = QAction('Load Input', self)
         self.save_action = QAction('Save Input', self)
-
-        # Add actions to the File menu
-        self.file_menu.addAction(self.load_action)
-        self.file_menu.addAction(self.save_action)
+        self.exit_action = QAction('Exit', self)
+        self.help_documentation_action = QAction('Documentation', self)
+        self.help_git_action = QAction('GitHub', self)
+        self.help_contact_action = QAction('Contact Us', self)
+        self.help_about_action = QAction('About', self)
 
         self.load_action.setShortcut('Ctrl+O')
         self.save_action.setShortcut('Ctrl+S')
-
-        # Add a separator
-        self.file_menu.addSeparator()
-
-        # Create 'Help' action
-
-        self.help_action = QAction('Help', self)
-        self.file_menu.addAction(self.help_action)
-        self.help_action.triggered.connect(display_help)
-
-        # Create and add the exit action
-        self.exit_action = QAction('Exit', self)
         self.exit_action.triggered.connect(self.close)
+
+        self.help_documentation_action.triggered.connect(self.display_documentation)
+        self.help_git_action.triggered.connect(self.display_github)
+        self.help_contact_action.triggered.connect(self.display_contact)
+        self.help_about_action.triggered.connect(self.display_about)
+
+        self.file_menu.addAction(self.load_action)
+        self.file_menu.addAction(self.save_action)
         self.file_menu.addAction(self.exit_action)
+        self.file_menu.addSeparator()
+        self.help_menu.addAction(self.help_documentation_action)
+        self.help_menu.addAction(self.help_git_action)
+        self.help_menu.addAction(self.help_contact_action)
+        self.help_menu.addAction(self.help_about_action)
 
-        # Connect actions to the first tab's functions
-        self.load_action.triggered.connect(self.tab_one.load_input_data)
-        self.save_action.triggered.connect(self.tab_one.save_input_data)
+        self.load_action.triggered.connect(self.tabs[0][1].load_input_data)
+        self.save_action.triggered.connect(self.tabs[0][1].save_input_data)
 
-    def tab_changed(self, index):
+    @staticmethod
+    def display_documentation():
+        """
+        Display documentation.
+        """
+        text = f'{WINDOW_TITLE} \n\nAll relevant information about Z-Rad: https://github.com/radiomics-usz/zrad'
+        CustomWarningBox(text, False).response()
+
+    @staticmethod
+    def display_github():
+        """
+        Display GitHub link.
+        """
+        text = f'{WINDOW_TITLE} \n\nhttps://github.com/radiomics-usz/zrad'
+        CustomWarningBox(text, False).response()
+
+    @staticmethod
+    def display_contact():
+        """
+        Display contact info.
+        """
+        text = f'{WINDOW_TITLE} \n\nContact Us: zrad@usz.ch'
+        CustomWarningBox(text, False).response()
+
+    @staticmethod
+    def display_about():
+        """
+        Display info about Z-Rad.
+        """
+        text = (f'{WINDOW_TITLE} \n\nDeveloped at the University Hospital Zurich '
+                'by the Department of Radiation Oncology')
+        CustomWarningBox(text, False).response()
+
+    def tab_changed(self, index: int):
         """
         Handle the change of tabs.
         """
-        # Disconnect previous signals
         self.load_action.triggered.disconnect()
         self.save_action.triggered.disconnect()
 
-        # Connect actions to the appropriate tab functions
-        if index == 0:  # Preprocessing Tab
-            self.load_action.triggered.connect(self.tab_one.load_input_data)
-            self.save_action.triggered.connect(self.tab_one.save_input_data)
-        elif index == 1:  # Filtering Tab
-            self.load_action.triggered.connect(self.tab_two.load_input_data)
-            self.save_action.triggered.connect(self.tab_two.save_input_data)
-        elif index == 2:  # Radiomics Tab
-            self.load_action.triggered.connect(self.tab_three.load_input_data)
-            self.save_action.triggered.connect(self.tab_three.save_input_data)
+        tab = self.tabs[index][1]
+        self.load_action.triggered.connect(tab.load_input_data)
+        self.save_action.triggered.connect(tab.save_input_data)
 
-        # Update action text
         self.load_action.setText('Load Input')
         self.save_action.setText('Save Input')
 
 
-if __name__ == '__main__':
+def main():
     if sys.platform.startswith('win'):
         freeze_support()
 
-    # Initialize and configure the application
     app = QApplication(sys.argv)
     app.setStyle(QStyleFactory.create('Fusion'))
 
-    # Set application palette for styling
     palette = QPalette()
     palette.setColor(QPalette.Window, QColor(53, 53, 53))
     palette.setColor(QPalette.WindowText, Qt.white)
@@ -154,9 +177,11 @@ if __name__ == '__main__':
     palette.setColor(QPalette.ButtonText, Qt.white)
     app.setPalette(palette)
 
-    app.setFont(QFont('Arial', 10))
+    app.setFont(QFont(FONT_FAMILY, FONT_SIZE))
 
-    # Create and display the main window
     ex = ZRad()
-    ex.init_gui()
     sys.exit(app.exec_())
+
+
+if __name__ == '__main__':
+    main()

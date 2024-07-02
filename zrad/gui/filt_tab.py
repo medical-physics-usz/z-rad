@@ -1,11 +1,9 @@
 import json
 import os
-from multiprocessing import cpu_count
 
-from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QFileDialog
 
-from .toolbox_gui import CustomButton, CustomLabel, CustomBox, CustomTextField, CustomWarningBox
+from .toolbox_gui import CustomButton, CustomLabel, CustomBox, CustomTextField, CustomWarningBox, data_io
 from ..logic.filtering import Filtering, Mean, LoG, Wavelets2D, Wavelets3D, Laws
 
 
@@ -14,47 +12,193 @@ class FilteringTab(QWidget):
     def __init__(self):
         super().__init__()
 
-        self.layout = None
-        self.load_dir_button = None
-        self.load_dir_label = None
-        self.input_data_type_combo_box = None
-        self.start_folder_label = None
-        self.start_folder_text_field = None
-        self.stop_folder_label = None
-        self.stop_folder_text_field = None
-        self.list_of_patient_folders_label = None
-        self.list_of_patient_folders_text_field = None
-        self.number_of_threads_combo_box = None
-        self.save_dir_button = None
-        self.save_dir_label = None
-        self.input_imaging_mod_combo_box = None
-        self.nifti_image_label = None
-        self.nifti_image_text_field = None
-        self.filter_combo_box = None
-        self.padding_type_combo_box = None
-        self.mean_filter_support_label = None
-        self.mean_filter_support_text_field = None
-        self.filter_dimension_combo_box = None
-        self.log_filter_sigma_label = None
-        self.log_filter_sigma_text_field = None
-        self.log_filter_cutoff_label = None
-        self.log_filter_cutoff_text_field = None
-        self.laws_filter_response_map_label = None
-        self.laws_filter_response_map_text_field = None
-        self.laws_filter_rot_inv_combo_box = None
-        self.laws_filter_distance_label = None
-        self.laws_filter_distance_text_field = None
-        self.laws_filter_pooling_combo_box = None
-        self.laws_filter_energy_map_combo_box = None
-        self.wavelet_filter_type_combo_box = None
-        self.wavelet_filter_response_map_combo_box = None
         self.wavelet_filter_response_map_connected = False
-        self.wavelet_filter_response_map_2d_combo_box = None
-        self.wavelet_filter_response_map_3d_combo_box = None
-        self.wavelet_filter_response_map_3d_combo_box = None
-        self.wavelet_filter_decomposition_level_combo_box = None
-        self.wavelet_filter_rot_inv_combo_box = None
-        self.run_button = None
+
+        self.setMinimumSize(1750, 650)
+        self.layout = QVBoxLayout(self)
+
+        data_io(self)
+
+        # Set used data type
+        self.input_data_type_combo_box = CustomBox(
+            60, 300, 140, 50, self,
+            item_list=[
+                "Data Type:", "DICOM", "NIfTI"
+            ]
+        )
+
+        self.input_data_type_combo_box.currentTextChanged.connect(
+            lambda:
+            (self.nifti_image_label.show(),
+             self.nifti_image_text_field.show())
+            if self.input_data_type_combo_box.currentText() == "NIfTI"
+            else
+            (self.nifti_image_label.hide(),
+             self.nifti_image_text_field.hide())
+        )
+
+        self.nifti_image_label = CustomLabel(
+            'NIfTI image file:',
+            320, 300, 200, 50, self,
+            style="color: white;"
+        )
+        self.nifti_image_text_field = CustomTextField(
+            "E.g. imageCT",
+            510, 300, 350, 50, self
+        )
+        self.nifti_image_label.hide()
+        self.nifti_image_text_field.hide()
+
+        # Set output_imaging_type
+        self.filter_combo_box = CustomBox(
+            60, 380, 140, 50, self,
+            item_list=[
+                "Filter Type:", "Mean", "Laplacian of Gaussian", "Laws Kernels", "Wavelets"
+            ]
+        )
+        self.filter_combo_box.currentTextChanged.connect(self.filter_combo_box_changed)
+
+        self.padding_type_combo_box = CustomBox(
+            480, 380, 150, 50, self,
+            item_list=[
+                "Padding Type:", "constant", "nearest", "wrap", "reflect"
+            ]
+        )
+        self.padding_type_combo_box.hide()
+
+        self.mean_filter_support_label = CustomLabel(
+            'Support:',
+            640, 380, 100, 50, self,
+            style="color: white;"
+        )
+        self.mean_filter_support_text_field = CustomTextField(
+            "E.g. 15",
+            740, 380, 75, 50, self
+        )
+        self.mean_filter_support_text_field.hide()
+        self.mean_filter_support_label.hide()
+
+        self.filter_dimension_combo_box = CustomBox(
+            320, 380, 140, 50, self,
+            item_list=[
+                "Dimension:", "2D", "3D"
+            ]
+        )
+        self.filter_dimension_combo_box.hide()
+
+        self.log_filter_sigma_label = CustomLabel(
+            '\u03C3 (in mm):',
+            640, 380, 200, 50, self,
+            style="color: white;"
+        )
+        self.log_filter_sigma_text_field = CustomTextField(
+            "E.g. 3",
+            760, 380, 75, 50, self
+        )
+        self.log_filter_sigma_label.hide()
+        self.log_filter_sigma_text_field.hide()
+
+        self.log_filter_cutoff_label = CustomLabel(
+            'Cutoff (in \u03C3):',
+            845, 380, 200, 50, self,
+            style="color: white;"
+        )
+        self.log_filter_cutoff_text_field = CustomTextField(
+            "E.g. 4",
+            990, 380, 75, 50, self)
+        self.log_filter_cutoff_label.hide()
+        self.log_filter_cutoff_text_field.hide()
+
+        self.laws_filter_response_map_label = CustomLabel(
+            'Response Map:',
+            650, 380, 200, 50, self,
+            style="color: white;"
+        )
+        self.laws_filter_response_map_text_field = CustomTextField("E.g. L5E5", 830, 380, 100, 50, self)
+        self.laws_filter_rot_inv_combo_box = CustomBox(
+            950, 380, 190, 50, self,
+            item_list=[
+                'Pseudo-rot. inv:', 'Enable', 'Disable'
+            ]
+        )
+        self.laws_filter_distance_label = CustomLabel('Distance:', 1160, 380, 200, 50, self, style="color: white;")
+        self.laws_filter_distance_text_field = CustomTextField(
+            "E.g. 5",
+            1270, 380, 75, 50, self
+        )
+        self.laws_filter_pooling_combo_box = CustomBox(
+            1370, 380, 120, 50, self,
+            item_list=['Pooling:', 'max', 'min', 'average'])
+        self.laws_filter_energy_map_combo_box = CustomBox(
+            1515, 380, 140, 50, self,
+            item_list=[
+                'Energy map:', 'Enable', 'Disable'
+            ]
+        )
+        self.laws_filter_response_map_label.hide()
+        self.laws_filter_response_map_text_field.hide()
+        self.laws_filter_rot_inv_combo_box.hide()
+        self.laws_filter_distance_label.hide()
+        self.laws_filter_distance_text_field.hide()
+        self.laws_filter_pooling_combo_box.hide()
+        self.laws_filter_energy_map_combo_box.hide()
+
+        self.wavelet_filter_type_combo_box = CustomBox(
+            820, 380, 170, 50, self,
+            item_list=[
+                "Wavelet type:", "db3", "db2", "coif1", "haar"
+            ]
+        )
+        self.wavelet_filter_type_combo_box.hide()
+        self.wavelet_filter_response_map_combo_box = CustomBox(
+            645, 380, 155, 50, self,
+            item_list=['Response Map']
+        )
+        self.wavelet_filter_response_map_combo_box.hide()
+        self.wavelet_filter_response_map_2d_combo_box = CustomBox(
+            645, 380, 150, 50, self,
+            item_list=[
+                'Response Map:', 'LL', 'HL', 'LH', 'HH'
+            ]
+        )
+        self.wavelet_filter_response_map_2d_combo_box.hide()
+        self.wavelet_filter_response_map_3d_combo_box = CustomBox(
+            645, 380, 150, 50, self,
+            item_list=['Response Map:', 'LLL', 'LLH', 'LHL', 'HLL', 'LHH', 'HHL', "HLH", "HHH"
+                       ]
+        )
+        self.wavelet_filter_response_map_3d_combo_box.hide()
+
+        self.wavelet_filter_response_map_3d_combo_box = CustomBox(
+            645, 380, 150, 50, self,
+            item_list=[
+                'Response Map:', 'LLL', 'LLH', 'LHL', 'HLL', 'LHH', 'HHL', "HLH", "HHH"
+            ]
+        )
+        self.wavelet_filter_response_map_3d_combo_box.hide()
+
+        self.wavelet_filter_decomposition_level_combo_box = CustomBox(
+            1010, 380, 200, 50, self,
+            item_list=[
+                'Decomposition Lvl.:', '1', '2'
+            ]
+        )
+        self.wavelet_filter_decomposition_level_combo_box.hide()
+
+        self.wavelet_filter_rot_inv_combo_box = CustomBox(
+            1230, 380, 200, 50, self,
+            item_list=[
+                'Pseudo-rot. inv:', 'Enable', 'Disable'
+            ]
+        )
+        self.wavelet_filter_rot_inv_combo_box.hide()
+
+        self.run_button = CustomButton(
+            'Run',
+            910, 590, 80, 50, self,
+            style=False,
+        )
+        self.run_button.clicked.connect(self.run_selected_option)
 
     def run_selected_option(self):
         selections_text = [
@@ -79,15 +223,15 @@ class FilteringTab(QWidget):
                     and CustomWarningBox(f"Select {message.split(':')[0]}").response()):
                 return
 
-        if (self.input_imaging_mod_combo_box.currentText() == 'Imaging Mod.:'
+        if (self.input_imaging_mod_combo_box.currentText() == 'Imaging Modality:'
                 and CustomWarningBox("Select Input Imaging Modality").response()):
             return
 
         input_imaging_mod = self.input_imaging_mod_combo_box.currentText()
 
         # Collect values from GUI elements
-        load_dir = self.load_dir_label.text()
-        save_dir = self.save_dir_label.text()
+        input_dir = self.load_dir_label.text()
+        output_dir = self.save_dir_label.text()
         number_of_threads = int(self.number_of_threads_combo_box.currentText().split(" ")[0])
         input_data_type = self.input_data_type_combo_box.currentText()
         filter_type = self.filter_combo_box.currentText()
@@ -103,13 +247,14 @@ class FilteringTab(QWidget):
             stop_folder = self.stop_folder_text_field.text().strip()
 
         if self.list_of_patient_folders_text_field.text() != '':
-            list_of_patient_folders = [pat.strip() for pat in str(self.list_of_patient_folders_text_field.text()).split(",")]
+            list_of_patient_folders = [pat.strip() for pat in
+                                       str(self.list_of_patient_folders_text_field.text()).split(",")]
         else:
             list_of_patient_folders = None
 
         if (not self.nifti_image_text_field.text().strip()
-                and self.input_data_type_combo_box.currentText() == 'NIFTI'):
-            CustomWarningBox("Enter NIFTI image").response()
+                and self.input_data_type_combo_box.currentText() == 'NIfTI'):
+            CustomWarningBox("Enter NIfTI image").response()
             return
         nifti_image = self.nifti_image_text_field.text()
 
@@ -157,8 +302,8 @@ class FilteringTab(QWidget):
         if filter_type == 'Wavelets':
             if ((self.wavelet_filter_response_map_2d_combo_box.currentText() == 'Response Map:'
                  and self.filter_dimension_combo_box.currentText() == '2D')
-                or (self.wavelet_filter_response_map_3d_combo_box.currentText() == 'Response Map:'
-                    and self.filter_dimension_combo_box.currentText() == '3D')
+                    or (self.wavelet_filter_response_map_3d_combo_box.currentText() == 'Response Map:'
+                        and self.filter_dimension_combo_box.currentText() == '3D')
                     or (self.wavelet_filter_response_map_combo_box.currentText() == 'Response Map:')):
                 CustomWarningBox("Select Response Map").response()
                 return
@@ -222,17 +367,18 @@ class FilteringTab(QWidget):
                                        rotation_invariance=wavelet_filter_pseudo_rot_inv
                                        )
 
-        filt_instance = Filtering(load_dir,
-                                  save_dir,
-                                  input_data_type,
-                                  input_imaging_mod,
-                                  my_filter,
-                                  start_folder,
-                                  stop_folder,
-                                  list_of_patient_folders,
-                                  nifti_image,
-                                  number_of_threads
-                                  )
+        filt_instance = Filtering(
+
+            input_dir=input_dir,
+            output_dir=output_dir,
+            input_data_type=input_data_type,
+            input_imaging_modality=input_imaging_mod,
+            filter_type=my_filter,
+            start_folder=start_folder,
+            stop_folder=stop_folder,
+            list_of_patient_folders=list_of_patient_folders,
+            nifti_image=nifti_image,
+            number_of_threads=number_of_threads)
 
         filt_instance.filtering()
 
@@ -259,7 +405,7 @@ class FilteringTab(QWidget):
             'filt_input_data_type': self.input_data_type_combo_box.currentText(),
             'filt_save_dir_label': self.save_dir_label.text(),
             'filt_no_of_threads': self.number_of_threads_combo_box.currentText(),
-            'filt_NIFTI_image': self.nifti_image_text_field.text(),
+            'filt_NIfTI_image': self.nifti_image_text_field.text(),
             'filt_filter_type': self.filter_combo_box.currentText(),
             'filt_filter_dimension': self.filter_dimension_combo_box.currentText(),
             'filt_padding_type': self.padding_type_combo_box.currentText(),
@@ -305,9 +451,10 @@ class FilteringTab(QWidget):
                 self.list_of_patient_folders_text_field.setText(data.get('filt_list_of_patients', ''))
                 self.input_data_type_combo_box.setCurrentText(data.get('filt_input_data_type', 'Data Type:'))
                 self.save_dir_label.setText(data.get('filt_save_dir_label', ''))
-                self.input_imaging_mod_combo_box.setCurrentText(data.get('filt_input_image_modality', 'Imaging Mod.:'))
+                self.input_imaging_mod_combo_box.setCurrentText(
+                    data.get('filt_input_image_modality', 'Imaging Modality:'))
                 self.number_of_threads_combo_box.setCurrentText(data.get('filt_no_of_threads', 'No. of Threads:'))
-                self.nifti_image_text_field.setText(data.get('filt_NIFTI_image', ''))
+                self.nifti_image_text_field.setText(data.get('filt_NIfTI_image', ''))
                 self.filter_combo_box.setCurrentText(data.get('filt_filter_type', 'Filter Type:'))
                 self.filter_dimension_combo_box.setCurrentText(data.get('filt_filter_dimension', 'Dimension:'))
                 self.padding_type_combo_box.setCurrentText(data.get('filt_padding_type', 'Padding Type:'))
@@ -331,266 +478,6 @@ class FilteringTab(QWidget):
 
         except FileNotFoundError:
             print("No previous data found!")
-
-    def init_tab(self):
-        # Create a QVBoxLayout
-        self.layout = QVBoxLayout(self)
-
-        # Path to load the files
-        self.load_dir_button = CustomButton(
-            'Load Directory',
-            14, 30, 50, 200, 50, self,
-            style=True
-        )
-        self.load_dir_label = CustomTextField(
-            '',
-            14, 300, 50, 1400, 50,
-            self,
-            style=True)
-        self.load_dir_label.setAlignment(Qt.AlignCenter)
-        self.load_dir_button.clicked.connect(lambda: self.open_directory(key=True))
-
-        # Set used data type
-        self.input_data_type_combo_box = CustomBox(
-            14, 60, 300, 140, 50, self,
-            item_list=[
-                "Data Type:", "DICOM", "NIFTI"
-                       ]
-        )
-
-        self.input_data_type_combo_box.currentTextChanged.connect(
-            lambda:
-                (self.nifti_image_label.show(),
-                 self.nifti_image_text_field.show())
-                if self.input_data_type_combo_box.currentText() == "NIFTI"
-                else
-                (self.nifti_image_label.hide(),
-                 self.nifti_image_text_field.hide())
-             )
-
-        self.input_imaging_mod_combo_box = CustomBox(
-            14, 320, 140, 170, 50, self,
-            item_list=[
-                "Imaging Mod.:", "CT", "MR", "PT"
-            ]
-        )
-
-        self.start_folder_label = CustomLabel(
-            'Start Folder:',
-            18, 520, 140, 150, 50, self,
-            style="color: white;"
-        )
-        self.start_folder_text_field = CustomTextField(
-            "Enter...",
-            14, 660, 140, 100, 50, self
-        )
-        self.stop_folder_label = CustomLabel(
-            'Stop Folder:',
-            18, 780, 140, 150, 50, self,
-            style="color: white;")
-        self.stop_folder_text_field = CustomTextField(
-            "Enter...",
-            14, 920, 140, 100, 50, self
-        )
-
-        # List of Patient Folders TextField and Label
-        self.list_of_patient_folders_label = CustomLabel(
-            'List of Folders:',
-            18, 1050, 140, 210, 50, self,
-            style="color: white;"
-        )
-        self.list_of_patient_folders_text_field = CustomTextField(
-            "E.g. 1, 5, 10, 34...",
-            14, 1220, 140, 210, 50, self)
-        # Set # of used cores
-        no_of_threads = ['No. of Threads:']
-        for core in range(cpu_count()):
-            if core == 0:
-                no_of_threads.append(str(core + 1) + " thread")
-            else:
-                no_of_threads.append(str(core + 1) + " threads")
-        self.number_of_threads_combo_box = CustomBox(
-            14, 1450, 140, 210, 50, self,
-            item_list=no_of_threads
-        )
-
-        # Set save directory
-        self.save_dir_button = CustomButton(
-            'Save Directory',
-            14, 30, 220, 200, 50, self,
-            style=True
-        )
-
-        self.save_dir_label = CustomTextField(
-            '',
-            14, 300, 220, 1400, 50,
-            self,
-            style=True)
-        self.save_dir_label.setAlignment(Qt.AlignCenter)
-        self.save_dir_button.clicked.connect(lambda: self.open_directory(key=False))
-
-        self.nifti_image_label = CustomLabel(
-            'NIFTI image file:',
-            18, 320, 300, 200, 50, self,
-            style="color: white;"
-        )
-        self.nifti_image_text_field = CustomTextField(
-            "E.g. imageCT.nii.gz",
-            14, 510, 300, 350, 50, self
-        )
-        self.nifti_image_label.hide()
-        self.nifti_image_text_field.hide()
-
-        # Set output_imaging_type
-        self.filter_combo_box = CustomBox(
-            14, 60, 380, 140, 50, self,
-            item_list=[
-                "Filter Type:", "Mean", "Laplacian of Gaussian", "Laws Kernels", "Wavelets"
-            ]
-        )
-        self.filter_combo_box.currentTextChanged.connect(self.filter_combo_box_changed)
-
-        self.padding_type_combo_box = CustomBox(
-            14, 480, 380, 150, 50, self,
-            item_list=[
-                "Padding Type:", "constant", "nearest", "wrap", "reflect"
-            ]
-        )
-        self.padding_type_combo_box.hide()
-
-        self.mean_filter_support_label = CustomLabel(
-            'Support:',
-            18, 640, 380, 100, 50, self,
-            style="color: white;"
-        )
-        self.mean_filter_support_text_field = CustomTextField(
-            "E.g. 15",
-            14, 740, 380, 75, 50, self
-        )
-        self.mean_filter_support_text_field.hide()
-        self.mean_filter_support_label.hide()
-
-        self.filter_dimension_combo_box = CustomBox(
-            14, 320, 380, 140, 50, self,
-            item_list=[
-                "Dimension:", "2D", "3D"
-            ]
-        )
-        self.filter_dimension_combo_box.hide()
-
-        self.log_filter_sigma_label = CustomLabel(
-            '\u03C3 (in mm):',
-            18, 640, 380, 200, 50, self,
-            style="color: white;"
-        )
-        self.log_filter_sigma_text_field = CustomTextField(
-            "E.g. 3",
-            14, 760, 380, 75, 50, self
-        )
-        self.log_filter_sigma_label.hide()
-        self.log_filter_sigma_text_field.hide()
-
-        self.log_filter_cutoff_label = CustomLabel(
-            'Cutoff (in \u03C3):',
-            18, 845, 380, 200, 50, self,
-            style="color: white;"
-        )
-        self.log_filter_cutoff_text_field = CustomTextField(
-            "E.g. 4",
-            14, 990, 380, 75, 50, self)
-        self.log_filter_cutoff_label.hide()
-        self.log_filter_cutoff_text_field.hide()
-
-        self.laws_filter_response_map_label = CustomLabel(
-            'Response Map:',
-            18, 650, 380, 200, 50, self,
-            style="color: white;"
-        )
-        self.laws_filter_response_map_text_field = CustomTextField("E.g. L5E5", 14, 830, 380, 100, 50, self)
-        self.laws_filter_rot_inv_combo_box = CustomBox(
-            14, 950, 380, 190, 50, self,
-            item_list=[
-                'Pseudo-rot. inv:', 'Enable', 'Disable'
-            ]
-        )
-        self.laws_filter_distance_label = CustomLabel('Distance:', 18, 1160, 380, 200, 50, self, style="color: white;")
-        self.laws_filter_distance_text_field = CustomTextField(
-            "E.g. 5",
-            14, 1270, 380, 75, 50, self
-        )
-        self.laws_filter_pooling_combo_box = CustomBox(
-            14, 1370, 380, 120, 50, self,
-            item_list=['Pooling:', 'max', 'min', 'average'])
-        self.laws_filter_energy_map_combo_box = CustomBox(
-            14, 1515, 380, 140, 50, self,
-            item_list=[
-                'Energy map:', 'Enable', 'Disable'
-            ]
-        )
-        self.laws_filter_response_map_label.hide()
-        self.laws_filter_response_map_text_field.hide()
-        self.laws_filter_rot_inv_combo_box.hide()
-        self.laws_filter_distance_label.hide()
-        self.laws_filter_distance_text_field.hide()
-        self.laws_filter_pooling_combo_box.hide()
-        self.laws_filter_energy_map_combo_box.hide()
-
-        self.wavelet_filter_type_combo_box = CustomBox(
-            14, 820, 380, 170, 50, self,
-            item_list=[
-                "Wavelet type:", "db3", "db2", "coif1", "haar"
-            ]
-        )
-        self.wavelet_filter_type_combo_box.hide()
-        self.wavelet_filter_response_map_combo_box = CustomBox(
-            14, 645, 380, 155, 50, self,
-            item_list=['Response Map']
-        )
-        self.wavelet_filter_response_map_combo_box.hide()
-        self.wavelet_filter_response_map_2d_combo_box = CustomBox(
-            14, 645, 380, 150, 50, self,
-            item_list=[
-                'Response Map:', 'LL', 'HL', 'LH', 'HH'
-            ]
-        )
-        self.wavelet_filter_response_map_2d_combo_box.hide()
-        self.wavelet_filter_response_map_3d_combo_box = CustomBox(
-            14, 645, 380, 150, 50, self,
-            item_list=['Response Map:', 'LLL', 'LLH', 'LHL', 'HLL', 'LHH', 'HHL', "HLH", "HHH"
-                       ]
-        )
-        self.wavelet_filter_response_map_3d_combo_box.hide()
-
-        self.wavelet_filter_response_map_3d_combo_box = CustomBox(
-            14, 645, 380, 150, 50, self,
-            item_list=[
-                 'Response Map:', 'LLL', 'LLH', 'LHL', 'HLL', 'LHH', 'HHL', "HLH", "HHH"
-             ]
-        )
-        self.wavelet_filter_response_map_3d_combo_box.hide()
-
-        self.wavelet_filter_decomposition_level_combo_box = CustomBox(
-            14, 1010, 380, 200, 50, self,
-            item_list=[
-                'Decomposition Lvl.:', '1', '2'
-            ]
-        )
-        self.wavelet_filter_decomposition_level_combo_box.hide()
-
-        self.wavelet_filter_rot_inv_combo_box = CustomBox(
-            14, 1230, 380, 200, 50, self,
-            item_list=[
-                'Pseudo-rot. inv:', 'Enable', 'Disable'
-            ]
-        )
-        self.wavelet_filter_rot_inv_combo_box.hide()
-
-        self.run_button = CustomButton(
-            'Run',
-            20, 910, 590, 80, 50, self,
-            style=False, run=True
-        )
-        self.run_button.clicked.connect(self.run_selected_option)
 
     def filter_combo_box_changed(self, text):
         if text == 'Mean':

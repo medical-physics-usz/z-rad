@@ -18,8 +18,8 @@ sys.excepthook = handle_uncaught_exception
 
 class Radiomics:
 
-    def __init__(self, load_dir, save_dir,
-                 input_data_type, input_imaging_mod,
+    def __init__(self, input_dir, output_dir,
+                 input_data_type, input_imaging_modality,
                  structure_set,
                  aggr_dim='3D', aggr_method='AVER',
                  intensity_range=None, outlier_range=None,
@@ -34,62 +34,62 @@ class Radiomics:
         self.logger = get_logger(self.logger_date_time+'_Radiomics')
         self.logger.info("Preliminary Data Check Started")
 
-        if os.path.exists(load_dir):
-            self.load_dir = load_dir
+        if os.path.exists(input_dir):
+            self.input_dir = input_dir
         else:
-            self.logger.error(f"Load directory '{load_dir}' does not exist.")
-            raise ValueError(f"Load directory '{load_dir}' does not exist.")
+            self.logger.error(f"Load directory '{input_dir}' does not exist.")
+            raise ValueError(f"Load directory '{input_dir}' does not exist.")
 
-        if os.path.exists(save_dir):
-            self.save_dir = save_dir
+        if os.path.exists(output_dir):
+            self.output_dir = output_dir
         else:
-            os.makedirs(save_dir)
-            self.save_dir = save_dir
+            os.makedirs(output_dir)
+            self.output_dir = output_dir
 
         if start_folder is not None and stop_folder is not None:
-            self.list_of_patient_folders = list_folders_in_defined_range(start_folder, stop_folder, self.load_dir)
+            self.list_of_patient_folders = list_folders_in_defined_range(start_folder, stop_folder, self.input_dir)
         elif list_of_patient_folders is not None and list_of_patient_folders not in [[], ['']]:
             self.list_of_patient_folders = list_of_patient_folders
         elif list_of_patient_folders is None and start_folder is None and stop_folder is None:
-            self.list_of_patient_folders = os.listdir(load_dir)
+            self.list_of_patient_folders = os.listdir(input_dir)
         else:
             self.logger.error('Incorrectly selected patient folders.')
             raise ValueError('Incorrectly selected patient folders.')
-
-        if input_data_type in ['DICOM', 'NIFTI']:
+        if input_data_type in ['DICOM', 'NIfTI']:
             self.input_data_type = input_data_type
         else:
-            self.logger.error(f"Wrong input data type '{input_data_type}', available types: 'DICOM', 'NIFTI'.")
-            raise ValueError(f"Wrong input data type '{input_data_type}', available types: 'DICOM', 'NIFTI'.")
+            self.logger.error(f"Wrong input data type '{input_data_type}', available types: 'DICOM', 'NIfTI'.")
+            raise ValueError(f"Wrong input data type '{input_data_type}', available types: 'DICOM', 'NIfTI'.")
 
         if self.input_data_type == 'DICOM':
             list_pat_id_to_del = []
             for pat_index, pat_path in enumerate(self.list_of_patient_folders):
-                pat_folder_path = os.path.join(load_dir, pat_path)
+                pat_folder_path = os.path.join(input_dir, pat_path)
                 if check_dicom_tags(os.path.join(pat_folder_path), pat_path, aggr_dim):
                     list_pat_id_to_del.append(pat_path)
             for pat_to_del in np.unique(list_pat_id_to_del):
                 self.list_of_patient_folders.remove(pat_to_del)
 
-        if input_imaging_mod in ['CT', 'PT', 'MR']:
-            self.input_imaging_mod = input_imaging_mod
+        if input_imaging_modality in ['CT', 'PT', 'MR']:
+            self.input_imaging_modality = input_imaging_modality
         else:
-            self.logger.error(f"Wrong input imaging type '{input_imaging_mod}', available types: 'CT', 'PT', 'MR'.")
-            raise ValueError(f"Wrong input imaging type '{input_imaging_mod}', available types: 'CT', 'PT', 'MR'.")
+            self.logger.error(f"Wrong input imaging type '{input_imaging_modality}', "
+                              "available types: 'CT', 'PT', 'MR'.")
+            raise ValueError(f"Wrong input imaging type '{input_imaging_modality}', available types: 'CT', 'PT', 'MR'.")
 
         self.filtered_image_provided = False
-        if self.input_data_type == 'NIFTI':
+        if self.input_data_type == 'NIfTI':
             if nifti_images is not None and isinstance(nifti_images, list):
                 for i in range(len(nifti_images)):
                     image = nifti_images[i]
                     image_exists = True
                     for folder in self.list_of_patient_folders:
-                        if (not os.path.isfile(os.path.join(load_dir, str(folder), image + '.nii.gz'))
-                                and not os.path.isfile(os.path.join(load_dir, str(folder), image + '.nii'))):
+                        if (not os.path.isfile(os.path.join(input_dir, str(folder), image + '.nii.gz'))
+                                and not os.path.isfile(os.path.join(input_dir, str(folder), image + '.nii'))):
                             image_exists = False
                             if not image_exists:
-                                self.logger.warning("The NIFTI image/filtered mask file does not exist "
-                                                    f"'{os.path.join(load_dir, str(folder), image)}'")
+                                self.logger.warning("The NIfTI image/filtered mask file does not exist "
+                                                    f"'{os.path.join(input_dir, str(folder), image)}'")
                     if image_exists and i == 0:
                         self.nifti_image = nifti_images[i]
                     elif image_exists and i == 1:
@@ -99,17 +99,17 @@ class Radiomics:
             elif nifti_images is not None and isinstance(nifti_images, str):
                     image_exists = True
                     for folder in self.list_of_patient_folders:
-                        if (not os.path.isfile(os.path.join(load_dir, str(folder), nifti_images + '.nii.gz'))
-                                and not os.path.isfile(os.path.join(load_dir, str(folder), nifti_images + '.nii'))):
+                        if (not os.path.isfile(os.path.join(input_dir, str(folder), nifti_images + '.nii.gz'))
+                                and not os.path.isfile(os.path.join(input_dir, str(folder), nifti_images + '.nii'))):
                             image_exists = False
                             if not image_exists:
-                                self.logger.warning("The NIFTI image/filtered mask file does not exist "
-                                                    f"'{os.path.join(load_dir, str(folder), nifti_images)}'")
+                                self.logger.warning("The NIfTI image/filtered mask file does not exist "
+                                                    f"'{os.path.join(input_dir, str(folder), nifti_images)}'")
                     if image_exists:
                         self.nifti_image = nifti_images
             else:
-                self.logger.error('Provide the NIFTI image file.')
-                raise ValueError('Provide the NIFTI image file.')
+                self.logger.error('Provide the NIfTI image file.')
+                raise ValueError('Provide the NIfTI image file.')
 
         if isinstance(number_of_threads, (int, float)) and 0 < number_of_threads <= cpu_count():
             self.number_of_threads = number_of_threads
@@ -247,7 +247,7 @@ class Radiomics:
         self.patient_logger = get_logger(self.logger_date_time+'_Radiomics')
 
         self.patient_number = str(patient_number)
-        self.patient_folder = os.path.join(self.load_dir, self.patient_number)
+        self.patient_folder = os.path.join(self.input_dir, self.patient_number)
         self.pat_binned_masked_image = {}
         self.patient_morf_features_list = []
         self.patient_local_intensity_features_list = []
@@ -261,7 +261,7 @@ class Radiomics:
         self.ngtdm_features_list = []
         self.ngldm_features_list = []
 
-        if self.input_data_type == 'NIFTI':
+        if self.input_data_type == 'NIfTI':
             self._process_nifti_files()
         else:
             self._process_dicom_files()
@@ -279,11 +279,12 @@ class Radiomics:
                 save_list += feature_list[mask_index]
             radiomics_features_df.loc[radiomics_features_df.shape[0]] = dict(zip(self.columns, save_list))
         radiomics_features_df.to_excel(
-            os.path.join(self.save_dir, f'patient_{self.patient_number}_radiomics.xlsx'), index=False)
+            os.path.join(self.output_dir, f'patient_{self.patient_number}_radiomics.xlsx'), index=False)
 
     def _process_dicom_files(self):
         self.patient_image = extract_dicom(dicom_dir=self.patient_folder, rtstract=False,
-                                           modality=self.input_imaging_mod)
+                                           modality=self.input_imaging_modality)
+        self.orig_patient_image = self.patient_image
 
         if self.structure_set != ['']:
             for dicom_file in os.listdir(self.patient_folder):
@@ -292,7 +293,7 @@ class Radiomics:
                     masks = extract_dicom(dicom_dir=self.patient_folder, rtstract=True,
                                           rtstruct_file=os.path.join(self.patient_folder, dicom_file),
                                           selected_structures=self.structure_set,
-                                          modality=self.input_imaging_mod)
+                                          modality=self.input_imaging_modality)
 
                     for instance_key in masks.keys():
                         self.patient_logger.info(f'Working on patient {self.patient_number} with mask {instance_key}.')
@@ -358,31 +359,6 @@ class Radiomics:
                 self.patient_logger.info(f'Completed patient {self.patient_number} with mask {instance_key[5:]}.')
 
     def _calc_mask_intensity_features(self):
-        #if self.calc_intensity_mask:
-        #    array = np.where((self.patient_intensity_mask.array <= self.intensity_range[1])
-        #                     & (self.patient_intensity_mask.array >= self.intensity_range[0])
-        #                     & (self.patient_morphological_mask.array > 0),
-        #                     self.patient_image.array, np.nan)
-        #    self.patient_intensity_mask = Image(array=array,
-        #                                        origin=self.patient_intensity_mask.origin,
-        #                                        spacing=self.patient_intensity_mask.spacing,
-        #                                        direction=self.patient_intensity_mask.direction,
-        #                                        shape=self.patient_intensity_mask.shape)
-        #if self.calc_outlier_mask:
-        #    flattened_image = np.where(self.patient_morphological_mask.array > 0,
-        #                               self.patient_image.array, np.nan).ravel()
-        #    valid_values = flattened_image[~np.isnan(flattened_image)]
-        #    mean = np.mean(valid_values)
-        #    std = np.std(valid_values)
-        #    array = np.where((self.patient_intensity_mask.array <= mean + self.outlier_range * std)
-        #                     & (self.patient_intensity_mask.array >= mean - self.outlier_range * std)
-        #                     & (self.patient_morphological_mask.array > 0),
-        #                     self.patient_image.array, np.nan)
-        #    self.patient_intensity_mask = Image(array=array,
-        #                                        origin=self.patient_intensity_mask.origin,
-        #                                        spacing=self.patient_intensity_mask.spacing,
-        #                                        direction=self.patient_intensity_mask.direction,
-        #                                        shape=self.patient_intensity_mask.shape)
 
         if self.calc_intensity_mask:
             intensity_range_mask = np.where((self.orig_patient_image.array <= self.intensity_range[1])
@@ -463,15 +439,15 @@ class Radiomics:
 
         self.intensity_features_list.append(self.intensity_based_features)
 
-        #intensity_vol_hist_features = IntensityVolumeHistogramFeatures(self.patient_intensity_mask.array.T)
-        #self.intensity_volume_features_list.append([
-        #    0,# intensity_vol_hist_features.calc_volume_at_intensity_fraction(10),
-        #    0,# intensity_vol_hist_features.calc_volume_at_intensity_fraction(90),
-        #    0,# intensity_vol_hist_features.calc_intensity_at_volume_fraction(10),
-        #    0,# intensity_vol_hist_features.calc_intensity_at_volume_fraction(90),
-        #    0,# intensity_vol_hist_features.calc_volume_fraction_diff_intensity_fractions(),
-        #    0 # intensity_vol_hist_features.calc_intensity_fraction_diff_volume_fractions()
-        #    ])
+        # intensity_vol_hist_features = IntensityVolumeHistogramFeatures(self.patient_intensity_mask.array.T)
+        # self.intensity_volume_features_list.append([
+        #  intensity_vol_hist_features.calc_volume_at_intensity_fraction(10),
+        #  intensity_vol_hist_features.calc_volume_at_intensity_fraction(90),
+        #  intensity_vol_hist_features.calc_intensity_at_volume_fraction(10),
+        #  intensity_vol_hist_features.calc_intensity_at_volume_fraction(90),
+        #  intensity_vol_hist_features.calc_volume_fraction_diff_intensity_fractions(),
+        #  intensity_vol_hist_features.calc_intensity_fraction_diff_volume_fractions()
+        # ])
 
     def _calc_discretized_intensity_features(self):
         if self.calc_discr_bin_size:

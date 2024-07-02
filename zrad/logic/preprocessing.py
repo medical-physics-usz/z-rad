@@ -1,7 +1,8 @@
 import os
 import sys
-from multiprocessing import Pool, cpu_count
 from datetime import datetime
+from multiprocessing import Pool, cpu_count
+
 import SimpleITK as sitk
 import numpy as np
 import pydicom
@@ -14,8 +15,8 @@ sys.excepthook = handle_uncaught_exception
 
 class Preprocessing:
 
-    def __init__(self, load_dir, save_dir,
-                 input_data_type, input_imaging_mod,
+    def __init__(self, input_dir, output_dir,
+                 input_data_type, input_imaging_modality,
                  structure_set=None,
                  just_save_as_nifti=False,
                  resample_resolution=1.0, resample_dimension='3D',
@@ -29,65 +30,66 @@ class Preprocessing:
         self.logger_date_time = datetime.now().strftime("%Y-%m-%d_%H%M%S")
         self.logger = get_logger(self.logger_date_time+'_Preprocessing')
         self.logger.info("Preliminary Data Check Started")
-        if os.path.exists(load_dir):
-            self.load_dir = load_dir
+        if os.path.exists(input_dir):
+            self.input_dir = input_dir
         else:
-            self.logger.error(f"Load directory '{load_dir}' does not exist.")
-            raise ValueError(f"Load directory '{load_dir}' does not exist.")
+            self.logger.error(f"Load directory '{input_dir}' does not exist.")
+            raise ValueError(f"Load directory '{input_dir}' does not exist.")
 
-        if os.path.exists(save_dir):
-            self.save_dir = save_dir
+        if os.path.exists(output_dir):
+            self.output_dir = output_dir
         else:
-            os.makedirs(save_dir)
-            self.save_dir = save_dir
+            os.makedirs(output_dir)
+            self.output_dir = output_dir
 
         if start_folder is not None and stop_folder is not None:
-            self.list_of_patient_folders = list_folders_in_defined_range(start_folder, stop_folder, self.load_dir)
+            self.list_of_patient_folders = list_folders_in_defined_range(start_folder, stop_folder, self.input_dir)
         elif list_of_patient_folders is not None and list_of_patient_folders not in [[], ['']]:
             self.list_of_patient_folders = list_of_patient_folders
         elif list_of_patient_folders is None and start_folder is None and stop_folder is None:
-            self.list_of_patient_folders = os.listdir(load_dir)
+            self.list_of_patient_folders = os.listdir(input_dir)
         else:
             self.logger.error('Incorrectly selected patient folders.')
             raise ValueError('Incorrectly selected patient folders.')
 
-        if input_data_type in ['DICOM', 'NIFTI']:
+        if input_data_type in ['DICOM', 'NIfTI']:
             self.input_data_type = input_data_type
         else:
-            raise ValueError(f"Wrong input data type '{input_data_type}', available types: 'DICOM', 'NIFTI'.")
+            raise ValueError(f"Wrong input data type '{input_data_type}', available types: 'DICOM', 'NIfTI'.")
 
-        if input_imaging_mod in ['CT', 'PT', 'MR']:
-            self.input_imaging_mod = input_imaging_mod
+        if input_imaging_modality in ['CT', 'PT', 'MR']:
+            self.input_imaging_modality = input_imaging_modality
         else:
-            self.logger.error(f"Wrong input imaging type '{input_imaging_mod}', available types: 'CT', 'PT', 'MR'.")
-            raise ValueError(f"Wrong input imaging type '{input_imaging_mod}', available types: 'CT', 'PT', 'MR'.")
+            self.logger.error(f"Wrong input imaging type '{input_imaging_modality}', "
+                              "available types: 'CT', 'PT', 'MR'.")
+            raise ValueError(f"Wrong input imaging type '{input_imaging_modality}', available types: 'CT', 'PT', 'MR'.")
 
         if self.input_data_type == 'DICOM':
             list_pat_id_to_del = []
             for pat_index, pat_path in enumerate(self.list_of_patient_folders):
-                if check_dicom_tags(os.path.join(load_dir, pat_path), pat_path, self.logger, resample_dimension):
+                if check_dicom_tags(os.path.join(input_dir, pat_path), pat_path, self.logger, resample_dimension):
 
                     list_pat_id_to_del.append(pat_path)
             for pat_to_del in np.unique(list_pat_id_to_del):
                 self.list_of_patient_folders.remove(pat_to_del)
 
-        if self.input_data_type == 'NIFTI':
+        if self.input_data_type == 'NIfTI':
             if nifti_image is not None:
                 image_exists = True
                 for folder in self.list_of_patient_folders:
-                    if (not os.path.isfile(os.path.join(load_dir, str(folder), nifti_image + '.nii.gz'))
-                       and not os.path.isfile(os.path.join(load_dir, str(folder), nifti_image + '.nii'))):
+                    if (not os.path.isfile(os.path.join(input_dir, str(folder), nifti_image + '.nii.gz'))
+                       and not os.path.isfile(os.path.join(input_dir, str(folder), nifti_image + '.nii'))):
                         image_exists = False
                         if not image_exists:
-                            self.logger.info(f"The NIFTI image file does not exist "
-                                             f"'{os.path.join(load_dir, str(folder), nifti_image)}'. "
+                            self.logger.info(f"The NIfTI image file does not exist "
+                                             f"'{os.path.join(input_dir, str(folder), nifti_image)}'. "
                                              f"The patient {folder} is skipped")
                             self.list_of_patient_folders.remove(folder)
                 if image_exists:
                     self.nifti_image = nifti_image
             else:
-                self.logger.error('Select the NIFTI image file.')
-                raise ValueError('Select the NIFTI image file.')
+                self.logger.error('Select the NIfTI image file.')
+                raise ValueError('Select the NIfTI image file.')
 
         if (mask_interpolation_method in ['NN', 'Linear', 'BSpline', 'Gaussian']
                 and image_interpolation_method in ['NN', 'Linear', 'BSpline', 'Gaussian']):
@@ -165,10 +167,10 @@ class Preprocessing:
         self.patient_logger = get_logger(self.logger_date_time+'_Preprocessing')
         self.patient_logger.info(f'Working on patient: {patient_number}')
         self.patient_number = str(patient_number)
-        self.patient_folder = os.path.join(self.load_dir, self.patient_number)
+        self.patient_folder = os.path.join(self.input_dir, self.patient_number)
         self.pat_original_image_and_masks = {}
         self.pat_resampled_image_and_masks = {}
-        if self.input_data_type == 'NIFTI':
+        if self.input_data_type == 'NIfTI':
             self._process_nifti_files()
             self._resampling()
         else:
@@ -199,7 +201,7 @@ class Preprocessing:
 
     def _process_dicom_files(self):
         self.pat_original_image_and_masks['IMAGE'] = extract_dicom(dicom_dir=self.patient_folder, rtstract=False,
-                                                                   modality=self.input_imaging_mod)
+                                                                   modality=self.input_imaging_modality)
 
         if self.structure_set != ['']:
             for dicom_file in os.listdir(self.patient_folder):
@@ -208,7 +210,7 @@ class Preprocessing:
                     masks = extract_dicom(dicom_dir=self.patient_folder, rtstract=True,
                                           rtstruct_file=os.path.join(self.patient_folder, dicom_file),
                                           selected_structures=self.structure_set,
-                                          modality=self.input_imaging_mod)
+                                          modality=self.input_imaging_modality)
                     for instance_key in masks.keys():
                         self.pat_original_image_and_masks['MASK_'+instance_key] = masks[instance_key]
 
@@ -272,10 +274,10 @@ class Preprocessing:
             resampled_array = None
 
             if instance_key.startswith('IMAGE'):
-                if self.input_imaging_mod == 'CT':
+                if self.input_imaging_modality == 'CT':
                     resampled_sitk_image = sitk.Round(resampled_sitk_image)
                     resampled_sitk_image = sitk.Cast(resampled_sitk_image, sitk.sitkInt16)
-                elif self.input_imaging_mod in ['MR', 'PT']:
+                elif self.input_imaging_modality in ['MR', 'PT']:
                     resampled_sitk_image = sitk.Cast(resampled_sitk_image, sitk.sitkFloat64)
                 resampled_array = sitk.GetArrayFromImage(resampled_sitk_image)
 

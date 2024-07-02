@@ -1,7 +1,8 @@
-import os
-from datetime import datetime
 import logging
+import os
 import sys
+from datetime import datetime
+
 import SimpleITK as sitk
 import numpy as np
 import pydicom
@@ -18,7 +19,7 @@ class Image:
         self.shape = shape
 
     def save_as_nifti(self, instance, key):
-        output_path = os.path.join(instance.save_dir, instance.patient_number, key + '.nii.gz')
+        output_path = os.path.join(instance.output_dir, instance.patient_number, key + '.nii.gz')
         if not os.path.exists(os.path.dirname(output_path)):
             os.makedirs(os.path.dirname(output_path))
         img = sitk.GetImageFromArray(self.array)
@@ -169,7 +170,7 @@ def extract_dicom(dicom_dir, rtstract, modality, rtstruct_file='', selected_stru
             try:
                 dcm = pydicom.dcmread(dicom_path, stop_before_pixels=True)
                 return dcm.SOPClassUID != uid
-            except Exception:
+            except InvalidDicomError:
                 return False
 
         reader = sitk.ImageSeriesReader()
@@ -233,16 +234,16 @@ def extract_dicom(dicom_dir, rtstract, modality, rtstruct_file='', selected_stru
             elif 'SIEMENS' in ds.Manufacturer.upper() and units == 'BQML':
                 try:
                     acquisition_time = parse_time(ds[(0x0071, 0x1022)].value).replace(year=injection_time.year,
-                                                                                  month=injection_time.month,
-                                                                                  day=injection_time.day)
-                except Exception:
+                                                                                      month=injection_time.month,
+                                                                                      day=injection_time.day)
+                except KeyError:
                     acquisition_time = min_acquisition_time
             elif 'GE' in ds.Manufacturer.upper() and units == 'BQML':
                 try:
                     acquisition_time = parse_time(ds[(0x0009, 0x100d)].value).replace(year=injection_time.year,
                                                                                       month=injection_time.month,
                                                                                       day=injection_time.day)
-                except Exception:
+                except KeyError:
                     acquisition_time = min_acquisition_time
         elif ds.DecayCorrection == 'ADMIN':
             acquisition_time = injection_time
@@ -347,7 +348,7 @@ def check_dicom_tags(directory, pat_index, logger, image_vol='3D'):
         try:
             dcm = pydicom.dcmread(dicom_path, stop_before_pixels=True)
             return dcm.Modality != 'RTSTRUCT'
-        except Exception:
+        except InvalidDicomError:
             return False
 
     for f in os.listdir(directory):
@@ -407,7 +408,7 @@ def check_dicom_tags(directory, pat_index, logger, image_vol='3D'):
                             logger.warning(f'For the patient {pat_index} there is a mismatch between the earliest '
                                            'acquisition time, series time and Siemens private tag (0071, 1022). '
                                            'Time from the Siemens private tag was used.')
-                    except Exception:
+                    except KeyError:
                         acquisition_time = np.min(acquisition_time_list)
                         if not time_mismatch:
                             time_mismatch = True
@@ -428,7 +429,7 @@ def check_dicom_tags(directory, pat_index, logger, image_vol='3D'):
                             logger.warning(f'For the patient {pat_index} a mismatch present between '
                                            'the earliest acquisition time, series time, and GE private tag. '
                                            'Time from the GE private tag was used.')
-                    except Exception:
+                    except KeyError:
                         acquisition_time = np.min(acquisition_time_list)
                         if not time_mismatch:
                             time_mismatch = True
@@ -471,7 +472,7 @@ def get_logger(logger_date_time):
             os.makedirs(os.path.join(os.getcwd(), 'Log files'))
         file_handler = logging.FileHandler(os.path.join(os.getcwd(), 'Log files', f'{logger_date_time}.log'),
                                            encoding='utf-8')
-        #formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        # formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
         formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
         file_handler.setFormatter(formatter)
         file_handler.setLevel(logging.DEBUG)

@@ -204,18 +204,6 @@ def extract_dicom(dicom_dir, rtstract, modality, rtstruct_file='', selected_stru
         reader.SetFileNames(file_names)
         image = reader.Execute()
 
-        if imaging_modality == 'CT' and np.unique(ct_raw_intensity) == [True]:
-            # if len(np.unique(HU_intercept)) == 1 and len(np.unique(HU_intercept)) == 1:
-            origin = image.GetOrigin()
-            direction = image.GetDirection()
-            array = sitk.GetArrayFromImage(image) * HU_slope[0] + HU_intercept[0]
-            array = array.astype(np.float64)
-            image = sitk.GetImageFromArray(array)
-            image.SetOrigin(origin)
-            image.SetDirection(direction)
-            # else:
-            # print('CT with raw intensity but have different slopes and intercepts among slices')
-
         image.SetSpacing((float(pixel_spacing[0]), float(pixel_spacing[1]), float(slice_thickness)))
 
         return image

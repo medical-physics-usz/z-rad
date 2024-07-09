@@ -176,7 +176,7 @@ class Radiomics:
         self.patient_number = None
 
         self.columns = [
-            'PAT::ROI',
+            'ID', 'ROI',
             'vol_mesh', 'vol_count', 'area_mesh', 'surf_to_vol_ratio', 'compactness_1', 'compactness_2',
             'spherical_disproportion', 'sphericity', 'asphericity', 'centre_of_shift', 'max_diameter', 'major_axis_len',
             'minor_axis_len', 'least_axis_len', 'elongation', 'flatness', 'vol_density_aabb', 'area_density_aabb',
@@ -237,9 +237,27 @@ class Radiomics:
                 self.logger.info('Radiomics Calculation Started')
                 with Pool(self.number_of_threads) as pool:
                     pool.map(self._load_patient, sorted(self.list_of_patient_folders))
+
+                if len(self.list_of_patient_folders) > 1:
+
+                    excel_files = []
+                    for patient_id in self.list_of_patient_folders:
+                        excel_files.append(os.path.join(self.output_dir, f'ID_{patient_id}_radiomics.xlsx'))
+
+                    dfs = []
+                    for file in excel_files:
+                        xls = pd.ExcelFile(file)
+                        for sheet_name in xls.sheet_names:
+                            df = pd.read_excel(file, sheet_name=sheet_name)
+                            dfs.append(df)
+
+                    combined_df = pd.concat(dfs, ignore_index=True)
+                    combined_df.to_excel(os.path.join(self.output_dir, 'combined.xlsx'), index=False)
+
                 self.logger.info('Radiomics Calculation Completed!')
             except Exception:
                 self.logger.error("Caught an exception", exc_info=True)
+
         else:
             self.logger.info('No patients to calculate radiomics from.')
 
@@ -279,7 +297,7 @@ class Radiomics:
                 save_list += feature_list[mask_index]
             radiomics_features_df.loc[radiomics_features_df.shape[0]] = dict(zip(self.columns, save_list))
         radiomics_features_df.to_excel(
-            os.path.join(self.output_dir, f'patient_{self.patient_number}_radiomics.xlsx'), index=False)
+            os.path.join(self.output_dir, f'ID_{self.patient_number}_radiomics.xlsx'), index=False)
 
     def _process_dicom_files(self):
         self.patient_image = extract_dicom(dicom_dir=self.patient_folder, rtstract=False,
@@ -296,7 +314,7 @@ class Radiomics:
                                           modality=self.input_imaging_modality)
 
                     for instance_key in masks.keys():
-                        self.patient_logger.info(f'Working on patient {self.patient_number} with mask {instance_key}.')
+                        self.patient_logger.info(f'Working on patient: {self.patient_number}; with ROI: {instance_key}.')
                         self.patient_morphological_mask = Image(masks[instance_key].array.astype(np.int8),
                                                                 origin=self.patient_image.origin,
                                                                 spacing=self.patient_image.spacing,
@@ -824,7 +842,8 @@ class Radiomics:
         morf_features.calc_area_density_ch()
         morf_features.calc_integrated_intensity(self.patient_intensity_mask.array)
 
-        self.mort_features = [self.patient_number + '::' + key,
+        self.mort_features = [self.patient_number,
+                              key[5:],
                               morf_features.vol_mesh,
                               morf_features.vol_count,
                               morf_features.area_mesh,

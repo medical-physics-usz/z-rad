@@ -395,10 +395,10 @@ def check_dicom_tags(directory, pat_index, logger, image_vol='3D'):
                     f"For the patient {pat_index} the patient's weight tag (0071, 1022) is not present." 
                     'Patient is excluded from the analysis.')
                 return True
-            if 'DECY' not in dicom[(0x0028, 0x0051)].value or 'ATNN' not in dicom[(0x0028, 0x0051)].value:
+            if 'DECY' not in dicom[(0x0028, 0x0051)].value or 'ATTN' not in dicom[(0x0028, 0x0051)].value:
                 logger.warning(
                     f"For the patient {pat_index}, in DICOM tag (0028, 0051) either no "
-                    "'DECY' (decay correction) or 'ATNN' (attenuation correction) "
+                    "'DECY' (decay correction) or 'ATTN' (attenuation correction) "
                     'Patient is excluded from the analysis.')
                 return True
 

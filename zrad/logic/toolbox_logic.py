@@ -19,6 +19,8 @@ class Image:
         self.shape = shape
 
     def save_as_nifti(self, instance, key):
+        if key.startswith('MASK_'):
+            key = key[5:]
         output_path = os.path.join(instance.output_dir, instance.patient_number, key + '.nii.gz')
         if not os.path.exists(os.path.dirname(output_path)):
             os.makedirs(os.path.dirname(output_path))
@@ -204,18 +206,6 @@ def extract_dicom(dicom_dir, rtstract, modality, rtstruct_file='', selected_stru
 
         reader.SetFileNames(file_names)
         image = reader.Execute()
-
-        if imaging_modality == 'CT' and np.unique(ct_raw_intensity) == [True]:
-            # if len(np.unique(HU_intercept)) == 1 and len(np.unique(HU_intercept)) == 1:
-            origin = image.GetOrigin()
-            direction = image.GetDirection()
-            array = sitk.GetArrayFromImage(image) * HU_slope[0] + HU_intercept[0]
-            array = array.astype(np.float64)
-            image = sitk.GetImageFromArray(array)
-            image.SetOrigin(origin)
-            image.SetDirection(direction)
-            # else:
-            # print('CT with raw intensity but have different slopes and intercepts among slices')
 
         image.SetSpacing((float(pixel_spacing[0]), float(pixel_spacing[1]), float(slice_thickness)))
 
@@ -405,10 +395,10 @@ def check_dicom_tags(directory, pat_index, logger, image_vol='3D'):
                     f"For the patient {pat_index} the patient's weight tag (0071, 1022) is not present." 
                     'Patient is excluded from the analysis.')
                 return True
-            if 'DECY' not in dicom[(0x0028, 0x0051)].value or 'ATNN' not in dicom[(0x0028, 0x0051)].value:
+            if 'DECY' not in dicom[(0x0028, 0x0051)].value or 'ATTN' not in dicom[(0x0028, 0x0051)].value:
                 logger.warning(
                     f"For the patient {pat_index}, in DICOM tag (0028, 0051) either no "
-                    "'DECY' (decay correction) or 'ATNN' (attenuation correction) "
+                    "'DECY' (decay correction) or 'ATTN' (attenuation correction) "
                     'Patient is excluded from the analysis.')
                 return True
 

@@ -21,7 +21,7 @@ class Mean:
         self.filter_logger_date_time = datetime.now().strftime("%Y-%m-%d_%H%M%S")
         self.filter_logger = get_logger(self.filter_logger_date_time+"_Mean_filter")
 
-        self.filter_type = 'Mean'
+        self.type = 'Mean'
 
         if dimensionality in ['2D', '3D']:
             self.dimensionality = dimensionality
@@ -71,7 +71,7 @@ class LoG:
         self.filter_logger_date_time = datetime.now().strftime("%Y-%m-%d_%H%M%S")
         self.filter_logger = get_logger(self.filter_logger_date_time+'_LoG_filter')
 
-        self.filter_type = 'Laplacian of Gaussian'
+        self.type = 'Laplacian of Gaussian'
 
         if dimensionality in ['2D', '3D']:
             self.dimensionality = dimensionality
@@ -129,7 +129,7 @@ class Wavelets2D:
         self.filter_logger_date_time = datetime.now().strftime("%Y-%m-%d_%H%M%S")
         self.filter_logger = get_logger(self.filter_logger_date_time+'_Wavelets2D')
 
-        self.filter_type = 'Wavelets'
+        self.type = 'Wavelets'
 
         self.dimensionality = '2D'
 
@@ -236,7 +236,7 @@ class Wavelets3D:
         self.filter_logger_date_time = datetime.now().strftime("%Y-%m-%d_%H%M%S")
         self.filter_logger = get_logger(self.filter_logger_date_time+'_Wavelets3D')
 
-        self.filter_type = 'Wavelets'
+        self.type = 'Wavelets'
 
         self.dimensionality = '3D'
 
@@ -378,7 +378,7 @@ class Laws:
         self.filter_logger_date_time = datetime.now().strftime("%Y-%m-%d_%H%M%S")
         self.filter_logger = get_logger(self.filter_logger_date_time+'_Laws_kernels')
 
-        self.filter_type = 'Laws Kernels'
+        self.type = 'Laws Kernels'
 
         if dimensionality in ['2D', '3D']:
             self.dimensionality = dimensionality
@@ -596,10 +596,10 @@ class Filtering:
         else:
             raise ValueError("Wrong input imaging type, available types: 'CT', 'PT', 'MR'.")
 
-        if filter_type.filter_type in ['Mean', 'Laplacian of Gaussian', 'Laws Kernels', 'Wavelets']:
-            self.filter_type = filter_type.filter_type
+        if filter_type.type in ['Mean', 'Laplacian of Gaussian', 'Laws Kernels', 'Wavelets']:
+            self.filtering_type = filter_type.type
         else:
-            raise ValueError(f"Wrong filter_type: {filter_type.filter_type}, available types: "
+            raise ValueError(f"Wrong filter_type: {filter_type.type}, available types: "
                              "'Mean', 'Laplacian of Gaussian', 'Laws Kernels', and 'Wavelets'.")
 
         self.filter = filter_type
@@ -649,7 +649,7 @@ class Filtering:
         self.pat_image = extract_dicom(dicom_dir=self.patient_folder, rtstract=False, modality=self.input_imaging_mod)
 
     def _apply_filter(self):
-        if self.filter_type == 'Laplacian of Gaussian':
+        if self.filtering_type == 'Laplacian of Gaussian':
             self.filter.res_mm = float(self.pat_image.spacing[0])
         self.filtered_image = self.filter.implement(self.pat_image.array.astype(np.float64).transpose(1, 2, 0))
         self.filtered_image_to_save = Image(array=self.filtered_image.transpose(2, 0, 1),
@@ -659,4 +659,20 @@ class Filtering:
                                             shape=self.pat_image.shape)
 
     def _save_as_nifti(self):
-        self.filtered_image_to_save.save_as_nifti(instance=self, key='FILTERED_IMAGE')
+        if self.filtering_type == 'Mean':
+            filter_key=(f'{self.filtering_type}_{self.filter.dimensionality}_{self.filter.support}support'
+                 f'_{self.filter.padding_type}')
+        elif self.filtering_type == 'Laplacian of Gaussian':
+            filter_key = (f'{self.filtering_type}_{self.filter.dimensionality}_{self.filter.sigma_mm}sigma'
+                          f'_{self.filter.cutoff}cutoff_'
+                          f'{self.filter.padding_type}')
+        elif self.filtering_type == 'Laws Kernels':
+            filter_key = (f'{self.filtering_type}_{self.filter.dimensionality}_{self.filter.response_map}_'
+                   f'{self.filter.rotation_invariance}_{self.filter.pooling}_{self.filter.energy_map}'
+                   f'{self.filter.distance}_{self.filter.padding_type}')
+        else:
+            filter_key = (f'{self.filter.wavelet_type}_{self.filter.dimensionality}_{self.filter.response_map}_'
+                   f'{self.filter.decomposition_level}_{self.filter.rotation_invariance}_'
+                   f'{self.filter.padding_type}')
+
+        self.filtered_image_to_save.save_as_nifti(instance=self, key=filter_key)

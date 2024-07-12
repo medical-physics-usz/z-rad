@@ -19,6 +19,8 @@ class Image:
         self.shape = shape
 
     def save_as_nifti(self, instance, key):
+        if key.startswith('MASK_'):
+            key = key[5:]
         output_path = os.path.join(instance.output_dir, instance.patient_number, key + '.nii.gz')
         if not os.path.exists(os.path.dirname(output_path)):
             os.makedirs(os.path.dirname(output_path))
@@ -205,18 +207,6 @@ def extract_dicom(dicom_dir, rtstract, modality, rtstruct_file='', selected_stru
         reader.SetFileNames(file_names)
         image = reader.Execute()
 
-        if imaging_modality == 'CT' and np.unique(ct_raw_intensity) == [True]:
-            # if len(np.unique(HU_intercept)) == 1 and len(np.unique(HU_intercept)) == 1:
-            origin = image.GetOrigin()
-            direction = image.GetDirection()
-            array = sitk.GetArrayFromImage(image) * HU_slope[0] + HU_intercept[0]
-            array = array.astype(np.float64)
-            image = sitk.GetImageFromArray(array)
-            image.SetOrigin(origin)
-            image.SetDirection(direction)
-            # else:
-            # print('CT with raw intensity but have different slopes and intercepts among slices')
-
         image.SetSpacing((float(pixel_spacing[0]), float(pixel_spacing[1]), float(slice_thickness)))
 
         return image
@@ -229,8 +219,7 @@ def extract_dicom(dicom_dir, rtstract, modality, rtstruct_file='', selected_stru
 
         if ds.DecayCorrection == 'START':
             if 'PHILIPS' in ds.Manufacturer.upper():
-                if units == 'BQML':
-                    acquisition_time = min_acquisition_time
+                acquisition_time = min_acquisition_time
             elif 'SIEMENS' in ds.Manufacturer.upper() and units == 'BQML':
                 try:
                     acquisition_time = parse_time(ds[(0x0071, 0x1022)].value).replace(year=injection_time.year,
@@ -260,6 +249,10 @@ def extract_dicom(dicom_dir, rtstract, modality, rtstruct_file='', selected_stru
 
         image_data = ds.pixel_array
         activity_concentration = (image_data * ds.RescaleSlope) + ds.RescaleIntercept
+
+        if 'PHILIPS' in ds.Manufacturer.upper() and units == 'CNTS':
+            activity_concentration = activity_concentration * ds[(0x7053, 0x1009)].value
+
         suv = activity_concentration / (decay_corrected_dose / (patient_weight * 1000))
 
         suv = suv.T
@@ -389,76 +382,115 @@ def check_dicom_tags(directory, pat_index, logger, image_vol='3D'):
         dicom_file_path = os.path.join(directory, dcm_file)
         dicom = pydicom.dcmread(dicom_file_path)
         if dicom.Modality == 'PT':
-            if dicom.Units != 'BQML':  # or (dicom.Units == 'CNTS' and 'PHILIPS' not in dicom.Manufacturer.upper()):
+            try:
+                pat_weight = dicom[(0x0010, 0x1030)].value
+                if float(pat_weight) < 1:
+                    logger.warning(
+                        f"For the patient {pat_index} the patient's weight tag (0071, 1022) contains weight < 1kg."
+                        'Patient is excluded from the analysis.')
+                    return True
+
+            except KeyError:
+                logger.warning(
+                    f"For the patient {pat_index} the patient's weight tag (0071, 1022) is not present." 
+                    'Patient is excluded from the analysis.')
+                return True
+            if 'DECY' not in dicom[(0x0028, 0x0051)].value or 'ATTN' not in dicom[(0x0028, 0x0051)].value:
+                logger.warning(
+                    f"For the patient {pat_index}, in DICOM tag (0028, 0051) either no "
+                    "'DECY' (decay correction) or 'ATTN' (attenuation correction) "
+                    'Patient is excluded from the analysis.')
+                return True
+
+            if dicom.Units == 'BQML':
+                injection_time = parse_time(
+                    dicom.RadiopharmaceuticalInformationSequence[0].RadiopharmaceuticalStartTime)
+                if dicom.DecayCorrection == 'START':
+                    if 'PHILIPS' in dicom.Manufacturer.upper():
+                        acquisition_time = np.min(acquisition_time_list)
+                    elif 'SIEMENS' in dicom.Manufacturer.upper():
+                        try:
+                            acquisition_time = parse_time(dicom[(0x0071, 0x1022)].value).replace(
+                                year=injection_time.year,
+                                month=injection_time.month,
+                                day=injection_time.day)
+                            if (acquisition_time != np.min(acquisition_time_list)
+                                    or acquisition_time != parse_time(dicom.SeriesTime) and not time_mismatch):
+                                time_mismatch = True
+                                logger.warning(f'For the patient {pat_index} there is a mismatch between the earliest '
+                                               'acquisition time, series time and Siemens private tag (0071, 1022). '
+                                               'Time from the Siemens private tag was used.')
+                        except KeyError:
+                            acquisition_time = np.min(acquisition_time_list)
+                            if not time_mismatch:
+                                time_mismatch = True
+                                logger.warning(f'For the patient {pat_index} private Siemens tag (0071, 1022)'
+                                               ' is not present. The earliest of all acquisition times was used.')
+                            if acquisition_time != parse_time(dicom.SeriesTime) and time_mismatch:
+                                time_mismatch = True
+                                logger.warning(f'For the patient {pat_index} a mismatch present between the earliest '
+                                               'acquisition time and series time. Earliest acquisition time was used.')
+                    elif 'GE' in dicom.Manufacturer.upper():
+                        try:
+                            acquisition_time = parse_time(dicom[(0x0009, 0x100d)].value).replace(
+                                year=injection_time.year,
+                                month=injection_time.month,
+                                day=injection_time.day)
+                            if (acquisition_time != np.min(acquisition_time_list)
+                                    or acquisition_time != parse_time(dicom.SeriesTime) and not time_mismatch):
+                                time_mismatch = True
+                                logger.warning(f'For the patient {pat_index} a mismatch present between '
+                                               'the earliest acquisition time, series time, and GE private tag. '
+                                               'Time from the GE private tag was used.')
+                        except KeyError:
+                            acquisition_time = np.min(acquisition_time_list)
+                            if not time_mismatch:
+                                time_mismatch = True
+                                logger.warning(f'For the patient {pat_index} private GE tag (0009, 100d)'
+                                               ' is not present. The earliest of all acquisition times was used.')
+                            if acquisition_time != parse_time(dicom.SeriesTime) and time_mismatch:
+                                time_mismatch = True
+                                logger.warning(f'For the patient {pat_index} a mismatch present between the earliest '
+                                               'acquisition time and series time. Earliest acquisition time was used.')
+                    else:
+                        logger.warning(f'For the patient {pat_index} the unknown PET scaner manufacturer is present. '
+                                       'Z-Rad only supports Philips, Siemens, and GE.')
+                        return True
+
+                elif dicom.DecayCorrection == 'ADMIN':
+                    acquisition_time = injection_time
+
+                else:
+                    logger.warning(
+                        f'For the patient {pat_index} the unsupported Decay Correction {dicom.DecayCorrection} '
+                        'is present. Only supported are "START" and "ADMIN". '
+                        'Patient is excluded from the analysis.')
+                    return True
+                elapsed_time = (acquisition_time - injection_time).total_seconds()
+                if elapsed_time < 0:
+                    logger.warning(f'Patient {pat_index} is excluded from the analysis '
+                                   'due to the negative time difference in the decay factor.')
+                    return True
+                elif elapsed_time > 0 and abs(elapsed_time) < 1800 and dicom.DecayCorrection != 'ADMIN':
+                    logger.warning(f'Only {abs(elapsed_time) / 60} minutes after the injection')
+            elif dicom.Units == 'CNTS' and 'PHILIPS' in dicom.Manufacturer.upper():
+                try:
+                    activity_scale_factor = dicom[(0x7053, 0x1009)].value
+                    print(activity_scale_factor)
+                    if activity_scale_factor == 0.0:
+                        logger.warning(
+                            f'Patient {pat_index} is excluded, Philips private activity scale factor (7053, 1009) = 0.'
+                            '(PET units CNTS)')
+                        return True
+                except KeyError:
+                    logger.warning(
+                        f'Patient {pat_index} is excluded, Philips private activity scale factor '
+                        '(7053, 1009) is missing. (PET units CNTS)')
+                    return True
+            else:
                 logger.warning(f'Patient {pat_index} is excluded, only supported PET Units are "BQML" for Philips, '
                                'Siemens and GE or "CNTS" for Philips')
                 return True
-            injection_time = parse_time(dicom.RadiopharmaceuticalInformationSequence[0].RadiopharmaceuticalStartTime)
-            if dicom.DecayCorrection == 'START':
-                if 'PHILIPS' in dicom.Manufacturer.upper():
-                    acquisition_time = np.min(acquisition_time_list)
-                elif 'SIEMENS' in dicom.Manufacturer.upper():
-                    try:
-                        acquisition_time = parse_time(dicom[(0x0071, 0x1022)].value).replace(year=injection_time.year,
-                                                                                             month=injection_time.month,
-                                                                                             day=injection_time.day)
-                        if (acquisition_time != np.min(acquisition_time_list)
-                           or acquisition_time != parse_time(dicom.SeriesTime) and not time_mismatch):
-                            time_mismatch = True
-                            logger.warning(f'For the patient {pat_index} there is a mismatch between the earliest '
-                                           'acquisition time, series time and Siemens private tag (0071, 1022). '
-                                           'Time from the Siemens private tag was used.')
-                    except KeyError:
-                        acquisition_time = np.min(acquisition_time_list)
-                        if not time_mismatch:
-                            time_mismatch = True
-                            logger.warning(f'For the patient {pat_index} private Siemens tag (0071, 1022)'
-                                           ' is not present. The earliest of all acquisition times was used.')
-                        if acquisition_time != parse_time(dicom.SeriesTime) and time_mismatch:
-                            time_mismatch = True
-                            logger.warning(f'For the patient {pat_index} a mismatch present between the earliest '
-                                           'acquisition time and series time. Earliest acquisition time was used.')
-                elif 'GE' in dicom.Manufacturer.upper():
-                    try:
-                        acquisition_time = parse_time(dicom[(0x0009, 0x100d)].value).replace(year=injection_time.year,
-                                                                                             month=injection_time.month,
-                                                                                             day=injection_time.day)
-                        if (acquisition_time != np.min(acquisition_time_list)
-                                or acquisition_time != parse_time(dicom.SeriesTime) and not time_mismatch):
-                            time_mismatch = True
-                            logger.warning(f'For the patient {pat_index} a mismatch present between '
-                                           'the earliest acquisition time, series time, and GE private tag. '
-                                           'Time from the GE private tag was used.')
-                    except KeyError:
-                        acquisition_time = np.min(acquisition_time_list)
-                        if not time_mismatch:
-                            time_mismatch = True
-                            logger.warning(f'For the patient {pat_index} private GE tag (0009, 100d)'
-                                           ' is not present. The earliest of all acquisition times was used.')
-                        if acquisition_time != parse_time(dicom.SeriesTime) and time_mismatch:
-                            time_mismatch = True
-                            logger.warning(f'For the patient {pat_index} a mismatch present between the earliest '
-                                           'acquisition time and series time. Earliest acquisition time was used.')
-                else:
-                    logger.warning(f'For the patient {pat_index} the unknown PET scaner manufacturer is present. '
-                                   'Z-Rad only supports Philips, Siemens, and GE.')
-                    return True
-
-            elif dicom.DecayCorrection == 'ADMIN':
-                acquisition_time = injection_time
-
-            else:
-                logger.warning(f'For the patient {pat_index} the unsupported Decay Correction {dicom.DecayCorrection} '
-                               'is present. Only supported are "START" and "ADMIN". '
-                               'Patient is excluded from the analysis.')
-                return True
-            elapsed_time = (acquisition_time - injection_time).total_seconds()
-            if elapsed_time < 0:
-                logger.warning(f'Patient {pat_index} is excluded from the analysis '
-                               'due to the negative time difference in the decay factor.')
-                return True
-            elif elapsed_time > 0 and abs(elapsed_time) < 1800 and dicom.DecayCorrection != 'ADMIN':
-                logger.warning(f'Only {abs(elapsed_time)/60} minutes after the injection')
     return False
 
 
@@ -472,7 +504,6 @@ def get_logger(logger_date_time):
             os.makedirs(os.path.join(os.getcwd(), 'Log files'))
         file_handler = logging.FileHandler(os.path.join(os.getcwd(), 'Log files', f'{logger_date_time}.log'),
                                            encoding='utf-8')
-        # formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
         formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
         file_handler.setFormatter(formatter)
         file_handler.setLevel(logging.DEBUG)

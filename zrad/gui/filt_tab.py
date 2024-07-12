@@ -14,14 +14,14 @@ class FilteringTab(QWidget):
 
         self.wavelet_filter_response_map_connected = False
 
-        self.setMinimumSize(1750, 650)
+        self.setMinimumSize(1220, 640)
         self.layout = QVBoxLayout(self)
 
         data_io(self)
 
         # Set used data type
         self.input_data_type_combo_box = CustomBox(
-            60, 300, 140, 50, self,
+            20, 300, 160, 50, self,
             item_list=[
                 "Data Type:", "DICOM", "NIfTI"
             ]
@@ -39,19 +39,19 @@ class FilteringTab(QWidget):
 
         self.nifti_image_label = CustomLabel(
             'NIfTI image file:',
-            320, 300, 200, 50, self,
+            200, 300, 150, 50, self,
             style="color: white;"
         )
         self.nifti_image_text_field = CustomTextField(
             "E.g. imageCT",
-            510, 300, 350, 50, self
+            350, 300, 350, 50, self
         )
         self.nifti_image_label.hide()
         self.nifti_image_text_field.hide()
 
         # Set output_imaging_type
         self.filter_combo_box = CustomBox(
-            60, 380, 140, 50, self,
+            20, 380, 160, 50, self,
             item_list=[
                 "Filter Type:", "Mean", "Laplacian of Gaussian", "Laws Kernels", "Wavelets"
             ]
@@ -59,7 +59,7 @@ class FilteringTab(QWidget):
         self.filter_combo_box.currentTextChanged.connect(self.filter_combo_box_changed)
 
         self.padding_type_combo_box = CustomBox(
-            480, 380, 150, 50, self,
+            340, 380, 150, 50, self,
             item_list=[
                 "Padding Type:", "constant", "nearest", "wrap", "reflect"
             ]
@@ -68,18 +68,18 @@ class FilteringTab(QWidget):
 
         self.mean_filter_support_label = CustomLabel(
             'Support:',
-            640, 380, 100, 50, self,
+            200, 460, 100, 50, self,
             style="color: white;"
         )
         self.mean_filter_support_text_field = CustomTextField(
             "E.g. 15",
-            740, 380, 75, 50, self
+            275, 460, 75, 50, self
         )
         self.mean_filter_support_text_field.hide()
         self.mean_filter_support_label.hide()
 
         self.filter_dimension_combo_box = CustomBox(
-            320, 380, 140, 50, self,
+            200, 380, 120, 50, self,
             item_list=[
                 "Dimension:", "2D", "3D"
             ]
@@ -88,49 +88,49 @@ class FilteringTab(QWidget):
 
         self.log_filter_sigma_label = CustomLabel(
             '\u03C3 (in mm):',
-            640, 380, 200, 50, self,
+            200, 460, 200, 50, self,
             style="color: white;"
         )
         self.log_filter_sigma_text_field = CustomTextField(
             "E.g. 3",
-            760, 380, 75, 50, self
+            290, 460, 60, 50, self
         )
         self.log_filter_sigma_label.hide()
         self.log_filter_sigma_text_field.hide()
 
         self.log_filter_cutoff_label = CustomLabel(
             'Cutoff (in \u03C3):',
-            845, 380, 200, 50, self,
+            375, 460, 200, 50, self,
             style="color: white;"
         )
         self.log_filter_cutoff_text_field = CustomTextField(
             "E.g. 4",
-            990, 380, 75, 50, self)
+            480, 460, 60, 50, self)
         self.log_filter_cutoff_label.hide()
         self.log_filter_cutoff_text_field.hide()
 
         self.laws_filter_response_map_label = CustomLabel(
             'Response Map:',
-            650, 380, 200, 50, self,
+            200, 460, 200, 50, self,
             style="color: white;"
         )
-        self.laws_filter_response_map_text_field = CustomTextField("E.g. L5E5", 830, 380, 100, 50, self)
+        self.laws_filter_response_map_text_field = CustomTextField("E.g. L5E5", 325, 460, 100, 50, self)
         self.laws_filter_rot_inv_combo_box = CustomBox(
-            950, 380, 190, 50, self,
+            450, 460, 160, 50, self,
             item_list=[
-                'Pseudo-rot. inv:', 'Enable', 'Disable'
+                'Rotation invariance:', 'Enable', 'Disable'
             ]
         )
-        self.laws_filter_distance_label = CustomLabel('Distance:', 1160, 380, 200, 50, self, style="color: white;")
+        self.laws_filter_distance_label = CustomLabel('Distance:', 630, 460, 200, 50, self, style="color: white;")
         self.laws_filter_distance_text_field = CustomTextField(
             "E.g. 5",
-            1270, 380, 75, 50, self
+            710, 460, 60, 50, self
         )
         self.laws_filter_pooling_combo_box = CustomBox(
-            1370, 380, 120, 50, self,
+            800, 460, 120, 50, self,
             item_list=['Pooling:', 'max', 'min', 'average'])
         self.laws_filter_energy_map_combo_box = CustomBox(
-            1515, 380, 140, 50, self,
+            950, 460, 140, 50, self,
             item_list=[
                 'Energy map:', 'Enable', 'Disable'
             ]
@@ -144,33 +144,33 @@ class FilteringTab(QWidget):
         self.laws_filter_energy_map_combo_box.hide()
 
         self.wavelet_filter_type_combo_box = CustomBox(
-            820, 380, 170, 50, self,
+            200, 460, 170, 50, self,
             item_list=[
                 "Wavelet type:", "db3", "db2", "coif1", "haar"
             ]
         )
         self.wavelet_filter_type_combo_box.hide()
         self.wavelet_filter_response_map_combo_box = CustomBox(
-            645, 380, 155, 50, self,
-            item_list=['Response Map']
+            390, 460, 150, 50, self,
+            item_list=['Response Map:']
         )
         self.wavelet_filter_response_map_combo_box.hide()
         self.wavelet_filter_response_map_2d_combo_box = CustomBox(
-            645, 380, 150, 50, self,
+            390, 460, 150, 50, self,
             item_list=[
                 'Response Map:', 'LL', 'HL', 'LH', 'HH'
             ]
         )
         self.wavelet_filter_response_map_2d_combo_box.hide()
         self.wavelet_filter_response_map_3d_combo_box = CustomBox(
-            645, 380, 150, 50, self,
+            390, 460, 150, 50, self,
             item_list=['Response Map:', 'LLL', 'LLH', 'LHL', 'HLL', 'LHH', 'HHL', "HLH", "HHH"
                        ]
         )
         self.wavelet_filter_response_map_3d_combo_box.hide()
 
         self.wavelet_filter_response_map_3d_combo_box = CustomBox(
-            645, 380, 150, 50, self,
+            390, 460, 150, 50, self,
             item_list=[
                 'Response Map:', 'LLL', 'LLH', 'LHL', 'HLL', 'LHH', 'HHL', "HLH", "HHH"
             ]
@@ -178,24 +178,24 @@ class FilteringTab(QWidget):
         self.wavelet_filter_response_map_3d_combo_box.hide()
 
         self.wavelet_filter_decomposition_level_combo_box = CustomBox(
-            1010, 380, 200, 50, self,
+            560, 460, 175, 50, self,
             item_list=[
-                'Decomposition Lvl.:', '1', '2'
+                'Decomposition level:', '1', '2'
             ]
         )
         self.wavelet_filter_decomposition_level_combo_box.hide()
 
         self.wavelet_filter_rot_inv_combo_box = CustomBox(
-            1230, 380, 200, 50, self,
+            750, 460, 175, 50, self,
             item_list=[
-                'Pseudo-rot. inv:', 'Enable', 'Disable'
+                'Rotation invariance:', 'Enable', 'Disable'
             ]
         )
         self.wavelet_filter_rot_inv_combo_box.hide()
 
         self.run_button = CustomButton(
-            'Run',
-            910, 590, 80, 50, self,
+            'RUN',
+            600, 590, 80, 50, self,
             style=False,
         )
         self.run_button.clicked.connect(self.run_selected_option)
@@ -278,7 +278,7 @@ class FilteringTab(QWidget):
             if not self.laws_filter_response_map_text_field.text().strip():
                 CustomWarningBox("Enter Response Map").response()
                 return
-            if self.laws_filter_rot_inv_combo_box.currentText() == 'Pseudo-rot. inv:':
+            if self.laws_filter_rot_inv_combo_box.currentText() == 'Rotation invariance:':
                 CustomWarningBox("Select Pseudo-rotational invariance").response()
                 return
             if not self.laws_filter_distance_text_field.text().strip():
@@ -313,7 +313,7 @@ class FilteringTab(QWidget):
             if self.wavelet_filter_decomposition_level_combo_box.currentText() == 'Decomposition Lvl.:':
                 CustomWarningBox("Select Wavelet Decomposition Level").response()
                 return
-            if self.wavelet_filter_rot_inv_combo_box.currentText() == 'Pseudo-rot. inv:':
+            if self.wavelet_filter_rot_inv_combo_box.currentText() == 'Rotation invariance:':
                 CustomWarningBox("Select Pseudo-rot. inv").response()
                 return
         wavelet_filter_response_map = None
@@ -462,7 +462,7 @@ class FilteringTab(QWidget):
                 self.log_filter_sigma_text_field.setText(data.get('filt_LoG_sigma', ''))
                 self.log_filter_cutoff_text_field.setText(data.get('filt_LoG_cutoff', ''))
                 self.laws_filter_response_map_text_field.setText(data.get('filt_Laws_response_map', ''))
-                self.laws_filter_rot_inv_combo_box.setCurrentText(data.get('filt_Laws_rot_inv', 'Pseudo-rot. inv:'))
+                self.laws_filter_rot_inv_combo_box.setCurrentText(data.get('filt_Laws_rot_inv', 'Rotation invariance:'))
                 self.laws_filter_distance_text_field.setText(data.get('filt_Laws_distance', ''))
                 self.laws_filter_pooling_combo_box.setCurrentText(data.get('filt_Laws_pooling', 'Pooling:'))
                 self.laws_filter_energy_map_combo_box.setCurrentText(data.get('filt_Laws_energy_map', 'Energy map:'))
@@ -474,7 +474,7 @@ class FilteringTab(QWidget):
                 self.wavelet_filter_decomposition_level_combo_box.setCurrentText(
                     data.get('filt_Wavelet_decomp_lvl', 'Decomposition Lvl.:'))
                 self.wavelet_filter_rot_inv_combo_box.setCurrentText(
-                    data.get('filt_Wavelet_rot_inv', 'Pseudo-rot. inv:'))
+                    data.get('filt_Wavelet_rot_inv', 'Rotation invariance:'))
 
         except FileNotFoundError:
             print("No previous data found!")

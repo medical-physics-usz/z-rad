@@ -12,8 +12,8 @@ from zrad.gui.rad_tab import RadiomicsTab
 from zrad.gui.toolbox_gui import add_logo_to_tab, CustomWarningBox
 
 WINDOW_TITLE = 'Z-Rad v8.0.dev'
-WINDOW_WIDTH = 1800
-WINDOW_HEIGHT = 750
+WINDOW_WIDTH = 1280
+WINDOW_HEIGHT = 720
 BACKGROUND_COLOR = "#005ea8"
 FONT_FAMILY = 'Verdana'
 FONT_SIZE = 14
@@ -166,6 +166,10 @@ def main():
     if sys.platform.startswith('win'):
         freeze_support()
 
+    # Set high DPI scaling attributes before creating the QApplication instance
+    QApplication.setAttribute(Qt.AA_EnableHighDpiScaling)
+    QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps)
+
     app = QApplication(sys.argv)
     app.setStyle(QStyleFactory.create('Fusion'))
 
@@ -177,7 +181,10 @@ def main():
     palette.setColor(QPalette.ButtonText, Qt.white)
     app.setPalette(palette)
 
-    app.setFont(QFont(FONT_FAMILY, FONT_SIZE))
+    # Set font size in pixels
+    font = QFont(FONT_FAMILY)
+    font.setPixelSize(FONT_SIZE)
+    app.setFont(font)
 
     ex = ZRad()
     sys.exit(app.exec_())

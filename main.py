@@ -31,7 +31,7 @@ class ZRad(QMainWindow):
         self.save_action = None
         self.help_action = None
         self.exit_action = None
-        self.help_documentation_action = None
+        #self.help_documentation_action = None
         self.help_git_action = None
         self.help_contact_action = None
         self.help_about_action = None
@@ -88,7 +88,7 @@ class ZRad(QMainWindow):
         self.load_action = QAction('Load Input', self)
         self.save_action = QAction('Save Input', self)
         self.exit_action = QAction('Exit', self)
-        self.help_documentation_action = QAction('Documentation', self)
+        #self.help_documentation_action = QAction('Documentation', self)
         self.help_git_action = QAction('GitHub', self)
         self.help_contact_action = QAction('Contact Us', self)
         self.help_about_action = QAction('About', self)
@@ -97,7 +97,7 @@ class ZRad(QMainWindow):
         self.save_action.setShortcut('Ctrl+S')
         self.exit_action.triggered.connect(self.close)
 
-        self.help_documentation_action.triggered.connect(self.display_documentation)
+        #self.help_documentation_action.triggered.connect(self.display_documentation)
         self.help_git_action.triggered.connect(self.display_github)
         self.help_contact_action.triggered.connect(self.display_contact)
         self.help_about_action.triggered.connect(self.display_about)
@@ -106,7 +106,7 @@ class ZRad(QMainWindow):
         self.file_menu.addAction(self.save_action)
         self.file_menu.addAction(self.exit_action)
         self.file_menu.addSeparator()
-        self.help_menu.addAction(self.help_documentation_action)
+        #self.help_menu.addAction(self.help_documentation_action)
         self.help_menu.addAction(self.help_git_action)
         self.help_menu.addAction(self.help_contact_action)
         self.help_menu.addAction(self.help_about_action)

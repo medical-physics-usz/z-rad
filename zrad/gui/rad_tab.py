@@ -13,14 +13,14 @@ class RadiomicsTab(QWidget):
     def __init__(self):
         super().__init__()
 
-        self.setMinimumSize(1750, 650)
+        self.setMinimumSize(1220, 640)
         self.layout = QVBoxLayout(self)
 
         data_io(self)
 
         # Set used data type
         self.input_data_type_combo_box = CustomBox(
-            60, 300, 140, 50, self,
+            20, 300, 160, 50, self,
             item_list=[
                 "Data Type:", "DICOM", "NIfTI"
             ]
@@ -30,102 +30,103 @@ class RadiomicsTab(QWidget):
 
         self.dicom_structures_label = CustomLabel(
             'Structures:',
-            370, 300, 200, 50, self,
+            200, 300, 200, 50, self,
             style="color: white;"
         )
         self.dicom_structures_text_field = CustomTextField(
             "E.g. CTV, liver... or ExtractAllMasks",
-            510, 300, 475, 50, self
+            300, 300, 450, 50, self
         )
         self.dicom_structures_label.hide()
         self.dicom_structures_text_field.hide()
 
         self.nifti_structures_label = CustomLabel(
             'NIfTI Mask Files:',
-            370, 300, 200, 50, self,
+            200, 300, 200, 50, self,
             style="color: white;"
         )
         self.nifti_structure_text_field = CustomTextField(
             "E.g. CTV, liver...",
-            540, 300, 250, 50, self
+            345, 300, 220, 50, self
         )
         self.nifti_structures_label.hide()
         self.nifti_structure_text_field.hide()
 
         self.nifti_image_label = CustomLabel(
             'NIfTI Image File(s):',
-            800, 300, 400, 50, self,
+            600, 300, 200, 50, self,
             style="color: white;"
         )
         self.nifti_image_text_field = CustomTextField(
             "E.g. filtered_imageCT, imageCT",
-            990, 300, 410, 50, self
+            760, 300, 220, 50, self
         )
         self.nifti_image_label.hide()
         self.nifti_image_text_field.hide()
 
         self.outlier_detection_check_box = CustomCheckBox(
-            'Outlier Detection',
-            375, 460, 250, 50, self
+            'Outlier Removal (in \u03C3)',
+            200, 460, 250, 50, self
         )
 
-        self.outlier_detection_label = CustomLabel(
-            'Confidence Interval (in \u03C3):',
-            640, 460, 350, 50, self,
-            style="color: white;"
-        )
+        # self.outlier_detection_label = CustomLabel(
+        #     'Confidence Interval (in \u03C3):',
+        #     640, 460, 350, 50, self,
+        #     style="color: white;"
+        # )
         self.outlier_detection_text_field = CustomTextField(
             "E.g. 3",
-            930, 460, 100, 50, self
+            410, 460, 100, 50, self
         )
-        self.outlier_detection_label.hide()
+        # self.outlier_detection_label.hide()
         self.outlier_detection_text_field.hide()
         self.outlier_detection_check_box.stateChanged.connect(
-            lambda: (self.outlier_detection_label.show(), self.outlier_detection_text_field.show())
+            lambda: (self.outlier_detection_text_field.show())
             if self.outlier_detection_check_box.isChecked()
-            else (self.outlier_detection_label.hide(), self.outlier_detection_text_field.hide()))
+            else (self.outlier_detection_text_field.hide()))
 
-        self.intensity_range_label = CustomLabel(
-            'Intensity range:',
-            635, 375, 200, 50, self,
-            style="color: white;"
-        )
+        # self.intensity_range_label = CustomLabel(
+        #     'Intensity range:',
+        #     435, 375, 200, 50, self,
+        #     style="color: white;"
+        # )
         self.intensity_range_text_field = CustomTextField(
             "E.g. -1000, 400",
-            820, 375, 210, 50, self
+            410, 375, 210, 50, self
         )
 
-        self.intensity_range_label.hide()
+        # self.intensity_range_label.hide()
         self.intensity_range_text_field.hide()
 
         self.intensity_range_check_box = CustomCheckBox(
             'Intensity Range',
-            375, 380, 200, 50, self)
+            200, 380, 200, 50, self)
         self.intensity_range_check_box.stateChanged.connect(
-            lambda: (self.intensity_range_label.show(), self.intensity_range_text_field.show())
+            lambda: (self.intensity_range_text_field.show())
             if self.intensity_range_check_box.isChecked()
-            else (self.intensity_range_label.hide(), self.intensity_range_text_field.hide())
+            else (self.intensity_range_text_field.hide())
         )
 
         self.discretization_combo_box = CustomBox(
-            375, 540, 170, 50, self,
+            700, 460, 170, 50, self,
             item_list=[
                 "Discretization:", "Number of Bins", "Bin Size"
             ]
         )
         self.bin_number_text_field = CustomTextField(
             "E.g. 5",
-            555, 540, 100, 50, self
+            1000, 460, 100, 50, self
         )
-        self.bin_size_text_field = CustomTextField("E.g. 50", 555, 540, 100, 50, self)
+        self.bin_size_text_field = CustomTextField("E.g. 50", 1000, 460, 100, 50, self)
+
         self.bin_number_text_field.hide()
         self.bin_size_text_field.hide()
         self.discretization_combo_box.currentTextChanged.connect(self.changed_discretization)
 
         self.aggr_dim_and_method_combo_box = CustomBox(
-            1100, 375, 300, 50, self,
+            700, 375, 250, 50, self,
             item_list=[
-                "Texture Features Aggr. Method:",
+                "Texture Aggregation Method:",
                 "2D, averaged",
                 "2D, slice-merged",
                 "2.5D, direction-merged",
@@ -136,7 +137,7 @@ class RadiomicsTab(QWidget):
         )
 
         self.weighting_combo_box = CustomBox(
-            1450, 375, 175, 50, self,
+            1000, 375, 175, 50, self,
             item_list=[
                 "Slice Averaging:", "Mean", "Weighted Mean", "Median"]
         )
@@ -144,8 +145,8 @@ class RadiomicsTab(QWidget):
         self.weighting_combo_box.hide()
         self.aggr_dim_and_method_combo_box.currentTextChanged.connect(self.changed_aggr_dim)
 
-        self.run_button = CustomButton('Run',
-                                       910, 590, 80, 50, self, style=False)
+        self.run_button = CustomButton('RUN',
+                                       600, 590, 80, 50, self, style=False)
         self.run_button.clicked.connect(self.run_selected_option)
 
     def run_selected_option(self):

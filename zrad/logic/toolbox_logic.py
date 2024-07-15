@@ -426,7 +426,7 @@ def check_dicom_tags(directory, pat_index, logger, image_vol='3D'):
                                 time_mismatch = True
                                 logger.warning(f'For the patient {pat_index} private Siemens tag (0071, 1022)'
                                                ' is not present. The earliest of all acquisition times was used.')
-                            if acquisition_time != parse_time(dicom.SeriesTime) and time_mismatch:
+                            if acquisition_time != parse_time(dicom.SeriesTime) and not time_mismatch:
                                 time_mismatch = True
                                 logger.warning(f'For the patient {pat_index} a mismatch present between the earliest '
                                                'acquisition time and series time. Earliest acquisition time was used.')
@@ -448,7 +448,7 @@ def check_dicom_tags(directory, pat_index, logger, image_vol='3D'):
                                 time_mismatch = True
                                 logger.warning(f'For the patient {pat_index} private GE tag (0009, 100d)'
                                                ' is not present. The earliest of all acquisition times was used.')
-                            if acquisition_time != parse_time(dicom.SeriesTime) and time_mismatch:
+                            if acquisition_time != parse_time(dicom.SeriesTime) and not time_mismatch:
                                 time_mismatch = True
                                 logger.warning(f'For the patient {pat_index} a mismatch present between the earliest '
                                                'acquisition time and series time. Earliest acquisition time was used.')

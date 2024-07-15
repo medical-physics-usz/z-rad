@@ -14,14 +14,14 @@ class PreprocessingTab(QWidget):
     def __init__(self):
         super().__init__()
 
-        self.setMinimumSize(1750, 650)
+        self.setMinimumSize(1220, 640)
         self.layout = QVBoxLayout(self)
 
         data_io(self)
 
         # Input Data Type ComboBox
         self.input_data_type_combo_box = CustomBox(
-            40, 300, 160, 50, self,
+            20, 300, 160, 50, self,
             item_list=[
                 "Data Type:", "DICOM", "NIfTI"
             ]
@@ -30,42 +30,42 @@ class PreprocessingTab(QWidget):
 
         self.just_save_as_nifti_check_box = CustomCheckBox(
             'Save as NIfTI without resampling',
-            1250, 300, 400, 50, self)
+            800, 300, 400, 50, self)
         self.just_save_as_nifti_check_box.hide()
 
         # DICOM and NIfTI Structures TextFields and Labels
         self.dicom_structures_label = CustomLabel(
             'Structures:',
-            595, 300, 200, 50, self,
+            200, 300, 200, 50, self,
             style="color: white;"
         )
         self.dicom_structures_text_field = CustomTextField(
             "E.g. CTV, liver... or ExtractAllMasks",
-            735, 300, 475, 50, self
+            300, 300, 450, 50, self
         )
         self.dicom_structures_label.hide()
         self.dicom_structures_text_field.hide()
 
         self.nifti_structures_label = CustomLabel(
             'NIfTI Mask Files:',
-            370, 300, 200, 50, self,
+            200, 300, 200, 50, self,
             style="color: white;"
         )
         self.nifti_structures_text_field = CustomTextField(
             "E.g. CTV, liver...",
-            550, 300, 220, 50, self
+            345, 300, 220, 50, self
         )
         self.nifti_structures_label.hide()
         self.nifti_structures_text_field.hide()
 
         self.nifti_image_label = CustomLabel(
             'NIfTI Image File:',
-            790, 300, 200, 50, self,
+            600, 300, 200, 50, self,
             style="color: white;"
         )
         self.nifti_image_text_field = CustomTextField(
             "E.g. imageCT",
-            990, 300, 220, 50, self
+            745, 300, 220, 50, self
         )
         self.nifti_image_label.hide()
         self.nifti_image_text_field.hide()
@@ -73,11 +73,11 @@ class PreprocessingTab(QWidget):
         # Resample Resolution Label and TextField
         self.resample_resolution_label = CustomLabel(
             'Resample Resolution (mm):',
-            370, 380, 300, 50, self,
+            200, 380, 300, 50, self,
             style="color: white;"
         )
         self.resample_resolution_text_field = CustomTextField(
-            "E.g. 1", 675, 380, 90, 50, self
+            "E.g. 1", 420, 380, 90, 50, self
         )
 
         # Image Interpolation Method ComboBox
@@ -98,7 +98,7 @@ class PreprocessingTab(QWidget):
 
         # Mask Interpolation Method ComboBox
         self.mask_interpolation_method_combo_box = CustomBox(
-            370, 460, 210, 50, self,
+            200, 460, 210, 50, self,
             item_list=[
                 'Mask Interpolation:', "NN", "Linear", "BSpline", "Gaussian"
             ]
@@ -112,7 +112,7 @@ class PreprocessingTab(QWidget):
         )
         self.mask_interpolation_threshold_text_field = CustomTextField(
             "E.g. 0.75",
-            930, 460, 100, 50, self
+            830, 460, 100, 50, self
         )
         self.mask_interpolation_threshold_text_field.setText('0.5')
         self.mask_interpolation_threshold_label.hide()
@@ -132,8 +132,8 @@ class PreprocessingTab(QWidget):
 
         # Run Button
         self.run_button = CustomButton(
-            'Run',
-            910, 590, 80, 50, self,
+            'RUN',
+            600, 590, 80, 50, self,
             style=False
         )
         self.run_button.clicked.connect(self.run_selected_input)

@@ -1,15 +1,15 @@
 import sys
 from multiprocessing import freeze_support
 
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QFont, QPalette, QColor
+from PyQt5.QtCore import Qt, QTimer
+from PyQt5.QtGui import QFont, QPalette, QColor, QIcon, QPixmap
 from PyQt5.QtWidgets import QApplication, QMainWindow, QTabWidget, QAction, QStyleFactory, QScrollArea, QWidget, \
-    QVBoxLayout
+    QVBoxLayout, QSplashScreen
 
 from zrad.gui.filt_tab import FilteringTab
 from zrad.gui.prep_tab import PreprocessingTab
 from zrad.gui.rad_tab import RadiomicsTab
-from zrad.gui.toolbox_gui import add_logo_to_tab, CustomWarningBox
+from zrad.gui.toolbox_gui import add_logo_to_tab, CustomWarningBox, resource_path
 
 WINDOW_TITLE = 'Z-Rad v8.0.dev'
 WINDOW_WIDTH = 1280
@@ -47,8 +47,8 @@ class ZRad(QMainWindow):
 
         self.init_tabs()
         self.create_menu()
-
-        self.show()
+        self.setWindowIcon(QIcon(resource_path("icon.ico")))
+        print(resource_path("icon.ico"))
 
     def init_tabs(self):
         """
@@ -185,8 +185,18 @@ def main():
     font = QFont(FONT_FAMILY)
     font.setPixelSize(FONT_SIZE)
     app.setFont(font)
+    app.setWindowIcon(QIcon(resource_path("icon.ico")))
 
-    ex = ZRad()
+    splash_pix = QPixmap(resource_path("MainLogo.jpg"))
+    splash = QSplashScreen(splash_pix, Qt.WindowStaysOnTopHint)
+    splash.setWindowFlag(Qt.FramelessWindowHint)  # No window frame
+    splash.show()
+
+    # Simulate some initialization time (3 seconds)
+    QTimer.singleShot(1100, splash.close)
+
+    exe = ZRad()
+    exe.show()
     sys.exit(app.exec_())
 
 

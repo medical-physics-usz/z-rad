@@ -66,7 +66,7 @@ and neighbouring gray level dependance matrix (NGLDM) features families.
 
 ### Windows .exe file:
 
-The simplest way to run Z-rad on Windows is to start the `main.exe` file located in the `\exec` folder.
+The simplest way to run Z-Rad on Windows is to start the `main.exe` file located in the `\exec` folder.
 
 ### Windows, Linux, and macOS
 For advanced Python users, we recommend: 

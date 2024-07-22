@@ -5,7 +5,7 @@ import os
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QFileDialog
 
 from .toolbox_gui import CustomButton, CustomLabel, CustomBox, CustomTextField, CustomWarningBox, CustomCheckBox, \
-    data_io
+    CustomInfo, data_io
 from ..logic.preprocessing import Preprocessing
 
 
@@ -45,6 +45,12 @@ class PreprocessingTab(QWidget):
         )
         self.dicom_structures_label.hide()
         self.dicom_structures_text_field.hide()
+        self.dicom_structures_info_label = CustomInfo(
+            ' i',
+            'Type ROIs of interest (e.g. CTV, liver), \nor type ExtractAllMasks to use all ROIs from RTSTRUCT.',
+            760, 300, 14, 14, self
+        )
+        self.dicom_structures_info_label.hide()
 
         self.nifti_structures_label = CustomLabel(
             'NIfTI Mask Files:',
@@ -57,6 +63,13 @@ class PreprocessingTab(QWidget):
         )
         self.nifti_structures_label.hide()
         self.nifti_structures_text_field.hide()
+        self.nifti_structure_info_label = CustomInfo(
+            ' i',
+            'Provide NIfTI masks of interest, without the file extensions: '
+            '\nif the files of interest are GTV.nii.gz and liver.nii, provide: GTV, liver.',
+            575, 300, 14, 14, self
+        )
+        self.nifti_structure_info_label.hide()
 
         self.nifti_image_label = CustomLabel(
             'NIfTI Image File:',
@@ -69,6 +82,13 @@ class PreprocessingTab(QWidget):
         )
         self.nifti_image_label.hide()
         self.nifti_image_text_field.hide()
+        self.nifti_image_info_label = CustomInfo(
+            ' i',
+            'Specify NIfTI image file without the file extension: '
+            '\ne.g. if NIfTI image file is imageCT.nii.gz, provide only imageCT.',
+            975, 300, 14, 14, self
+        )
+        self.nifti_image_info_label.hide()
 
         # Resample Resolution Label and TextField
         self.resample_resolution_label = CustomLabel(
@@ -369,6 +389,9 @@ class PreprocessingTab(QWidget):
             self.dicom_structures_text_field.show()
             self.nifti_structures_label.hide()
             self.nifti_structures_text_field.hide()
+            self.dicom_structures_info_label.show()
+            self.nifti_structure_info_label.hide()
+            self.nifti_image_info_label.hide()
         elif text == 'NIfTI':
             self.just_save_as_nifti_check_box.hide()
             self.nifti_image_label.show()
@@ -377,6 +400,9 @@ class PreprocessingTab(QWidget):
             self.dicom_structures_text_field.hide()
             self.nifti_structures_label.show()
             self.nifti_structures_text_field.show()
+            self.dicom_structures_info_label.hide()
+            self.nifti_structure_info_label.show()
+            self.nifti_image_info_label.show()
         else:
             self.just_save_as_nifti_check_box.hide()
             self.dicom_structures_label.hide()
@@ -385,3 +411,6 @@ class PreprocessingTab(QWidget):
             self.nifti_image_text_field.hide()
             self.nifti_structures_label.hide()
             self.nifti_structures_text_field.hide()
+            self.dicom_structures_info_label.hide()
+            self.nifti_structure_info_label.hide()
+            self.nifti_image_info_label.hide()

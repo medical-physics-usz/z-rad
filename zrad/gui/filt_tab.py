@@ -3,7 +3,7 @@ import os
 
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QFileDialog
 
-from .toolbox_gui import CustomButton, CustomLabel, CustomBox, CustomTextField, CustomWarningBox, data_io
+from .toolbox_gui import CustomButton, CustomLabel, CustomBox, CustomTextField, CustomWarningBox, CustomInfo, data_io
 from ..logic.filtering import Filtering, Mean, LoG, Wavelets2D, Wavelets3D, Laws
 
 
@@ -30,11 +30,13 @@ class FilteringTab(QWidget):
         self.input_data_type_combo_box.currentTextChanged.connect(
             lambda:
             (self.nifti_image_label.show(),
-             self.nifti_image_text_field.show())
+             self.nifti_image_text_field.show(),
+             self.nifti_image_info_label.show())
             if self.input_data_type_combo_box.currentText() == "NIfTI"
             else
             (self.nifti_image_label.hide(),
-             self.nifti_image_text_field.hide())
+             self.nifti_image_text_field.hide(),
+             self.nifti_image_info_label.hide())
         )
 
         self.nifti_image_label = CustomLabel(
@@ -44,10 +46,17 @@ class FilteringTab(QWidget):
         )
         self.nifti_image_text_field = CustomTextField(
             "E.g. imageCT",
-            350, 300, 350, 50, self
+            350, 300, 220, 50, self
         )
         self.nifti_image_label.hide()
         self.nifti_image_text_field.hide()
+        self.nifti_image_info_label = CustomInfo(
+            ' i',
+            'Specify NIfTI image file without the file extension: '
+            '\ne.g. if NIfTI image file is imageCT.nii.gz, provide only imageCT.',
+            580, 300, 14, 14, self
+        )
+        self.nifti_image_info_label.hide()
 
         # Set output_imaging_type
         self.filter_combo_box = CustomBox(

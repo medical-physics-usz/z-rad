@@ -31,10 +31,8 @@ addresses these issues by offering a user-friendly, IBSI-compliant, and open-sou
 - **External Libraries**: Utilizes PyQt5, SimpleITK, Pydicom, NumPy, SciPy, Pandas, PyWavelets, scikit-image, scikit-learn, and OpenCV.
 
 ### Radiomics Extraction Pathways
-1. **Radiomic Feature Extraction**
-2. **Image Filtering + Radiomic Feature Extraction**
-3. **Image Resampling + Radiomic Feature Extraction**
-4. **Image Resampling + Image Filtering + Radiomic Feature Extraction**
+
+![](ZRadExtractionPathways.png)
 
 ## Graphical User Interface (GUI) and Application Programming Interface (API)
 
@@ -64,6 +62,28 @@ and neighbouring gray level dependance matrix (NGLDM) features families.
 - **GUI**: Uses warning pop-up messages for immediate feedback.
 - **API**: Records processes in log files for comprehensive documentation.
 
+## Installation and Get Started
+
+### Windows .exe file:
+
+The simplest way to run Z-rad on Windows is to start the `main.exe` file located in the `\exec` folder.
+
+### Windows, Linux, and macOS
+For advanced Python users, we recommend: 
+
+1. Clone the Z-Rad repository
+2. Open the terminal and navigate to the project directory
+3. Install requirements by typing in the terminal:
+
+```sh
+pip install -r requirements.txt
+```
+
+4. Run the `main.py` file:
+
+```sh
+python main.py
+```
 
 ## License
 

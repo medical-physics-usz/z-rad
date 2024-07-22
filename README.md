@@ -21,7 +21,7 @@ addresses these issues by offering a user-friendly, IBSI-compliant, and open-sou
 - **Operating Systems**: Windows, macOS, and Linux.
 
 ### Standard Compliance
-- **IBSI Compliance**: Adheres to IBSI I and IBSI II standards for reproducible and comparable radiomics features.
+- **IBSI Compliance**: Adheres to [IBSI I](https://arxiv.org/abs/1612.07003) and [IBSI II](https://arxiv.org/abs/2006.05470) standards for reproducible and comparable radiomics features.
 
 
 ## Software Architecture and Design

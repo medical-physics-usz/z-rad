@@ -1,6 +1,6 @@
 # Z-RAD
 
-## Introduction
+![](ZRadLogo.jpg)
 
 Radiomics is the high-throughput extraction of quantitative features from medical images, 
 revolutionizing personalized medicine and enhancing clinical decision-making. 

@@ -187,7 +187,7 @@ def main():
     app.setFont(font)
     app.setWindowIcon(QIcon(resource_path("icon.ico")))
 
-    splash_pix = QPixmap(resource_path("MainLogo.jpg"))
+    splash_pix = QPixmap(resource_path("ZRadLogo.jpg"))
     splash = QSplashScreen(splash_pix, Qt.WindowStaysOnTopHint)
     splash.setWindowFlag(Qt.FramelessWindowHint)  # No window frame
     splash.show()

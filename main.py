@@ -47,7 +47,7 @@ class ZRad(QMainWindow):
 
         self.init_tabs()
         self.create_menu()
-        self.setWindowIcon(QIcon(resource_path("documentation/logos/icon.ico")))
+        self.setWindowIcon(QIcon(resource_path("doc/logos/icon.ico")))
 
     def init_tabs(self):
         """
@@ -184,9 +184,9 @@ def main():
     font = QFont(FONT_FAMILY)
     font.setPixelSize(FONT_SIZE)
     app.setFont(font)
-    app.setWindowIcon(QIcon(resource_path("documentation/logos/icon.ico")))
+    app.setWindowIcon(QIcon(resource_path("doc/logos/icon.ico")))
 
-    splash_pix = QPixmap(resource_path("documentation/logos/ZRadLogo.jpg"))
+    splash_pix = QPixmap(resource_path("doc/logos/ZRadLogo.jpg"))
     splash = QSplashScreen(splash_pix, Qt.WindowStaysOnTopHint)
     splash.setWindowFlag(Qt.FramelessWindowHint)  # No window frame
     splash.show()

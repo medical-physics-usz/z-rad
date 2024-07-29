@@ -1,6 +1,6 @@
 # Z-RAD
 
-<img src="documentation/logos/ZRadLogo.jpg" width="600"/>
+<img src="doc/logos/ZRadLogo.jpg" width="600"/>
 
 Radiomics is the high-throughput extraction of quantitative features from medical images, 
 revolutionizing personalized medicine and enhancing clinical decision-making. 
@@ -42,7 +42,7 @@ addresses these issues by offering a user-friendly, IBSI-compliant, and open-sou
   - SimpleITK
 
 ### Radiomics Extraction Pathways
-<img src="documentation/images/ZRadExtractionPathways.png" width="600"/>
+<img src="doc/images/ZRadExtractionPathways.png" width="600"/>
 
 ## Graphical User Interface (GUI) and Application Programming Interface (API)
 

@@ -1,6 +1,6 @@
 # Z-RAD
 
-![](ZRadLogo.jpg)
+<img src="ZRadLogo.jpg" width="600"/>
 
 Radiomics is the high-throughput extraction of quantitative features from medical images, 
 revolutionizing personalized medicine and enhancing clinical decision-making. 
@@ -27,12 +27,22 @@ addresses these issues by offering a user-friendly, IBSI-compliant, and open-sou
 ## Software Architecture and Design
 
 ### Backend
-- **Programming Language**: Written in Python.
-- **External Libraries**: Utilizes PyQt5, SimpleITK, Pydicom, NumPy, SciPy, Pandas, PyWavelets, scikit-image, scikit-learn, and OpenCV.
+- **Programming Language**: Python.
+- **Dependencies**:
+  - NumPy
+  - OpenCV
+  - OpenPyXL
+  - Pandas
+  - PyDicom
+  - PyQt5
+  - PyWavelets
+  - Scikit-image
+  - Scikit-learn
+  - SciPy
+  - SimpleITK
 
 ### Radiomics Extraction Pathways
-
-![](ZRadExtractionPathways.png)
+<img src="ZRadExtractionPathways.png" width="600"/>
 
 ## Graphical User Interface (GUI) and Application Programming Interface (API)
 
@@ -64,14 +74,20 @@ and neighbouring gray level dependance matrix (NGLDM) features families.
 
 ## Installation and Get Started
 
-### Windows .exe file:
+### Windows executable file:
+The simplest way to run Z-Rad on Windows is to start the `main.exe` attached to every Z-Rad release.
 
-The simplest way to run Z-Rad on Windows is to start the `main.exe` file located in the `\exec` folder.
+An executable can be also generated from the source files by running
+```sh
+python generate_executable.py
+```
+Creating an executable requires [PyInstaller](https://pyinstaller.readthedocs.io).
+The executable is going to be saved in *exec/* directory.
 
 ### Windows, Linux, and macOS
-For advanced Python users, we recommend: 
+For users familiar with Python programming langauage, we recommend: 
 
-1. Clone the Z-Rad repository
+1. Download the Z-Rad repository
 2. Open the terminal and navigate to the project directory
 3. Install requirements by typing in the terminal:
 

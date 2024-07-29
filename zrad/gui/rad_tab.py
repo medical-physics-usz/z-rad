@@ -5,7 +5,7 @@ import numpy as np
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QFileDialog
 
 from .toolbox_gui import CustomButton, CustomLabel, CustomBox, CustomTextField, CustomCheckBox, CustomWarningBox, \
-    data_io
+    CustomInfo, data_io
 from ..logic.radiomics import Radiomics
 
 
@@ -39,6 +39,12 @@ class RadiomicsTab(QWidget):
         )
         self.dicom_structures_label.hide()
         self.dicom_structures_text_field.hide()
+        self.dicom_structures_info_label = CustomInfo(
+            ' i',
+            'Type ROIs of interest (e.g. CTV, liver), \nor type ExtractAllMasks to use all ROIs from RTSTRUCT.',
+            760, 300, 14, 14, self
+        )
+        self.dicom_structures_info_label.hide()
 
         self.nifti_structures_label = CustomLabel(
             'NIfTI Mask Files:',
@@ -51,6 +57,13 @@ class RadiomicsTab(QWidget):
         )
         self.nifti_structures_label.hide()
         self.nifti_structure_text_field.hide()
+        self.nifti_structure_info_label = CustomInfo(
+            ' i',
+            'Provide NIfTI masks of interest, without the file extensions: '
+            '\nif the files of interest are GTV.nii.gz and liver.nii, provide: GTV, liver.',
+            575, 300, 14, 14, self
+        )
+        self.nifti_structure_info_label.hide()
 
         self.nifti_image_label = CustomLabel(
             'NIfTI Image File(s):',
@@ -63,6 +76,17 @@ class RadiomicsTab(QWidget):
         )
         self.nifti_image_label.hide()
         self.nifti_image_text_field.hide()
+        self.nifti_image_info_label = CustomInfo(
+            ' i',
+            'If radiomics extracted from the filtered NIfTI image, '
+                    '\nboth filtered and original NIfTI images should be provided. '
+                    '\nSpecify the filtered NIFTI image first, followed by the original NIfTI image.'
+                    '\nSpecify NIfTI image file(s) without file extensions:'
+                    '\nE.g. imageCT (when extracting radiomics from the imageCT.nii.gz);'
+                    '\nE.g. filtered_imageCT, imageCT (when extracting radiomics from the filtered_imageCT.nii.gz).',
+            990, 300, 14, 14, self
+        )
+        self.nifti_image_info_label.hide()
 
         self.outlier_detection_check_box = CustomCheckBox(
             'Outlier Removal (in \u03C3)',
@@ -141,6 +165,13 @@ class RadiomicsTab(QWidget):
             item_list=[
                 "Slice Averaging:", "Mean", "Weighted Mean", "Median"]
         )
+        self.weighting_combo_box_info_label = CustomInfo(
+            ' i',
+            "'Mean' approach is in agreement with IBSI. \n'Weighted Mean' and 'Median' "
+            "are custom solutions developed at USZ.",
+            1185, 375, 14, 14, self
+        )
+        self.weighting_combo_box_info_label.hide()
 
         self.weighting_combo_box.hide()
         self.aggr_dim_and_method_combo_box.currentTextChanged.connect(self.changed_aggr_dim)
@@ -388,21 +419,30 @@ class RadiomicsTab(QWidget):
             self.dicom_structures_text_field.show()
             self.nifti_image_label.hide()
             self.nifti_image_text_field.hide()
+            self.nifti_image_info_label.hide()
+            self.nifti_structure_info_label.hide()
+            self.dicom_structures_info_label.show()
         elif text == 'NIfTI':
+            self.nifti_structure_info_label.show()
+            self.nifti_image_info_label.show()
             self.nifti_structures_label.show()
             self.nifti_structure_text_field.show()
             self.dicom_structures_label.hide()
             self.dicom_structures_text_field.hide()
             self.nifti_image_label.show()
             self.nifti_image_text_field.show()
+            self.dicom_structures_info_label.hide()
 
         else:
             self.dicom_structures_label.hide()
             self.dicom_structures_text_field.hide()
             self.nifti_structures_label.hide()
+            self.nifti_image_info_label.hide()
             self.nifti_structure_text_field.hide()
             self.nifti_image_label.hide()
             self.nifti_image_text_field.hide()
+            self.nifti_structure_info_label.hide()
+            self.dicom_structures_info_label.hide()
 
     def changed_discretization(self, text):
         if text == 'Number of Bins':
@@ -418,5 +458,7 @@ class RadiomicsTab(QWidget):
     def changed_aggr_dim(self, text):
         if text.split(',')[0] == '2D':
             self.weighting_combo_box.show()
+            self.weighting_combo_box_info_label.show()
         else:
             self.weighting_combo_box.hide()
+            self.weighting_combo_box_info_label.hide()

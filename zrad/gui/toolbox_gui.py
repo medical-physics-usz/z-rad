@@ -8,7 +8,6 @@ from PyQt5.QtWidgets import QLineEdit, QLabel, QPushButton, QComboBox, QCheckBox
 
 
 def data_io(parent):
-
     # Load Directory Button and Label
     parent.load_dir_button = CustomButton(
         'Input Directory',
@@ -39,6 +38,17 @@ def data_io(parent):
         "",
         500, 140, 60, 50, parent
     )
+
+    for pos_x in [570, 770, 1080]:
+        CustomInfo(
+            ' i',
+            'Folder Selection Guidelines:\n'
+            '• Start and Stop Folders: Use these options only if all folders in the directory have integer names.\n'
+            '• List of Folders: You can specify the folders of interest here (e.g. 1, 2a, 3_1), even if their names are non-integer.\n'
+            '• Running All Folders: Leave the Start, Stop, and List of Folders fields empty to run all folders in the Input Directory, regardless of whether their names are integers or not.',
+            pos_x, 140, 14, 14, parent
+        )
+
     parent.stop_folder_label = CustomLabel(
         'Stop Folder:',
         600, 140, 100, 50, parent,
@@ -122,6 +132,15 @@ class CustomLabel(QLabel):
         super().__init__(text, parent)
         self.setGeometry(pos_x, pos_y, size_x, size_y)
         self.setStyleSheet(style)
+
+
+class CustomInfo(QLabel):
+
+    def __init__(self, text: str, info_tip: str, pos_x: int, pos_y: int, size_x: int, size_y: int, parent: QWidget):
+        super().__init__(text, parent)
+        self.setGeometry(pos_x, pos_y, size_x, size_y)
+        self.setStyleSheet("background-color: white; color: black; border: none; border-radius: 7px;")
+        self.setToolTip(info_tip)
 
 
 class CustomEditLine(QLineEdit):

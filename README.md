@@ -1,6 +1,6 @@
 # Z-RAD
 
-<img src="ZRadLogo.jpg" width="600"/>
+<img src="documentation/logos/ZRadLogo.jpg" width="600"/>
 
 Radiomics is the high-throughput extraction of quantitative features from medical images, 
 revolutionizing personalized medicine and enhancing clinical decision-making. 
@@ -42,7 +42,7 @@ addresses these issues by offering a user-friendly, IBSI-compliant, and open-sou
   - SimpleITK
 
 ### Radiomics Extraction Pathways
-<img src="ZRadExtractionPathways.png" width="600"/>
+<img src="documentation/images/ZRadExtractionPathways.png" width="600"/>
 
 ## Graphical User Interface (GUI) and Application Programming Interface (API)
 
@@ -82,7 +82,7 @@ An executable can be also generated from the source files by running
 python generate_executable.py
 ```
 Creating an executable requires [PyInstaller](https://pyinstaller.readthedocs.io).
-The executable is going to be saved in *exec/* directory.
+The executable is going to be saved in *dist/* directory.
 
 ### Windows, Linux, and macOS
 For users familiar with Python programming langauage, we recommend: 

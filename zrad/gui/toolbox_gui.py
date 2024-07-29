@@ -40,14 +40,12 @@ def data_io(parent):
     )
 
     for pos_x in [570, 770, 1080]:
-
         CustomInfo(
             ' i',
-            'Use Start and Stop folders if only all the folders in the directory are integers.'
-                    '\nUsers can specify the folders of interest in the List of Folders (e.g. 1, 2a, 3_1), '
-                    'even if folder names are non-integer.'
-                    '\nKeep Start, Stop, and List of Folders empty to run ALL folders in the Input Directory, '
-                    'even if folder names are non-integer.',
+            'Folder Selection Guidelines:\n'
+            '• Start and Stop Folders: Use these options only if all folders in the directory have integer names.\n'
+            '• List of Folders: You can specify the folders of interest here (e.g. 1, 2a, 3_1), even if their names are non-integer.\n'
+            '• Running All Folders: Leave the Start, Stop, and List of Folders fields empty to run all folders in the Input Directory, regardless of whether their names are integers or not.',
             pos_x, 140, 14, 14, parent
         )
 

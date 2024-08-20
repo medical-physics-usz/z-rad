@@ -47,7 +47,10 @@ class Preprocessing:
         elif list_of_patient_folders is not None and list_of_patient_folders not in [[], ['']]:
             self.list_of_patient_folders = list_of_patient_folders
         elif list_of_patient_folders is None and start_folder is None and stop_folder is None:
-            self.list_of_patient_folders = os.listdir(input_dir)
+            self.list_of_patient_folders = [
+                e for e in os.listdir(input_dir)
+                if not e.startswith('.') and os.path.isdir(os.path.join(input_dir, e))
+            ]
         else:
             self.logger.error('Incorrectly selected patient folders.')
             raise ValueError('Incorrectly selected patient folders.')
@@ -170,14 +173,12 @@ class Preprocessing:
         self.patient_folder = os.path.join(self.input_dir, self.patient_number)
         self.pat_original_image_and_masks = {}
         self.pat_resampled_image_and_masks = {}
+        if not self.just_save_as_nifti:
+            self.image_resampled = False
         if self.input_data_type == 'NIfTI':
             self._process_nifti_files()
-            self._resampling()
         else:
             self._process_dicom_files()
-            if not self.just_save_as_nifti:
-                self._resampling()
-        self._save_as_nifti()
         self.patient_logger.info(f'Completed patient: {patient_number}')
 
     def _process_nifti_files(self):
@@ -198,6 +199,12 @@ class Preprocessing:
                 file_found, mask = extract_nifti(instance_key, nifti_file_name)
                 if file_found:
                     self.pat_original_image_and_masks[instance_key] = mask
+                    self._resampling()
+                    self._save_as_nifti()
+                    del self.pat_original_image_and_masks[instance_key]
+        else:
+            self._resampling()
+            self._save_as_nifti()
 
     def _process_dicom_files(self):
         self.pat_original_image_and_masks['IMAGE'] = extract_dicom(dicom_dir=self.patient_folder, rtstract=False,
@@ -213,6 +220,10 @@ class Preprocessing:
                                           modality=self.input_imaging_modality)
                     for instance_key in masks.keys():
                         self.pat_original_image_and_masks['MASK_'+instance_key] = masks[instance_key]
+                        if not self.just_save_as_nifti:
+                            self._resampling()
+                        self._save_as_nifti()
+                        del self.pat_original_image_and_masks['MASK_'+instance_key]
 
     def _resampling(self):
 
@@ -257,40 +268,41 @@ class Preprocessing:
 
         for instance_key in list(self.pat_original_image_and_masks.keys()):
 
-            sitk_image = sitk.GetImageFromArray(self.pat_original_image_and_masks[instance_key].array)
-            sitk_image.SetSpacing(input_spacing)
-            sitk_image.SetOrigin(input_origin)
-            sitk_image.SetDirection(input_direction)
+            if (instance_key == 'IMAGE' and not self.image_resampled) or instance_key != 'IMAGE':
 
-            resample = sitk.ResampleImageFilter()
-            resample.SetOutputSpacing(output_spacing)
-            resample.SetOutputOrigin(output_origin)
-            resample.SetOutputDirection(input_direction)
-            resample.SetSize(output_shape.tolist())
-            resample.SetOutputPixelType(sitk.sitkFloat64)
-            resample.SetInterpolator(interpolator(instance_key))
-            resampled_sitk_image = resample.Execute(sitk_image)
+                sitk_image = sitk.GetImageFromArray(self.pat_original_image_and_masks[instance_key].array)
+                sitk_image.SetSpacing(input_spacing)
+                sitk_image.SetOrigin(input_origin)
+                sitk_image.SetDirection(input_direction)
 
-            resampled_array = None
+                resample = sitk.ResampleImageFilter()
+                resample.SetOutputSpacing(output_spacing)
+                resample.SetOutputOrigin(output_origin)
+                resample.SetOutputDirection(input_direction)
+                resample.SetSize(output_shape.tolist())
+                resample.SetOutputPixelType(sitk.sitkFloat64)
+                resample.SetInterpolator(interpolator(instance_key))
+                resampled_sitk_image = resample.Execute(sitk_image)
 
-            if instance_key.startswith('IMAGE'):
-                if self.input_imaging_modality == 'CT':
-                    resampled_sitk_image = sitk.Round(resampled_sitk_image)
-                    resampled_sitk_image = sitk.Cast(resampled_sitk_image, sitk.sitkInt16)
-                elif self.input_imaging_modality in ['MR', 'PT']:
-                    resampled_sitk_image = sitk.Cast(resampled_sitk_image, sitk.sitkFloat64)
-                resampled_array = sitk.GetArrayFromImage(resampled_sitk_image)
+                resampled_array = None
 
-            elif instance_key.startswith('MASK'):
-                resampled_array = np.where(sitk.GetArrayFromImage(resampled_sitk_image) >= self.mask_threshold, 1, 0)
-                resampled_array = resampled_array.astype(np.int16)
+                if instance_key.startswith('IMAGE'):
+                    if self.input_imaging_modality == 'CT':
+                        resampled_sitk_image = sitk.Round(resampled_sitk_image)
+                        resampled_sitk_image = sitk.Cast(resampled_sitk_image, sitk.sitkInt16)
+                    elif self.input_imaging_modality in ['MR', 'PT']:
+                        resampled_sitk_image = sitk.Cast(resampled_sitk_image, sitk.sitkFloat64)
+                    resampled_array = sitk.GetArrayFromImage(resampled_sitk_image)
 
-            self.pat_resampled_image_and_masks[instance_key] = Image(array=resampled_array,
-                                                                     origin=output_origin,
-                                                                     spacing=output_spacing,
-                                                                     direction=input_direction,
-                                                                     shape=output_shape)
-            del self.pat_original_image_and_masks[instance_key]
+                elif instance_key.startswith('MASK'):
+                    resampled_array = np.where(sitk.GetArrayFromImage(resampled_sitk_image) >= self.mask_threshold, 1, 0)
+                    resampled_array = resampled_array.astype(np.int16)
+
+                self.pat_resampled_image_and_masks[instance_key] = Image(array=resampled_array,
+                                                                         origin=output_origin,
+                                                                         spacing=output_spacing,
+                                                                         direction=input_direction,
+                                                                         shape=output_shape)
 
     def _save_as_nifti(self):
         if self.just_save_as_nifti:
@@ -298,4 +310,5 @@ class Preprocessing:
         else:
             save_pat_image_and_masks = self.pat_resampled_image_and_masks
         for key, img in save_pat_image_and_masks.items():
-            img.save_as_nifti(instance=self, key=key)
+            if (key == 'IMAGE' and not self.image_resampled) or key != 'IMAGE':
+                img.save_as_nifti(instance=self, key=key)

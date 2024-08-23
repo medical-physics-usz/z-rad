@@ -16,6 +16,33 @@ from .toolbox_logic import Image, extract_dicom, extract_nifti_image, extract_ni
 sys.excepthook = handle_uncaught_exception
 
 
+def _get_bounding_box(arr):
+    """
+    Crops the input 3D array so that no face of the array is entirely NaN.
+
+    Parameters:
+    arr (np.ndarray): Input 3D array to crop.
+
+    Returns:
+    np.ndarray: Cropped 3D array.
+    """
+    # Create a mask of where the non-NaN values are located
+    mask = ~np.isnan(arr)
+
+    # Find the min and max indices along each dimension where non-NaN values exist
+    z_non_nan = np.where(mask.any(axis=(1, 2)))[0]
+    y_non_nan = np.where(mask.any(axis=(0, 2)))[0]
+    x_non_nan = np.where(mask.any(axis=(0, 1)))[0]
+
+    # Determine the bounds for cropping
+    zmin, zmax = z_non_nan[0], z_non_nan[-1] + 1
+    ymin, ymax = y_non_nan[0], y_non_nan[-1] + 1
+    xmin, xmax = x_non_nan[0], x_non_nan[-1] + 1
+
+    # Crop the array using the determined bounds
+    return arr[zmin:zmax, ymin:ymax, xmin:xmax]
+
+
 class Radiomics:
 
     def __init__(self, input_dir, output_dir,
@@ -327,10 +354,14 @@ class Radiomics:
                                                             direction=self.patient_image.direction,
                                                             shape=self.patient_image.shape)
 
-                        self._calc_mask_intensity_features()
-                        self._calc_mask_morphological_features(instance_key)
-                        self._calc_discretized_intensity_features()
-                        self._calc_texture_features()
+                        self.patient_intensity_mask = self._validate_mask()
+                        if self.patient_intensity_mask:
+                            self.patient_logger.info(f'Mask validated.')
+                            self._calc_mask_intensity_features()
+                            self._calc_mask_morphological_features(instance_key)
+                            self._calc_discretized_intensity_features()
+                            self._calc_texture_features()
+
                         self.patient_logger.info(f'Completed patient {self.patient_number} with mask {instance_key}.')
 
     def _process_nifti_files(self):
@@ -368,12 +399,71 @@ class Radiomics:
                                                     direction=self.patient_image.direction,
                                                     shape=self.patient_image.shape)
 
-                self._calc_mask_intensity_features()
-                self._calc_mask_morphological_features(instance_key)
-                self._calc_discretized_intensity_features()
-                self._calc_texture_features()
+                self.patient_intensity_mask = self._validate_mask()
+                if self.patient_intensity_mask:
+                    self._calc_mask_intensity_features()
+                    self._calc_mask_morphological_features(instance_key)
+                    self._calc_discretized_intensity_features()
+                    self._calc_texture_features()
+                    self.patient_logger.info(f'Completed patient {self.patient_number} with mask {instance_key[5:]}.')
 
-                self.patient_logger.info(f'Completed patient {self.patient_number} with mask {instance_key[5:]}.')
+    def _validate_mask(self):
+        """
+        Validates the intensity mask for a patient by checking the bounding box dimensions
+        and the number of valid voxels within the mask.
+
+        Returns:
+            self.patient_intensity_mask: The validated intensity mask if it meets the
+                                         criteria for minimum bounding box size and
+                                         valid voxel count.
+            None: If the mask does not meet the criteria, `None` is returned and
+                  processing for this mask is skipped.
+
+        Criteria for validation:
+            - For 3D aggregation:
+                - The smallest dimension of the 3D bounding box must be greater than `min_box_size`.
+            - For 2D or 2.5D aggregation:
+                - The smallest dimension of the 2D slice (ignoring the third dimension) must be greater than `min_box_size`.
+            - The number of valid (non-NaN) voxels in the bounding box must be greater
+              than `min_voxel_number`.
+
+        Logs:
+            - A message is logged if the mask is skipped due to not meeting the
+              minimum bounding box size requirement.
+            - A message is logged if the mask is skipped due to insufficient valid voxels.
+        """
+        # Calculate the bounding box around the intensity mask and determine its shape.
+        bounding_box = _get_bounding_box(self.patient_intensity_mask.array)
+        bounding_box_shape = bounding_box.shape
+        no_valid_voxels = np.sum(~np.isnan(bounding_box))
+
+        # Define the minimum size and voxel count requirements for validation.
+        min_box_size = 3
+        min_voxel_number = 12
+
+        # Check the bounding box size based on the aggregation dimension.
+        if self.aggr_dim == '3D':
+            if min(bounding_box_shape) < min_box_size:
+                self.patient_logger.info(
+                    f'Mask skipped. The minimum size of the bounding box must be > {min_box_size}. Consider finer resampling.'
+                )
+                return None
+        else:  # For 2D or 2.5D aggregation, only consider the first two dimensions.
+            if min(bounding_box_shape[:2]) < min_box_size:
+                self.patient_logger.info(
+                    f'Mask skipped. The minimum size of the bounding box in the first two dimensions must be > {min_box_size}. Consider finer resampling.'
+                )
+                return None
+
+        # Check if the number of valid voxels meets the minimum requirement.
+        if no_valid_voxels < min_voxel_number:
+            self.patient_logger.info(
+                f'Mask skipped. The number of valid voxels must be > {min_voxel_number}. Consider finer resampling.'
+            )
+            return None
+
+        # If the mask meets all criteria, return the validated intensity mask.
+        return self.patient_intensity_mask
 
     def _calc_mask_intensity_features(self):
 

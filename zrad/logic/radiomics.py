@@ -51,7 +51,10 @@ class Radiomics:
         elif list_of_patient_folders is not None and list_of_patient_folders not in [[], ['']]:
             self.list_of_patient_folders = list_of_patient_folders
         elif list_of_patient_folders is None and start_folder is None and stop_folder is None:
-            self.list_of_patient_folders = os.listdir(input_dir)
+            self.list_of_patient_folders = [
+                e for e in os.listdir(input_dir)
+                if not e.startswith('.') and os.path.isdir(os.path.join(input_dir, e))
+            ]
         else:
             self.logger.error('Incorrectly selected patient folders.')
             raise ValueError('Incorrectly selected patient folders.')
@@ -167,10 +170,6 @@ class Radiomics:
             self.structure_set = structure_set
         else:
             self.structure_set = ['']
-
-        image_is_filtered = False
-        if image_is_filtered:
-            pass
 
         self.patient_folder = None
         self.patient_number = None

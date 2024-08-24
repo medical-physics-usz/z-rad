@@ -399,7 +399,7 @@ class Radiomics:
                                                     direction=self.patient_image.direction,
                                                     shape=self.patient_image.shape)
 
-                self.patient_intensity_mask = self._validate_mask()
+                self.patient_intensity_mask = self._validate_mask(mask_name=instance_key[5:])
                 if self.patient_intensity_mask:
                     self._calc_mask_intensity_features()
                     self._calc_mask_morphological_features(instance_key)
@@ -407,10 +407,14 @@ class Radiomics:
                     self._calc_texture_features()
                     self.patient_logger.info(f'Completed patient {self.patient_number} with mask {instance_key[5:]}.')
 
-    def _validate_mask(self):
+    def _validate_mask(self, mask_name):
         """
         Validates the intensity mask for a patient by checking the bounding box dimensions
-        and the number of valid voxels within the mask.
+        and the number of valid voxels within the mask, with criteria differing based on
+        the aggregation dimension (2D/2.5D or 3D).
+
+        Args:
+            mask_name (str): The name or identifier of the mask being validated.
 
         Returns:
             self.patient_intensity_mask: The validated intensity mask if it meets the
@@ -422,15 +426,18 @@ class Radiomics:
         Criteria for validation:
             - For 3D aggregation:
                 - The smallest dimension of the 3D bounding box must be greater than `min_box_size`.
+                - The number of valid (non-NaN) voxels in the bounding box must be greater
+                  than `min_voxel_number_3d`.
             - For 2D or 2.5D aggregation:
                 - The smallest dimension of the 2D slice (ignoring the third dimension) must be greater than `min_box_size`.
-            - The number of valid (non-NaN) voxels in the bounding box must be greater
-              than `min_voxel_number`.
+                - The number of valid (non-NaN) voxels in the bounding box must be greater
+                  than `min_voxel_number_2d`.
 
         Logs:
             - A message is logged if the mask is skipped due to not meeting the
               minimum bounding box size requirement.
             - A message is logged if the mask is skipped due to insufficient valid voxels.
+            - The log messages include the patient number and mask name for easier identification.
         """
         # Calculate the bounding box around the intensity mask and determine its shape.
         bounding_box = _get_bounding_box(self.patient_intensity_mask.array)
@@ -439,28 +446,35 @@ class Radiomics:
 
         # Define the minimum size and voxel count requirements for validation.
         min_box_size = 3
-        min_voxel_number = 12
+        min_voxel_number_3d = 27  # For 3D: minimum 3x3x3 volume
+        min_voxel_number_2d = 9  # For 2D/2.5D: minimum 3x3 area
 
-        # Check the bounding box size based on the aggregation dimension.
+        # Check the bounding box size and the number of voxels based on the aggregation dimension.
         if self.aggr_dim == '3D':
+            # Check if the bounding box size meets the minimum requirement for 3D.
             if min(bounding_box_shape) < min_box_size:
                 self.patient_logger.info(
-                    f'Mask skipped. The minimum size of the bounding box must be > {min_box_size}. Consider finer resampling.'
+                    f'Patient {self.patient_number} with mask "{mask_name}" skipped. The minimum size of the bounding box must be > {min_box_size}. Consider finer resampling.'
+                )
+                return None
+            # Check if the number of valid voxels meets the minimum requirement for 3D.
+            if no_valid_voxels < min_voxel_number_3d:
+                self.patient_logger.info(
+                    f'Patient {self.patient_number} with mask "{mask_name}" skipped. The number of valid voxels must be > {min_voxel_number_3d}. Consider finer resampling.'
                 )
                 return None
         else:  # For 2D or 2.5D aggregation, only consider the first two dimensions.
             if min(bounding_box_shape[:2]) < min_box_size:
                 self.patient_logger.info(
-                    f'Mask skipped. The minimum size of the bounding box in the first two dimensions must be > {min_box_size}. Consider finer resampling.'
+                    f'Patient {self.patient_number} with mask "{mask_name}" skipped. The minimum size of the bounding box in the first two dimensions must be > {min_box_size}. Consider finer resampling.'
                 )
                 return None
-
-        # Check if the number of valid voxels meets the minimum requirement.
-        if no_valid_voxels < min_voxel_number:
-            self.patient_logger.info(
-                f'Mask skipped. The number of valid voxels must be > {min_voxel_number}. Consider finer resampling.'
-            )
-            return None
+            # Check if the number of valid voxels meets the minimum requirement for 2D.
+            if no_valid_voxels < min_voxel_number_2d:
+                self.patient_logger.info(
+                    f'Patient {self.patient_number} with mask "{mask_name}" skipped. The number of valid voxels must be > {min_voxel_number_2d}. Consider finer resampling.'
+                )
+                return None
 
         # If the mask meets all criteria, return the validated intensity mask.
         return self.patient_intensity_mask

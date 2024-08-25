@@ -636,3 +636,38 @@ def fetch_github_directory_files(owner, repo, directory_path, save_path=None, to
         print(f"Failed to create directories or save files to {save_path}. Error: {e}")
         raise
 
+
+def load_ibsi_phantom(chapter=1, phantom='ct_radiomics', imaging_format="dicom", save_path=None):
+    """
+    Downloads a specified IBSI Phantom dataset in the chosen imaging format and chapter from the IBSI GitHub repository.
+
+    Args:
+        chapter (int): The chapter number of the IBSI dataset. Supported values are 1 and 2.
+        phantom (str): The type of phantom dataset to download. Options are "ct_radiomics" and "digital".
+        imaging_format (str): The imaging format to download. Options are "dicom" and "nifti".
+        save_path (str, optional): The local directory where the dataset will be saved.
+                                   If None, the dataset is saved under the original directory structure.
+
+    Raises:
+        ValueError: If an unsupported chapter, phantom type, or imaging format is specified.
+    """
+    owner = "theibsi"
+    repo = "data_sets"
+    supported_chapters = [1, 2]
+    supported_phantoms = ['ct_radiomics', 'digital']
+    supported_formats = ["dicom", "nifti"]
+
+    if chapter not in supported_chapters:
+        raise ValueError(f"Unsupported chapter '{chapter}'. Supported chapters are: {supported_chapters}")
+
+    if phantom not in supported_phantoms:
+        raise ValueError(f"Unsupported phantom '{phantom}'. Supported phantoms are: {supported_phantoms}")
+
+    if imaging_format.lower() not in supported_formats:
+        raise ValueError(f"Unsupported imaging format '{imaging_format}'. Supported formats are: {supported_formats}")
+
+    if chapter == 1 and phantom == 'digital' and imaging_format == "dicom":
+        raise ValueError(f"The DICOM mask was deprecated due to incorrect image spacing. The phantom is available in NIfTI format and consists of the image itself (image) and its segmentation (mask).")
+
+    directory_path = f"ibsi_{chapter}_{phantom}_phantom/{imaging_format.lower()}"
+    fetch_github_directory_files(owner, repo, directory_path, save_path)

@@ -1,39 +1,23 @@
 import json
 import os
+from datetime import datetime
 
-# Import required PyQt5 modules for GUI creation
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QFileDialog
-
-from .toolbox_gui import CustomButton, CustomLabel, CustomBox, CustomTextField, CustomWarningBox, CustomCheckBox, \
-    CustomInfo, data_io
+from ._base_tab import BaseTab
+from .toolbox_gui import CustomLabel, CustomBox, CustomTextField, CustomWarningBox, CustomCheckBox, \
+    CustomInfo
 from ..logic.preprocessing import Preprocessing
+from ..logic.toolbox_logic import get_logger, close_all_loggers
 
 
-class PreprocessingTab(QWidget):
-
+class PreprocessingTab(BaseTab):
     def __init__(self):
         super().__init__()
+        self.init_dicom_elements()
+        self.init_nifti_elements()
+        self.init_preprocessing_elements()
+        self.connect_signals()
 
-        self.setMinimumSize(1220, 640)
-        self.layout = QVBoxLayout(self)
-
-        data_io(self)
-
-        # Input Data Type ComboBox
-        self.input_data_type_combo_box = CustomBox(
-            20, 300, 160, 50, self,
-            item_list=[
-                "Data Type:", "DICOM", "NIfTI"
-            ]
-        )
-        self.input_data_type_combo_box.currentTextChanged.connect(self.on_file_type_combo_box_changed)
-
-        self.just_save_as_nifti_check_box = CustomCheckBox(
-            'Save as NIfTI without resampling',
-            800, 300, 400, 50, self)
-        self.just_save_as_nifti_check_box.hide()
-
-        # DICOM and NIfTI Structures TextFields and Labels
+    def init_dicom_elements(self):
         self.dicom_structures_label = CustomLabel(
             'Structures:',
             200, 300, 200, 50, self,
@@ -43,53 +27,55 @@ class PreprocessingTab(QWidget):
             "E.g. CTV, liver... or ExtractAllMasks",
             300, 300, 450, 50, self
         )
-        self.dicom_structures_label.hide()
-        self.dicom_structures_text_field.hide()
+
         self.dicom_structures_info_label = CustomInfo(
             ' i',
             'Type ROIs of interest (e.g. CTV, liver), \nor type ExtractAllMasks to use all ROIs from RTSTRUCT.',
             760, 300, 14, 14, self
         )
-        self.dicom_structures_info_label.hide()
+        self.just_save_as_nifti_check_box = CustomCheckBox(
+            'Save as NIfTI without resampling',
+            800, 300, 400, 50, self)
 
+        self._hide_dicom_elements()
+
+    def init_nifti_elements(self):
+        """Initialize UI components related to NIfTI elements."""
+        # Structures
         self.nifti_structures_label = CustomLabel(
-            'NIfTI Mask Files:',
+            'NIfTI Masks:',
             200, 300, 200, 50, self,
             style="color: white;"
         )
         self.nifti_structures_text_field = CustomTextField(
             "E.g. CTV, liver...",
-            345, 300, 220, 50, self
+            300, 300, 230, 50, self
         )
-        self.nifti_structures_label.hide()
-        self.nifti_structures_text_field.hide()
-        self.nifti_structure_info_label = CustomInfo(
+        self.nifti_structures_info_label = CustomInfo(
             ' i',
-            'Provide NIfTI masks of interest, without the file extensions: '
-            '\nif the files of interest are GTV.nii.gz and liver.nii, provide: GTV, liver.',
-            575, 300, 14, 14, self
+            'Provide the names of the NIfTI masks you are interested in, excluding the file extensions.'
+            '\nFor example, if the files you are interested in are GTV.nii.gz and liver.nii, enter: GTV, liver.',
+            545, 300, 14, 14, self
         )
-        self.nifti_structure_info_label.hide()
 
+        # Image
         self.nifti_image_label = CustomLabel(
-            'NIfTI Image File:',
+            'NIfTI Image:',
             600, 300, 200, 50, self,
             style="color: white;"
         )
         self.nifti_image_text_field = CustomTextField(
             "E.g. imageCT",
-            745, 300, 220, 50, self
+            700, 300, 120, 50, self
         )
-        self.nifti_image_label.hide()
-        self.nifti_image_text_field.hide()
         self.nifti_image_info_label = CustomInfo(
             ' i',
-            'Specify NIfTI image file without the file extension: '
-            '\ne.g. if NIfTI image file is imageCT.nii.gz, provide only imageCT.',
-            975, 300, 14, 14, self
+            'Specify NIfTI image file without file extension',
+            830, 300, 14, 14, self
         )
-        self.nifti_image_info_label.hide()
+        self._hide_nifti_elements()
 
+    def init_preprocessing_elements(self):
         # Resample Resolution Label and TextField
         self.resample_resolution_label = CustomLabel(
             'Resample Resolution (mm):',
@@ -137,6 +123,11 @@ class PreprocessingTab(QWidget):
         self.mask_interpolation_threshold_text_field.setText('0.5')
         self.mask_interpolation_threshold_label.hide()
         self.mask_interpolation_threshold_text_field.hide()
+
+    def connect_signals(self):
+        self.input_data_type_combo_box.currentTextChanged.connect(self.file_type_changed)
+        self.just_save_as_nifti_check_box.stateChanged.connect(self._just_save_as_nifti_changed)
+        self.run_button.clicked.connect(self.run_selection)
         self.mask_interpolation_method_combo_box.currentTextChanged.connect(
             lambda:
             (
@@ -150,186 +141,207 @@ class PreprocessingTab(QWidget):
             )
         )
 
-        # Run Button
-        self.run_button = CustomButton(
-            'RUN',
-            600, 590, 80, 50, self,
-            style=False
-        )
-        self.run_button.clicked.connect(self.run_selected_input)
+    def _show_dicom_elements(self):
+        self.dicom_structures_label.show()
+        self.dicom_structures_text_field.show()
+        self.dicom_structures_info_label.show()
+        self.just_save_as_nifti_check_box.show()
 
-    def run_selected_input(self):
+    def _hide_dicom_elements(self):
+        self.dicom_structures_label.hide()
+        self.dicom_structures_text_field.hide()
+        self.dicom_structures_info_label.hide()
+        self.just_save_as_nifti_check_box.hide()
 
-        selections_text = [
-            ('', self.load_dir_label.text().strip(), "Select Load Directory!"),
-            ('', self.save_dir_label.text().strip(), "Select Save Directory"),
-        ]
-        for message, text, warning in selections_text:
-            if text == message and CustomWarningBox(warning).response():
-                return
+    def _show_nifti_elements(self):
+        self.nifti_structures_label.show()
+        self.nifti_structures_text_field.show()
+        self.nifti_structures_info_label.show()
+        self.nifti_image_label.show()
+        self.nifti_image_text_field.show()
+        self.nifti_image_info_label.show()
 
-        selections_combo_box = [
+    def _hide_nifti_elements(self):
+        self.nifti_structures_label.hide()
+        self.nifti_structures_text_field.hide()
+        self.nifti_structures_info_label.hide()
+        self.nifti_image_label.hide()
+        self.nifti_image_text_field.hide()
+        self.nifti_image_info_label.hide()
+
+    def _hide_preprocessing_elements(self):
+        self.mask_interpolation_threshold_label.hide()
+        self.mask_interpolation_threshold_text_field.hide()
+        self.mask_interpolation_method_combo_box.hide()
+        self.resample_resolution_label.hide()
+        self.resample_resolution_text_field.hide()
+        self.image_interpolation_method_combo_box.hide()
+        self.resample_dimension_combo_box.hide()
+
+    def _show_preprocessing_elements(self):
+        self.mask_interpolation_threshold_label.show()
+        self.mask_interpolation_threshold_text_field.show()
+        self.mask_interpolation_method_combo_box.show()
+        self.resample_resolution_label.show()
+        self.resample_resolution_text_field.show()
+        self.image_interpolation_method_combo_box.show()
+        self.resample_dimension_combo_box.show()
+
+    def _validate_combo_selections(self):
+        """Validate combo box selections."""
+        required_selections = [
             ('No. of Threads:', self.number_of_threads_combo_box),
             ('Data Type:', self.input_data_type_combo_box),
+            ('Imaging Modality:', self.input_imaging_mod_combo_box)
         ]
-        for message, combo_box in selections_combo_box:
-            if (combo_box.currentText() == message
-                    and CustomWarningBox(f"Select {message.split(':')[0]}").response()):
-                return
+        for message, combo_box in required_selections:
+            if combo_box.currentText() == message:
+                CustomWarningBox(f"Select {message.split(':')[0]}").response()
+                return False
+        return True
 
-        # Collect values from GUI elements
-        input_dir = self.load_dir_label.text()
-        output_dir = self.save_dir_label.text()
-
-        start_folder = None
-        if self.start_folder_text_field.text().strip() != '':
-            start_folder = self.start_folder_text_field.text().strip()
-
-        stop_folder = None
-        if self.stop_folder_text_field.text().strip() != '':
-            stop_folder = self.stop_folder_text_field.text().strip()
-
-        if self.list_of_patient_folders_text_field.text() != '':
-            list_of_patient_folders = [pat.strip() for pat in str(self.list_of_patient_folders_text_field.text()).split(",")]
+    def _just_save_as_nifti_changed(self):
+        if self.just_save_as_nifti_check_box.isChecked():
+            self._hide_preprocessing_elements()
         else:
-            list_of_patient_folders = None
+            self._show_preprocessing_elements()
 
-        if (self.input_imaging_mod_combo_box.currentText() == 'Imaging Modality:'
-                and CustomWarningBox("Select Input Imaging Modality").response()):
+    def file_type_changed(self, text):
+        """Handle changes in the selected input file type."""
+        if text == "DICOM":
+            self._show_dicom_elements()
+            self._hide_nifti_elements()
+            if self.just_save_as_nifti_check_box.isChecked():
+                self._hide_preprocessing_elements()
+        elif text == "NIfTI":
+            self._show_nifti_elements()
+            self._hide_dicom_elements()
+            self._show_preprocessing_elements()
+        else:
+            self._hide_dicom_elements()
+            self._hide_nifti_elements()
+
+    def check_input_parameters(self):
+        # Validate combo box selections
+        if not self._validate_combo_selections():
+            CustomWarningBox("Invalid selections in combo boxes. Please select valid options.").response()
             return
-        input_imaging_mod = self.input_imaging_mod_combo_box.currentText()
 
-        number_of_threads = int(self.number_of_threads_combo_box.currentText().split(" ")[0])
-        input_data_type = self.input_data_type_combo_box.currentText()
-        dicom_structures = [ROI.strip() for ROI in self.dicom_structures_text_field.text().split(",")]
-        nifti_structures = [ROI.strip() for ROI in self.nifti_structures_text_field.text().split(",")]
+        self.check_common_input_parameters()
 
-        structure_set = None
-        if input_data_type == 'DICOM' and len(dicom_structures) > 0:
-            structure_set = dicom_structures
-        elif input_data_type == 'NIfTI' and len(nifti_structures) > 0:
-            structure_set = nifti_structures
+        self.input_params["nifti_image_name"] = self.get_text_from_text_field(self.input_params["nifti_image_name"])
+        self.input_params["dicom_structures"] = self.get_list_from_text_field(self.input_params["dicom_structures"])
+        self.input_params["nifti_structures"] = self.get_list_from_text_field(self.input_params["nifti_structures"])
 
-        if self.just_save_as_nifti_check_box.isChecked() and input_data_type == 'DICOM':
-            just_save_as_nifti = True
-
-            prep_instance = Preprocessing(
-                input_dir=input_dir,
-                output_dir=output_dir,
-                input_data_type=input_data_type,
-                input_imaging_modality=input_imaging_mod,
-                structure_set=structure_set,
-                just_save_as_nifti=just_save_as_nifti,
-                start_folder=start_folder,
-                stop_folder=stop_folder,
-                list_of_patient_folders=list_of_patient_folders,
-                number_of_threads=number_of_threads)
-
-            prep_instance.resample()
+        if self.input_params["just_save_as_nifti"]:
+            self.input_params["resample_dimension"] = None
+            self.input_params["resample_resolution"] = None
+            self.input_params["image_interpolation_method"] = None
+            self.input_params["mask_interpolation_method"] = None
+            self.input_params["mask_interpolation_threshold"] = None
         else:
-            just_save_as_nifti = False
+            self.input_params["resample_resolution"] = float(self.input_params["resample_resolution"])
+            self.input_params["mask_interpolation_threshold"] = float(self.input_params["mask_interpolation_threshold"])
 
-            # Validate text field inputs
-            selections_text = [
-                ('', self.mask_interpolation_threshold_text_field.text().strip(), "Enter Mask Interpolation Threshold"),
-                ('', self.resample_resolution_text_field.text().strip(), "Enter Resample Resolution")
-            ]
+    def get_input_parameters(self):
+        """Collect input parameters from UI elements."""
+        input_parameters = {
+            'input_directory': self.load_dir_text_field.text(),
+            'start_folder': self.start_folder_text_field.text(),
+            'stop_folder': self.stop_folder_text_field.text(),
+            'list_of_patient_folders': self.list_of_patient_folders_text_field.text(),
+            'input_data_type': self.input_data_type_combo_box.currentText(),
+            'output_directory': self.save_dir_text_field.text(),
+            'number_of_threads': self.number_of_threads_combo_box.currentText(),
+            'dicom_structures': self.dicom_structures_text_field.text(),
+            'nifti_image_name': self.nifti_image_text_field.text(),
+            'nifti_structures': self.nifti_structures_text_field.text(),
+            'resample_resolution': self.resample_resolution_text_field.text(),
+            'image_interpolation_method': self.image_interpolation_method_combo_box.currentText(),
+            'resample_dimension': self.resample_dimension_combo_box.currentText(),
+            'mask_interpolation_method': self.mask_interpolation_method_combo_box.currentText(),
+            'mask_interpolation_threshold': self.mask_interpolation_threshold_text_field.text(),
+            'input_imaging_modality': self.input_imaging_mod_combo_box.currentText(),
+            'just_save_as_nifti': self.just_save_as_nifti_check_box.checkState()
+        }
+        self.input_params = input_parameters
 
-            for message, text, warning in selections_text:
-                if text == message and CustomWarningBox(warning).response():
-                    return
+    def run_selection(self):
+        close_all_loggers()
+        self.logger_date_time = datetime.now().strftime("%Y-%m-%d_%H%M%S")
+        self.logger = get_logger(self.logger_date_time + '_Preprocessing')
+        self.logger.info("Preprocessing started")
 
-            # Validate combo box selections
-            selections_combo_box = [
-                ('Image Interpolation:', self.image_interpolation_method_combo_box),
-                ('Resample Dimension:', self.resample_dimension_combo_box)
-            ]
-            for message, combo_box in selections_combo_box:
-                if (combo_box.currentText() == message
-                        and CustomWarningBox(f"Select {message.split(':')[0]}").response()):
-                    return
-            if (self.mask_interpolation_method_combo_box.currentText() == 'Mask Interpolation:'
-                    and structure_set != ['']
-                    and CustomWarningBox("Select Mask Interpolation").response()):
-                return
+        """Executes preprocessing based on user-selected options."""
+        # Prepare input parameters for radiomics extraction
+        self.get_input_parameters()
 
-            if (not self.nifti_image_text_field.text().strip()
-                    and self.input_data_type_combo_box.currentText() == 'NIfTI'):
-                CustomWarningBox("Enter NIfTI image").response()
-                return
-            nifti_image = self.nifti_image_text_field.text()
+        # Check input parameters
+        self.check_input_parameters()
 
-            # Collect values from GUI elements
-            if structure_set == ['']:
-                mask_interpolation_method = 'NN'
-            else:
-                mask_interpolation_method = self.mask_interpolation_method_combo_box.currentText()
-            mask_interpolation_threshold = float(self.mask_interpolation_threshold_text_field.text())
-            resample_resolution = float(self.resample_resolution_text_field.text())
+        # Determine structure set based on data type
+        structure_set = self.input_params["dicom_structures"] if self.input_params["input_data_type"] == 'dicom' else \
+        self.input_params["nifti_structures"]
 
-            # Collect values from GUI elements
-            image_interpolation_method = self.image_interpolation_method_combo_box.currentText()
-            resample_dimension = self.resample_dimension_combo_box.currentText()
+        # Get patient folders
+        list_of_patient_folders = self.get_patient_folders()
 
-        # Create a Preprocessing instance
+        # Initialize Preprocessing instance
+        prep_image = Preprocessing(
+            input_data_type=self.input_params["input_data_type"],
+            input_imaging_modality=self.input_params["input_imaging_modality"],
+            just_save_as_nifti=self.input_params["just_save_as_nifti"],
+            resample_resolution=self.input_params["resample_resolution"],
+            resample_dimension=self.input_params["resample_dimension"],
+            interpolation_method=self.input_params["image_interpolation_method"],
+        )
+        prep_mask = Preprocessing(
+            input_data_type=self.input_params["input_data_type"],
+            input_imaging_modality=self.input_params["input_imaging_modality"],
+            just_save_as_nifti=self.input_params["just_save_as_nifti"],
+            resample_resolution=self.input_params["resample_resolution"],
+            resample_dimension=self.input_params["resample_dimension"],
+            interpolation_method=self.input_params["mask_interpolation_method"],
+            interpolation_threshold=self.input_params["mask_interpolation_threshold"]
+        )
 
-            prep_instance = Preprocessing(
-                input_dir=input_dir,
-                output_dir=output_dir,
-                input_data_type=input_data_type,
-                input_imaging_modality=input_imaging_mod,
-                structure_set=structure_set,
-                just_save_as_nifti=just_save_as_nifti,
-                resample_resolution=resample_resolution,
-                resample_dimension=resample_dimension,
-                image_interpolation_method=image_interpolation_method,
-                mask_interpolation_method=mask_interpolation_method,
-                mask_interpolation_threshold=mask_interpolation_threshold,
-                start_folder=start_folder,
-                stop_folder=stop_folder,
-                list_of_patient_folders=list_of_patient_folders,
-                nifti_image=nifti_image,
-                number_of_threads=number_of_threads)
-            prep_instance.resample()
+        # Process each patient folder
+        if list_of_patient_folders:
+            for patient_folder in list_of_patient_folders:
+                image = self.load_images(patient_folder)
+                if self.input_params["just_save_as_nifti"]:
+                    image_new = image.copy()
+                else:
+                    image_new = prep_image.resample(image, image_type='image')
 
-    def open_directory(self, key):
-        """
-        Open a directory selection dialog and update the corresponding label.
-        """
-        options = QFileDialog.Options()
-        options |= QFileDialog.ShowDirsOnly
-        directory = QFileDialog.getExistingDirectory(self, "Select Directory", "", options=options)
-        if directory:
-            if key:
-                self.load_dir_label.setText(directory)
-            else:
-                self.save_dir_label.setText(directory)
+                # Save new image
+                output_path = os.path.join(self.input_params["output_directory"], patient_folder, 'image.nii.gz')
+                image_new.save_as_nifti(output_path)
 
-    def save_input_data(self):
+                if structure_set:
+                    for mask_name in structure_set:
+                        mask = self.load_mask(patient_folder, mask_name, image)
+                        if mask and mask.array is not None:
+                            if self.input_params["just_save_as_nifti"]:
+                                mask_new = mask.copy()
+                            else:
+                                mask_new = prep_mask.resample(mask, image_type='mask')
+
+                            # Save new mask
+                            output_path = os.path.join(self.input_params["output_directory"], patient_folder, f'{mask_name}.nii.gz')
+                            mask_new.save_as_nifti(output_path)
+        else:
+            CustomWarningBox("No patients to calculate radiomics from.")
+        self.logger.info("Preprocessing finished!")
+        CustomWarningBox("Preprocessing finished!").response()
+
+    def save_settings(self):
         """
         Update specific fields in the config.json file without overwriting existing data.
         """
         # Data to be updated
-        data = {
-            'prep_load_dir_label': self.load_dir_label.text(),
-            'prep_start_folder': self.start_folder_text_field.text(),
-            'prep_stop_folder': self.stop_folder_text_field.text(),
-            'prep_list_of_patients': self.list_of_patient_folders_text_field.text(),
-            'prep_input_data_type': self.input_data_type_combo_box.currentText(),
-            'prep_save_dir_label': self.save_dir_label.text(),
-            'prep_no_of_threads': self.number_of_threads_combo_box.currentText(),
-            'prep_DICOM_structures': self.dicom_structures_text_field.text(),
-            'prep_NIfTI_image': self.nifti_image_text_field.text(),
-            'prep_NIfTI_structures': self.nifti_structures_text_field.text(),
-            'prep_resample_resolution': self.resample_resolution_text_field.text(),
-            'prep_interpolation_method': self.image_interpolation_method_combo_box.currentText(),
-            'prep_resample_dim': self.resample_dimension_combo_box.currentText(),
-            'prep_mask_interpolation_method': self.mask_interpolation_method_combo_box.currentText(),
-            'prep_mask_interpolation_threshold': self.mask_interpolation_threshold_text_field.text(),
-            'prep_input_image_modality': self.input_imaging_mod_combo_box.currentText(),
-            'prep_just_save_as_nifti': self.just_save_as_nifti_check_box.checkState()
-        }
-
+        self.get_input_parameters()
+        data = {'prep_' + key: value for key, value in self.input_params.items()}
         file_path = os.path.join(os.getcwd(), 'config.json')
 
         # Attempt to read the existing data from the file
@@ -346,7 +358,7 @@ class PreprocessingTab(QWidget):
         with open(file_path, 'w') as file:
             json.dump(existing_data, file, indent=4)
 
-    def load_input_data(self):
+    def load_settings(self):
         """
         Load input data from a JSON file.
         """
@@ -354,16 +366,16 @@ class PreprocessingTab(QWidget):
         try:
             with open(file_path, 'r') as file:
                 data = json.load(file)
-                self.load_dir_label.setText(data.get('prep_load_dir_label', ''))
+                self.load_dir_text_field.setText(data.get('prep_input_directory', ''))
                 self.start_folder_text_field.setText(data.get('prep_start_folder', ''))
                 self.stop_folder_text_field.setText(data.get('prep_stop_folder', ''))
-                self.list_of_patient_folders_text_field.setText(data.get('prep_list_of_patients', ''))
+                self.list_of_patient_folders_text_field.setText(data.get('prep_list_of_patient_folders', ''))
                 self.input_data_type_combo_box.setCurrentText(data.get('prep_input_data_type', 'Data Type:'))
-                self.save_dir_label.setText(data.get('prep_save_dir_label', ''))
+                self.save_dir_text_field.setText(data.get('prep_output_directory', ''))
                 self.number_of_threads_combo_box.setCurrentText(data.get('prep_no_of_threads', 'No. of Threads:'))
-                self.dicom_structures_text_field.setText(data.get('prep_DICOM_structures', ''))
-                self.nifti_image_text_field.setText(data.get('prep_NIfTI_image', ''))
-                self.nifti_structures_text_field.setText(data.get('prep_NIfTI_structures', ''))
+                self.dicom_structures_text_field.setText(data.get('prep_dicom_structures', ''))
+                self.nifti_image_text_field.setText(data.get('prep_nifti_image', ''))
+                self.nifti_structures_text_field.setText(data.get('prep_nifti_structures', ''))
                 self.resample_resolution_text_field.setText(data.get('prep_resample_resolution', ''))
                 self.image_interpolation_method_combo_box.setCurrentText(
                     data.get('prep_interpolation_method', 'Image Interpolation:'))
@@ -378,39 +390,3 @@ class PreprocessingTab(QWidget):
 
         except FileNotFoundError:
             print("No previous data found!")
-
-    def on_file_type_combo_box_changed(self, text):
-        # This slot will be called whenever the file type combobox value is changed
-        if text == 'DICOM':
-            self.just_save_as_nifti_check_box.show()
-            self.nifti_image_label.hide()
-            self.nifti_image_text_field.hide()
-            self.dicom_structures_label.show()
-            self.dicom_structures_text_field.show()
-            self.nifti_structures_label.hide()
-            self.nifti_structures_text_field.hide()
-            self.dicom_structures_info_label.show()
-            self.nifti_structure_info_label.hide()
-            self.nifti_image_info_label.hide()
-        elif text == 'NIfTI':
-            self.just_save_as_nifti_check_box.hide()
-            self.nifti_image_label.show()
-            self.nifti_image_text_field.show()
-            self.dicom_structures_label.hide()
-            self.dicom_structures_text_field.hide()
-            self.nifti_structures_label.show()
-            self.nifti_structures_text_field.show()
-            self.dicom_structures_info_label.hide()
-            self.nifti_structure_info_label.show()
-            self.nifti_image_info_label.show()
-        else:
-            self.just_save_as_nifti_check_box.hide()
-            self.dicom_structures_label.hide()
-            self.dicom_structures_text_field.hide()
-            self.nifti_image_label.hide()
-            self.nifti_image_text_field.hide()
-            self.nifti_structures_label.hide()
-            self.nifti_structures_text_field.hide()
-            self.dicom_structures_info_label.hide()
-            self.nifti_structure_info_label.hide()
-            self.nifti_image_info_label.hide()

@@ -104,7 +104,7 @@ class CustomWarningBox(QMessageBox):
             self.setIcon(QMessageBox.Warning)
             self.setWindowTitle('Warning!')
             self.setText(text)
-            self.setStandardButtons(QMessageBox.Retry)
+            self.setStandardButtons(QMessageBox.Ok)
         else:
             self.setIcon(QMessageBox.Information)
             self.setWindowTitle('Help & Support')
@@ -133,4 +133,4 @@ class CustomWarningBox(QMessageBox):
 
     def response(self) -> bool:
         get_response = self.exec_()
-        return get_response == QMessageBox.Retry
+        return get_response == QMessageBox.Ok

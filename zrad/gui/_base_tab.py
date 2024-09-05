@@ -210,7 +210,9 @@ class BaseTab(QWidget, ABC, metaclass=BaseTabMeta):
             except Exception as e:
                 print(f"Error reading DICOM image: {e}")
         else:
-            raise ValueError(f"Invalid input data type: {input_data_type}")
+            warning_msg = f"Invalid input data type: {input_data_type}"
+            CustomWarningBox(warning_msg).response()
+            raise InvalidInputParametersError(warning_msg)
 
         if filtered_image:
             return image, filtered_image
@@ -239,8 +241,9 @@ class BaseTab(QWidget, ABC, metaclass=BaseTabMeta):
             except Exception as e:
                 print(f"Error reading DICOM mask: {e}")
         else:
-            raise ValueError(f"Invalid input data type: {input_data_type}")
-
+            warning_msg = f"Invalid input data type: {input_data_type}"
+            CustomWarningBox(warning_msg).response()
+            raise InvalidInputParametersError(warning_msg)
         return mask
 
     def _validate_io_directories(self):
@@ -251,9 +254,9 @@ class BaseTab(QWidget, ABC, metaclass=BaseTabMeta):
         ]
         for warning, text in required_dirs:
             if not text:
-                CustomWarningBox(warning).response()
-                return False
-        return True
+                warning_msg = warning
+                CustomWarningBox(warning_msg).response()
+                raise InvalidInputParametersError(warning_msg)
 
     def _get_input_imaging_modality(self):
         """
@@ -310,7 +313,9 @@ class BaseTab(QWidget, ABC, metaclass=BaseTabMeta):
         if os.path.exists(input_dir):
             input_dir = input_dir
         else:
-            raise ValueError(f"Load directory '{input_dir}' does not exist.")
+            warning_msg = f"Load directory '{input_dir}' does not exist."
+            CustomWarningBox(warning_msg).response()
+            raise InvalidInputParametersError(warning_msg)
 
         if os.path.exists(output_dir):
             pass
@@ -328,8 +333,9 @@ class BaseTab(QWidget, ABC, metaclass=BaseTabMeta):
                 if not e.startswith('.') and os.path.isdir(os.path.join(input_dir, e))
             ]
         else:
-            # self.logger.error('Incorrectly selected patient folders.')
-            raise ValueError('Incorrectly selected patient folders.')
+            warning_msg = "Incorrectly selected patient folders."
+            CustomWarningBox(warning_msg).response()
+            raise InvalidInputParametersError(warning_msg)
         return list_of_patient_folders
 
     @staticmethod
@@ -395,17 +401,13 @@ class BaseTab(QWidget, ABC, metaclass=BaseTabMeta):
 
     def check_common_input_parameters(self):
         # Validate directories
-        if not self._validate_io_directories():
-            warning_msg = "Invalid directories. Please select valid input and output directories."
-            CustomWarningBox(warning_msg).response()
-            raise InvalidInputParametersError(warning_msg)
+        self._validate_io_directories()
 
         self.input_params["input_directory"] = self.get_text_from_text_field(self.input_params["input_directory"])
         self.input_params["output_directory"] = self.get_text_from_text_field(self.input_params["output_directory"])
         self.input_params["start_folder"] = self.get_text_from_text_field(self.input_params["start_folder"])
         self.input_params["stop_folder"] = self.get_text_from_text_field(self.input_params["stop_folder"])
-        self.input_params["list_of_patient_folders"] = self.get_list_from_text_field(
-            self.input_params["list_of_patient_folders"])
+        self.input_params["list_of_patient_folders"] = self.get_list_from_text_field(self.input_params["list_of_patient_folders"])
         self.input_params["input_data_type"] = self._get_input_data_type()
         self.input_params["input_imaging_modality"] = self._get_input_imaging_modality()
         self.input_params["number_of_threads"] = int(self.number_of_threads_combo_box.currentText())

@@ -227,7 +227,7 @@ class RadiomicsTab(BaseTab):
             self.check_input_parameters()
         except InvalidInputParametersError as e:
             # Stop execution if input parameters are invalid
-            self.logger.info(e)
+            self.logger.error(e)
             return
 
         # Determine structure set based on data type
@@ -259,6 +259,7 @@ class RadiomicsTab(BaseTab):
                     image = self.load_images(patient_folder)
                     filtered_image = None
                 for mask_name in structure_set:
+                    self.logger.info(f"Processing patient: {patient_folder} with ROI: {mask_name}.")
                     mask = self.load_mask(patient_folder, mask_name, image)
                     if mask and mask.array is not None:
                         rad_instance.extract_features(image, mask, filtered_image)
@@ -271,7 +272,9 @@ class RadiomicsTab(BaseTab):
             if radiomic_features_list:
                 radiomic_features_df = pd.DataFrame(radiomic_features_list)
                 radiomic_features_df.set_index(['pat_id', 'mask_id'], inplace=True)
-                radiomic_features_df.to_csv(os.path.join(self.input_params["output_directory"], 'radiomics.csv'))
+                file_path = os.path.join(self.input_params["output_directory"], 'radiomics.csv')
+                radiomic_features_df.to_csv(file_path)
+                self.logger.info(f"Radiomics saved to {file_path}.")
         else:
             CustomWarningBox("No patients to calculate radiomics from.")
         self.logger.info("Radiomics finished!")

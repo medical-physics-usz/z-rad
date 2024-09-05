@@ -24,17 +24,17 @@ class PreprocessingTab(BaseTab):
             style="color: white;"
         )
         self.dicom_structures_text_field = CustomTextField(
-            "E.g. CTV, liver... or ExtractAllMasks",
+            "E.g. CTV, liver, ...",
             300, 300, 450, 50, self
         )
 
         self.dicom_structures_info_label = CustomInfo(
             ' i',
-            'Type ROIs of interest (e.g. CTV, liver), \nor type ExtractAllMasks to use all ROIs from RTSTRUCT.',
+            'Type ROIs of interest (e.g. CTV, liver).',
             760, 300, 14, 14, self
         )
         self.just_save_as_nifti_check_box = CustomCheckBox(
-            'Save as NIfTI without resampling',
+            'Convert to NIfTI without resampling',
             800, 300, 400, 50, self)
 
         self._hide_dicom_elements()
@@ -48,7 +48,7 @@ class PreprocessingTab(BaseTab):
             style="color: white;"
         )
         self.nifti_structures_text_field = CustomTextField(
-            "E.g. CTV, liver...",
+            "E.g. CTV, liver, ...",
             300, 300, 230, 50, self
         )
         self.nifti_structures_info_label = CustomInfo(

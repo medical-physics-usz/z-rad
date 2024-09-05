@@ -26,11 +26,11 @@ class RadiomicsTab(BaseTab):
             'Structures:', 200, 300, 200, 50, self, style="color: white;"
         )
         self.dicom_structures_text_field = CustomTextField(
-            "E.g. CTV, liver... or ExtractAllMasks", 300, 300, 450, 50, self
+            "E.g. CTV, liver, ...", 300, 300, 450, 50, self
         )
         self.dicom_structures_info_label = CustomInfo(
             ' i',
-            'Type ROIs of interest (e.g. CTV, liver), \nor type ExtractAllMasks to use all ROIs from RTSTRUCT.',
+            'Type ROIs of interest (e.g. CTV, liver).',
             760, 300, 14, 14, self
         )
         self._hide_dicom_elements()
@@ -44,7 +44,7 @@ class RadiomicsTab(BaseTab):
             style="color: white;"
         )
         self.nifti_structures_text_field = CustomTextField(
-            "E.g. CTV, liver...",
+            "E.g. CTV, liver, ...",
             300, 300, 230, 50, self
         )
         self.nifti_structures_info_label = CustomInfo(

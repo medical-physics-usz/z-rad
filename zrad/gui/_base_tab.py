@@ -124,7 +124,7 @@ class BaseTab(QWidget, ABC, metaclass=BaseTabMeta):
             style="color: white;"
         )
         self.list_of_patient_folders_text_field = CustomTextField(
-            "E.g. 1, 5, 10, 34...",
+            "E.g. 1, 5, 10, 34, ...",
             920, 140, 220, 50, self)
 
         # Save Directory Button and Label

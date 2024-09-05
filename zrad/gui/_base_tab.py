@@ -7,6 +7,7 @@ from PyQt5.QtWidgets import QFileDialog
 from PyQt5.QtWidgets import QWidget, QVBoxLayout
 
 from .toolbox_gui import CustomButton, CustomLabel, CustomBox, CustomTextField, CustomInfo, CustomWarningBox
+from ..logic.exceptions import InvalidInputParametersError
 from ..logic.image import Image
 
 
@@ -395,8 +396,9 @@ class BaseTab(QWidget, ABC, metaclass=BaseTabMeta):
     def check_common_input_parameters(self):
         # Validate directories
         if not self._validate_io_directories():
-            CustomWarningBox("Invalid directories. Please select valid input and output directories.").response()
-            return
+            warning_msg = "Invalid directories. Please select valid input and output directories."
+            CustomWarningBox(warning_msg).response()
+            raise InvalidInputParametersError(warning_msg)
 
         self.input_params["input_directory"] = self.get_text_from_text_field(self.input_params["input_directory"])
         self.input_params["output_directory"] = self.get_text_from_text_field(self.input_params["output_directory"])

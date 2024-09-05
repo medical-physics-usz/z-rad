@@ -7,6 +7,7 @@ import pandas as pd
 
 from ._base_tab import BaseTab
 from .toolbox_gui import CustomLabel, CustomBox, CustomTextField, CustomCheckBox, CustomWarningBox, CustomInfo
+from ..logic.exceptions import InvalidInputParametersError
 from ..logic.radiomics import Radiomics
 from ..logic.toolbox_logic import get_logger, close_all_loggers
 
@@ -171,10 +172,7 @@ class RadiomicsTab(BaseTab):
 
     def check_input_parameters(self):
         # Validate combo box selections
-        if not self._validate_combo_selections():
-            CustomWarningBox("Invalid selections in combo boxes. Please select valid options.").response()
-            return
-
+        self._validate_combo_selections()
         self.check_common_input_parameters()
 
         self.input_params["nifti_image_name"] = self.get_text_from_text_field(self.input_params["nifti_image_name"])
@@ -182,7 +180,7 @@ class RadiomicsTab(BaseTab):
         self.input_params["dicom_structures"] = self.get_list_from_text_field(self.input_params["dicom_structures"])
         self.input_params["nifti_structures"] = self.get_list_from_text_field(self.input_params["nifti_structures"])
 
-        self.input_params["outlier_range"] = self._get_outlier_range()
+        self.input_params["outlier_range"] = self._get_outlier_sigma()
         self.input_params["intensity_range"] = self._get_intensity_range()
         self.input_params["discretization"] = self._get_discretization_settings()
         self.input_params["aggregation_method"] = self._get_aggregation_settings()
@@ -195,22 +193,22 @@ class RadiomicsTab(BaseTab):
             'stop_folder': self.stop_folder_text_field.text(),
             'list_of_patient_folders': self.list_of_patient_folders_text_field.text(),
             'input_data_type': self.input_data_type_combo_box.currentText(),
+            'input_imaging_modality': self.input_imaging_mod_combo_box.currentText(),
             'output_directory': self.save_dir_text_field.text(),
             'no_of_threads': self.number_of_threads_combo_box.currentText(),
             'dicom_structures': self.dicom_structures_text_field.text(),
             'nifti_structures': self.nifti_structures_text_field.text(),
             'nifti_image_name': self.nifti_image_text_field.text(),
             'nifti_filtered_image_name': self.nifti_filtered_image_text_field.text(),
-            'intensity_range': self.intensity_range_text_field.text(),
             'agr_strategy': self.aggr_dim_and_method_combo_box.currentText(),
             'binning': self.discretization_combo_box.currentText(),
             'number_of_bins': self.bin_number_text_field.text(),
             'bin_size': self.bin_size_text_field.text(),
             'intensity_range_check_box': self.intensity_range_check_box.checkState(),
+            'intensity_range': self.intensity_range_text_field.text(),
             'outlier_detection_check_box': self.outlier_detection_check_box.checkState(),
             'outlier_detection_value': self.outlier_detection_text_field.text(),
             'weighting': self.weighting_combo_box.currentText(),
-            'input_imaging_modality': self.input_imaging_mod_combo_box.currentText()
         }
         self.input_params = input_parameters
 
@@ -225,7 +223,12 @@ class RadiomicsTab(BaseTab):
         self.get_input_parameters()
 
         # Check input parameters
-        self.check_input_parameters()
+        try:
+            self.check_input_parameters()
+        except InvalidInputParametersError as e:
+            # Stop execution if input parameters are invalid
+            self.logger.info(e)
+            return
 
         # Determine structure set based on data type
         structure_set = self.input_params["dicom_structures"] if self.input_params["input_data_type"] == 'dicom' else \
@@ -274,7 +277,7 @@ class RadiomicsTab(BaseTab):
         self.logger.info("Radiomics finished!")
         CustomWarningBox("Radiomics finished!").response()
 
-    def _get_outlier_range(self):
+    def _get_outlier_sigma(self):
         """
         Retrieve the outlier detection range from the text field if the checkbox is checked.
 
@@ -282,26 +285,33 @@ class RadiomicsTab(BaseTab):
             float | None: A float representing the outlier range or None if the checkbox is unchecked.
         """
         # Return None if the outlier detection checkbox is not checked
-        if not self.outlier_detection_check_box.isChecked():
+        if self.outlier_detection_check_box.isChecked():
+            # Get the text from the outlier detection text field and strip any whitespace
+            text = self.outlier_detection_text_field.text().strip()
+
+            # Check if the text field is empty or contains only whitespace
+            if not text:
+                warning_msg = "Enter standard deviation for outlier filtering."
+                CustomWarningBox(warning_msg).response()
+                raise InvalidInputParametersError(warning_msg)
+
+            # Convert the text field input to a float, handling any conversion errors
+            try:
+                outlier_sigma = float(text)
+            except ValueError:
+                # Handle any non-numeric input gracefully
+                warning_msg = "Invalid input for the standard deviation in outlier filtering. Please enter a valid number."
+                CustomWarningBox(warning_msg).response()
+                raise InvalidInputParametersError(warning_msg)
+
+            if outlier_sigma < 0:
+                warning_msg = "The standard deviation in outlier filtering needs to be a positive number."
+                CustomWarningBox(warning_msg).response()
+                raise InvalidInputParametersError(warning_msg)
+
+            return outlier_sigma
+        else:
             return None
-
-        # Get the text from the outlier detection text field and strip any whitespace
-        text = self.outlier_detection_text_field.text().strip()
-
-        # Check if the text field is empty or contains only whitespace
-        if not text:
-            CustomWarningBox("Enter Confidence Interval").response()
-            return None
-
-        # Convert the text field input to a float, handling any conversion errors
-        try:
-            outlier_range = float(text)
-        except ValueError:
-            # Handle any non-numeric input gracefully
-            CustomWarningBox("Invalid input for Confidence Interval. Please enter a valid number.").response()
-            return None
-
-        return outlier_range
 
     def _get_intensity_range(self):
         """
@@ -319,8 +329,9 @@ class RadiomicsTab(BaseTab):
 
         # Check if the text field is empty or contains only whitespace
         if not text:
-            CustomWarningBox("Enter intensity range").response()
-            return None
+            warning_msg = "Enter intensity range"
+            CustomWarningBox(warning_msg).response()
+            raise InvalidInputParametersError(warning_msg)
 
         # Split the text field input by commas, convert to floats, handling empty values as np.inf
         try:
@@ -330,9 +341,14 @@ class RadiomicsTab(BaseTab):
             ]
         except ValueError:
             # Handle any non-numeric input gracefully
-            CustomWarningBox("Invalid input for intensity range. Please enter numbers separated by commas.").response()
-            return None
+            warning_msg = "Invalid input for intensity range. Please enter numbers separated by commas."
+            CustomWarningBox(warning_msg).response()
+            raise InvalidInputParametersError(warning_msg)
 
+        if len(intensity_range) != 2:
+            warning_msg = "Intensity range needs to be a list containing two numbers separated by a comma."
+            CustomWarningBox(warning_msg).response()
+            raise InvalidInputParametersError(warning_msg)
         return intensity_range
 
     def _get_discretization_settings(self):
@@ -361,14 +377,15 @@ class RadiomicsTab(BaseTab):
             # Check if input is empty
             if not text:
                 CustomWarningBox(warning_message).response()
-                return None
+                raise InvalidInputParametersError(warning_message)
 
             # Attempt to convert the input to the expected type
             try:
                 return expected_type(text)
             except ValueError:
-                CustomWarningBox(f"Invalid input. Please enter a valid {expected_type.__name__}.").response()
-                return None
+                warning_msg = f"Invalid input. Please enter a valid {expected_type.__name__}."
+                CustomWarningBox(warning_msg).response()
+                raise InvalidInputParametersError(warning_msg)
 
         # Retrieve the selected discretization method from the combo box
         discretization_method = self.discretization_combo_box.currentText()
@@ -382,13 +399,17 @@ class RadiomicsTab(BaseTab):
             # Get and validate the number of bins input
             number_of_bins = get_bin_input(self.bin_number_text_field, "Enter Number of Bins", int)
             if number_of_bins is None:
-                return None, None, None
+                warning_msg = f"Enter Number of Bins."
+                CustomWarningBox(warning_msg).response()
+                raise InvalidInputParametersError(warning_msg)
 
         elif discretization_method == 'Bin Size':
             # Get and validate the bin size input
             bin_size = get_bin_input(self.bin_size_text_field, "Enter Bin Size", float)
             if bin_size is None:
-                return None, None, None
+                warning_msg = f"Enter Bin Size"
+                CustomWarningBox(warning_msg).response()
+                raise InvalidInputParametersError(warning_msg)
 
         return discretization_method, number_of_bins, bin_size
 
@@ -418,9 +439,9 @@ class RadiomicsTab(BaseTab):
         try:
             aggr_dim, aggr_method = map(str.strip, combo_text.split(','))
         except ValueError:
-            CustomWarningBox(
-                "Invalid aggregation settings format. Please ensure it's in 'dimension,method' format.").response()
-            return None, None
+            warning_msg = f"Invalid aggregation settings format. Please ensure it's in 'dimension,method' format."
+            CustomWarningBox(warning_msg).response()
+            raise InvalidInputParametersError(warning_msg)
 
         # Map the aggregation method to its corresponding value
         aggr_method = map_aggregation_method(aggr_method)
@@ -438,8 +459,9 @@ class RadiomicsTab(BaseTab):
         ]
         for message, combo_box in required_selections:
             if combo_box.currentText() == message:
-                CustomWarningBox(f"Select {message.split(':')[0]}").response()
-                return False
+                warning_msg = f"Select {message.split(':')[0]}"
+                CustomWarningBox(warning_msg).response()
+                raise InvalidInputParametersError(warning_msg)
         return True
 
     def _is_slice_weighting(self):

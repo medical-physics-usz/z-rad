@@ -547,7 +547,7 @@ class RadiomicsTab(BaseTab):
                 self.number_of_threads_combo_box.setCurrentText(data.get('radiomics_no_of_threads', 'No. of Threads:'))
                 self.nifti_structures_text_field.setText(data.get('radiomics_nifti_structures', ''))
                 self.dicom_structures_text_field.setText(data.get('radiomics_dicom_structures', ''))
-                self.nifti_image_text_field.setText(data.get('radiomics_nifti_image', ''))
+                self.nifti_image_text_field.setText(data.get('radiomics_nifti_image_name', ''))
                 self.intensity_range_text_field.setText(data.get('radiomics_intensity_range', ''))
                 self.aggr_dim_and_method_combo_box.setCurrentText(
                     data.get('radiomics_agr_strategy', 'Texture Features Aggr. Method:'))

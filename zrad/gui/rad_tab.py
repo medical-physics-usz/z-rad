@@ -208,6 +208,7 @@ class RadiomicsTab(BaseTab):
             'bin_size': self.bin_size_text_field.text(),
             'intensity_range_check_box': self.intensity_range_check_box.checkState(),
             'outlier_detection_check_box': self.outlier_detection_check_box.checkState(),
+            'outlier_detection_value': self.outlier_detection_text_field.text(),
             'weighting': self.weighting_combo_box.currentText(),
             'input_imaging_modality': self.input_imaging_mod_combo_box.currentText()
         }
@@ -556,6 +557,7 @@ class RadiomicsTab(BaseTab):
                 self.bin_size_text_field.setText(data.get('radiomics_bin_size', ''))
                 self.intensity_range_check_box.setCheckState(data.get('radiomics_intensity_range_check_box', 0))
                 self.outlier_detection_check_box.setCheckState(data.get('radiomics_outlier_detection_check_box', 0))
+                self.outlier_detection_text_field.setText(data.get('radiomics_outlier_detection_value', ''))
                 self.weighting_combo_box.setCurrentText(data.get('radiomics_weighting', 'Slice Averaging:'))
                 self.input_imaging_mod_combo_box.setCurrentText(
                     data.get('radiomics_input_imaging_modality', 'Imaging Modality:'))

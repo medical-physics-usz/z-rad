@@ -137,7 +137,7 @@ class Radiomics:
         self.patient_morphological_mask.array = self.patient_morphological_mask.array.astype(np.int8)
 
         self.patient_intensity_mask = mask.copy()
-        self.patient_intensity_mask.array = np.where(self.patient_intensity_mask.array > 0, self.orig_patient_image.array, np.nan)
+        self.patient_intensity_mask.array = np.where(self.patient_intensity_mask.array > 0, self.patient_image.array, np.nan)
 
         # extract features
         self._calc_mask_intensity_features()

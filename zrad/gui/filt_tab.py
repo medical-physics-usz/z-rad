@@ -217,7 +217,7 @@ class FilteringTab(BaseTab):
 
         self.check_common_input_parameters()
 
-        self.input_params["nifti_image_name"] = self.get_text_from_text_field(self.input_params["nifti_image_name"]),
+        self.input_params["nifti_image_name"] = self.get_text_from_text_field(self.input_params["nifti_image_name"])
 
         if self.input_params['filter_type'] == 'Mean' and not self.mean_filter_support_text_field.text().strip():
             CustomWarningBox("Enter Support!").response()

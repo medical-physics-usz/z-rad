@@ -1,5 +1,4 @@
 import os
-import warnings
 from abc import ABC, ABCMeta, abstractmethod
 from multiprocessing import cpu_count
 
@@ -23,7 +22,6 @@ def get_imaging_filepath(input_dir, patient_folder, filename, imaging_format='di
         elif os.path.isfile(filepath):
             return filepath
         else:
-            warnings.warn(f"{filepath} not found.")
             return None
     elif imaging_format == 'nifti':
         if os.path.isfile(filepath + '.nii.gz'):
@@ -33,7 +31,6 @@ def get_imaging_filepath(input_dir, patient_folder, filename, imaging_format='di
         elif os.path.isfile(filepath):
             return filepath
         else:
-            warnings.warn(f"{filepath} not found!")
             return None
 
 

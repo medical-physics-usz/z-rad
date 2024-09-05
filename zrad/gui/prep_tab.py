@@ -372,20 +372,20 @@ class PreprocessingTab(BaseTab):
                 self.list_of_patient_folders_text_field.setText(data.get('prep_list_of_patient_folders', ''))
                 self.input_data_type_combo_box.setCurrentText(data.get('prep_input_data_type', 'Data Type:'))
                 self.save_dir_text_field.setText(data.get('prep_output_directory', ''))
-                self.number_of_threads_combo_box.setCurrentText(data.get('prep_no_of_threads', 'No. of Threads:'))
+                self.number_of_threads_combo_box.setCurrentText(data.get('prep_number_of_threads', 'No. of Threads:'))
                 self.dicom_structures_text_field.setText(data.get('prep_dicom_structures', ''))
-                self.nifti_image_text_field.setText(data.get('prep_nifti_image', ''))
+                self.nifti_image_text_field.setText(data.get('prep_nifti_image_name', ''))
                 self.nifti_structures_text_field.setText(data.get('prep_nifti_structures', ''))
                 self.resample_resolution_text_field.setText(data.get('prep_resample_resolution', ''))
                 self.image_interpolation_method_combo_box.setCurrentText(
-                    data.get('prep_interpolation_method', 'Image Interpolation:'))
-                self.resample_dimension_combo_box.setCurrentText(data.get('prep_resample_dim', 'Resample Dimension:'))
+                    data.get('prep_image_interpolation_method', 'Image Interpolation:'))
+                self.resample_dimension_combo_box.setCurrentText(data.get('prep_resample_dimension', 'Resample Dimension:'))
                 self.mask_interpolation_method_combo_box.setCurrentText(
                     data.get('prep_mask_interpolation_method', 'Mask Interpolation:'))
                 self.mask_interpolation_threshold_text_field.setText(
                     data.get('prep_mask_interpolation_threshold', '0.5'))
                 self.input_imaging_mod_combo_box.setCurrentText(
-                    data.get('prep_input_image_modality', 'Imaging Modality:'))
+                    data.get('prep_input_imaging_modality', 'Imaging Modality:'))
                 self.just_save_as_nifti_check_box.setCheckState(data.get('prep_just_save_as_nifti', 0))
 
         except FileNotFoundError:

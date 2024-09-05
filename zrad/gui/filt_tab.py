@@ -403,7 +403,7 @@ class FilteringTab(BaseTab):
                 self.input_imaging_mod_combo_box.setCurrentText(
                     data.get('filtering_input_image_modality', 'Imaging Modality:'))
                 self.number_of_threads_combo_box.setCurrentText(data.get('filtering_no_of_threads', 'No. of Threads:'))
-                self.nifti_image_text_field.setText(data.get('filtering_nifti_image', ''))
+                self.nifti_image_text_field.setText(data.get('filtering_nifti_image_name', ''))
                 self.filter_combo_box.setCurrentText(data.get('filtering_filter_type', 'Filter Type:'))
                 self.filter_dimension_combo_box.setCurrentText(data.get('filtering_filter_dimension', 'Dimension:'))
                 self.padding_type_combo_box.setCurrentText(data.get('filtering_filter_padding_type', 'Padding Type:'))

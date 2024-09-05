@@ -1,4 +1,5 @@
 import os
+import warnings
 from abc import ABC, ABCMeta, abstractmethod
 from multiprocessing import cpu_count
 
@@ -22,7 +23,8 @@ def get_imaging_filepath(input_dir, patient_folder, filename, imaging_format='di
         elif os.path.isfile(filepath):
             return filepath
         else:
-            raise FileNotFoundError(f"Could not find dicom file: {filepath}")
+            warnings.warn(f"{filepath} not found.")
+            return None
     elif imaging_format == 'nifti':
         if os.path.isfile(filepath + '.nii.gz'):
             return filepath + '.nii.gz'
@@ -31,6 +33,7 @@ def get_imaging_filepath(input_dir, patient_folder, filename, imaging_format='di
         elif os.path.isfile(filepath):
             return filepath
         else:
+            warnings.warn(f"{filepath} not found!")
             return None
 
 
@@ -168,35 +171,44 @@ class BaseTab(QWidget, ABC, metaclass=BaseTabMeta):
         input_dir = self.input_params['input_directory']
         input_data_type = self.input_params['input_data_type']
         nifti_image_name = self.input_params['nifti_image_name']
+        input_imaging_modality = self.input_params["input_imaging_modality"]
         try:
             nifti_filtered_image_name = self.input_params['nifti_filtered_image_name']
         except KeyError:
             nifti_filtered_image_name = None
 
         if input_data_type.lower() == 'nifti':
-            # Construct file paths
+            # Construct file path
             image_path = get_imaging_filepath(input_dir, patient_folder, nifti_image_name, imaging_format='nifti')
-            # Read image
-            try:
-                image.read_nifti_image(image_path)
-            except Exception as e:
-                print(f"Error reading NIfTI image: {e}")
+
+            if image_path:
+                # Read image
+                try:
+                    image.read_nifti_image(image_path)
+                except Exception as e:
+                    print(f"Error reading NIfTI image: {e}")
+            else:
+                raise FileNotFoundError(f"{os.path.join(input_dir, patient_folder, nifti_image_name)}")
 
             # Read filtered image if specified
             if nifti_filtered_image_name:
                 filtered_image = Image()
                 filtered_image_path = get_imaging_filepath(input_dir, patient_folder, nifti_filtered_image_name,
                                                            imaging_format='nifti')
-                try:
-                    filtered_image.read_nifti_image(filtered_image_path)
-                except Exception as e:
-                    print(f"Error reading filtered NIfTI image: {e}")
+                if filtered_image_path:
+                    try:
+                        filtered_image.read_nifti_image(filtered_image_path)
+                    except Exception as e:
+                        print(f"Error reading filtered NIfTI image: {e}")
+                else:
+                    raise FileNotFoundError(f"{os.path.join(input_dir, patient_folder, nifti_filtered_image_name)}")
         elif input_data_type.lower() == 'dicom':
             # Construct file path for DICOM
             image_path = os.path.join(input_dir, patient_folder)
+
             # Read image
             try:
-                image.read_dicom_image(image_path, modality=self.input_imaging_mod_combo_box.currentText())
+                image.read_dicom_image(image_path, modality=input_imaging_modality)
             except Exception as e:
                 print(f"Error reading DICOM image: {e}")
         else:
@@ -218,10 +230,11 @@ class BaseTab(QWidget, ABC, metaclass=BaseTabMeta):
         if input_data_type == 'nifti':
             mask_path = get_imaging_filepath(input_dir, patient_folder, mask_name,
                                              imaging_format=input_data_type)
-            try:
-                mask.read_nifti_mask(image, mask_path)
-            except Exception as e:
-                print(f"Error reading NIfTI mask: {e}")
+            if mask_path:
+                try:
+                    mask.read_nifti_mask(image, mask_path)
+                except Exception as e:
+                    print(f"Error reading NIfTI mask: {e}")
         elif input_data_type == 'dicom':
             try:
                 mask.read_dicom_mask(os.path.join(input_dir, patient_folder), modality=input_imaging_modality, structure_name=mask_name)

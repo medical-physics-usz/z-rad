@@ -252,6 +252,7 @@ class RadiomicsTab(BaseTab):
         radiomic_features_list = []
         if list_of_patient_folders:
             for patient_folder in list_of_patient_folders:
+                self.logger.info(f"Processing patient: {patient_folder}.")
                 if self.input_params["nifti_filtered_image_name"]:
                     image, filtered_image = self.load_images(patient_folder)
                 else:

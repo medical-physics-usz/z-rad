@@ -310,6 +310,7 @@ class PreprocessingTab(BaseTab):
         # Process each patient folder
         if list_of_patient_folders:
             for patient_folder in list_of_patient_folders:
+                self.logger.info(f"Processing patient: {patient_folder}.")
                 image = self.load_images(patient_folder)
                 if self.input_params["just_save_as_nifti"]:
                     image_new = image.copy()
@@ -322,6 +323,7 @@ class PreprocessingTab(BaseTab):
 
                 if structure_set:
                     for mask_name in structure_set:
+                        self.logger.info(f"Processing patient: {patient_folder} with ROI: {mask_name}.")
                         mask = self.load_mask(patient_folder, mask_name, image)
                         if mask and mask.array is not None:
                             if self.input_params["just_save_as_nifti"]:

@@ -195,6 +195,12 @@ class PreprocessingTab(BaseTab):
             ('Data Type:', self.input_data_type_combo_box),
             ('Imaging Modality:', self.input_imaging_mod_combo_box)
         ]
+
+        if not self.input_params["just_save_as_nifti"]:
+            required_selections.append(('Image Interpolation:', self.image_interpolation_method_combo_box))
+            required_selections.append(('Mask Interpolation:', self.mask_interpolation_method_combo_box))
+            required_selections.append(('Resample Dimension:', self.resample_dimension_combo_box))
+
         for message, combo_box in required_selections:
             if combo_box.currentText() == message:
                 warning_msg = f"Select {message.split(':')[0]}"

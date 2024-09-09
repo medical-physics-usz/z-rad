@@ -3,7 +3,7 @@ import os
 from datetime import datetime
 
 from ._base_tab import BaseTab
-from .toolbox_gui import CustomButton, CustomLabel, CustomBox, CustomTextField, CustomWarningBox, CustomInfo
+from .toolbox_gui import CustomButton, CustomLabel, CustomBox, CustomTextField, CustomWarningBox, CustomInfo, CustomInfoBox
 from ..logic.exceptions import InvalidInputParametersError
 from ..logic.filtering import Filtering
 from ..logic.toolbox_logic import get_logger, close_all_loggers
@@ -326,7 +326,7 @@ class FilteringTab(BaseTab):
         else:
             CustomWarningBox("No patients to filter.")
         self.logger.info("Filtering finished!")
-        CustomWarningBox("Preprocessing finished!").response()
+        CustomInfoBox("Preprocessing finished!").response()
 
     def _get_filename(self):
         input_params = self.input_params  # Local reference for easier access

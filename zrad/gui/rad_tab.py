@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 
 from ._base_tab import BaseTab
-from .toolbox_gui import CustomLabel, CustomBox, CustomTextField, CustomCheckBox, CustomWarningBox, CustomInfo
+from .toolbox_gui import CustomLabel, CustomBox, CustomTextField, CustomCheckBox, CustomWarningBox, CustomInfo, CustomInfoBox
 from ..logic.exceptions import InvalidInputParametersError
 from ..logic.radiomics import Radiomics
 from ..logic.toolbox_logic import get_logger, close_all_loggers
@@ -278,7 +278,7 @@ class RadiomicsTab(BaseTab):
         else:
             CustomWarningBox("No patients to calculate radiomics from.")
         self.logger.info("Radiomics finished!")
-        CustomWarningBox("Radiomics finished!").response()
+        CustomInfoBox("Radiomics finished!").response()
 
     def _get_outlier_sigma(self):
         """

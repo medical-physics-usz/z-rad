@@ -4,7 +4,7 @@ from datetime import datetime
 
 from ._base_tab import BaseTab
 from .toolbox_gui import CustomLabel, CustomBox, CustomTextField, CustomWarningBox, CustomCheckBox, \
-    CustomInfo
+    CustomInfo, CustomInfoBox
 from ..logic.exceptions import InvalidInputParametersError
 from ..logic.preprocessing import Preprocessing
 from ..logic.toolbox_logic import get_logger, close_all_loggers
@@ -337,7 +337,7 @@ class PreprocessingTab(BaseTab):
         else:
             CustomWarningBox("No patients to calculate radiomics from.")
         self.logger.info("Preprocessing finished!")
-        CustomWarningBox("Preprocessing finished!").response()
+        CustomInfoBox("Preprocessing finished!").response()
 
     def save_settings(self):
         """

@@ -313,11 +313,13 @@ def _extract_dicom(dicom_dir, modality, extract_mask=False, rtstruct_file='', se
         if not hasattr(dicom_data, 'StructureSetROISequence'):
             raise InvalidDicomError()
 
+        contours_data = None
         metadata_map = {data.ROINumber: data for data in dicom_data.StructureSetROISequence}
         for roi_sequence in dicom_data.ROIContourSequence:
             roi_name = getattr(metadata_map[roi_sequence.ReferencedROINumber], 'ROIName', 'unknown')
             if roi_name == selected_roi:
                 contours_data = get_contour_coord(metadata_map, roi_sequence)
+                break
 
         return contours_data
 

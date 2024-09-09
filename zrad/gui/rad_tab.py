@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 from datetime import datetime
 
@@ -10,6 +11,8 @@ from .toolbox_gui import CustomLabel, CustomBox, CustomTextField, CustomCheckBox
 from ..logic.exceptions import InvalidInputParametersError, DataStructureError
 from ..logic.radiomics import Radiomics
 from ..logic.toolbox_logic import get_logger, close_all_loggers
+
+logging.captureWarnings(True)
 
 
 class RadiomicsTab(BaseTab):
@@ -228,6 +231,7 @@ class RadiomicsTab(BaseTab):
         except InvalidInputParametersError as e:
             # Stop execution if input parameters are invalid
             self.logger.error(e)
+            CustomWarningBox(str(e)).response()
             return
 
         # Determine structure set based on data type
@@ -298,7 +302,6 @@ class RadiomicsTab(BaseTab):
             # Check if the text field is empty or contains only whitespace
             if not text:
                 warning_msg = "Enter standard deviation for outlier filtering."
-                CustomWarningBox(warning_msg).response()
                 raise InvalidInputParametersError(warning_msg)
 
             # Convert the text field input to a float, handling any conversion errors
@@ -307,12 +310,10 @@ class RadiomicsTab(BaseTab):
             except ValueError:
                 # Handle any non-numeric input gracefully
                 warning_msg = "Invalid input for the standard deviation in outlier filtering. Please enter a valid number."
-                CustomWarningBox(warning_msg).response()
                 raise InvalidInputParametersError(warning_msg)
 
             if outlier_sigma < 0:
                 warning_msg = "The standard deviation in outlier filtering needs to be a positive number."
-                CustomWarningBox(warning_msg).response()
                 raise InvalidInputParametersError(warning_msg)
 
             return outlier_sigma
@@ -336,7 +337,6 @@ class RadiomicsTab(BaseTab):
         # Check if the text field is empty or contains only whitespace
         if not text:
             warning_msg = "Enter intensity range"
-            CustomWarningBox(warning_msg).response()
             raise InvalidInputParametersError(warning_msg)
 
         # Split the text field input by commas, convert to floats, handling empty values as np.inf
@@ -347,13 +347,11 @@ class RadiomicsTab(BaseTab):
             ]
         except ValueError:
             # Handle any non-numeric input gracefully
-            warning_msg = "Invalid input for intensity range. Please enter numbers separated by commas."
-            CustomWarningBox(warning_msg).response()
+            warning_msg = "Invalid input for intensity range. Please enter numbers separated by a comma."
             raise InvalidInputParametersError(warning_msg)
 
         if len(intensity_range) != 2:
             warning_msg = "Intensity range needs to be a list containing two numbers separated by a comma."
-            CustomWarningBox(warning_msg).response()
             raise InvalidInputParametersError(warning_msg)
         return intensity_range
 
@@ -382,7 +380,6 @@ class RadiomicsTab(BaseTab):
 
             # Check if input is empty
             if not text:
-                CustomWarningBox(warning_message).response()
                 raise InvalidInputParametersError(warning_message)
 
             # Attempt to convert the input to the expected type
@@ -390,7 +387,6 @@ class RadiomicsTab(BaseTab):
                 return expected_type(text)
             except ValueError:
                 warning_msg = f"Invalid input. Please enter a valid {expected_type.__name__}."
-                CustomWarningBox(warning_msg).response()
                 raise InvalidInputParametersError(warning_msg)
 
         # Retrieve the selected discretization method from the combo box
@@ -406,7 +402,6 @@ class RadiomicsTab(BaseTab):
             number_of_bins = get_bin_input(self.bin_number_text_field, "Enter Number of Bins", int)
             if number_of_bins is None:
                 warning_msg = f"Enter Number of Bins."
-                CustomWarningBox(warning_msg).response()
                 raise InvalidInputParametersError(warning_msg)
 
         elif discretization_method == 'Bin Size':
@@ -414,7 +409,6 @@ class RadiomicsTab(BaseTab):
             bin_size = get_bin_input(self.bin_size_text_field, "Enter Bin Size", float)
             if bin_size is None:
                 warning_msg = f"Enter Bin Size"
-                CustomWarningBox(warning_msg).response()
                 raise InvalidInputParametersError(warning_msg)
 
         return discretization_method, number_of_bins, bin_size
@@ -446,7 +440,6 @@ class RadiomicsTab(BaseTab):
             aggr_dim, aggr_method = map(str.strip, combo_text.split(','))
         except ValueError:
             warning_msg = f"Invalid aggregation settings format. Please ensure it's in 'dimension,method' format."
-            CustomWarningBox(warning_msg).response()
             raise InvalidInputParametersError(warning_msg)
 
         # Map the aggregation method to its corresponding value
@@ -466,7 +459,6 @@ class RadiomicsTab(BaseTab):
         for message, combo_box in required_selections:
             if combo_box.currentText() == message:
                 warning_msg = f"Select {message.split(':')[0]}"
-                CustomWarningBox(warning_msg).response()
                 raise InvalidInputParametersError(warning_msg)
 
     def _is_slice_weighting(self):

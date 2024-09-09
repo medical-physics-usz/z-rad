@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 from datetime import datetime
 
@@ -9,7 +10,6 @@ from ..logic.exceptions import InvalidInputParametersError, DataStructureError
 from ..logic.preprocessing import Preprocessing
 from ..logic.toolbox_logic import get_logger, close_all_loggers
 
-import logging
 logging.captureWarnings(True)
 
 
@@ -207,7 +207,6 @@ class PreprocessingTab(BaseTab):
         for message, combo_box in required_selections:
             if combo_box.currentText() == message:
                 warning_msg = f"Select {message.split(':')[0]}"
-                CustomWarningBox(warning_msg).response()
                 raise InvalidInputParametersError(warning_msg)
 
     def _just_save_as_nifti_changed(self):
@@ -289,6 +288,7 @@ class PreprocessingTab(BaseTab):
         except InvalidInputParametersError as e:
             # Stop execution if input parameters are invalid
             self.logger.error(e)
+            CustomWarningBox(str(e)).response()
             return
 
         # Determine structure set based on data type

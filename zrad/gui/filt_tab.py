@@ -8,6 +8,9 @@ from ..logic.exceptions import InvalidInputParametersError
 from ..logic.filtering import Filtering
 from ..logic.toolbox_logic import get_logger, close_all_loggers
 
+import logging
+logging.captureWarnings(True)
+
 
 class FilteringTab(BaseTab):
     def __init__(self):
@@ -221,43 +224,43 @@ class FilteringTab(BaseTab):
         self.input_params["nifti_image_name"] = self.get_text_from_text_field(self.input_params["nifti_image_name"])
 
         if self.input_params['filter_type'] == 'Mean' and not self.mean_filter_support_text_field.text().strip():
-            CustomWarningBox("Enter Support!").response()
-            return
+            error_msg = "Enter Support!"
+            raise InvalidInputParametersError(error_msg)
         if self.input_params['filter_type'] == 'Laplacian of Gaussian':
             if not self.log_filter_sigma_text_field.text().strip():
-                CustomWarningBox("Enter Sigma").response()
-                return
+                error_msg = "Enter Sigma"
+                raise InvalidInputParametersError(error_msg)
             if not self.log_filter_cutoff_text_field.text().strip():
-                CustomWarningBox("Enter Cutoff").response()
-                return
+                error_msg = "Enter Cutoff"
+                raise InvalidInputParametersError(error_msg)
 
         if self.input_params['filter_type'] == 'Laws Kernels':
             if not self.laws_filter_response_map_text_field.text().strip():
-                CustomWarningBox("Enter Response Map").response()
-                return
+                error_msg = "Enter Response Map"
+                raise InvalidInputParametersError(error_msg)
             if self.laws_filter_rot_inv_combo_box.currentText() == 'Rotation invariance:':
-                CustomWarningBox("Select Pseudo-rotational invariance").response()
-                return
+                error_msg = "Select Pseudo-rotational invariance"
+                raise InvalidInputParametersError(error_msg)
             if not self.laws_filter_distance_text_field.text().strip():
-                CustomWarningBox("Enter Distance").response()
-                return
+                error_msg = "Enter Distance"
+                raise InvalidInputParametersError(error_msg)
             if self.laws_filter_pooling_combo_box.currentText() == 'Pooling:':
-                CustomWarningBox("Select Pooling").response()
-                return
+                error_msg = "Select Pooling"
+                raise InvalidInputParametersError(error_msg)
             if self.laws_filter_energy_map_combo_box.currentText() == 'Energy map:':
-                CustomWarningBox("Select Energy map").response()
-                return
+                error_msg = "Select Energy map"
+                raise InvalidInputParametersError(error_msg)
 
         if self.input_params['filter_type'] == 'Wavelets':
             if self.wavelet_filter_type_combo_box.currentText() == 'Wavelet type:':
-                CustomWarningBox("Select Wavelet Type").response()
-                return
+                error_msg = "Select Wavelet Type"
+                raise InvalidInputParametersError(error_msg)
             if self.wavelet_filter_decomposition_level_combo_box.currentText() == 'Decomposition Lvl.:':
-                CustomWarningBox("Select Wavelet Decomposition Level").response()
-                return
+                error_msg = "Select Wavelet Decomposition Level"
+                raise InvalidInputParametersError(error_msg)
             if self.wavelet_filter_rot_inv_combo_box.currentText() == 'Rotation invariance:':
-                CustomWarningBox("Select Pseudo-rot. inv").response()
-                return
+                error_msg = "Select Pseudo-rot. inv"
+                raise InvalidInputParametersError(error_msg)
 
     def get_input_parameters(self):
         input_parameters = {
@@ -304,6 +307,7 @@ class FilteringTab(BaseTab):
         except InvalidInputParametersError as e:
             # Stop execution if input parameters are invalid
             self.logger.error(e)
+            CustomWarningBox(str(e)).response()
             return
 
         # Get patient folders
@@ -357,7 +361,7 @@ class FilteringTab(BaseTab):
                     **input_params
                 )
             else:
-                raise ValueError(f"Unknown filter dimension: {input_params['filter_dimension']}")
+                raise InvalidInputParametersError(f"Unknown filter dimension: {input_params['filter_dimension']}")
 
         # Check for Wavelets filter type, which has specific 2D and 3D formats
         if input_params["filter_type"] == 'Wavelets':
@@ -368,7 +372,7 @@ class FilteringTab(BaseTab):
             if filename_format:
                 filename = filename_format.format(**input_params)
             else:
-                raise ValueError(f"Unknown filter type: {input_params['filter_type']}")
+                raise InvalidInputParametersError(f"Unknown filter type: {input_params['filter_type']}")
 
         return f"{filename}.nii.gz"
 
@@ -666,8 +670,8 @@ class FilteringTab(BaseTab):
                     rotation_invariance=self.input_params["filter_wavelet_rot_inv"] == 'Enable'
                 )
             else:
-                raise ValueError(f"Filter_dimension {self.input_params["filter_dimension"]} is not supported.")
+                raise InvalidInputParametersError(f"Filter_dimension {self.input_params["filter_dimension"]} is not supported.")
         else:
-             raise ValueError(f"Filter_type {self.input_params['filter_type']} not supported.")
+             raise InvalidInputParametersError(f"Filter_type {self.input_params['filter_type']} not supported.")
 
         return filtering

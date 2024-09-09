@@ -5,6 +5,7 @@ from datetime import datetime
 from ._base_tab import BaseTab
 from .toolbox_gui import CustomLabel, CustomBox, CustomTextField, CustomWarningBox, CustomCheckBox, \
     CustomInfo
+from ..logic.exceptions import InvalidInputParametersError
 from ..logic.preprocessing import Preprocessing
 from ..logic.toolbox_logic import get_logger, close_all_loggers
 
@@ -196,9 +197,9 @@ class PreprocessingTab(BaseTab):
         ]
         for message, combo_box in required_selections:
             if combo_box.currentText() == message:
-                CustomWarningBox(f"Select {message.split(':')[0]}").response()
-                return False
-        return True
+                warning_msg = f"Select {message.split(':')[0]}"
+                CustomWarningBox(warning_msg).response()
+                raise InvalidInputParametersError(warning_msg)
 
     def _just_save_as_nifti_changed(self):
         if self.just_save_as_nifti_check_box.isChecked():
@@ -223,10 +224,7 @@ class PreprocessingTab(BaseTab):
 
     def check_input_parameters(self):
         # Validate combo box selections
-        if not self._validate_combo_selections():
-            CustomWarningBox("Invalid selections in combo boxes. Please select valid options.").response()
-            return
-
+        self._validate_combo_selections()
         self.check_common_input_parameters()
 
         self.input_params["nifti_image_name"] = self.get_text_from_text_field(self.input_params["nifti_image_name"])
@@ -277,11 +275,15 @@ class PreprocessingTab(BaseTab):
         self.get_input_parameters()
 
         # Check input parameters
-        self.check_input_parameters()
+        try:
+            self.check_input_parameters()
+        except InvalidInputParametersError as e:
+            # Stop execution if input parameters are invalid
+            self.logger.error(e)
+            return
 
         # Determine structure set based on data type
-        structure_set = self.input_params["dicom_structures"] if self.input_params["input_data_type"] == 'dicom' else \
-        self.input_params["nifti_structures"]
+        structure_set = self.input_params["dicom_structures"] if self.input_params["input_data_type"] == 'dicom' else self.input_params["nifti_structures"]
 
         # Get patient folders
         list_of_patient_folders = self.get_patient_folders()

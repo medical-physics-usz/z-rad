@@ -4,6 +4,7 @@ from datetime import datetime
 
 from ._base_tab import BaseTab
 from .toolbox_gui import CustomButton, CustomLabel, CustomBox, CustomTextField, CustomWarningBox, CustomInfo
+from ..logic.exceptions import InvalidInputParametersError
 from ..logic.filtering import Filtering
 from ..logic.toolbox_logic import get_logger, close_all_loggers
 
@@ -298,7 +299,12 @@ class FilteringTab(BaseTab):
         self.get_input_parameters()
 
         # Check input parameters
-        self.check_input_parameters()
+        try:
+            self.check_input_parameters()
+        except InvalidInputParametersError as e:
+            # Stop execution if input parameters are invalid
+            self.logger.error(e)
+            return
 
         # Get patient folders
         list_of_patient_folders = self.get_patient_folders()

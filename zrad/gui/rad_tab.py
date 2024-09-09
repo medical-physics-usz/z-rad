@@ -231,8 +231,7 @@ class RadiomicsTab(BaseTab):
             return
 
         # Determine structure set based on data type
-        structure_set = self.input_params["dicom_structures"] if self.input_params["input_data_type"] == 'dicom' else \
-            self.input_params["nifti_structures"]
+        structure_set = self.input_params["dicom_structures"] if self.input_params["input_data_type"] == 'dicom' else self.input_params["nifti_structures"]
 
         # Get patient folders
         list_of_patient_folders = self.get_patient_folders()
@@ -465,7 +464,6 @@ class RadiomicsTab(BaseTab):
                 warning_msg = f"Select {message.split(':')[0]}"
                 CustomWarningBox(warning_msg).response()
                 raise InvalidInputParametersError(warning_msg)
-        return True
 
     def _is_slice_weighting(self):
         """Determines if slice weighting is applied based on current settings."""

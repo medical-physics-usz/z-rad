@@ -7,7 +7,7 @@ import pandas as pd
 
 from ._base_tab import BaseTab
 from .toolbox_gui import CustomLabel, CustomBox, CustomTextField, CustomCheckBox, CustomWarningBox, CustomInfo, CustomInfoBox
-from ..logic.exceptions import InvalidInputParametersError
+from ..logic.exceptions import InvalidInputParametersError, DataStructureError
 from ..logic.radiomics import Radiomics
 from ..logic.toolbox_logic import get_logger, close_all_loggers
 
@@ -253,11 +253,14 @@ class RadiomicsTab(BaseTab):
         if list_of_patient_folders:
             for patient_folder in list_of_patient_folders:
                 self.logger.info(f"Processing patient: {patient_folder}.")
-                if self.input_params["nifti_filtered_image_name"]:
-                    image, filtered_image = self.load_images(patient_folder)
-                else:
-                    image = self.load_images(patient_folder)
-                    filtered_image = None
+                try:
+                    if self.input_params["nifti_filtered_image_name"]:
+                        image, filtered_image = self.load_images(patient_folder)
+                    else:
+                        image = self.load_images(patient_folder)
+                        filtered_image = None
+                except DataStructureError as e:
+                    self.logger.error(e)
                 for mask_name in structure_set:
                     self.logger.info(f"Processing patient: {patient_folder} with ROI: {mask_name}.")
                     mask = self.load_mask(patient_folder, mask_name, image)

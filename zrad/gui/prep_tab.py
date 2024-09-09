@@ -5,9 +5,12 @@ from datetime import datetime
 from ._base_tab import BaseTab
 from .toolbox_gui import CustomLabel, CustomBox, CustomTextField, CustomWarningBox, CustomCheckBox, \
     CustomInfo, CustomInfoBox
-from ..logic.exceptions import InvalidInputParametersError
+from ..logic.exceptions import InvalidInputParametersError, DataStructureError
 from ..logic.preprocessing import Preprocessing
 from ..logic.toolbox_logic import get_logger, close_all_loggers
+
+import logging
+logging.captureWarnings(True)
 
 
 class PreprocessingTab(BaseTab):
@@ -317,7 +320,13 @@ class PreprocessingTab(BaseTab):
         if list_of_patient_folders:
             for patient_folder in list_of_patient_folders:
                 self.logger.info(f"Processing patient: {patient_folder}.")
-                image = self.load_images(patient_folder)
+                try:
+                    image = self.load_images(patient_folder)
+                except DataStructureError as e:
+                    self.logger.error(e)
+                    self.logger.error(f"Patient {patient_folder} could not be loaded and is skipped.")
+                    continue
+
                 if self.input_params["just_save_as_nifti"]:
                     image_new = image.copy()
                 else:

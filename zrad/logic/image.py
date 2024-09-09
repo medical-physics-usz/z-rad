@@ -9,6 +9,8 @@ import pydicom
 from pydicom.errors import InvalidDicomError
 from skimage import draw
 
+from zrad.logic.exceptions import DataStructureWarning, DataStructureError
+
 
 class Image:
     def __init__(self, array=None, origin=None, spacing=None, direction=None, shape=None):
@@ -104,10 +106,8 @@ def _extract_dicom(dicom_dir, modality, extract_mask=False, rtstruct_file='', se
         for f in os.listdir(directory):
             if os.path.splitext(f)[-1] != '':
                 if not f.endswith('.dcm'):
-                    warnings.warn(f'Patient {directory} contains not only DICOM files '
-                                   f'but also other extentions, e.g. {os.path.splitext(f)[-1]}. '
-                                   'Excluded from the analysis.')
-                    return True
+                    warning_msg = f'Patient {directory} contains not only DICOM files but also other extentions, e.g. {os.path.splitext(f)[-1]}. Excluded from the analysis.'
+                    warnings.warn(warning_msg, DataStructureWarning)
 
         dicom_files = [f for f in os.listdir(directory) if (os.path.splitext(f)[-1] == '' or f.endswith('.dcm'))
                        and is_not_rt_struct(os.path.join(directory, f))]
@@ -124,7 +124,8 @@ def _extract_dicom(dicom_dir, modality, extract_mask=False, rtstruct_file='', se
                            for i in range(len(slice_z_origin) - 1)]
         for i in range(len(slice_thickness) - 1):
             if abs((slice_thickness[i] - slice_thickness[i + 1])) > 10 ** (-3):
-                warnings.warn(f'Patient {directory} has inconsistent z-spacing. Absolute deviation is more than 0.001 mm.')
+                error_msg = f'Patient {directory} has inconsistent z-spacing. Absolute deviation is more than 0.001 mm.'
+                raise DataStructureError(error_msg)
 
         acquisition_time_list = []
         for dcm_file in dicom_files:
@@ -140,22 +141,15 @@ def _extract_dicom(dicom_dir, modality, extract_mask=False, rtstruct_file='', se
                 try:
                     pat_weight = dicom[(0x0010, 0x1030)].value
                     if float(pat_weight) < 1:
-                        warnings.warn(
-                            f"For the patient {directory} the patient's weight tag (0071, 1022) contains weight < 1kg."
-                            'Patient is excluded from the analysis.')
-                        return True
+                        warning_msg = f"For the patient {directory} the patient's weight tag (0071, 1022) contains weight < 1kg. Patient is excluded from the analysis."
+                        warnings.warn(warning_msg, DataStructureWarning)
 
                 except KeyError:
-                    warnings.warn(
-                        f"For the patient {directory} the patient's weight tag (0071, 1022) is not present."
-                        'Patient is excluded from the analysis.')
-                    return True
+                    warning_msg = f"For the patient {directory} the patient's weight tag (0071, 1022) is not present. Patient is excluded from the analysis."
+                    warnings.warn(warning_msg, DataStructureWarning)
                 if 'DECY' not in dicom[(0x0028, 0x0051)].value or 'ATTN' not in dicom[(0x0028, 0x0051)].value:
-                    warnings.warn(
-                        f"For the patient {directory}, in DICOM tag (0028, 0051) either no "
-                        "'DECY' (decay correction) or 'ATTN' (attenuation correction) "
-                        'Patient is excluded from the analysis.')
-                    return True
+                    warning_msg = f"For the patient {directory}, in DICOM tag (0028, 0051) either no 'DECY' (decay correction) or 'ATTN' (attenuation correction). Patient is excluded from the analysis."
+                    warnings.warn(warning_msg, DataStructureWarning)
 
                 if dicom.Units == 'BQML':
                     injection_time = parse_time(
@@ -172,21 +166,19 @@ def _extract_dicom(dicom_dir, modality, extract_mask=False, rtstruct_file='', se
                                 if (acquisition_time != np.min(acquisition_time_list)
                                         or acquisition_time != parse_time(dicom.SeriesTime) and not time_mismatch):
                                     time_mismatch = True
-                                    warnings.warn(
-                                        f'For the patient {directory} there is a mismatch between the earliest '
-                                        'acquisition time, series time and Siemens private tag (0071, 1022). '
-                                        'Time from the Siemens private tag was used.')
+                                    warning_msg = f"For the patient {directory} there is a mismatch between the earliest acquisition time, series time and Siemens private tag (0071, 1022). Time from the Siemens private tag was used."
+                                    warnings.warn(warning_msg, DataStructureWarning)
                             except KeyError:
                                 acquisition_time = np.min(acquisition_time_list)
                                 if not time_mismatch:
                                     time_mismatch = True
-                                    warnings.warn(f'For the patient {directory} private Siemens tag (0071, 1022)'
-                                                   ' is not present. The earliest of all acquisition times was used.')
+                                    warning_msg = f"For the patient {directory} private Siemens tag (0071, 1022) is not present. The earliest of all acquisition times was used."
+                                    warnings.warn(warning_msg, DataStructureWarning)
+
                                 if acquisition_time != parse_time(dicom.SeriesTime) and not time_mismatch:
                                     time_mismatch = True
-                                    warnings.warn(
-                                        f'For the patient {directory} a mismatch present between the earliest '
-                                        'acquisition time and series time. Earliest acquisition time was used.')
+                                    warning_msg = f"For the patient {directory} a mismatch present between the earliest acquisition time and series time. Earliest acquisition time was used."
+                                    warnings.warn(warning_msg, DataStructureWarning)
                         elif 'GE' in dicom.Manufacturer.upper():
                             try:
                                 acquisition_time = parse_time(dicom[(0x0009, 0x100d)].value).replace(
@@ -196,60 +188,48 @@ def _extract_dicom(dicom_dir, modality, extract_mask=False, rtstruct_file='', se
                                 if (acquisition_time != np.min(acquisition_time_list)
                                         or acquisition_time != parse_time(dicom.SeriesTime) and not time_mismatch):
                                     time_mismatch = True
-                                    warnings.warn(f'For the patient {directory} a mismatch present between '
-                                                   'the earliest acquisition time, series time, and GE private tag. '
-                                                   'Time from the GE private tag was used.')
+                                    warning_msg = f"For the patient {directory} a mismatch present between the earliest acquisition time, series time, and GE private tag. Time from the GE private tag was used."
+                                    warnings.warn(warning_msg, DataStructureWarning)
                             except KeyError:
                                 acquisition_time = np.min(acquisition_time_list)
                                 if not time_mismatch:
                                     time_mismatch = True
-                                    warnings.warn(f'For the patient {directory} private GE tag (0009, 100d)'
-                                                   ' is not present. The earliest of all acquisition times was used.')
+                                    warning_msg = f"For the patient {directory} private GE tag (0009, 100d) is not present. The earliest of all acquisition times was used."
+                                    warnings.warn(warning_msg, DataStructureWarning)
                                 if acquisition_time != parse_time(dicom.SeriesTime) and not time_mismatch:
                                     time_mismatch = True
-                                    warnings.warn(
-                                        f'For the patient {directory} a mismatch present between the earliest '
-                                        'acquisition time and series time. Earliest acquisition time was used.')
+                                    warning_msg = f"For the patient {directory} a mismatch present between the earliest acquisition time and series time. Earliest acquisition time was used."
+                                    warnings.warn(warning_msg, DataStructureWarning)
                         else:
-                            warnings.warn(
-                                f'For the patient {directory} the unknown PET scaner manufacturer is present. '
-                                'Z-Rad only supports Philips, Siemens, and GE.')
-                            return True
+                            warning_msg = f"For the patient {directory} the unknown PET scaner manufacturer is present. Z-Rad only supports Philips, Siemens, and GE."
+                            raise DataStructureError(warning_msg)
 
                     elif dicom.DecayCorrection == 'ADMIN':
                         acquisition_time = injection_time
 
                     else:
-                        warnings.warn(
-                            f'For the patient {directory} the unsupported Decay Correction {dicom.DecayCorrection} '
-                            'is present. Only supported are "START" and "ADMIN". '
-                            'Patient is excluded from the analysis.')
-                        return True
+                        warning_msg = f"For the patient {directory} the unsupported Decay Correction {dicom.DecayCorrection} is present. Only supported are 'START' and 'ADMIN'. Patient is excluded from the analysis."
+                        raise DataStructureError(warning_msg)
                     elapsed_time = (acquisition_time - injection_time).total_seconds()
                     if elapsed_time < 0:
-                        warnings.warn(f'Patient {directory} is excluded from the analysis '
-                                       'due to the negative time difference in the decay factor.')
-                        return True
+                        error_msg = f"Patient {directory} is excluded from the analysis due to the negative time difference in the decay factor."
+                        raise DataStructureError(error_msg)
                     elif elapsed_time > 0 and abs(elapsed_time) < 1800 and dicom.DecayCorrection != 'ADMIN':
-                        warnings.warn(f'Only {abs(elapsed_time) / 60} minutes after the injection')
+                        warning_msg = f"Only {abs(elapsed_time) / 60} minutes after the injection."
+                        warnings.warn(warning_msg, DataStructureWarning)
                 elif dicom.Units == 'CNTS' and 'PHILIPS' in dicom.Manufacturer.upper():
                     try:
                         activity_scale_factor = dicom[(0x7053, 0x1009)].value
                         print(activity_scale_factor)
                         if activity_scale_factor == 0.0:
-                            warnings.warn(
-                                f'Patient {directory} is excluded, Philips private activity scale factor (7053, 1009) = 0.'
-                                '(PET units CNTS)')
-                            return True
+                            error_msg = f"Patient {directory} is excluded, Philips private activity scale factor (7053, 1009) = 0. (PET units CNTS)"
+                            raise DataStructureError(error_msg)
                     except KeyError:
-                        warnings.warn(
-                            f'Patient {directory} is excluded, Philips private activity scale factor '
-                            '(7053, 1009) is missing. (PET units CNTS)')
-                        return True
+                        error_msg = f"Patient {directory} is excluded, Philips private activity scale factor (7053, 1009) is missing. (PET units CNTS)."
+                        raise DataStructureError(error_msg)
                 else:
-                    warnings.warn(f'Patient {directory} is excluded, only supported PET Units are "BQML" for Philips, '
-                                   'Siemens and GE or "CNTS" for Philips')
-                    return True
+                    error_msg = f"Patient {directory} is excluded, only supported PET Units are BQML for Philips, Siemens and GE or CNTS for Philips"
+                    raise DataStructureError(error_msg)
         return False
 
     def parse_time(time_str):

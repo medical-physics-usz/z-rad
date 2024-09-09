@@ -7,7 +7,7 @@ from PyQt5.QtWidgets import QFileDialog
 from PyQt5.QtWidgets import QWidget, QVBoxLayout
 
 from .toolbox_gui import CustomButton, CustomLabel, CustomBox, CustomTextField, CustomInfo, CustomWarningBox
-from ..logic.exceptions import InvalidInputParametersError
+from ..logic.exceptions import InvalidInputParametersError, DataStructureError
 from ..logic.image import Image
 
 
@@ -184,7 +184,8 @@ class BaseTab(QWidget, ABC, metaclass=BaseTabMeta):
                 try:
                     image.read_nifti_image(image_path)
                 except Exception as e:
-                    print(f"Error reading NIfTI image: {e}")
+                    error_msg = f"Error reading filtered NIfTI image: {e}"
+                    raise DataStructureError(error_msg)
             else:
                 raise FileNotFoundError(f"{os.path.join(input_dir, patient_folder, nifti_image_name)}")
 
@@ -197,7 +198,8 @@ class BaseTab(QWidget, ABC, metaclass=BaseTabMeta):
                     try:
                         filtered_image.read_nifti_image(filtered_image_path)
                     except Exception as e:
-                        print(f"Error reading filtered NIfTI image: {e}")
+                        error_msg = f"Error reading filtered NIfTI image: {e}"
+                        raise DataStructureError(error_msg)
                 else:
                     raise FileNotFoundError(f"{os.path.join(input_dir, patient_folder, nifti_filtered_image_name)}")
         elif input_data_type.lower() == 'dicom':
@@ -205,10 +207,7 @@ class BaseTab(QWidget, ABC, metaclass=BaseTabMeta):
             image_path = os.path.join(input_dir, patient_folder)
 
             # Read image
-            try:
-                image.read_dicom_image(image_path, modality=input_imaging_modality)
-            except Exception as e:
-                print(f"Error reading DICOM image: {e}")
+            image.read_dicom_image(image_path, modality=input_imaging_modality)
         else:
             warning_msg = f"Invalid input data type: {input_data_type}"
             CustomWarningBox(warning_msg).response()
@@ -234,12 +233,14 @@ class BaseTab(QWidget, ABC, metaclass=BaseTabMeta):
                 try:
                     mask.read_nifti_mask(image, mask_path)
                 except Exception as e:
-                    print(f"Error reading NIfTI mask: {e}")
+                    error_msg = f"Error reading NIfTI mask: {e}"
+                    raise DataStructureError(error_msg)
         elif input_data_type == 'dicom':
             try:
                 mask.read_dicom_mask(os.path.join(input_dir, patient_folder), modality=input_imaging_modality, structure_name=mask_name)
             except Exception as e:
-                print(f"Error reading DICOM mask: {e}")
+                error_msg = f"Error reading DICOM mask: {e}"
+                raise DataStructureError(error_msg)
         else:
             warning_msg = f"Invalid input data type: {input_data_type}"
             CustomWarningBox(warning_msg).response()

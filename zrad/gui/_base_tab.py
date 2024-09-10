@@ -222,13 +222,11 @@ class BaseTab(QWidget, ABC, metaclass=BaseTabMeta):
         """Loads a mask based on the data type."""
         input_dir = self.input_params["input_directory"]
         input_data_type = self.input_params["input_data_type"]
-        input_imaging_modality = self.input_params["input_imaging_modality"]
 
         mask = Image()
 
         if input_data_type == 'nifti':
-            mask_path = get_imaging_filepath(input_dir, patient_folder, mask_name,
-                                             imaging_format=input_data_type)
+            mask_path = get_imaging_filepath(input_dir, patient_folder, mask_name, imaging_format=input_data_type)
             if mask_path:
                 try:
                     mask.read_nifti_mask(image, mask_path)
@@ -237,7 +235,8 @@ class BaseTab(QWidget, ABC, metaclass=BaseTabMeta):
                     raise DataStructureError(error_msg)
         elif input_data_type == 'dicom':
             try:
-                mask.read_dicom_mask(os.path.join(input_dir, patient_folder), modality=input_imaging_modality, structure_name=mask_name)
+                dicom_dir = os.path.join(input_dir, patient_folder)
+                mask.read_dicom_mask(dicom_dir, structure_name=mask_name, image=image)
             except Exception as e:
                 error_msg = f"Error reading DICOM mask: {e}"
                 raise DataStructureError(error_msg)

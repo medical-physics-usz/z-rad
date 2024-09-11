@@ -7,6 +7,7 @@ from ._base_tab import BaseTab
 from .toolbox_gui import CustomLabel, CustomBox, CustomTextField, CustomWarningBox, CustomCheckBox, \
     CustomInfo, CustomInfoBox
 from ..logic.exceptions import InvalidInputParametersError, DataStructureError
+from ..logic.image import get_all_structure_names, get_dicom_files
 from ..logic.preprocessing import Preprocessing
 from ..logic.toolbox_logic import get_logger, close_all_loggers
 
@@ -29,17 +30,22 @@ class PreprocessingTab(BaseTab):
         )
         self.dicom_structures_text_field = CustomTextField(
             "E.g. CTV, liver, ...",
-            300, 300, 450, 50, self
+            300, 300, 400, 50, self
         )
 
         self.dicom_structures_info_label = CustomInfo(
             ' i',
             'Type ROIs of interest (e.g. CTV, liver).',
-            760, 300, 14, 14, self
+            710, 300, 14, 14, self
         )
+
+        self.use_all_structures_check_box = CustomCheckBox(
+            'All structures',
+            750, 300, 150, 50, self)
+
         self.just_save_as_nifti_check_box = CustomCheckBox(
             'Convert to NIfTI without resampling',
-            800, 300, 400, 50, self)
+            900, 300, 400, 50, self)
 
         self._hide_dicom_elements()
 
@@ -131,6 +137,7 @@ class PreprocessingTab(BaseTab):
     def connect_signals(self):
         self.input_data_type_combo_box.currentTextChanged.connect(self.file_type_changed)
         self.just_save_as_nifti_check_box.stateChanged.connect(self._just_save_as_nifti_changed)
+        self.use_all_structures_check_box.stateChanged.connect(self._use_all_structures_changed)
         self.run_button.clicked.connect(self.run_selection)
         self.mask_interpolation_method_combo_box.currentTextChanged.connect(
             lambda:
@@ -150,12 +157,14 @@ class PreprocessingTab(BaseTab):
         self.dicom_structures_text_field.show()
         self.dicom_structures_info_label.show()
         self.just_save_as_nifti_check_box.show()
+        self.use_all_structures_check_box.show()
 
     def _hide_dicom_elements(self):
         self.dicom_structures_label.hide()
         self.dicom_structures_text_field.hide()
         self.dicom_structures_info_label.hide()
         self.just_save_as_nifti_check_box.hide()
+        self.use_all_structures_check_box.hide()
 
     def _show_nifti_elements(self):
         self.nifti_structures_label.show()
@@ -215,6 +224,16 @@ class PreprocessingTab(BaseTab):
         else:
             self._show_preprocessing_elements()
 
+    def _use_all_structures_changed(self):
+        if self.use_all_structures_check_box.isChecked():
+            self.dicom_structures_label.hide()
+            self.dicom_structures_text_field.hide()
+            self.dicom_structures_info_label.hide()
+        else:
+            self.dicom_structures_label.show()
+            self.dicom_structures_text_field.show()
+            self.dicom_structures_info_label.show()
+
     def file_type_changed(self, text):
         """Handle changes in the selected input file type."""
         if text == "DICOM":
@@ -222,6 +241,10 @@ class PreprocessingTab(BaseTab):
             self._hide_nifti_elements()
             if self.just_save_as_nifti_check_box.isChecked():
                 self._hide_preprocessing_elements()
+            if self.use_all_structures_check_box.isChecked():
+                self.dicom_structures_label.hide()
+                self.dicom_structures_text_field.hide()
+                self.dicom_structures_info_label.hide()
         elif text == "NIfTI":
             self._show_nifti_elements()
             self._hide_dicom_elements()
@@ -236,8 +259,12 @@ class PreprocessingTab(BaseTab):
         self.check_common_input_parameters()
 
         self.input_params["nifti_image_name"] = self.get_text_from_text_field(self.input_params["nifti_image_name"])
-        self.input_params["dicom_structures"] = self.get_list_from_text_field(self.input_params["dicom_structures"])
         self.input_params["nifti_structures"] = self.get_list_from_text_field(self.input_params["nifti_structures"])
+
+        if not self.input_params["use_all_structures"]:
+            self.input_params["dicom_structures"] = None
+        else:
+            self.input_params["dicom_structures"] = self.get_list_from_text_field(self.input_params["dicom_structures"])
 
         if self.input_params["just_save_as_nifti"]:
             self.input_params["resample_dimension"] = None
@@ -280,7 +307,8 @@ class PreprocessingTab(BaseTab):
             'mask_interpolation_method': self.mask_interpolation_method_combo_box.currentText(),
             'mask_interpolation_threshold': self.mask_interpolation_threshold_text_field.text(),
             'input_imaging_modality': self.input_imaging_mod_combo_box.currentText(),
-            'just_save_as_nifti': self.just_save_as_nifti_check_box.checkState()
+            'just_save_as_nifti': self.just_save_as_nifti_check_box.checkState(),
+            'use_all_structures': self.use_all_structures_check_box.checkState(),
         }
         self.input_params = input_parameters
 
@@ -307,7 +335,12 @@ class PreprocessingTab(BaseTab):
         list_of_patient_folders = self.get_patient_folders()
 
         # Determine structure set based on data type
-        structure_set = self.input_params["dicom_structures"] if self.input_params["input_data_type"] == 'dicom' else self.input_params["nifti_structures"]
+        structure_set = None
+        if self.input_params["input_data_type"] == "nifti":
+            structure_set = self.input_params.get("nifti_structures")
+        elif self.input_params["input_data_type"] == "dicom":
+            if not self.input_params["use_all_structures"]:
+                structure_set = self.input_params["dicom_structures"]
 
         # Initialize Preprocessing instance
         prep_image = Preprocessing(
@@ -347,6 +380,11 @@ class PreprocessingTab(BaseTab):
                 # Save new image
                 output_path = os.path.join(self.input_params["output_directory"], patient_folder, 'image.nii.gz')
                 image_new.save_as_nifti(output_path)
+
+                if self.input_params["use_all_structures"]:
+                    input_directory = os.path.join(self.input_params["input_directory"], patient_folder)
+                    rtstruct_path = get_dicom_files(input_directory, modality='RTSTRUCT')[0]
+                    structure_set = get_all_structure_names(rtstruct_path)
 
                 if structure_set:
                     for mask_name in structure_set:
@@ -418,6 +456,7 @@ class PreprocessingTab(BaseTab):
                 self.input_imaging_mod_combo_box.setCurrentText(
                     data.get('prep_input_imaging_modality', 'Imaging Modality:'))
                 self.just_save_as_nifti_check_box.setCheckState(data.get('prep_just_save_as_nifti', 0))
+                self.use_all_structures_check_box.setCheckState(data.get('prep_use_all_structures', 0))
 
         except FileNotFoundError:
             print("No previous data found!")

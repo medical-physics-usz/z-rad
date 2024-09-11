@@ -455,3 +455,36 @@ def extract_dicom_mask(rtstruct_path, roi_name, image):
                      shape=image.GetSize())
     else:
         return Image()
+
+
+def get_all_structure_names(rtstruct_path):
+    """Extracts all structure names from an RTSTRUCT DICOM file.
+
+    Args:
+        rtstruct_path (str): Path to the RTSTRUCT DICOM file.
+
+    Returns:
+        list: A list of structure names.
+
+    Raises:
+        InvalidDicomError: If the DICOM file does not have a StructureSetROISequence attribute.
+    """
+    # Read the DICOM file
+    dicom_data = pydicom.read_file(rtstruct_path)
+
+    # Check if the file contains a StructureSetROISequence
+    if not hasattr(dicom_data, 'StructureSetROISequence'):
+        raise InvalidDicomError(f"The DICOM file at {rtstruct_path} is not a valid RTSTRUCT file.")
+
+    # Map ROI numbers to metadata for quick lookup
+    metadata_map = {roi_data.ROINumber: roi_data for roi_data in dicom_data.StructureSetROISequence}
+
+    # Extract structure names
+    structure_names = []
+    if hasattr(dicom_data, 'ROIContourSequence'):
+        for roi_sequence in dicom_data.ROIContourSequence:
+            roi_number = roi_sequence.ReferencedROINumber
+            roi_name = getattr(metadata_map.get(roi_number, {}), 'ROIName', 'unknown')
+            structure_names.append(roi_name)
+
+    return structure_names

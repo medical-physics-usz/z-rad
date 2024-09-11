@@ -9,6 +9,7 @@ import pandas as pd
 from ._base_tab import BaseTab
 from .toolbox_gui import CustomLabel, CustomBox, CustomTextField, CustomCheckBox, CustomWarningBox, CustomInfo, CustomInfoBox
 from ..logic.exceptions import InvalidInputParametersError, DataStructureError
+from ..logic.image import get_dicom_files, get_all_structure_names
 from ..logic.radiomics import Radiomics
 from ..logic.toolbox_logic import get_logger, close_all_loggers
 
@@ -27,16 +28,25 @@ class RadiomicsTab(BaseTab):
     def init_dicom_elements(self):
         """Initialize UI components related to DICOM elements."""
         self.dicom_structures_label = CustomLabel(
-            'Structures:', 200, 300, 200, 50, self, style="color: white;"
+            'Structures:',
+            200, 300, 200, 50, self,
+            style="color: white;"
         )
         self.dicom_structures_text_field = CustomTextField(
-            "E.g. CTV, liver, ...", 300, 300, 450, 50, self
+            "E.g. CTV, liver, ...",
+            300, 300, 400, 50, self
         )
+
         self.dicom_structures_info_label = CustomInfo(
             ' i',
             'Type ROIs of interest (e.g. CTV, liver).',
-            760, 300, 14, 14, self
+            710, 300, 14, 14, self
         )
+
+        self.use_all_structures_check_box = CustomCheckBox(
+            'All structures',
+            750, 300, 150, 50, self)
+
         self._hide_dicom_elements()
 
     def init_nifti_elements(self):
@@ -163,6 +173,7 @@ class RadiomicsTab(BaseTab):
     def connect_signals(self):
         """Connect signals for UI elements."""
         self.input_data_type_combo_box.currentTextChanged.connect(self.file_type_changed)
+        self.use_all_structures_check_box.stateChanged.connect(self._use_all_structures_changed)
         self.outlier_detection_check_box.stateChanged.connect(
             lambda: self.outlier_detection_text_field.setVisible(self.outlier_detection_check_box.isChecked())
         )
@@ -173,6 +184,22 @@ class RadiomicsTab(BaseTab):
         self.aggr_dim_and_method_combo_box.currentTextChanged.connect(self._toggle_weighting_visibility)
         self.run_button.clicked.connect(self.run_selection)
 
+    def file_type_changed(self, text):
+        """Handle changes in the selected input file type."""
+        if text == "DICOM":
+            self._show_dicom_elements()
+            self._hide_nifti_elements()
+            if self.use_all_structures_check_box.isChecked():
+                self.dicom_structures_label.hide()
+                self.dicom_structures_text_field.hide()
+                self.dicom_structures_info_label.hide()
+        elif text == "NIfTI":
+            self._show_nifti_elements()
+            self._hide_dicom_elements()
+        else:
+            self._hide_dicom_elements()
+            self._hide_nifti_elements()
+
     def check_input_parameters(self):
         # Validate combo box selections
         self._validate_combo_selections()
@@ -180,8 +207,12 @@ class RadiomicsTab(BaseTab):
 
         self.input_params["nifti_image_name"] = self.get_text_from_text_field(self.input_params["nifti_image_name"])
         self.input_params["nifti_filtered_image_name"] = self.get_text_from_text_field(self.input_params["nifti_filtered_image_name"])
-        self.input_params["dicom_structures"] = self.get_list_from_text_field(self.input_params["dicom_structures"])
         self.input_params["nifti_structures"] = self.get_list_from_text_field(self.input_params["nifti_structures"])
+
+        if not self.input_params["use_all_structures"]:
+            self.input_params["dicom_structures"] = None
+        else:
+            self.input_params["dicom_structures"] = self.get_list_from_text_field(self.input_params["dicom_structures"])
 
         self.input_params["outlier_range"] = self._get_outlier_sigma()
         self.input_params["intensity_range"] = self._get_intensity_range()
@@ -212,6 +243,7 @@ class RadiomicsTab(BaseTab):
             'outlier_detection_check_box': self.outlier_detection_check_box.checkState(),
             'outlier_detection_value': self.outlier_detection_text_field.text(),
             'weighting': self.weighting_combo_box.currentText(),
+            'use_all_structures': self.use_all_structures_check_box.checkState(),
         }
         self.input_params = input_parameters
 
@@ -238,7 +270,12 @@ class RadiomicsTab(BaseTab):
         list_of_patient_folders = self.get_patient_folders()
 
         # Determine structure set based on data type
-        structure_set = self.input_params["dicom_structures"] if self.input_params["input_data_type"] == 'dicom' else self.input_params["nifti_structures"]
+        structure_set = None
+        if self.input_params["input_data_type"] == "nifti":
+            structure_set = self.input_params.get("nifti_structures")
+        elif self.input_params["input_data_type"] == "dicom":
+            if not self.input_params["use_all_structures"]:
+                structure_set = self.input_params["dicom_structures"]
 
         # Initialize Radiomics instance
         rad_instance = Radiomics(
@@ -265,6 +302,12 @@ class RadiomicsTab(BaseTab):
                         filtered_image = None
                 except DataStructureError as e:
                     self.logger.error(e)
+
+                if self.input_params["use_all_structures"]:
+                    input_directory = os.path.join(self.input_params["input_directory"], patient_folder)
+                    rtstruct_path = get_dicom_files(input_directory, modality='RTSTRUCT')[0]
+                    structure_set = get_all_structure_names(rtstruct_path)
+
                 for mask_name in structure_set:
                     self.logger.info(f"Processing patient: {patient_folder} with ROI: {mask_name}.")
                     mask = self.load_mask(patient_folder, mask_name, image)
@@ -481,11 +524,13 @@ class RadiomicsTab(BaseTab):
         self.dicom_structures_label.show()
         self.dicom_structures_text_field.show()
         self.dicom_structures_info_label.show()
+        self.use_all_structures_check_box.show()
 
     def _hide_dicom_elements(self):
         self.dicom_structures_label.hide()
         self.dicom_structures_text_field.hide()
         self.dicom_structures_info_label.hide()
+        self.use_all_structures_check_box.hide()
 
     def _show_nifti_elements(self):
         self.nifti_structures_label.show()
@@ -578,7 +623,17 @@ class RadiomicsTab(BaseTab):
                 self.outlier_detection_check_box.setCheckState(data.get('radiomics_outlier_detection_check_box', 0))
                 self.outlier_detection_text_field.setText(data.get('radiomics_outlier_detection_value', ''))
                 self.weighting_combo_box.setCurrentText(data.get('radiomics_weighting', 'Slice Averaging:'))
-                self.input_imaging_mod_combo_box.setCurrentText(
-                    data.get('radiomics_input_imaging_modality', 'Imaging Modality:'))
+                self.input_imaging_mod_combo_box.setCurrentText(data.get('radiomics_input_imaging_modality', 'Imaging Modality:'))
+                self.use_all_structures_check_box.setCheckState(data.get('radiomics_use_all_structures', 0))
         except FileNotFoundError:
             print("No previous data found!")
+
+    def _use_all_structures_changed(self):
+        if self.use_all_structures_check_box.isChecked():
+            self.dicom_structures_label.hide()
+            self.dicom_structures_text_field.hide()
+            self.dicom_structures_info_label.hide()
+        else:
+            self.dicom_structures_label.show()
+            self.dicom_structures_text_field.show()
+            self.dicom_structures_info_label.show()

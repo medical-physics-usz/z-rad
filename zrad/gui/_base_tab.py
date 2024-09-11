@@ -87,7 +87,7 @@ class BaseTab(QWidget, ABC, metaclass=BaseTabMeta):
             self,
             style=True)
         self.load_dir_text_field.setAlignment(Qt.AlignCenter)
-        self.load_dir_button.clicked.connect(lambda: self.open_directory(key=True))
+        self.load_dir_button.clicked.connect(lambda: self.open_directory(is_load_dir=True))
 
         #  Start and Stop Folder TextFields and Labels
         self.start_folder_label = CustomLabel(
@@ -139,15 +139,21 @@ class BaseTab(QWidget, ABC, metaclass=BaseTabMeta):
             self,
             style=True)
         self.save_dir_text_field.setAlignment(Qt.AlignCenter)
-        self.save_dir_button.clicked.connect(lambda: self.open_directory(key=False))
+        self.save_dir_button.clicked.connect(lambda: self.open_directory(is_load_dir=False))
 
-    def open_directory(self, key):
+    def open_directory(self, is_load_dir):
         options = QFileDialog.Options()
         options |= QFileDialog.ShowDirsOnly
-        directory = QFileDialog.getExistingDirectory(self, "Select Directory", "", options=options)
-        if directory and key:
+        if is_load_dir:
+            initial_directory = self.load_dir_text_field.text() if self.load_dir_text_field.text() else ""
+        else:
+            initial_directory = self.save_dir_text_field.text() if self.save_dir_text_field.text() else ""
+
+        directory = QFileDialog.getExistingDirectory(self, "Select Directory", initial_directory, options=options)
+
+        if directory and is_load_dir:
             self.load_dir_text_field.setText(directory)
-        elif directory and not key:
+        elif directory and not is_load_dir:
             self.save_dir_text_field.setText(directory)
 
     def file_type_changed(self, text):

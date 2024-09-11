@@ -215,10 +215,7 @@ class FilteringTab(BaseTab):
 
     def check_input_parameters(self):
         # Validate combo box selections
-        if not self._validate_combo_selections():
-            CustomWarningBox("Invalid selections in combo boxes. Please select valid options.").response()
-            return
-
+        self._validate_combo_selections()
         self.check_common_input_parameters()
 
         self.input_params["nifti_image_name"] = self.get_text_from_text_field(self.input_params["nifti_image_name"])
@@ -271,7 +268,7 @@ class FilteringTab(BaseTab):
             'input_image_modality': self.input_imaging_mod_combo_box.currentText(),
             'input_data_type': self.input_data_type_combo_box.currentText(),
             'output_directory': self.save_dir_text_field.text(),
-            'no_of_threads': self.number_of_threads_combo_box.currentText(),
+            'number_of_threads': self.number_of_threads_combo_box.currentText(),
             'nifti_image_name': self.nifti_image_text_field.text(),
             'filter_type': self.filter_combo_box.currentText(),
             'filter_dimension': self.filter_dimension_combo_box.currentText(),
@@ -293,6 +290,7 @@ class FilteringTab(BaseTab):
         self.input_params = input_parameters
 
     def run_selection(self):
+        """Executes filtering based on user-selected options."""
         close_all_loggers()
         self.logger_date_time = datetime.now().strftime("%Y-%m-%d_%H%M%S")
         self.logger = get_logger(self.logger_date_time + '_Filtering')
@@ -412,7 +410,7 @@ class FilteringTab(BaseTab):
                 self.save_dir_text_field.setText(data.get('filtering_output_directory', ''))
                 self.input_imaging_mod_combo_box.setCurrentText(
                     data.get('filtering_input_image_modality', 'Imaging Modality:'))
-                self.number_of_threads_combo_box.setCurrentText(data.get('filtering_no_of_threads', 'No. of Threads:'))
+                self.number_of_threads_combo_box.setCurrentText(data.get('filtering_number_of_threads', 'Threads:'))
                 self.nifti_image_text_field.setText(data.get('filtering_nifti_image_name', ''))
                 self.filter_combo_box.setCurrentText(data.get('filtering_filter_type', 'Filter Type:'))
                 self.filter_dimension_combo_box.setCurrentText(data.get('filtering_filter_dimension', 'Dimension:'))
@@ -607,7 +605,7 @@ class FilteringTab(BaseTab):
     def _validate_combo_selections(self):
         """Validate combo box selections."""
         required_selections = [
-            ('No. of Threads:', self.number_of_threads_combo_box),
+            ('Threads:', self.number_of_threads_combo_box),
             ('Data Type:', self.input_data_type_combo_box),
             ('Filter Type:', self.filter_combo_box),
             ('Dimension:', self.filter_dimension_combo_box),
@@ -616,9 +614,8 @@ class FilteringTab(BaseTab):
         ]
         for message, combo_box in required_selections:
             if combo_box.currentText() == message:
-                CustomWarningBox(f"Select {message.split(':')[0]}").response()
-                return False
-        return True
+                warning_msg = f"Select {message.split(':')[0]}"
+                raise InvalidInputParametersError(warning_msg)
 
     def _get_filtering(self):
         if self.input_params["filter_type"] == 'Mean':

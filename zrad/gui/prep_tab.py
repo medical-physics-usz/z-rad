@@ -194,7 +194,7 @@ class PreprocessingTab(BaseTab):
     def _validate_combo_selections(self):
         """Validate combo box selections."""
         required_selections = [
-            ('No. of Threads:', self.number_of_threads_combo_box),
+            ('Threads:', self.number_of_threads_combo_box),
             ('Data Type:', self.input_data_type_combo_box),
             ('Imaging Modality:', self.input_imaging_mod_combo_box)
         ]
@@ -246,8 +246,20 @@ class PreprocessingTab(BaseTab):
             self.input_params["mask_interpolation_method"] = None
             self.input_params["mask_interpolation_threshold"] = None
         else:
-            self.input_params["resample_resolution"] = float(self.input_params["resample_resolution"])
-            self.input_params["mask_interpolation_threshold"] = float(self.input_params["mask_interpolation_threshold"])
+            try:
+                self.input_params["resample_resolution"] = float(self.input_params["resample_resolution"])
+            except ValueError:
+                msg = "Select valid resample resolution"
+                raise InvalidInputParametersError(msg)
+
+            if self.input_params["mask_interpolation_method"] != "NN":
+                try:
+                    self.input_params["mask_interpolation_threshold"] = float(self.input_params["mask_interpolation_threshold"])
+                except ValueError:
+                    msg = "Select valid mask interpolation threshold"
+                    raise InvalidInputParametersError(msg)
+            else:
+                self.input_params["mask_interpolation_threshold"] = None
 
     def get_input_parameters(self):
         """Collect input parameters from UI elements."""
@@ -273,12 +285,12 @@ class PreprocessingTab(BaseTab):
         self.input_params = input_parameters
 
     def run_selection(self):
+        """Executes preprocessing based on user-selected options."""
         close_all_loggers()
         self.logger_date_time = datetime.now().strftime("%Y-%m-%d_%H%M%S")
         self.logger = get_logger(self.logger_date_time + '_Preprocessing')
         self.logger.info("Preprocessing started")
 
-        """Executes preprocessing based on user-selected options."""
         # Prepare input parameters for radiomics extraction
         self.get_input_parameters()
 
@@ -291,11 +303,11 @@ class PreprocessingTab(BaseTab):
             CustomWarningBox(str(e)).response()
             return
 
-        # Determine structure set based on data type
-        structure_set = self.input_params["dicom_structures"] if self.input_params["input_data_type"] == 'dicom' else self.input_params["nifti_structures"]
-
         # Get patient folders
         list_of_patient_folders = self.get_patient_folders()
+
+        # Determine structure set based on data type
+        structure_set = self.input_params["dicom_structures"] if self.input_params["input_data_type"] == 'dicom' else self.input_params["nifti_structures"]
 
         # Initialize Preprocessing instance
         prep_image = Preprocessing(
@@ -391,7 +403,7 @@ class PreprocessingTab(BaseTab):
                 self.list_of_patient_folders_text_field.setText(data.get('prep_list_of_patient_folders', ''))
                 self.input_data_type_combo_box.setCurrentText(data.get('prep_input_data_type', 'Data Type:'))
                 self.save_dir_text_field.setText(data.get('prep_output_directory', ''))
-                self.number_of_threads_combo_box.setCurrentText(data.get('prep_number_of_threads', 'No. of Threads:'))
+                self.number_of_threads_combo_box.setCurrentText(data.get('prep_number_of_threads', 'Threads:'))
                 self.dicom_structures_text_field.setText(data.get('prep_dicom_structures', ''))
                 self.nifti_image_text_field.setText(data.get('prep_nifti_image_name', ''))
                 self.nifti_structures_text_field.setText(data.get('prep_nifti_structures', ''))

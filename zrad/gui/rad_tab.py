@@ -198,7 +198,7 @@ class RadiomicsTab(BaseTab):
             'input_data_type': self.input_data_type_combo_box.currentText(),
             'input_imaging_modality': self.input_imaging_mod_combo_box.currentText(),
             'output_directory': self.save_dir_text_field.text(),
-            'no_of_threads': self.number_of_threads_combo_box.currentText(),
+            'number_of_threads': self.number_of_threads_combo_box.currentText(),
             'dicom_structures': self.dicom_structures_text_field.text(),
             'nifti_structures': self.nifti_structures_text_field.text(),
             'nifti_image_name': self.nifti_image_text_field.text(),
@@ -216,12 +216,12 @@ class RadiomicsTab(BaseTab):
         self.input_params = input_parameters
 
     def run_selection(self):
+        """Executes radiomics extraction based on user-selected options."""
         close_all_loggers()
         self.logger_date_time = datetime.now().strftime("%Y-%m-%d_%H%M%S")
         self.logger = get_logger(self.logger_date_time + '_Radiomics')
         self.logger.info("Radiomics started")
 
-        """Executes radiomics extraction based on user-selected options."""
         # Prepare input parameters for radiomics extraction
         self.get_input_parameters()
 
@@ -234,11 +234,11 @@ class RadiomicsTab(BaseTab):
             CustomWarningBox(str(e)).response()
             return
 
-        # Determine structure set based on data type
-        structure_set = self.input_params["dicom_structures"] if self.input_params["input_data_type"] == 'dicom' else self.input_params["nifti_structures"]
-
         # Get patient folders
         list_of_patient_folders = self.get_patient_folders()
+
+        # Determine structure set based on data type
+        structure_set = self.input_params["dicom_structures"] if self.input_params["input_data_type"] == 'dicom' else self.input_params["nifti_structures"]
 
         # Initialize Radiomics instance
         rad_instance = Radiomics(
@@ -450,7 +450,7 @@ class RadiomicsTab(BaseTab):
     def _validate_combo_selections(self):
         """Validate combo box selections."""
         required_selections = [
-            ('No. of Threads:', self.number_of_threads_combo_box),
+            ('Threads:', self.number_of_threads_combo_box),
             ('Data Type:', self.input_data_type_combo_box),
             ('Discretization:', self.discretization_combo_box),
             ('Texture Features Aggr. Method:', self.aggr_dim_and_method_combo_box),
@@ -564,7 +564,7 @@ class RadiomicsTab(BaseTab):
                 self.list_of_patient_folders_text_field.setText(data.get('radiomics_list_of_patient_folders', ''))
                 self.input_data_type_combo_box.setCurrentText(data.get('radiomics_input_data_type', 'Data Type:'))
                 self.save_dir_text_field.setText(data.get('radiomics_output_directory', ''))
-                self.number_of_threads_combo_box.setCurrentText(data.get('radiomics_no_of_threads', 'No. of Threads:'))
+                self.number_of_threads_combo_box.setCurrentText(data.get('radiomics_number_of_threads', 'Threads:'))
                 self.nifti_structures_text_field.setText(data.get('radiomics_nifti_structures', ''))
                 self.dicom_structures_text_field.setText(data.get('radiomics_dicom_structures', ''))
                 self.nifti_image_text_field.setText(data.get('radiomics_nifti_image_name', ''))

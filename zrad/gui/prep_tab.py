@@ -260,11 +260,7 @@ class PreprocessingTab(BaseTab):
 
         self.input_params["nifti_image_name"] = self.get_text_from_text_field(self.input_params["nifti_image_name"])
         self.input_params["nifti_structures"] = self.get_list_from_text_field(self.input_params["nifti_structures"])
-
-        if not self.input_params["use_all_structures"]:
-            self.input_params["dicom_structures"] = None
-        else:
-            self.input_params["dicom_structures"] = self.get_list_from_text_field(self.input_params["dicom_structures"])
+        self.input_params["dicom_structures"] = self.get_list_from_text_field(self.input_params["dicom_structures"])
 
         if self.input_params["just_save_as_nifti"]:
             self.input_params["resample_dimension"] = None

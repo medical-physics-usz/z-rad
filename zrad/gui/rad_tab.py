@@ -208,11 +208,7 @@ class RadiomicsTab(BaseTab):
         self.input_params["nifti_image_name"] = self.get_text_from_text_field(self.input_params["nifti_image_name"])
         self.input_params["nifti_filtered_image_name"] = self.get_text_from_text_field(self.input_params["nifti_filtered_image_name"])
         self.input_params["nifti_structures"] = self.get_list_from_text_field(self.input_params["nifti_structures"])
-
-        if not self.input_params["use_all_structures"]:
-            self.input_params["dicom_structures"] = None
-        else:
-            self.input_params["dicom_structures"] = self.get_list_from_text_field(self.input_params["dicom_structures"])
+        self.input_params["dicom_structures"] = self.get_list_from_text_field(self.input_params["dicom_structures"])
 
         self.input_params["outlier_range"] = self._get_outlier_sigma()
         self.input_params["intensity_range"] = self._get_intensity_range()

@@ -35,6 +35,92 @@ def get_imaging_filepath(input_dir, patient_folder, filename, imaging_format='di
             return None
 
 
+def load_images(input_params, patient_folder):
+    """Loads image and optional filtered image based on the data type."""
+    image = Image()
+    filtered_image = None
+    input_dir = input_params['input_directory']
+    input_data_type = input_params['input_data_type']
+    nifti_image_name = input_params['nifti_image_name']
+    input_imaging_modality = input_params["input_imaging_modality"]
+    try:
+        nifti_filtered_image_name = input_params['nifti_filtered_image_name']
+    except KeyError:
+        nifti_filtered_image_name = None
+
+    if input_data_type.lower() == 'nifti':
+        # Construct file path
+        image_path = get_imaging_filepath(input_dir, patient_folder, nifti_image_name, imaging_format='nifti')
+
+        if image_path:
+            # Read image
+            try:
+                image.read_nifti_image(image_path)
+            except Exception as e:
+                error_msg = f"Error reading filtered NIfTI image: {e}"
+                raise DataStructureError(error_msg)
+        else:
+            raise FileNotFoundError(f"{os.path.join(input_dir, patient_folder, nifti_image_name)}")
+
+        # Read filtered image if specified
+        if nifti_filtered_image_name:
+            filtered_image = Image()
+            filtered_image_path = get_imaging_filepath(input_dir, patient_folder, nifti_filtered_image_name,
+                                                       imaging_format='nifti')
+            if filtered_image_path:
+                try:
+                    filtered_image.read_nifti_image(filtered_image_path)
+                except Exception as e:
+                    error_msg = f"Error reading filtered NIfTI image: {e}"
+                    raise DataStructureError(error_msg)
+            else:
+                raise FileNotFoundError(f"{os.path.join(input_dir, patient_folder, nifti_filtered_image_name)}")
+    elif input_data_type.lower() == 'dicom':
+        # Construct file path for DICOM
+        image_path = os.path.join(input_dir, patient_folder)
+
+        # Read image
+        image.read_dicom_image(image_path, modality=input_imaging_modality)
+    else:
+        warning_msg = f"Invalid input data type: {input_data_type}"
+        CustomWarningBox(warning_msg).response()
+        raise InvalidInputParametersError(warning_msg)
+
+    if filtered_image:
+        return image, filtered_image
+    else:
+        return image
+
+
+def load_mask(input_params, patient_folder, mask_name, image):
+    """Loads a mask based on the data type."""
+    input_dir = input_params["input_directory"]
+    input_data_type = input_params["input_data_type"]
+
+    mask = Image()
+
+    if input_data_type == 'nifti':
+        mask_path = get_imaging_filepath(input_dir, patient_folder, mask_name, imaging_format=input_data_type)
+        if mask_path:
+            try:
+                mask.read_nifti_mask(image, mask_path)
+            except Exception as e:
+                error_msg = f"Error reading NIfTI mask: {e}"
+                raise DataStructureError(error_msg)
+    elif input_data_type == 'dicom':
+        try:
+            dicom_dir = os.path.join(input_dir, patient_folder)
+            mask.read_dicom_mask(dicom_dir, structure_name=mask_name, image=image)
+        except Exception as e:
+            error_msg = f"Error reading DICOM mask: {e}"
+            raise DataStructureError(error_msg)
+    else:
+        warning_msg = f"Invalid input data type: {input_data_type}"
+        CustomWarningBox(warning_msg).response()
+        raise InvalidInputParametersError(warning_msg)
+    return mask
+
+
 class BaseTab(QWidget, ABC, metaclass=BaseTabMeta):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -167,90 +253,6 @@ class BaseTab(QWidget, ABC, metaclass=BaseTabMeta):
         else:
             self._hide_dicom_elements()
             self._hide_nifti_elements()
-
-    def load_images(self, patient_folder):
-        """Loads image and optional filtered image based on the data type."""
-        image = Image()
-        filtered_image = None
-        input_dir = self.input_params['input_directory']
-        input_data_type = self.input_params['input_data_type']
-        nifti_image_name = self.input_params['nifti_image_name']
-        input_imaging_modality = self.input_params["input_imaging_modality"]
-        try:
-            nifti_filtered_image_name = self.input_params['nifti_filtered_image_name']
-        except KeyError:
-            nifti_filtered_image_name = None
-
-        if input_data_type.lower() == 'nifti':
-            # Construct file path
-            image_path = get_imaging_filepath(input_dir, patient_folder, nifti_image_name, imaging_format='nifti')
-
-            if image_path:
-                # Read image
-                try:
-                    image.read_nifti_image(image_path)
-                except Exception as e:
-                    error_msg = f"Error reading filtered NIfTI image: {e}"
-                    raise DataStructureError(error_msg)
-            else:
-                raise FileNotFoundError(f"{os.path.join(input_dir, patient_folder, nifti_image_name)}")
-
-            # Read filtered image if specified
-            if nifti_filtered_image_name:
-                filtered_image = Image()
-                filtered_image_path = get_imaging_filepath(input_dir, patient_folder, nifti_filtered_image_name,
-                                                           imaging_format='nifti')
-                if filtered_image_path:
-                    try:
-                        filtered_image.read_nifti_image(filtered_image_path)
-                    except Exception as e:
-                        error_msg = f"Error reading filtered NIfTI image: {e}"
-                        raise DataStructureError(error_msg)
-                else:
-                    raise FileNotFoundError(f"{os.path.join(input_dir, patient_folder, nifti_filtered_image_name)}")
-        elif input_data_type.lower() == 'dicom':
-            # Construct file path for DICOM
-            image_path = os.path.join(input_dir, patient_folder)
-
-            # Read image
-            image.read_dicom_image(image_path, modality=input_imaging_modality)
-        else:
-            warning_msg = f"Invalid input data type: {input_data_type}"
-            CustomWarningBox(warning_msg).response()
-            raise InvalidInputParametersError(warning_msg)
-
-        if filtered_image:
-            return image, filtered_image
-        else:
-            return image
-
-    def load_mask(self, patient_folder, mask_name, image):
-        """Loads a mask based on the data type."""
-        input_dir = self.input_params["input_directory"]
-        input_data_type = self.input_params["input_data_type"]
-
-        mask = Image()
-
-        if input_data_type == 'nifti':
-            mask_path = get_imaging_filepath(input_dir, patient_folder, mask_name, imaging_format=input_data_type)
-            if mask_path:
-                try:
-                    mask.read_nifti_mask(image, mask_path)
-                except Exception as e:
-                    error_msg = f"Error reading NIfTI mask: {e}"
-                    raise DataStructureError(error_msg)
-        elif input_data_type == 'dicom':
-            try:
-                dicom_dir = os.path.join(input_dir, patient_folder)
-                mask.read_dicom_mask(dicom_dir, structure_name=mask_name, image=image)
-            except Exception as e:
-                error_msg = f"Error reading DICOM mask: {e}"
-                raise DataStructureError(error_msg)
-        else:
-            warning_msg = f"Invalid input data type: {input_data_type}"
-            CustomWarningBox(warning_msg).response()
-            raise InvalidInputParametersError(warning_msg)
-        return mask
 
     def _validate_io_directories(self):
         """Validate that necessary directories are selected."""

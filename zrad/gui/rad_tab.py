@@ -5,8 +5,9 @@ from datetime import datetime
 
 import numpy as np
 import pandas as pd
+from joblib import Parallel, delayed
 
-from ._base_tab import BaseTab
+from ._base_tab import BaseTab, load_images, load_mask
 from .toolbox_gui import CustomLabel, CustomBox, CustomTextField, CustomCheckBox, CustomWarningBox, CustomInfo, CustomInfoBox
 from ..logic.exceptions import InvalidInputParametersError, DataStructureError
 from ..logic.image import get_dicom_files, get_all_structure_names
@@ -14,6 +15,68 @@ from ..logic.radiomics import Radiomics
 from ..logic.toolbox_logic import get_logger, close_all_loggers
 
 logging.captureWarnings(True)
+
+
+def process_patient_folder(input_params, patient_folder, structure_set):
+    # Logger
+    logger_date_time = datetime.now().strftime("%Y-%m-%d_%H%M%S")
+    logger = get_logger(logger_date_time + '_Radiomics')
+
+    def is_slice_weighting():
+        """Determines if slice weighting is applied based on current settings."""
+        aggr_dim = input_params["agr_strategy"].split(',')[0]
+        weighting = input_params["weighting"]
+        if aggr_dim == '2D':
+            return weighting == 'Weighted Mean'
+        return False
+
+    def is_slice_median():
+        """Determines if slice median is applied based on current settings."""
+        aggr_dim = input_params["agr_strategy"].split(',')[0]
+        weighting = input_params["weighting"]
+        if aggr_dim == '2D':
+            return weighting == 'Median'
+        return False
+
+    # Initialize Radiomics instance
+    rad_instance = Radiomics(
+        aggr_dim=input_params['aggregation_method'][0],
+        aggr_method=input_params['aggregation_method'][1],
+        intensity_range=input_params['intensity_range'],
+        outlier_range=input_params['outlier_range'],
+        number_of_bins=input_params['discretization'][1],
+        bin_size=input_params['discretization'][2],
+        slice_weighting=is_slice_weighting(),
+        slice_median=is_slice_median(),
+    )
+
+    logger.info(f"Processing patient: {patient_folder}.")
+    try:
+        if input_params["nifti_filtered_image_name"]:
+            image, filtered_image = load_images(input_params, patient_folder)
+        else:
+            image = load_images(input_params, patient_folder)
+            filtered_image = None
+    except DataStructureError as e:
+        logger.error(e)
+
+    if input_params["use_all_structures"]:
+        input_directory = os.path.join(input_params["input_directory"], patient_folder)
+        rtstruct_path = get_dicom_files(input_directory, modality='RTSTRUCT')[0]
+        structure_set = get_all_structure_names(rtstruct_path)
+
+    radiomic_features_list = []
+    for mask_name in structure_set:
+        logger.info(f"Processing patient: {patient_folder} with ROI: {mask_name}.")
+        mask = load_mask(input_params, patient_folder, mask_name, image)
+        if mask and mask.array is not None:
+            rad_instance.extract_features(image, mask, filtered_image)
+            radiomic_features = rad_instance.features_
+            radiomic_features['pat_id'] = patient_folder
+            radiomic_features['mask_id'] = mask_name
+            radiomic_features_list.append(radiomic_features)
+
+    return radiomic_features_list
 
 
 class RadiomicsTab(BaseTab):
@@ -273,49 +336,14 @@ class RadiomicsTab(BaseTab):
             if not self.input_params["use_all_structures"]:
                 structure_set = self.input_params["dicom_structures"]
 
-        # Initialize Radiomics instance
-        rad_instance = Radiomics(
-            aggr_dim=self.input_params['aggregation_method'][0],
-            aggr_method=self.input_params['aggregation_method'][1],
-            intensity_range=self.input_params['intensity_range'],
-            outlier_range=self.input_params['outlier_range'],
-            number_of_bins=self.input_params['discretization'][1],
-            bin_size=self.input_params['discretization'][2],
-            slice_weighting=self._is_slice_weighting(),
-            slice_median=self._is_slice_median()
-        )
-
         # Process each patient folder
-        radiomic_features_list = []
         if list_of_patient_folders:
-            for patient_folder in list_of_patient_folders:
-                self.logger.info(f"Processing patient: {patient_folder}.")
-                try:
-                    if self.input_params["nifti_filtered_image_name"]:
-                        image, filtered_image = self.load_images(patient_folder)
-                    else:
-                        image = self.load_images(patient_folder)
-                        filtered_image = None
-                except DataStructureError as e:
-                    self.logger.error(e)
-
-                if self.input_params["use_all_structures"]:
-                    input_directory = os.path.join(self.input_params["input_directory"], patient_folder)
-                    rtstruct_path = get_dicom_files(input_directory, modality='RTSTRUCT')[0]
-                    structure_set = get_all_structure_names(rtstruct_path)
-
-                for mask_name in structure_set:
-                    self.logger.info(f"Processing patient: {patient_folder} with ROI: {mask_name}.")
-                    mask = self.load_mask(patient_folder, mask_name, image)
-                    if mask and mask.array is not None:
-                        rad_instance.extract_features(image, mask, filtered_image)
-                        radiomic_features = rad_instance.features_
-                        radiomic_features['pat_id'] = patient_folder
-                        radiomic_features['mask_id'] = mask_name
-                        radiomic_features_list.append(radiomic_features)
+            radiomic_features_list = Parallel(n_jobs=self.input_params["number_of_threads"])(
+                delayed(process_patient_folder)(self.input_params, patient_folder, structure_set) for patient_folder in list_of_patient_folders)
 
             # Save features to CSV
             if radiomic_features_list:
+                radiomic_features_list = [item for sublist in radiomic_features_list for item in sublist]
                 radiomic_features_df = pd.DataFrame(radiomic_features_list)
                 radiomic_features_df.set_index(['pat_id', 'mask_id'], inplace=True)
                 file_path = os.path.join(self.input_params["output_directory"], 'radiomics.csv')
@@ -323,6 +351,7 @@ class RadiomicsTab(BaseTab):
                 self.logger.info(f"Radiomics saved to {file_path}.")
         else:
             CustomWarningBox("No patients to calculate radiomics from.")
+
         self.logger.info("Radiomics finished!")
         CustomInfoBox("Radiomics finished!").response()
 
@@ -499,22 +528,6 @@ class RadiomicsTab(BaseTab):
             if combo_box.currentText() == message:
                 warning_msg = f"Select {message.split(':')[0]}"
                 raise InvalidInputParametersError(warning_msg)
-
-    def _is_slice_weighting(self):
-        """Determines if slice weighting is applied based on current settings."""
-        aggr_dim = self.aggr_dim_and_method_combo_box.currentText().split(',')[0]
-        weighting = self.weighting_combo_box.currentText()
-        if aggr_dim == '2D':
-            return weighting == 'Weighted Mean'
-        return False
-
-    def _is_slice_median(self):
-        """Determines if slice median is applied based on current settings."""
-        aggr_dim = self.aggr_dim_and_method_combo_box.currentText().split(',')[0]
-        weighting = self.weighting_combo_box.currentText()
-        if aggr_dim == '2D':
-            return weighting == 'Median'
-        return False
 
     def _show_dicom_elements(self):
         self.dicom_structures_label.show()

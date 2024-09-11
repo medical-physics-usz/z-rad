@@ -1,15 +1,137 @@
 import json
+import logging
 import os
 from datetime import datetime
 
-from ._base_tab import BaseTab
+from joblib import Parallel, delayed
+
+from ._base_tab import BaseTab, load_images
 from .toolbox_gui import CustomButton, CustomLabel, CustomBox, CustomTextField, CustomWarningBox, CustomInfo, CustomInfoBox
 from ..logic.exceptions import InvalidInputParametersError
 from ..logic.filtering import Filtering
 from ..logic.toolbox_logic import get_logger, close_all_loggers
 
-import logging
 logging.captureWarnings(True)
+
+
+def _get_filtering(input_params):
+    if input_params["filter_type"] == 'Mean':
+        filtering = Filtering(
+            filtering_method=input_params["filter_type"],
+            padding_type=input_params["filter_padding_type"],
+            support=int(input_params["filter_mean_support"]),
+            dimensionality=input_params["filter_dimension"],
+        )
+
+    elif input_params["filter_type"] == 'Laplacian of Gaussian':
+        filtering = Filtering(
+            filtering_method=input_params["filter_type"],
+            padding_type=input_params["filter_padding_type"],
+            sigma_mm=float(input_params["filter_log_sigma"]),
+            cutoff=float(input_params["filter_log_cutoff"]),
+            dimensionality=input_params["filter_dimension"],
+        )
+    elif input_params["filter_type"] == 'Laws Kernels':
+        filtering = Filtering(
+            filtering_method=input_params["filter_type"],
+            response_map=input_params["filter_laws_response_map"],
+            padding_type=input_params["filter_padding_type"],
+            dimensionality=input_params["filter_dimension"],
+            rotation_invariance=input_params["filter_laws_rot_inv"] == 'Enable',
+            pooling=input_params["filter_laws_pooling"],
+            energy_map=input_params["filter_laws_energy_map"] == 'Enable',
+            distance=int(input_params["filter_laws_distance"])
+        )
+    elif input_params["filter_type"] == 'Wavelets':
+        if input_params["filter_dimension"] == '2D':
+            filtering = Filtering(
+                filtering_method=input_params["filter_type"],
+                dimensionality=input_params["filter_dimension"],
+                padding_type=input_params["filter_padding_type"],
+                wavelet_type=input_params["filter_wavelet_type"],
+                response_map=input_params["filter_wavelet_resp_map_2D"],
+                decomposition_level=input_params["filter_wavelet_decomp_lvl"],
+                rotation_invariance=input_params["filter_wavelet_rot_inv"] == 'Enable'
+            )
+        elif input_params["filter_dimension"] == '3D':
+            filtering = Filtering(
+                filtering_method=input_params["filter_type"],
+                dimensionality=input_params["filter_dimension"],
+                padding_type=input_params["filter_padding_type"],
+                wavelet_type=input_params["filter_wavelet_type"],
+                response_map=input_params["filter_wavelet_resp_map_3D"],
+                decomposition_level=int(input_params["filter_wavelet_decomp_lvl"]),
+                rotation_invariance=input_params["filter_wavelet_rot_inv"] == 'Enable'
+            )
+        else:
+            raise InvalidInputParametersError(f"Filter_dimension {input_params["filter_dimension"]} is not supported.")
+    else:
+         raise InvalidInputParametersError(f"Filter_type {input_params['filter_type']} not supported.")
+
+    return filtering
+
+
+def _get_filename(input_params):
+    input_params = input_params  # Local reference for easier access
+
+    # Define filename formats for each filter type
+    filter_formats = {
+        'Mean': '{filter_type}_{filter_dimension}_{filter_mean_support}support_{filter_padding_type}',
+        'Laplacian of Gaussian': '{filter_type}_{filter_dimension}_{filter_log_sigma}sigma_{filter_log_cutoff}cutoff_{filter_padding_type}',
+        'Laws Kernels': ('{filter_type}_{filter_dimension}_{filter_laws_response_map}_'
+                         '{filter_laws_rot_inv}_{filter_laws_pooling}_{filter_laws_energy_map}'
+                         '{filter_laws_distance}_{filter_padding_type}')
+    }
+
+    # Inner function to format the filename for Wavelets filter type
+    def format_wavelets_filename(input_params):
+        """Helper method to format the filename for Wavelets filter type."""
+        base_format = ('{filter_wavelet_type}_{filter_dimension}_{filter_wavelet_resp_map}_'
+                       '{filter_wavelet_decomp_lvl}_{filter_wavelet_rot_inv}_{filter_padding_type}')
+
+        if input_params["filter_dimension"] == '2D':
+            return base_format.format(
+                filter_wavelet_resp_map=input_params["filter_wavelet_resp_map_2D"],
+                **input_params
+            )
+        elif input_params["filter_dimension"] == '3D':
+            return base_format.format(
+                filter_wavelet_resp_map=input_params["filter_wavelet_resp_map_3D"],
+                **input_params
+            )
+        else:
+            raise InvalidInputParametersError(f"Unknown filter dimension: {input_params['filter_dimension']}")
+
+    # Check for Wavelets filter type, which has specific 2D and 3D formats
+    if input_params["filter_type"] == 'Wavelets':
+        filename = format_wavelets_filename(input_params)
+    else:
+        # Default case for other filter types using predefined formats
+        filename_format = filter_formats.get(input_params["filter_type"])
+        if filename_format:
+            filename = filename_format.format(**input_params)
+        else:
+            raise InvalidInputParametersError(f"Unknown filter type: {input_params['filter_type']}")
+
+    return f"{filename}.nii.gz"
+
+
+def process_patient_folder(input_params, patient_folder):
+    # Logger
+    logger_date_time = datetime.now().strftime("%Y-%m-%d_%H%M%S")
+    logger = get_logger(logger_date_time + '_Filtering')
+
+    # Initialize Filtering instance
+    filtering = _get_filtering(input_params)
+
+    logger.info(f"Filtering patient's {patient_folder} image.")
+    image = load_images(input_params, patient_folder)
+    image_new = filtering.apply_filter(image)
+
+    # Save new image
+    filename = _get_filename(input_params)
+    output_path = os.path.join(input_params["output_directory"], patient_folder, filename)
+    image_new.save_as_nifti(output_path)
 
 
 class FilteringTab(BaseTab):
@@ -311,68 +433,16 @@ class FilteringTab(BaseTab):
         # Get patient folders
         list_of_patient_folders = self.get_patient_folders()
 
-        # Initialize Filtering instance
-        filtering = self._get_filtering()
-
         # Process each patient folder
         if list_of_patient_folders:
-            for patient_folder in list_of_patient_folders:
-                image = self.load_images(patient_folder)
-                image_new = filtering.apply_filter(image)
-
-                # Save new image
-                filename = self._get_filename()
-                output_path = os.path.join(self.input_params["output_directory"], patient_folder, filename)
-                image_new.save_as_nifti(output_path)
+            Parallel(n_jobs=self.input_params["number_of_threads"])(
+                delayed(process_patient_folder)(self.input_params, patient_folder) for patient_folder in list_of_patient_folders)
 
         else:
             CustomWarningBox("No patients to filter.")
+
         self.logger.info("Filtering finished!")
-        CustomInfoBox("Preprocessing finished!").response()
-
-    def _get_filename(self):
-        input_params = self.input_params  # Local reference for easier access
-
-        # Define filename formats for each filter type
-        filter_formats = {
-            'Mean': '{filter_type}_{filter_dimension}_{filter_mean_support}support_{filter_padding_type}',
-            'Laplacian of Gaussian': '{filter_type}_{filter_dimension}_{filter_log_sigma}sigma_{filter_log_cutoff}cutoff_{filter_padding_type}',
-            'Laws Kernels': ('{filter_type}_{filter_dimension}_{filter_laws_response_map}_'
-                             '{filter_laws_rot_inv}_{filter_laws_pooling}_{filter_laws_energy_map}'
-                             '{filter_laws_distance}_{filter_padding_type}')
-        }
-
-        # Inner function to format the filename for Wavelets filter type
-        def format_wavelets_filename(input_params):
-            """Helper method to format the filename for Wavelets filter type."""
-            base_format = ('{filter_wavelet_type}_{filter_dimension}_{filter_wavelet_resp_map}_'
-                           '{filter_wavelet_decomp_lvl}_{filter_wavelet_rot_inv}_{filter_padding_type}')
-
-            if input_params["filter_dimension"] == '2D':
-                return base_format.format(
-                    filter_wavelet_resp_map=input_params["filter_wavelet_resp_map_2D"],
-                    **input_params
-                )
-            elif input_params["filter_dimension"] == '3D':
-                return base_format.format(
-                    filter_wavelet_resp_map=input_params["filter_wavelet_resp_map_3D"],
-                    **input_params
-                )
-            else:
-                raise InvalidInputParametersError(f"Unknown filter dimension: {input_params['filter_dimension']}")
-
-        # Check for Wavelets filter type, which has specific 2D and 3D formats
-        if input_params["filter_type"] == 'Wavelets':
-            filename = format_wavelets_filename(input_params)
-        else:
-            # Default case for other filter types using predefined formats
-            filename_format = filter_formats.get(input_params["filter_type"])
-            if filename_format:
-                filename = filename_format.format(**input_params)
-            else:
-                raise InvalidInputParametersError(f"Unknown filter type: {input_params['filter_type']}")
-
-        return f"{filename}.nii.gz"
+        CustomInfoBox("Filtering finished!").response()
 
     def save_settings(self):
         """
@@ -616,59 +686,3 @@ class FilteringTab(BaseTab):
             if combo_box.currentText() == message:
                 warning_msg = f"Select {message.split(':')[0]}"
                 raise InvalidInputParametersError(warning_msg)
-
-    def _get_filtering(self):
-        if self.input_params["filter_type"] == 'Mean':
-            filtering = Filtering(
-                filtering_method=self.input_params["filter_type"],
-                padding_type=self.input_params["filter_padding_type"],
-                support=int(self.input_params["filter_mean_support"]),
-                dimensionality=self.input_params["filter_dimension"],
-            )
-
-        elif self.input_params["filter_type"] == 'Laplacian of Gaussian':
-            filtering = Filtering(
-                filtering_method=self.input_params["filter_type"],
-                padding_type=self.input_params["filter_padding_type"],
-                sigma_mm=float(self.input_params["filter_log_sigma"]),
-                cutoff=float(self.input_params["filter_log_cutoff"]),
-                dimensionality=self.input_params["filter_dimension"],
-            )
-        elif self.input_params["filter_type"] == 'Laws Kernels':
-            filtering = Filtering(
-                filtering_method=self.input_params["filter_type"],
-                response_map=self.input_params["filter_laws_response_map"],
-                padding_type=self.input_params["filter_padding_type"],
-                dimensionality=self.input_params["filter_dimension"],
-                rotation_invariance=self.input_params["filter_laws_rot_inv"] == 'Enable',
-                pooling=self.input_params["filter_laws_pooling"],
-                energy_map=self.input_params["filter_laws_energy_map"] == 'Enable',
-                distance=int(self.input_params["filter_laws_distance"])
-            )
-        elif self.input_params["filter_type"] == 'Wavelets':
-            if self.input_params["filter_dimension"] == '2D':
-                filtering = Filtering(
-                    filtering_method=self.input_params["filter_type"],
-                    dimensionality=self.input_params["filter_dimension"],
-                    padding_type=self.input_params["filter_padding_type"],
-                    wavelet_type=self.input_params["filter_wavelet_type"],
-                    response_map=self.input_params["filter_wavelet_resp_map_2D"],
-                    decomposition_level=self.input_params["filter_wavelet_decomp_lvl"],
-                    rotation_invariance=self.input_params["filter_wavelet_rot_inv"] == 'Enable'
-                )
-            elif self.input_params["filter_dimension"] == '3D':
-                filtering = Filtering(
-                    filtering_method=self.input_params["filter_type"],
-                    dimensionality=self.input_params["filter_dimension"],
-                    padding_type=self.input_params["filter_padding_type"],
-                    wavelet_type=self.input_params["filter_wavelet_type"],
-                    response_map=self.input_params["filter_wavelet_resp_map_3D"],
-                    decomposition_level=int(self.input_params["filter_wavelet_decomp_lvl"]),
-                    rotation_invariance=self.input_params["filter_wavelet_rot_inv"] == 'Enable'
-                )
-            else:
-                raise InvalidInputParametersError(f"Filter_dimension {self.input_params["filter_dimension"]} is not supported.")
-        else:
-             raise InvalidInputParametersError(f"Filter_type {self.input_params['filter_type']} not supported.")
-
-        return filtering

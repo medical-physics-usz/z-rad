@@ -3,7 +3,9 @@ import logging
 import os
 from datetime import datetime
 
-from ._base_tab import BaseTab
+from joblib import Parallel, delayed
+
+from ._base_tab import BaseTab, load_images, load_mask
 from .toolbox_gui import CustomLabel, CustomBox, CustomTextField, CustomWarningBox, CustomCheckBox, \
     CustomInfo, CustomInfoBox
 from ..logic.exceptions import InvalidInputParametersError, DataStructureError
@@ -12,6 +14,68 @@ from ..logic.preprocessing import Preprocessing
 from ..logic.toolbox_logic import get_logger, close_all_loggers
 
 logging.captureWarnings(True)
+
+
+def process_patient_folder(input_params, patient_folder, structure_set):
+    """Function to process each patient folder, used for parallel processing."""
+    # Logger
+    logger_date_time = datetime.now().strftime("%Y-%m-%d_%H%M%S")
+    logger = get_logger(logger_date_time + '_Preprocessing')
+
+    # Initialize Preprocessing instance
+    prep_image = Preprocessing(
+        input_data_type=input_params["input_data_type"],
+        input_imaging_modality=input_params["input_imaging_modality"],
+        just_save_as_nifti=input_params["just_save_as_nifti"],
+        resample_resolution=input_params["resample_resolution"],
+        resample_dimension=input_params["resample_dimension"],
+        interpolation_method=input_params["image_interpolation_method"],
+    )
+    prep_mask = Preprocessing(
+        input_data_type=input_params["input_data_type"],
+        input_imaging_modality=input_params["input_imaging_modality"],
+        just_save_as_nifti=input_params["just_save_as_nifti"],
+        resample_resolution=input_params["resample_resolution"],
+        resample_dimension=input_params["resample_dimension"],
+        interpolation_method=input_params["mask_interpolation_method"],
+        interpolation_threshold=input_params["mask_interpolation_threshold"]
+    )
+
+    logger.info(f"Processing patient's {patient_folder} image.")
+    try:
+        image = load_images(input_params, patient_folder)
+    except DataStructureError as e:
+        logger.error(e)
+        logger.error(f"Patient {patient_folder} could not be loaded and is skipped.")
+        return
+
+    if input_params["just_save_as_nifti"]:
+        image_new = image.copy()
+    else:
+        image_new = prep_image.resample(image, image_type='image')
+
+    # Save new image
+    output_path = os.path.join(input_params["output_directory"], patient_folder, 'image.nii.gz')
+    image_new.save_as_nifti(output_path)
+
+    if input_params["use_all_structures"]:
+        input_directory = os.path.join(input_params["input_directory"], patient_folder)
+        rtstruct_path = get_dicom_files(input_directory, modality='RTSTRUCT')[0]
+        structure_set = get_all_structure_names(rtstruct_path)
+
+    if structure_set:
+        for mask_name in structure_set:
+            logger.info(f"Processing patient's {patient_folder} ROI: {mask_name}.")
+            mask = load_mask(input_params, patient_folder, mask_name, image)
+            if mask and mask.array is not None:
+                if input_params["just_save_as_nifti"]:
+                    mask_new = mask.copy()
+                else:
+                    mask_new = prep_mask.resample(mask, image_type='mask')
+
+                # Save new mask
+                output_path = os.path.join(input_params["output_directory"], patient_folder, f'{mask_name}.nii.gz')
+                mask_new.save_as_nifti(output_path)
 
 
 class PreprocessingTab(BaseTab):
@@ -332,71 +396,19 @@ class PreprocessingTab(BaseTab):
 
         # Determine structure set based on data type
         structure_set = None
-        if self.input_params["input_data_type"] == "nifti":
+        if self.input_params["input_data_type"].lower() == "nifti":
             structure_set = self.input_params.get("nifti_structures")
-        elif self.input_params["input_data_type"] == "dicom":
+        elif self.input_params["input_data_type"].lower() == "dicom":
             if not self.input_params["use_all_structures"]:
                 structure_set = self.input_params["dicom_structures"]
 
-        # Initialize Preprocessing instance
-        prep_image = Preprocessing(
-            input_data_type=self.input_params["input_data_type"],
-            input_imaging_modality=self.input_params["input_imaging_modality"],
-            just_save_as_nifti=self.input_params["just_save_as_nifti"],
-            resample_resolution=self.input_params["resample_resolution"],
-            resample_dimension=self.input_params["resample_dimension"],
-            interpolation_method=self.input_params["image_interpolation_method"],
-        )
-        prep_mask = Preprocessing(
-            input_data_type=self.input_params["input_data_type"],
-            input_imaging_modality=self.input_params["input_imaging_modality"],
-            just_save_as_nifti=self.input_params["just_save_as_nifti"],
-            resample_resolution=self.input_params["resample_resolution"],
-            resample_dimension=self.input_params["resample_dimension"],
-            interpolation_method=self.input_params["mask_interpolation_method"],
-            interpolation_threshold=self.input_params["mask_interpolation_threshold"]
-        )
-
         # Process each patient folder
         if list_of_patient_folders:
-            for patient_folder in list_of_patient_folders:
-                self.logger.info(f"Processing patient: {patient_folder}.")
-                try:
-                    image = self.load_images(patient_folder)
-                except DataStructureError as e:
-                    self.logger.error(e)
-                    self.logger.error(f"Patient {patient_folder} could not be loaded and is skipped.")
-                    continue
-
-                if self.input_params["just_save_as_nifti"]:
-                    image_new = image.copy()
-                else:
-                    image_new = prep_image.resample(image, image_type='image')
-
-                # Save new image
-                output_path = os.path.join(self.input_params["output_directory"], patient_folder, 'image.nii.gz')
-                image_new.save_as_nifti(output_path)
-
-                if self.input_params["use_all_structures"]:
-                    input_directory = os.path.join(self.input_params["input_directory"], patient_folder)
-                    rtstruct_path = get_dicom_files(input_directory, modality='RTSTRUCT')[0]
-                    structure_set = get_all_structure_names(rtstruct_path)
-
-                if structure_set:
-                    for mask_name in structure_set:
-                        self.logger.info(f"Processing patient: {patient_folder} with ROI: {mask_name}.")
-                        mask = self.load_mask(patient_folder, mask_name, image)
-                        if mask and mask.array is not None:
-                            if self.input_params["just_save_as_nifti"]:
-                                mask_new = mask.copy()
-                            else:
-                                mask_new = prep_mask.resample(mask, image_type='mask')
-
-                            # Save new mask
-                            output_path = os.path.join(self.input_params["output_directory"], patient_folder, f'{mask_name}.nii.gz')
-                            mask_new.save_as_nifti(output_path)
+            Parallel(n_jobs=self.input_params["number_of_threads"])(
+                delayed(process_patient_folder)(self.input_params, patient_folder, structure_set) for patient_folder in list_of_patient_folders)
         else:
-            CustomWarningBox("No patients to calculate radiomics from.")
+            CustomWarningBox("No patients to calculate preprocess from.")
+
         self.logger.info("Preprocessing finished!")
         CustomInfoBox("Preprocessing finished!").response()
 

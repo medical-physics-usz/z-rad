@@ -281,7 +281,7 @@ def validate_pet_dicom_tags(dicom_files):
             raise DataStructureError(error_msg)
 
 
-def apply_suv_correction(pat_folder, suv_image):
+def apply_suv_correction(dicom_files, suv_image):
     def calculate_suv(dicom_file_path, min_acquisition_time):
 
         ds = pydicom.dcmread(dicom_file_path)
@@ -331,15 +331,15 @@ def apply_suv_correction(pat_folder, suv_image):
         return suv
     intensity_array = np.zeros(suv_image.GetSize())
     acquisition_time_list = []
-    for dicom_file in os.listdir(pat_folder):
-        dcm_data = pydicom.dcmread(os.path.join(pat_folder, dicom_file))
+    for dicom_file in dicom_files:
+        dcm_data = pydicom.dcmread(dicom_file)
         acquisition_time_list.append(parse_time(dcm_data.AcquisitionTime))
     min_acquisition_time = np.min(acquisition_time_list)
 
-    for dicom_file in os.listdir(pat_folder):
-        dcm_data = pydicom.dcmread(os.path.join(pat_folder, dicom_file))
+    for dicom_file in dicom_files:
+        dcm_data = pydicom.dcmread(dicom_file)
         z_slice_id = int(dcm_data.InstanceNumber) - 1
-        intensity_array[:, :, z_slice_id] = calculate_suv(os.path.join(pat_folder, dicom_file), min_acquisition_time)
+        intensity_array[:, :, z_slice_id] = calculate_suv(dicom_file, min_acquisition_time)
 
     # Flip from head to toe
     intensity_array = np.flip(intensity_array, axis=2)

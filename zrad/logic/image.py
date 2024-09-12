@@ -186,18 +186,19 @@ def validate_pet_dicom_tags(dicom_files):
 
         dicom_file_path = dcm_file
         dicom = pydicom.dcmread(dicom_file_path)
+        image_id = os.path.normpath(dcm_file).split('\\')[-2]
 
         try:
             pat_weight = dicom[(0x0010, 0x1030)].value
             if float(pat_weight) < 1:
-                warning_msg = f"Patient's weight tag (0071, 1022) contains weight < 1kg. Patient is excluded from the analysis."
+                warning_msg = f"For patient's {image_id} image, patient's weight tag (0071, 1022) contains weight < 1kg. Patient is excluded from the analysis."
                 warnings.warn(warning_msg, DataStructureWarning)
 
         except KeyError:
-            warning_msg = f"Patient's weight tag (0071, 1022) is not present. Patient is excluded from the analysis."
+            warning_msg = f"For patient's {image_id} image, patient's weight tag (0071, 1022) is not present. Patient is excluded from the analysis."
             warnings.warn(warning_msg, DataStructureWarning)
         if 'DECY' not in dicom[(0x0028, 0x0051)].value or 'ATTN' not in dicom[(0x0028, 0x0051)].value:
-            warning_msg = f"In DICOM tag (0028, 0051) either no 'DECY' (decay correction) or 'ATTN' (attenuation correction). Patient is excluded from the analysis."
+            warning_msg = f"For patient's {image_id} image, in DICOM tag (0028, 0051) either no 'DECY' (decay correction) or 'ATTN' (attenuation correction). Patient is excluded from the analysis."
             warnings.warn(warning_msg, DataStructureWarning)
 
         if dicom.Units == 'BQML':
@@ -215,18 +216,18 @@ def validate_pet_dicom_tags(dicom_files):
                         if (acquisition_time != np.min(acquisition_time_list)
                                 or acquisition_time != parse_time(dicom.SeriesTime) and not time_mismatch):
                             time_mismatch = True
-                            warning_msg = f"There is a mismatch between the earliest acquisition time, series time and Siemens private tag (0071, 1022). Time from the Siemens private tag was used."
+                            warning_msg = f"For patient's {image_id} image, there is a mismatch between the earliest acquisition time, series time and Siemens private tag (0071, 1022). Time from the Siemens private tag was used."
                             warnings.warn(warning_msg, DataStructureWarning)
                     except KeyError:
                         acquisition_time = np.min(acquisition_time_list)
                         if not time_mismatch:
                             time_mismatch = True
-                            warning_msg = f"Private Siemens tag (0071, 1022) is not present. The earliest of all acquisition times was used."
+                            warning_msg = f"For patient's {image_id} image, private Siemens tag (0071, 1022) is not present. The earliest of all acquisition times was used."
                             warnings.warn(warning_msg, DataStructureWarning)
 
                         if acquisition_time != parse_time(dicom.SeriesTime) and not time_mismatch:
                             time_mismatch = True
-                            warning_msg = f"A mismatch present between the earliest acquisition time and series time. Earliest acquisition time was used."
+                            warning_msg = f"For patient's {image_id} image, a mismatch present between the earliest acquisition time and series time. Earliest acquisition time was used."
                             warnings.warn(warning_msg, DataStructureWarning)
                 elif 'GE' in dicom.Manufacturer.upper():
                     try:
@@ -237,31 +238,31 @@ def validate_pet_dicom_tags(dicom_files):
                         if (acquisition_time != np.min(acquisition_time_list)
                                 or acquisition_time != parse_time(dicom.SeriesTime) and not time_mismatch):
                             time_mismatch = True
-                            warning_msg = f"A mismatch present between the earliest acquisition time, series time, and GE private tag. Time from the GE private tag was used."
+                            warning_msg = f"For patient's {image_id} image, a mismatch present between the earliest acquisition time, series time, and GE private tag. Time from the GE private tag was used."
                             warnings.warn(warning_msg, DataStructureWarning)
                     except KeyError:
                         acquisition_time = np.min(acquisition_time_list)
                         if not time_mismatch:
                             time_mismatch = True
-                            warning_msg = f"Private GE tag (0009, 100d) is not present. The earliest of all acquisition times was used."
+                            warning_msg = f"For patient's {image_id} image, private GE tag (0009, 100d) is not present. The earliest of all acquisition times was used."
                             warnings.warn(warning_msg, DataStructureWarning)
                         if acquisition_time != parse_time(dicom.SeriesTime) and not time_mismatch:
                             time_mismatch = True
-                            warning_msg = f"A mismatch present between the earliest acquisition time and series time. Earliest acquisition time was used."
+                            warning_msg = f"For patient's {image_id} image, a mismatch present between the earliest acquisition time and series time. Earliest acquisition time was used."
                             warnings.warn(warning_msg, DataStructureWarning)
                 else:
-                    warning_msg = f"An unknown PET scaner manufacturer is present. Z-Rad only supports Philips, Siemens, and GE."
+                    warning_msg = f"For patient's {image_id} image, an unknown PET scaner manufacturer is present. Z-Rad only supports Philips, Siemens, and GE."
                     raise DataStructureError(warning_msg)
 
             elif dicom.DecayCorrection == 'ADMIN':
                 acquisition_time = injection_time
 
             else:
-                warning_msg = f"An unsupported Decay Correction {dicom.DecayCorrection} is present. Only supported are 'START' and 'ADMIN'. Patient is excluded from the analysis."
+                warning_msg = f"For patient's {image_id} image, An unsupported Decay Correction {dicom.DecayCorrection} is present. Only supported are 'START' and 'ADMIN'. Patient is excluded from the analysis."
                 raise DataStructureError(warning_msg)
             elapsed_time = (acquisition_time - injection_time).total_seconds()
             if elapsed_time < 0:
-                error_msg = f"Patient is excluded from the analysis due to the negative time difference in the decay factor."
+                error_msg = f"For patient's {image_id} image, patient is excluded from the analysis due to the negative time difference in the decay factor."
                 raise DataStructureError(error_msg)
             elif elapsed_time > 0 and abs(elapsed_time) < 1800 and dicom.DecayCorrection != 'ADMIN':
                 warning_msg = f"Only {abs(elapsed_time) / 60} minutes after the injection."
@@ -271,13 +272,13 @@ def validate_pet_dicom_tags(dicom_files):
                 activity_scale_factor = dicom[(0x7053, 0x1009)].value
                 print(activity_scale_factor)
                 if activity_scale_factor == 0.0:
-                    error_msg = f"Patient is excluded, Philips private activity scale factor (7053, 1009) = 0. (PET units CNTS)"
+                    error_msg = f"For patient's {image_id} image, patient is excluded, Philips private activity scale factor (7053, 1009) = 0. (PET units CNTS)"
                     raise DataStructureError(error_msg)
             except KeyError:
-                error_msg = f"Patient is excluded, Philips private activity scale factor (7053, 1009) is missing. (PET units CNTS)."
+                error_msg = f"For patient's {image_id} image, patient is excluded, Philips private activity scale factor (7053, 1009) is missing. (PET units CNTS)."
                 raise DataStructureError(error_msg)
         else:
-            error_msg = f"Patient is excluded, only supported PET Units are BQML for Philips, Siemens and GE or CNTS for Philips"
+            error_msg = f"For patient's {image_id} image, patient is excluded, only supported PET Units are BQML for Philips, Siemens and GE or CNTS for Philips"
             raise DataStructureError(error_msg)
 
 

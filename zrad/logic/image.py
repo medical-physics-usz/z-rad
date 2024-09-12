@@ -169,14 +169,6 @@ def validate_z_spacing(dicom_files):
 
 
 def validate_pet_dicom_tags(dicom_files):
-    def parse_time(time_str):
-        for fmt in ('%H%M%S.%f', '%H%M%S', '%Y%m%d%H%M%S.%f'):
-            try:
-                return datetime.strptime(time_str, fmt)
-            except ValueError:
-                continue
-        raise ValueError(f"time data '{time_str}' does not match expected formats")
-
     time_mismatch = False
     acquisition_time_list = []
     for dcm_file in dicom_files:

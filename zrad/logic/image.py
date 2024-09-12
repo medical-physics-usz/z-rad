@@ -359,20 +359,13 @@ def process_dicom_series(directory, dicom_files):
     reader.SetFileNames(file_names)
     image = reader.Execute()
 
-    ct_raw_intensity = []
     slice_z_origin = []
-    HU_intercept = []
-    HU_slope = []
 
     for dicom_file_path in dicom_files:
         dicom = pydicom.dcmread(dicom_file_path)
         if dicom.Modality in ['CT', 'PT', 'MR']:
             pixel_spacing = dicom.PixelSpacing
             slice_z_origin.append(float(dicom.ImagePositionPatient[2]))
-            if dicom.Modality == 'CT' and dicom.PixelRepresentation == 0:
-                ct_raw_intensity.append(True)
-                HU_intercept.append(float(dicom.RescaleIntercept))
-                HU_slope.append(float(dicom.RescaleSlope))
 
     slice_z_origin = sorted(slice_z_origin)
     slice_thickness = abs(np.median([slice_z_origin[i] - slice_z_origin[i + 1]

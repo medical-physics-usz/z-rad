@@ -178,7 +178,7 @@ def validate_pet_dicom_tags(dicom_files):
 
         dicom_file_path = dcm_file
         dicom = pydicom.dcmread(dicom_file_path)
-        image_id = os.path.normpath(dcm_file).split('\\')[-2]
+        image_id = dicom_file_path
 
         try:
             pat_weight = dicom[(0x0010, 0x1030)].value

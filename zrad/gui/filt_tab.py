@@ -7,7 +7,7 @@ from joblib import Parallel, delayed
 
 from ._base_tab import BaseTab, load_images
 from .toolbox_gui import CustomButton, CustomLabel, CustomBox, CustomTextField, CustomWarningBox, CustomInfo, CustomInfoBox
-from ..logic.exceptions import InvalidInputParametersError
+from ..logic.exceptions import InvalidInputParametersError, DataStructureError
 from ..logic.filtering import Filtering
 from ..logic.toolbox_logic import get_logger, close_all_loggers
 
@@ -125,7 +125,15 @@ def process_patient_folder(input_params, patient_folder):
     filtering = _get_filtering(input_params)
 
     logger.info(f"Filtering patient's {patient_folder} image.")
-    image = load_images(input_params, patient_folder)
+
+    #  The below lines were missing, does it needed to be added anywhere else in filtering?
+    try:
+        image = load_images(input_params, patient_folder)
+    except DataStructureError as e:
+        logger.error(e)
+        logger.error(f"Patient {patient_folder} could not be loaded and is skipped.")
+        return
+    # image = load_images(input_params, patient_folder)  # TO REMOVE
     image_new = filtering.apply_filter(image)
 
     # Save new image
@@ -374,11 +382,15 @@ class FilteringTab(BaseTab):
             if self.wavelet_filter_type_combo_box.currentText() == 'Wavelet type:':
                 error_msg = "Select Wavelet Type"
                 raise InvalidInputParametersError(error_msg)
-            if self.wavelet_filter_decomposition_level_combo_box.currentText() == 'Decomposition Lvl.:':
+            if self.wavelet_filter_decomposition_level_combo_box.currentText() == 'Decomposition level:':
                 error_msg = "Select Wavelet Decomposition Level"
                 raise InvalidInputParametersError(error_msg)
             if self.wavelet_filter_rot_inv_combo_box.currentText() == 'Rotation invariance:':
                 error_msg = "Select Pseudo-rot. inv"
+                raise InvalidInputParametersError(error_msg)
+            if ((self.wavelet_filter_response_map_3d_combo_box.currentText() == 'Response Map:' and self.filter_dimension_combo_box.currentText() == '3D') or
+                (self.wavelet_filter_response_map_2d_combo_box.currentText() == 'Response Map:' and self.filter_dimension_combo_box.currentText() == '2D')):
+                error_msg = "Select Response Map"
                 raise InvalidInputParametersError(error_msg)
 
     def get_input_parameters(self):

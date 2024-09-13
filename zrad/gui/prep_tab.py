@@ -65,9 +65,11 @@ def process_patient_folder(input_params, patient_folder, structure_set):
 
     if structure_set:
         for mask_name in structure_set:
-            logger.info(f"Processing patient's {patient_folder} ROI: {mask_name}.")
+            #logger.info(f"Processing patient's {patient_folder} ROI: {mask_name}.")  # TO REMOVE
             mask = load_mask(input_params, patient_folder, mask_name, image)
             if mask and mask.array is not None:
+                logger.info(
+                    f"Processing patient's {patient_folder} ROI: {mask_name}.")  # it should be displayed only when a mask exists
                 if input_params["just_save_as_nifti"]:
                     mask_new = mask.copy()
                 else:
@@ -256,8 +258,10 @@ class PreprocessingTab(BaseTab):
         self.resample_dimension_combo_box.hide()
 
     def _show_preprocessing_elements(self):
-        self.mask_interpolation_threshold_label.show()
-        self.mask_interpolation_threshold_text_field.show()
+
+        # the threshold should not be displayed when switched back, only when specific mask interpolation methods are selected:
+        #self.mask_interpolation_threshold_label.show()  # TO REMOVE
+        #self.mask_interpolation_threshold_text_field.show()  # TO REMOVE
         self.mask_interpolation_method_combo_box.show()
         self.resample_resolution_label.show()
         self.resample_resolution_text_field.show()

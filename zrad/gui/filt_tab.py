@@ -50,7 +50,7 @@ def _get_filtering(input_params):
                 padding_type=input_params["filter_padding_type"],
                 wavelet_type=input_params["filter_wavelet_type"],
                 response_map=input_params["filter_wavelet_resp_map_2D"],
-                decomposition_level=input_params["filter_wavelet_decomp_lvl"],
+                decomposition_level=int(input_params["filter_wavelet_decomp_lvl"]),
                 rotation_invariance=input_params["filter_wavelet_rot_inv"] == 'Enable'
             )
         elif input_params["filter_dimension"] == '3D':

@@ -263,7 +263,6 @@ class BaseTab(QWidget, ABC, metaclass=BaseTabMeta):
         for warning, text in required_dirs:
             if not text:
                 warning_msg = warning
-                #CustomWarningBox(warning_msg).response()  # TO REMOVE # Before the error was printed two times, now - once
                 raise InvalidInputParametersError(warning_msg)
 
     def _get_input_imaging_modality(self):

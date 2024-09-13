@@ -126,14 +126,12 @@ def process_patient_folder(input_params, patient_folder):
 
     logger.info(f"Filtering patient's {patient_folder} image.")
 
-    #  The below lines were missing, does it needed to be added anywhere else in filtering?
     try:
         image = load_images(input_params, patient_folder)
     except DataStructureError as e:
         logger.error(e)
         logger.error(f"Patient {patient_folder} could not be loaded and is skipped.")
         return
-    # image = load_images(input_params, patient_folder)  # TO REMOVE
     image_new = filtering.apply_filter(image)
 
     # Save new image

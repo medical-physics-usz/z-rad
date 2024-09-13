@@ -65,11 +65,10 @@ def process_patient_folder(input_params, patient_folder, structure_set):
 
     if structure_set:
         for mask_name in structure_set:
-            #logger.info(f"Processing patient's {patient_folder} ROI: {mask_name}.")  # TO REMOVE
             mask = load_mask(input_params, patient_folder, mask_name, image)
             if mask and mask.array is not None:
                 logger.info(
-                    f"Processing patient's {patient_folder} ROI: {mask_name}.")  # it should be displayed only when a mask exists
+                    f"Processing patient's {patient_folder} ROI: {mask_name}.")
                 if input_params["just_save_as_nifti"]:
                     mask_new = mask.copy()
                 else:

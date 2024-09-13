@@ -145,8 +145,8 @@ class Wavelets2D:
             raise ValueError(f"Wrong wavelet type '{wavelet_type}'. "
                              "Available wavelet types are: 'db3', 'db2', 'coif1', 'haar'.")
 
-        if int(decomposition_level) in [1, 2]:  # Why this int conversion is only needed for 2D wavelets?
-            self.decomposition_level = int(decomposition_level)  # ValueError: Wrong decomposition_level' 2'. Decomposition level should be integer. Available decomposition levels are: 1 and 2.
+        if decomposition_level in [1, 2]:
+            self.decomposition_level = decomposition_level
         else:
             self.filter_logger.error(f"Wrong decomposition_level' {decomposition_level}'. "
                                      "Decomposition level should be integer. "
@@ -483,7 +483,6 @@ class Laws:
                 final_image = final_image / 24  # shouldn't it rather be len(response_maps) * 8 = 48?
 
             elif self.pooling == "max":
-                #final_image = np.NINF * np.ones(img.shape)  # ValueError: Error applying filter: `np.NINF` was removed in the NumPy 2.0 release. Use `-np.inf` instead.
                 final_image = -np.inf * np.ones(img.shape)
                 for response_map in response_maps:
                     final_image = np.maximum(final_image, self._filter(img, response_map))

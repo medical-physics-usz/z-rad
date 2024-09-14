@@ -29,6 +29,7 @@ addresses these issues by offering a user-friendly, IBSI-compliant, and open-sou
 ### Backend
 - **Programming Language**: Python.
 - **Dependencies**:
+  - Joblib
   - NumPy
   - OpenCV
   - OpenPyXL

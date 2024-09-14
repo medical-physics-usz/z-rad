@@ -70,7 +70,12 @@ def process_patient_folder(input_params, patient_folder, structure_set):
         logger.info(f"Processing patient: {patient_folder} with ROI: {mask_name}.")
         mask = load_mask(input_params, patient_folder, mask_name, image)
         if mask and mask.array is not None:
-            rad_instance.extract_features(image, mask, filtered_image)
+            try:
+                rad_instance.extract_features(image, mask, filtered_image)
+            except DataStructureError as e:
+                logger.error(e)
+                logger.info(f"Patient {patient_folder} with mask {mask_name} skipped.")
+                continue
             radiomic_features = rad_instance.features_
             radiomic_features['pat_id'] = patient_folder
             radiomic_features['mask_id'] = mask_name

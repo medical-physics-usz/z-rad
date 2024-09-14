@@ -1,63 +1,197 @@
 import json
+import logging
 import os
+from datetime import datetime
 
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QFileDialog
+from joblib import Parallel, delayed
 
-from .toolbox_gui import CustomButton, CustomLabel, CustomBox, CustomTextField, CustomWarningBox, CustomInfo, data_io
-from ..logic.filtering import Filtering, Mean, LoG, Wavelets2D, Wavelets3D, Laws
+from ._base_tab import BaseTab, load_images
+from .toolbox_gui import CustomButton, CustomLabel, CustomBox, CustomTextField, CustomWarningBox, CustomInfo, CustomInfoBox
+from ..logic.exceptions import InvalidInputParametersError, DataStructureError
+from ..logic.filtering import Filtering
+from ..logic.toolbox_logic import get_logger, close_all_loggers
+
+logging.captureWarnings(True)
 
 
-class FilteringTab(QWidget):
+def _get_filtering(input_params):
+    if input_params["filter_type"] == 'Mean':
+        filtering = Filtering(
+            filtering_method=input_params["filter_type"],
+            padding_type=input_params["filter_padding_type"],
+            support=int(input_params["filter_mean_support"]),
+            dimensionality=input_params["filter_dimension"],
+        )
 
+    elif input_params["filter_type"] == 'Laplacian of Gaussian':
+        filtering = Filtering(
+            filtering_method=input_params["filter_type"],
+            padding_type=input_params["filter_padding_type"],
+            sigma_mm=float(input_params["filter_log_sigma"]),
+            cutoff=float(input_params["filter_log_cutoff"]),
+            dimensionality=input_params["filter_dimension"],
+        )
+    elif input_params["filter_type"] == 'Laws Kernels':
+        filtering = Filtering(
+            filtering_method=input_params["filter_type"],
+            response_map=input_params["filter_laws_response_map"],
+            padding_type=input_params["filter_padding_type"],
+            dimensionality=input_params["filter_dimension"],
+            rotation_invariance=input_params["filter_laws_rot_inv"] == 'Enable',
+            pooling=input_params["filter_laws_pooling"],
+            energy_map=input_params["filter_laws_energy_map"] == 'Enable',
+            distance=int(input_params["filter_laws_distance"])
+        )
+    elif input_params["filter_type"] == 'Wavelets':
+        if input_params["filter_dimension"] == '2D':
+            filtering = Filtering(
+                filtering_method=input_params["filter_type"],
+                dimensionality=input_params["filter_dimension"],
+                padding_type=input_params["filter_padding_type"],
+                wavelet_type=input_params["filter_wavelet_type"],
+                response_map=input_params["filter_wavelet_resp_map_2D"],
+                decomposition_level=int(input_params["filter_wavelet_decomp_lvl"]),
+                rotation_invariance=input_params["filter_wavelet_rot_inv"] == 'Enable'
+            )
+        elif input_params["filter_dimension"] == '3D':
+            filtering = Filtering(
+                filtering_method=input_params["filter_type"],
+                dimensionality=input_params["filter_dimension"],
+                padding_type=input_params["filter_padding_type"],
+                wavelet_type=input_params["filter_wavelet_type"],
+                response_map=input_params["filter_wavelet_resp_map_3D"],
+                decomposition_level=int(input_params["filter_wavelet_decomp_lvl"]),
+                rotation_invariance=input_params["filter_wavelet_rot_inv"] == 'Enable'
+            )
+        else:
+            raise InvalidInputParametersError(f"Filter_dimension {input_params["filter_dimension"]} is not supported.")
+    else:
+         raise InvalidInputParametersError(f"Filter_type {input_params['filter_type']} not supported.")
+
+    return filtering
+
+
+def _get_filename(input_params):
+    input_params = input_params  # Local reference for easier access
+
+    # Define filename formats for each filter type
+    filter_formats = {
+        'Mean': '{filter_type}_{filter_dimension}_{filter_mean_support}support_{filter_padding_type}',
+        'Laplacian of Gaussian': '{filter_type}_{filter_dimension}_{filter_log_sigma}sigma_{filter_log_cutoff}cutoff_{filter_padding_type}',
+        'Laws Kernels': ('{filter_type}_{filter_dimension}_{filter_laws_response_map}_'
+                         '{filter_laws_rot_inv}_{filter_laws_pooling}_{filter_laws_energy_map}'
+                         '{filter_laws_distance}_{filter_padding_type}')
+    }
+
+    # Inner function to format the filename for Wavelets filter type
+    def format_wavelets_filename(input_params):
+        """Helper method to format the filename for Wavelets filter type."""
+        base_format = ('{filter_wavelet_type}_{filter_dimension}_{filter_wavelet_resp_map}_'
+                       '{filter_wavelet_decomp_lvl}_{filter_wavelet_rot_inv}_{filter_padding_type}')
+
+        if input_params["filter_dimension"] == '2D':
+            return base_format.format(
+                filter_wavelet_resp_map=input_params["filter_wavelet_resp_map_2D"],
+                **input_params
+            )
+        elif input_params["filter_dimension"] == '3D':
+            return base_format.format(
+                filter_wavelet_resp_map=input_params["filter_wavelet_resp_map_3D"],
+                **input_params
+            )
+        else:
+            raise InvalidInputParametersError(f"Unknown filter dimension: {input_params['filter_dimension']}")
+
+    # Check for Wavelets filter type, which has specific 2D and 3D formats
+    if input_params["filter_type"] == 'Wavelets':
+        filename = format_wavelets_filename(input_params)
+    else:
+        # Default case for other filter types using predefined formats
+        filename_format = filter_formats.get(input_params["filter_type"])
+        if filename_format:
+            filename = filename_format.format(**input_params)
+        else:
+            raise InvalidInputParametersError(f"Unknown filter type: {input_params['filter_type']}")
+
+    return f"{filename}.nii.gz"
+
+
+def process_patient_folder(input_params, patient_folder):
+    # Logger
+    logger_date_time = datetime.now().strftime("%Y-%m-%d_%H%M%S")
+    logger = get_logger(logger_date_time + '_Filtering')
+
+    # Initialize Filtering instance
+    filtering = _get_filtering(input_params)
+
+    logger.info(f"Filtering patient's {patient_folder} image.")
+
+    try:
+        image = load_images(input_params, patient_folder)
+    except DataStructureError as e:
+        logger.error(e)
+        logger.error(f"Patient {patient_folder} could not be loaded and is skipped.")
+        return
+    image_new = filtering.apply_filter(image)
+
+    # Save new image
+    filename = _get_filename(input_params)
+    output_path = os.path.join(input_params["output_directory"], patient_folder, filename)
+    image_new.save_as_nifti(output_path)
+
+
+class FilteringTab(BaseTab):
     def __init__(self):
         super().__init__()
-
+        self.init_dicom_elements()
+        self.init_nifti_elements()
+        self.init_filtering_elements()
+        self.connect_signals()
         self.wavelet_filter_response_map_connected = False
 
-        self.setMinimumSize(1220, 640)
-        self.layout = QVBoxLayout(self)
+    def init_dicom_elements(self):
+        pass
 
-        data_io(self)
-
-        # Set used data type
-        self.input_data_type_combo_box = CustomBox(
-            20, 300, 160, 50, self,
-            item_list=[
-                "Data Type:", "DICOM", "NIfTI"
-            ]
-        )
-
-        self.input_data_type_combo_box.currentTextChanged.connect(
-            lambda:
-            (self.nifti_image_label.show(),
-             self.nifti_image_text_field.show(),
-             self.nifti_image_info_label.show())
-            if self.input_data_type_combo_box.currentText() == "NIfTI"
-            else
-            (self.nifti_image_label.hide(),
-             self.nifti_image_text_field.hide(),
-             self.nifti_image_info_label.hide())
-        )
-
+    def init_nifti_elements(self):
+        # Image
         self.nifti_image_label = CustomLabel(
-            'NIfTI image file:',
-            200, 300, 150, 50, self,
+            'NIfTI Image:',
+            200, 300, 200, 50, self,
             style="color: white;"
         )
         self.nifti_image_text_field = CustomTextField(
             "E.g. imageCT",
-            350, 300, 220, 50, self
+            300, 300, 200, 50, self
         )
-        self.nifti_image_label.hide()
-        self.nifti_image_text_field.hide()
         self.nifti_image_info_label = CustomInfo(
             ' i',
-            'Specify NIfTI image file without the file extension: '
-            '\ne.g. if NIfTI image file is imageCT.nii.gz, provide only imageCT.',
-            580, 300, 14, 14, self
+            'Specify NIfTI image file without file extension',
+            510, 300, 14, 14, self
         )
+        self._hide_nifti_elements()
+
+    def _show_dicom_elements(self):
+        pass
+
+    def _hide_dicom_elements(self):
+        pass
+
+    def _show_nifti_elements(self):
+        self.nifti_image_label.show()
+        self.nifti_image_text_field.show()
+        self.nifti_image_info_label.show()
+
+    def _hide_nifti_elements(self):
+        self.nifti_image_label.hide()
+        self.nifti_image_text_field.hide()
         self.nifti_image_info_label.hide()
 
+    def connect_signals(self):
+        self.input_data_type_combo_box.currentTextChanged.connect(self.file_type_changed)
+        self.run_button.clicked.connect(self.run_selection)
+        self.filter_combo_box.currentTextChanged.connect(self._filter_combo_box_changed)
+
+    def init_filtering_elements(self):
         # Set output_imaging_type
         self.filter_combo_box = CustomBox(
             20, 380, 160, 50, self,
@@ -65,7 +199,6 @@ class FilteringTab(QWidget):
                 "Filter Type:", "Mean", "Laplacian of Gaussian", "Laws Kernels", "Wavelets"
             ]
         )
-        self.filter_combo_box.currentTextChanged.connect(self.filter_combo_box_changed)
 
         self.padding_type_combo_box = CustomBox(
             340, 380, 150, 50, self,
@@ -207,232 +340,127 @@ class FilteringTab(QWidget):
             600, 590, 80, 50, self,
             style=False,
         )
-        self.run_button.clicked.connect(self.run_selected_option)
 
-    def run_selected_option(self):
-        selections_text = [
-            ('', self.load_dir_label.text().strip(), "Select Load Directory!"),
-            ('', self.save_dir_label.text().strip(), "Select Save Directory")
-        ]
+    def check_input_parameters(self):
+        # Validate combo box selections
+        self._validate_combo_selections()
+        self.check_common_input_parameters()
 
-        for message, text, warning in selections_text:
-            if text == message and CustomWarningBox(warning).response():
-                return
+        self.input_params["nifti_image_name"] = self.get_text_from_text_field(self.input_params["nifti_image_name"])
 
-        selections_combo_box = [
-            ('No. of Threads:', self.number_of_threads_combo_box),
-            ('Data Type:', self.input_data_type_combo_box),
-            ('Filter Type:', self.filter_combo_box),
-            ('Dimension:', self.filter_dimension_combo_box),
-            ('Padding Type:', self.padding_type_combo_box)
-        ]
-
-        for message, combo_box in selections_combo_box:
-            if (combo_box.currentText() == message
-                    and CustomWarningBox(f"Select {message.split(':')[0]}").response()):
-                return
-
-        if (self.input_imaging_mod_combo_box.currentText() == 'Imaging Modality:'
-                and CustomWarningBox("Select Input Imaging Modality").response()):
-            return
-
-        input_imaging_mod = self.input_imaging_mod_combo_box.currentText()
-
-        # Collect values from GUI elements
-        input_dir = self.load_dir_label.text()
-        output_dir = self.save_dir_label.text()
-        number_of_threads = int(self.number_of_threads_combo_box.currentText().split(" ")[0])
-        input_data_type = self.input_data_type_combo_box.currentText()
-        filter_type = self.filter_combo_box.currentText()
-        filter_dimension = self.filter_dimension_combo_box.currentText()
-        filter_padding_type = self.padding_type_combo_box.currentText()
-
-        start_folder = None
-        if self.start_folder_text_field.text().strip() != '':
-            start_folder = self.start_folder_text_field.text().strip()
-
-        stop_folder = None
-        if self.stop_folder_text_field.text().strip() != '':
-            stop_folder = self.stop_folder_text_field.text().strip()
-
-        if self.list_of_patient_folders_text_field.text() != '':
-            list_of_patient_folders = [pat.strip() for pat in
-                                       str(self.list_of_patient_folders_text_field.text()).split(",")]
-        else:
-            list_of_patient_folders = None
-
-        if (not self.nifti_image_text_field.text().strip()
-                and self.input_data_type_combo_box.currentText() == 'NIfTI'):
-            CustomWarningBox("Enter NIfTI image").response()
-            return
-        nifti_image = self.nifti_image_text_field.text()
-
-        if filter_type == 'Mean' and not self.mean_filter_support_text_field.text().strip():
-            CustomWarningBox("Enter Support!").response()
-            return
-        if filter_type == 'Mean':
-            mean_filter_support = int(self.mean_filter_support_text_field.text().strip())
-
-        if filter_type == 'Laplacian of Gaussian':
+        if self.input_params['filter_type'] == 'Mean' and not self.mean_filter_support_text_field.text().strip():
+            error_msg = "Enter Support!"
+            raise InvalidInputParametersError(error_msg)
+        if self.input_params['filter_type'] == 'Laplacian of Gaussian':
             if not self.log_filter_sigma_text_field.text().strip():
-                CustomWarningBox("Enter Sigma").response()
-                return
+                error_msg = "Enter Sigma"
+                raise InvalidInputParametersError(error_msg)
             if not self.log_filter_cutoff_text_field.text().strip():
-                CustomWarningBox("Enter Cutoff").response()
-                return
-        log_filter_sigma = self.log_filter_sigma_text_field.text()
-        log_filter_cutoff = self.log_filter_cutoff_text_field.text()
+                error_msg = "Enter Cutoff"
+                raise InvalidInputParametersError(error_msg)
 
-        if filter_type == 'Laws Kernels':
+        if self.input_params['filter_type'] == 'Laws Kernels':
             if not self.laws_filter_response_map_text_field.text().strip():
-                CustomWarningBox("Enter Response Map").response()
-                return
+                error_msg = "Enter Response Map"
+                raise InvalidInputParametersError(error_msg)
             if self.laws_filter_rot_inv_combo_box.currentText() == 'Rotation invariance:':
-                CustomWarningBox("Select Pseudo-rotational invariance").response()
-                return
+                error_msg = "Select Pseudo-rotational invariance"
+                raise InvalidInputParametersError(error_msg)
             if not self.laws_filter_distance_text_field.text().strip():
-                CustomWarningBox("Enter Distance").response()
-                return
+                error_msg = "Enter Distance"
+                raise InvalidInputParametersError(error_msg)
             if self.laws_filter_pooling_combo_box.currentText() == 'Pooling:':
-                CustomWarningBox("Select Pooling").response()
-                return
+                error_msg = "Select Pooling"
+                raise InvalidInputParametersError(error_msg)
             if self.laws_filter_energy_map_combo_box.currentText() == 'Energy map:':
-                CustomWarningBox("Select Energy map").response()
-                return
-        laws_filter_response_map = self.laws_filter_response_map_text_field.text()
-        laws_filter_rot_inv = self.laws_filter_rot_inv_combo_box.currentText()
-        laws_filter_distance = self.laws_filter_distance_text_field.text()
-        laws_filter_pooling = self.laws_filter_pooling_combo_box.currentText()
-        if self.laws_filter_energy_map_combo_box.currentText() == 'Enable':
-            laws_filter_energy_map = True
-        else:
-            laws_filter_energy_map = False
+                error_msg = "Select Energy map"
+                raise InvalidInputParametersError(error_msg)
 
-        if filter_type == 'Wavelets':
-            if ((self.wavelet_filter_response_map_2d_combo_box.currentText() == 'Response Map:'
-                 and self.filter_dimension_combo_box.currentText() == '2D')
-                    or (self.wavelet_filter_response_map_3d_combo_box.currentText() == 'Response Map:'
-                        and self.filter_dimension_combo_box.currentText() == '3D')
-                    or (self.wavelet_filter_response_map_combo_box.currentText() == 'Response Map:')):
-                CustomWarningBox("Select Response Map").response()
-                return
+        if self.input_params['filter_type'] == 'Wavelets':
             if self.wavelet_filter_type_combo_box.currentText() == 'Wavelet type:':
-                CustomWarningBox("Select Wavelet Type").response()
-                return
-            if self.wavelet_filter_decomposition_level_combo_box.currentText() == 'Decomposition Lvl.:':
-                CustomWarningBox("Select Wavelet Decomposition Level").response()
-                return
+                error_msg = "Select Wavelet Type"
+                raise InvalidInputParametersError(error_msg)
+            if self.wavelet_filter_decomposition_level_combo_box.currentText() == 'Decomposition level:':
+                error_msg = "Select Wavelet Decomposition Level"
+                raise InvalidInputParametersError(error_msg)
             if self.wavelet_filter_rot_inv_combo_box.currentText() == 'Rotation invariance:':
-                CustomWarningBox("Select Pseudo-rot. inv").response()
-                return
-        wavelet_filter_response_map = None
-        if filter_dimension == '2D' and filter_type == 'Wavelets':
-            wavelet_filter_response_map = self.wavelet_filter_response_map_2d_combo_box.currentText()
-        elif filter_dimension == '3D' and filter_type == 'Wavelets':
-            wavelet_filter_response_map = self.wavelet_filter_response_map_3d_combo_box.currentText()
-        wavelet_filter_type = self.wavelet_filter_type_combo_box.currentText()
-        wavelet_filter_decomposition_lvl = None
-        if filter_type == 'Wavelets':
-            wavelet_filter_decomposition_lvl = int(self.wavelet_filter_decomposition_level_combo_box.currentText())
-        wavelet_filter_pseudo_rot_inv = None
-        if filter_type == 'Wavelets' and self.wavelet_filter_rot_inv_combo_box.currentText() == 'Enable':
-            wavelet_filter_pseudo_rot_inv = True
-        elif filter_type == 'Wavelets' and self.wavelet_filter_rot_inv_combo_box.currentText() == 'Disable':
-            wavelet_filter_pseudo_rot_inv = False
+                error_msg = "Select Pseudo-rot. inv"
+                raise InvalidInputParametersError(error_msg)
+            if ((self.wavelet_filter_response_map_3d_combo_box.currentText() == 'Response Map:' and self.filter_dimension_combo_box.currentText() == '3D') or
+                (self.wavelet_filter_response_map_2d_combo_box.currentText() == 'Response Map:' and self.filter_dimension_combo_box.currentText() == '2D')):
+                error_msg = "Select Response Map"
+                raise InvalidInputParametersError(error_msg)
 
-        if filter_type == 'Mean':
-            my_filter = Mean(padding_type=filter_padding_type,
-                             support=int(mean_filter_support),
-                             dimensionality=filter_dimension
-                             )
-        elif filter_type == 'Laplacian of Gaussian':
-            my_filter = LoG(padding_type=filter_padding_type,
-                            sigma_mm=float(log_filter_sigma),
-                            cutoff=float(log_filter_cutoff),
-                            dimensionality=filter_dimension
-                            )
-        elif filter_type == 'Laws Kernels':
-            my_filter = Laws(response_map=laws_filter_response_map,
-                             padding_type=filter_padding_type,
-                             dimensionality=filter_dimension,
-                             rotation_invariance=laws_filter_rot_inv,
-                             pooling=laws_filter_pooling,
-                             energy_map=laws_filter_energy_map,
-                             distance=int(laws_filter_distance)
-                             )
+    def get_input_parameters(self):
+        input_parameters = {
+            'input_directory': self.load_dir_text_field.text(),
+            'start_folder': self.start_folder_text_field.text(),
+            'stop_folder': self.stop_folder_text_field.text(),
+            'list_of_patient_folders': self.list_of_patient_folders_text_field.text(),
+            'input_image_modality': self.input_imaging_mod_combo_box.currentText(),
+            'input_data_type': self.input_data_type_combo_box.currentText(),
+            'output_directory': self.save_dir_text_field.text(),
+            'number_of_threads': self.number_of_threads_combo_box.currentText(),
+            'nifti_image_name': self.nifti_image_text_field.text(),
+            'filter_type': self.filter_combo_box.currentText(),
+            'filter_dimension': self.filter_dimension_combo_box.currentText(),
+            'filter_padding_type': self.padding_type_combo_box.currentText(),
+            'filter_mean_support': self.mean_filter_support_text_field.text(),
+            'filter_log_sigma': self.log_filter_sigma_text_field.text(),
+            'filter_log_cutoff': self.log_filter_cutoff_text_field.text(),
+            'filter_laws_response_map': self.laws_filter_response_map_text_field.text(),
+            'filter_laws_rot_inv': self.laws_filter_rot_inv_combo_box.currentText(),
+            'filter_laws_distance': self.laws_filter_distance_text_field.text(),
+            'filter_laws_pooling': self.laws_filter_pooling_combo_box.currentText(),
+            'filter_laws_energy_map': self.laws_filter_energy_map_combo_box.currentText(),
+            'filter_wavelet_resp_map_2D': self.wavelet_filter_response_map_2d_combo_box.currentText(),
+            'filter_wavelet_resp_map_3D': self.wavelet_filter_response_map_3d_combo_box.currentText(),
+            'filter_wavelet_type': self.wavelet_filter_type_combo_box.currentText(),
+            'filter_wavelet_decomp_lvl': self.wavelet_filter_decomposition_level_combo_box.currentText(),
+            'filter_wavelet_rot_inv': self.wavelet_filter_rot_inv_combo_box.currentText()
+        }
+        self.input_params = input_parameters
+
+    def run_selection(self):
+        """Executes filtering based on user-selected options."""
+        close_all_loggers()
+        self.logger_date_time = datetime.now().strftime("%Y-%m-%d_%H%M%S")
+        self.logger = get_logger(self.logger_date_time + '_Filtering')
+        self.logger.info("Filtering started")
+
+        # Prepare input parameters for radiomics extraction
+        self.get_input_parameters()
+
+        # Check input parameters
+        try:
+            self.check_input_parameters()
+        except InvalidInputParametersError as e:
+            # Stop execution if input parameters are invalid
+            self.logger.error(e)
+            CustomWarningBox(str(e)).response()
+            return
+
+        # Get patient folders
+        list_of_patient_folders = self.get_patient_folders()
+
+        # Process each patient folder
+        if list_of_patient_folders:
+            Parallel(n_jobs=self.input_params["number_of_threads"])(
+                delayed(process_patient_folder)(self.input_params, patient_folder) for patient_folder in list_of_patient_folders)
+
         else:
-            if filter_dimension == '2D':
-                my_filter = Wavelets2D(wavelet_type=wavelet_filter_type,
-                                       padding_type=filter_padding_type,
-                                       response_map=wavelet_filter_response_map,
-                                       decomposition_level=wavelet_filter_decomposition_lvl,
-                                       rotation_invariance=wavelet_filter_pseudo_rot_inv
-                                       )
-            else:
-                my_filter = Wavelets3D(wavelet_type=wavelet_filter_type,
-                                       padding_type=filter_padding_type,
-                                       response_map=wavelet_filter_response_map,
-                                       decomposition_level=wavelet_filter_decomposition_lvl,
-                                       rotation_invariance=wavelet_filter_pseudo_rot_inv
-                                       )
+            CustomWarningBox("No patients to filter.")
 
-        filt_instance = Filtering(
+        self.logger.info("Filtering finished!")
+        CustomInfoBox("Filtering finished!").response()
 
-            input_dir=input_dir,
-            output_dir=output_dir,
-            input_data_type=input_data_type,
-            input_imaging_modality=input_imaging_mod,
-            filter_type=my_filter,
-            start_folder=start_folder,
-            stop_folder=stop_folder,
-            list_of_patient_folders=list_of_patient_folders,
-            nifti_image=nifti_image,
-            number_of_threads=number_of_threads)
-
-        filt_instance.filtering()
-
-    def open_directory(self, key):
-        options = QFileDialog.Options()
-        options |= QFileDialog.ShowDirsOnly
-        directory = QFileDialog.getExistingDirectory(self, "Select Directory", "", options=options)
-        if directory and key:
-            self.load_dir_label.setText(directory)
-        elif directory and not key:
-            self.save_dir_label.setText(directory)
-
-    def save_input_data(self):
+    def save_settings(self):
         """
         Update specific fields in the config.json file related to filtering settings
         without overwriting existing data.
         """
-        data = {
-            'filt_load_dir_label': self.load_dir_label.text(),
-            'filt_start_folder': self.start_folder_text_field.text(),
-            'filt_stop_folder': self.stop_folder_text_field.text(),
-            'filt_list_of_patients': self.list_of_patient_folders_text_field.text(),
-            'filt_input_image_modality': self.input_imaging_mod_combo_box.currentText(),
-            'filt_input_data_type': self.input_data_type_combo_box.currentText(),
-            'filt_save_dir_label': self.save_dir_label.text(),
-            'filt_no_of_threads': self.number_of_threads_combo_box.currentText(),
-            'filt_NIfTI_image': self.nifti_image_text_field.text(),
-            'filt_filter_type': self.filter_combo_box.currentText(),
-            'filt_filter_dimension': self.filter_dimension_combo_box.currentText(),
-            'filt_padding_type': self.padding_type_combo_box.currentText(),
-            'filt_Mean_support': self.mean_filter_support_text_field.text(),
-            'filt_LoG_sigma': self.log_filter_sigma_text_field.text(),
-            'filt_LoG_cutoff': self.log_filter_cutoff_text_field.text(),
-            'filt_Laws_response_map': self.laws_filter_response_map_text_field.text(),
-            'filt_Laws_rot_inv': self.laws_filter_rot_inv_combo_box.currentText(),
-            'filt_Laws_distance': self.laws_filter_distance_text_field.text(),
-            'filt_Laws_pooling': self.laws_filter_pooling_combo_box.currentText(),
-            'filt_Laws_energy_map': self.laws_filter_energy_map_combo_box.currentText(),
-            'filt_Wavelet_resp_map_2D': self.wavelet_filter_response_map_2d_combo_box.currentText(),
-            'filt_Wavelet_resp_map_3D': self.wavelet_filter_response_map_3d_combo_box.currentText(),
-            'filt_Wavelet_type': self.wavelet_filter_type_combo_box.currentText(),
-            'filt_Wavelet_decomp_lvl': self.wavelet_filter_decomposition_level_combo_box.currentText(),
-            'filt_Wavelet_rot_inv': self.wavelet_filter_rot_inv_combo_box.currentText()
-        }
-
+        self.get_input_parameters()
+        data = {'filtering_' + key: value for key, value in self.input_params.items()}
         file_path = os.path.join(os.getcwd(), 'config.json')
 
         # Attempt to read the existing data from the file
@@ -449,46 +477,46 @@ class FilteringTab(QWidget):
         with open(file_path, 'w') as file:
             json.dump(existing_data, file, indent=4)
 
-    def load_input_data(self):
+    def load_settings(self):
         file_path = os.path.join(os.getcwd(), 'config.json')
         try:
             with open(file_path, 'r') as file:
                 data = json.load(file)
-                self.load_dir_label.setText(data.get('filt_load_dir_label', ''))
-                self.start_folder_text_field.setText(data.get('filt_start_folder', ''))
-                self.stop_folder_text_field.setText(data.get('filt_stop_folder', ''))
-                self.list_of_patient_folders_text_field.setText(data.get('filt_list_of_patients', ''))
-                self.input_data_type_combo_box.setCurrentText(data.get('filt_input_data_type', 'Data Type:'))
-                self.save_dir_label.setText(data.get('filt_save_dir_label', ''))
+                self.load_dir_text_field.setText(data.get('filtering_input_directory', ''))
+                self.start_folder_text_field.setText(data.get('filtering_start_folder', ''))
+                self.stop_folder_text_field.setText(data.get('filtering_stop_folder', ''))
+                self.list_of_patient_folders_text_field.setText(data.get('filtering_list_of_patient_folders', ''))
+                self.input_data_type_combo_box.setCurrentText(data.get('filtering_input_data_type', 'Data Type:'))
+                self.save_dir_text_field.setText(data.get('filtering_output_directory', ''))
                 self.input_imaging_mod_combo_box.setCurrentText(
-                    data.get('filt_input_image_modality', 'Imaging Modality:'))
-                self.number_of_threads_combo_box.setCurrentText(data.get('filt_no_of_threads', 'No. of Threads:'))
-                self.nifti_image_text_field.setText(data.get('filt_NIfTI_image', ''))
-                self.filter_combo_box.setCurrentText(data.get('filt_filter_type', 'Filter Type:'))
-                self.filter_dimension_combo_box.setCurrentText(data.get('filt_filter_dimension', 'Dimension:'))
-                self.padding_type_combo_box.setCurrentText(data.get('filt_padding_type', 'Padding Type:'))
-                self.mean_filter_support_text_field.setText(data.get('filt_Mean_support', ''))
-                self.log_filter_sigma_text_field.setText(data.get('filt_LoG_sigma', ''))
-                self.log_filter_cutoff_text_field.setText(data.get('filt_LoG_cutoff', ''))
-                self.laws_filter_response_map_text_field.setText(data.get('filt_Laws_response_map', ''))
-                self.laws_filter_rot_inv_combo_box.setCurrentText(data.get('filt_Laws_rot_inv', 'Rotation invariance:'))
-                self.laws_filter_distance_text_field.setText(data.get('filt_Laws_distance', ''))
-                self.laws_filter_pooling_combo_box.setCurrentText(data.get('filt_Laws_pooling', 'Pooling:'))
-                self.laws_filter_energy_map_combo_box.setCurrentText(data.get('filt_Laws_energy_map', 'Energy map:'))
+                    data.get('filtering_input_image_modality', 'Imaging Modality:'))
+                self.number_of_threads_combo_box.setCurrentText(data.get('filtering_number_of_threads', 'Threads:'))
+                self.nifti_image_text_field.setText(data.get('filtering_nifti_image_name', ''))
+                self.filter_combo_box.setCurrentText(data.get('filtering_filter_type', 'Filter Type:'))
+                self.filter_dimension_combo_box.setCurrentText(data.get('filtering_filter_dimension', 'Dimension:'))
+                self.padding_type_combo_box.setCurrentText(data.get('filtering_filter_padding_type', 'Padding Type:'))
+                self.mean_filter_support_text_field.setText(data.get('filtering_filter_mean_support', ''))
+                self.log_filter_sigma_text_field.setText(data.get('filtering_filter_log_sigma', ''))
+                self.log_filter_cutoff_text_field.setText(data.get('filtering_filter_log_cutoff', ''))
+                self.laws_filter_response_map_text_field.setText(data.get('filtering_filter_laws_response_map', ''))
+                self.laws_filter_rot_inv_combo_box.setCurrentText(data.get('filtering_filter_laws_rot_inv', 'Rotation invariance:'))
+                self.laws_filter_distance_text_field.setText(data.get('filtering_filter_laws_distance', ''))
+                self.laws_filter_pooling_combo_box.setCurrentText(data.get('filtering_filter_laws_pooling', 'Pooling:'))
+                self.laws_filter_energy_map_combo_box.setCurrentText(data.get('filtering_filter_laws_energy_map', 'Energy map:'))
                 self.wavelet_filter_response_map_2d_combo_box.setCurrentText(
-                    data.get('filt_Wavelet_resp_map_2D', 'Response Map:'))
+                    data.get('filtering_filter_wavelet_resp_map_2D', 'Response Map:'))
                 self.wavelet_filter_response_map_3d_combo_box.setCurrentText(
-                    data.get('filt_Wavelet_resp_map_3D', 'Response Map:'))
-                self.wavelet_filter_type_combo_box.setCurrentText(data.get('filt_Wavelet_type', 'Wavelet type:'))
+                    data.get('filtering_filter_wavelet_resp_map_3D', 'Response Map:'))
+                self.wavelet_filter_type_combo_box.setCurrentText(data.get('filtering_filter_wavelet_type', 'Wavelet type:'))
                 self.wavelet_filter_decomposition_level_combo_box.setCurrentText(
-                    data.get('filt_Wavelet_decomp_lvl', 'Decomposition Lvl.:'))
+                    data.get('filtering_filter_wavelet_decomp_lvl', 'Decomposition Lvl.:'))
                 self.wavelet_filter_rot_inv_combo_box.setCurrentText(
-                    data.get('filt_Wavelet_rot_inv', 'Rotation invariance:'))
+                    data.get('filtering_filter_wavelet_rot_inv', 'Rotation invariance:'))
 
         except FileNotFoundError:
             print("No previous data found!")
 
-    def filter_combo_box_changed(self, text):
+    def _filter_combo_box_changed(self, text):
         if text == 'Mean':
             if self.wavelet_filter_response_map_connected:
                 self.filter_dimension_combo_box.currentTextChanged.disconnect()
@@ -599,7 +627,7 @@ class FilteringTab(QWidget):
                 self.wavelet_filter_response_map_3d_combo_box.hide()
                 self.wavelet_filter_response_map_2d_combo_box.show()
 
-            self.filter_dimension_combo_box.currentTextChanged.connect(self.wavelet_response_map_gui)
+            self.filter_dimension_combo_box.currentTextChanged.connect(self._wavelet_response_map_combo_box_changed)
             self.wavelet_filter_response_map_connected = True
             self.wavelet_filter_decomposition_level_combo_box.show()
             self.wavelet_filter_rot_inv_combo_box.show()
@@ -640,7 +668,7 @@ class FilteringTab(QWidget):
             self.laws_filter_pooling_combo_box.hide()
             self.laws_filter_energy_map_combo_box.hide()
 
-    def wavelet_response_map_gui(self, text):
+    def _wavelet_response_map_combo_box_changed(self, text):
         if text == '2D':
             self.wavelet_filter_response_map_3d_combo_box.hide()
             self.wavelet_filter_response_map_2d_combo_box.show()
@@ -653,3 +681,18 @@ class FilteringTab(QWidget):
             self.wavelet_filter_response_map_3d_combo_box.hide()
             self.wavelet_filter_response_map_2d_combo_box.hide()
             self.wavelet_filter_response_map_combo_box.show()
+
+    def _validate_combo_selections(self):
+        """Validate combo box selections."""
+        required_selections = [
+            ('Threads:', self.number_of_threads_combo_box),
+            ('Data Type:', self.input_data_type_combo_box),
+            ('Filter Type:', self.filter_combo_box),
+            ('Dimension:', self.filter_dimension_combo_box),
+            ('Padding Type:', self.padding_type_combo_box),
+            ('Imaging Modality:', self.input_imaging_mod_combo_box)
+        ]
+        for message, combo_box in required_selections:
+            if combo_box.currentText() == message:
+                warning_msg = f"Select {message.split(':')[0]}"
+                raise InvalidInputParametersError(warning_msg)

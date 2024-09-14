@@ -622,6 +622,7 @@ class RadiomicsTab(BaseTab):
                 self.nifti_structures_text_field.setText(data.get('radiomics_nifti_structures', ''))
                 self.dicom_structures_text_field.setText(data.get('radiomics_dicom_structures', ''))
                 self.nifti_image_text_field.setText(data.get('radiomics_nifti_image_name', ''))
+                self.nifti_filtered_image_text_field.setText(data.get('radiomics_nifti_filtered_image_name', ''))
                 self.intensity_range_text_field.setText(data.get('radiomics_intensity_range', ''))
                 self.aggr_dim_and_method_combo_box.setCurrentText(
                     data.get('radiomics_agr_strategy', 'Texture Features Aggr. Method:'))

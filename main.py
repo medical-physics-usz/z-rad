@@ -12,7 +12,7 @@ from zrad.gui.prep_tab import PreprocessingTab
 from zrad.gui.rad_tab import RadiomicsTab
 from zrad.gui.toolbox_gui import CustomWarningBox
 
-WINDOW_TITLE = 'Z-Rad v24.09.dev'
+WINDOW_TITLE = 'Z-Rad v24.09'
 WINDOW_WIDTH = 1280
 WINDOW_HEIGHT = 720
 BACKGROUND_COLOR = "#005ea8"

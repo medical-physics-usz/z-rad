@@ -81,8 +81,8 @@ $RECYCLE.BIN/
 # Windows shortcuts
 *.lnk
 
-# Z-Rad
-# zrad/config.txt
+# Config files
+config.json
 
 # Sourcetree
 .idea/

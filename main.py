@@ -1,22 +1,42 @@
+import os
 import sys
 from multiprocessing import freeze_support
 
 from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtGui import QFont, QPalette, QColor, QIcon, QPixmap
 from PyQt5.QtWidgets import QApplication, QMainWindow, QTabWidget, QAction, QStyleFactory, QScrollArea, QWidget, \
-    QVBoxLayout, QSplashScreen
+    QVBoxLayout, QSplashScreen, QLabel
 
 from zrad.gui.filt_tab import FilteringTab
 from zrad.gui.prep_tab import PreprocessingTab
 from zrad.gui.rad_tab import RadiomicsTab
-from zrad.gui.toolbox_gui import add_logo_to_tab, CustomWarningBox, resource_path
+from zrad.gui.toolbox_gui import CustomWarningBox
 
-WINDOW_TITLE = 'Z-Rad v8.0.dev'
+WINDOW_TITLE = 'Z-Rad v24.09.dev'
 WINDOW_WIDTH = 1280
 WINDOW_HEIGHT = 720
 BACKGROUND_COLOR = "#005ea8"
 FONT_FAMILY = 'Verdana'
 FONT_SIZE = 14
+
+
+def resource_path(relative_path: str) -> str:
+    try:
+        base_path = getattr(sys, '_MEIPASS', os.path.abspath("."))
+    except AttributeError:
+        base_path = os.path.abspath(".")
+    return os.path.join(base_path, relative_path)
+
+
+def add_logo_to_tab(tab: QWidget):
+    logo_label = QLabel(tab)
+    logo_pixmap = QPixmap(resource_path('documentation/logos/USZLogo.png'))
+    desired_width = 300
+    desired_height = 150
+    logo_pixmap = logo_pixmap.scaled(desired_width, desired_height, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+    logo_label.setPixmap(logo_pixmap)
+    logo_label.setGeometry(20, 620 - logo_pixmap.height(),
+                           logo_pixmap.width(), logo_pixmap.height())
 
 
 class ZRad(QMainWindow):
@@ -110,8 +130,8 @@ class ZRad(QMainWindow):
         self.help_menu.addAction(self.help_contact_action)
         self.help_menu.addAction(self.help_about_action)
 
-        self.load_action.triggered.connect(self.tabs[0][1].load_input_data)
-        self.save_action.triggered.connect(self.tabs[0][1].save_input_data)
+        self.load_action.triggered.connect(self.tabs[0][1].load_settings)
+        self.save_action.triggered.connect(self.tabs[0][1].save_settings)
 
     @staticmethod
     def display_documentation():
@@ -154,8 +174,8 @@ class ZRad(QMainWindow):
         self.save_action.triggered.disconnect()
 
         tab = self.tabs[index][1]
-        self.load_action.triggered.connect(tab.load_input_data)
-        self.save_action.triggered.connect(tab.save_input_data)
+        self.load_action.triggered.connect(tab.load_settings)
+        self.save_action.triggered.connect(tab.save_settings)
 
         self.load_action.setText('Load Input')
         self.save_action.setText('Save Input')

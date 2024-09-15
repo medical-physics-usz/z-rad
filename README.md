@@ -102,6 +102,11 @@ pip install -r requirements.txt
 python main.py
 ```
 
+### API
+```sh
+pip install z-rad
+```
+
 ## License
 
 Z-Rad is an open-source project licensed under the MIT License.

@@ -10,5 +10,3 @@ scikit-image
 scikit-learn
 opencv-python-headless
 joblib
-setuptools
-wheel

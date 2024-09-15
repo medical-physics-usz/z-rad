@@ -7,12 +7,13 @@ from PyQt5.QtGui import QFont, QPalette, QColor, QIcon, QPixmap
 from PyQt5.QtWidgets import QApplication, QMainWindow, QTabWidget, QAction, QStyleFactory, QScrollArea, QWidget, \
     QVBoxLayout, QSplashScreen, QLabel
 
+from zrad import __version__
 from zrad.gui.filt_tab import FilteringTab
 from zrad.gui.prep_tab import PreprocessingTab
 from zrad.gui.rad_tab import RadiomicsTab
 from zrad.gui.toolbox_gui import CustomWarningBox
 
-WINDOW_TITLE = 'Z-Rad v24.09'
+WINDOW_TITLE = f"Z-Rad v{__version__}"
 WINDOW_WIDTH = 1280
 WINDOW_HEIGHT = 720
 BACKGROUND_COLOR = "#005ea8"

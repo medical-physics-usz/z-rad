@@ -46,7 +46,6 @@ addresses these issues by offering a user-friendly, IBSI-compliant, and open-sou
 <img src="https://raw.githubusercontent.com/medical-physics-usz/z-rad/master/doc/images/ZRadExtractionPathways.png" width="600" alt="Z-Rad Pathways"/>
 
 ## Graphical User Interface (GUI) and Application Programming Interface (API)
-
 Both GUI and API are structured into three primary classes: **Resampling**, **Filtering**, and **Radiomics**:
 
 ### Resampling
@@ -76,9 +75,9 @@ and neighbouring gray level dependance matrix (NGLDM) features families.
 ## Installation and Get Started
 
 ### Windows executable file:
-The simplest way to run Z-Rad on Windows is to start the `main.exe` attached to every Z-Rad release.
+The simplest way to run Z-Rad on Windows is to start the `z-rad.exe` attached to every Z-Rad release.
 
-An executable can be also generated from the source files by running
+Executables can be also generated for Windows, MacOS, and Linux by running
 ```sh
 python generate_executable.py
 ```

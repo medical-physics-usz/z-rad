@@ -10,7 +10,7 @@ packages = [
 ]
 
 [tool.poetry.dependencies]
-python = "^3.12"
+python = "^3.10"
 pydicom = "^3.0.0"
 pyqt5 = "^5.15.11"
 numpy = "^2.1.1"
@@ -23,7 +23,6 @@ scikit-image = "^0.24.0"
 scikit-learn = "^1.5.2"
 opencv-python-headless = "^4.10.0.84"
 joblib = "^1.4.2"
-
 
 [build-system]
 requires = ["poetry-core", "poetry-dynamic-versioning"]

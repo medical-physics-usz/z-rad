@@ -31,7 +31,7 @@ def resource_path(relative_path: str) -> str:
 
 def add_logo_to_tab(tab: QWidget):
     logo_label = QLabel(tab)
-    logo_pixmap = QPixmap(resource_path('documentation/logos/USZLogo.png'))
+    logo_pixmap = QPixmap(resource_path('doc/logos/USZLogo.png'))
     desired_width = 300
     desired_height = 150
     logo_pixmap = logo_pixmap.scaled(desired_width, desired_height, Qt.KeepAspectRatio, Qt.SmoothTransformation)

@@ -329,13 +329,11 @@ def apply_suv_correction(dicom_files, suv_image):
         acquisition_time_list.append(parse_time(dcm_data.AcquisitionTime))
     min_acquisition_time = np.min(acquisition_time_list)
 
-    for dicom_file in dicom_files:
-        dcm_data = pydicom.dcmread(dicom_file)
-        z_slice_id = int(dcm_data.InstanceNumber) - 1
+    dicom_files = sorted(dicom_files, key=lambda f: float(pydicom.dcmread(f).ImagePositionPatient[2]))
+    for z_slice_id, dicom_file in enumerate(dicom_files):
         intensity_array[:, :, z_slice_id] = calculate_suv(dicom_file, min_acquisition_time)
 
     # Flip from head to toe
-    intensity_array = np.flip(intensity_array, axis=2)
     intensity_image = sitk.GetImageFromArray(intensity_array.T)
     intensity_image.SetOrigin(suv_image.GetOrigin())
     intensity_image.SetSpacing(np.array(suv_image.GetSpacing()))
@@ -417,7 +415,7 @@ def extract_dicom_mask(rtstruct_path, roi_name, image):
 
             return contour_info
 
-        dicom_data = pydicom.read_file(file_path)
+        dicom_data = pydicom.dcmread(file_path)
         if not hasattr(dicom_data, 'StructureSetROISequence'):
             raise InvalidDicomError()
 
@@ -456,7 +454,7 @@ def get_all_structure_names(rtstruct_path):
         InvalidDicomError: If the DICOM file does not have a StructureSetROISequence attribute.
     """
     # Read the DICOM file
-    dicom_data = pydicom.read_file(rtstruct_path)
+    dicom_data = pydicom.dcmread(rtstruct_path)
 
     # Check if the file contains a StructureSetROISequence
     if not hasattr(dicom_data, 'StructureSetROISequence'):

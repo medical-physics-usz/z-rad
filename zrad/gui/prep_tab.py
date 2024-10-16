@@ -178,6 +178,12 @@ class PreprocessingTab(BaseTab):
             'Mask Union',
             580, 380, 150, 50, self)
 
+        self.mask_union_info_label = CustomInfo(
+            ' i',
+            'If selected, all chosen masks will be combined into a single mask and saved as a separate .nii.gz file.',
+            700, 380, 14, 14, self
+        )
+
         # Image Interpolation Method ComboBox
         self.image_interpolation_method_combo_box = CustomBox(
             775, 380, 210, 50, self,

@@ -64,7 +64,7 @@ def _get_filtering(input_params):
                 rotation_invariance=input_params["filter_wavelet_rot_inv"] == 'Enable'
             )
         else:
-            raise InvalidInputParametersError(f"Filter_dimension {input_params["filter_dimension"]} is not supported.")
+            raise InvalidInputParametersError(f"Filter_dimension {input_params['filter_dimension']} is not supported.")
     else:
          raise InvalidInputParametersError(f"Filter_type {input_params['filter_type']} not supported.")
 

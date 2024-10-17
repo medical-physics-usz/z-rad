@@ -52,7 +52,7 @@ class Filtering:
                                        rotation_invariance=self.filtering_params["rotation_invariance"]
                                        )
             else:
-                raise ValueError(f"Filter_dimension {self.filtering_params["filter_dimension"]} is not supported.")
+                raise ValueError(f"Filter_dimension {self.filtering_params['filter_dimension']} is not supported.")
         else:
             raise ValueError(f"Filter {filtering_method} is not supported.")
         return my_filter

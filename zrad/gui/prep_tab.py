@@ -349,7 +349,7 @@ class PreprocessingTab(BaseTab):
                     msg = "Select valid mask interpolation threshold"
                     raise InvalidInputParametersError(msg)
             else:
-                self.input_params["mask_interpolation_threshold"] = None
+                self.input_params["mask_interpolation_threshold"] = 0.5
 
     def get_input_parameters(self):
         """Collect input parameters from UI elements."""

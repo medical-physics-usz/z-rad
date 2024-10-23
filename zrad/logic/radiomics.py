@@ -167,12 +167,13 @@ class Radiomics:
         self.patient_intensity_mask = mask.copy()
         self.patient_intensity_mask.array = np.where(self.patient_intensity_mask.array > 0, self.patient_image.array, np.nan)
 
+        self._validate_mask()
+
         # extract features
         self._calc_mask_intensity_features()
         self._calc_mask_morphological_features()
         self._calc_discretized_intensity_features()
         self._calc_texture_features()
-        self._validate_mask()
 
         # compile features
         all_features_list = [self.patient_morf_features_list, self.patient_local_intensity_features_list,
@@ -187,14 +188,8 @@ class Radiomics:
         """
         Validates the intensity mask for a patient by checking the bounding box dimensions
         and the number of valid voxels within the mask, with criteria differing based on
-        the aggregation dimension (2D/2.5D or 3D).
-
-        Returns:
-            self.patient_intensity_mask: The validated intensity mask if it meets the
-                                         criteria for minimum bounding box size and
-                                         valid voxel count.
-            None: If the mask does not meet the criteria, `None` is returned and
-                  processing for this mask is skipped.
+        the aggregation dimension (2D/2.5D or 3D). If the mask does not meet the criteria,
+        processing for this mask is skipped.
 
         Criteria for validation:
             - For 3D aggregation:
@@ -237,8 +232,6 @@ class Radiomics:
             if no_valid_voxels < min_voxel_number_2d:
                 raise DataStructureError(f'The number of valid voxels must be > {min_voxel_number_2d}. Consider finer resampling.')
 
-        # If the mask meets all criteria, return the validated intensity mask.
-        return self.patient_intensity_mask
 
     def _calc_mask_intensity_features(self):
 

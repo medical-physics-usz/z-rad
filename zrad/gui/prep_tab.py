@@ -26,7 +26,6 @@ def process_patient_folder(input_params, patient_folder, structure_set):
     prep_image = Preprocessing(
         input_data_type=input_params["input_data_type"],
         input_imaging_modality=input_params["input_imaging_modality"],
-        just_save_as_nifti=input_params["just_save_as_nifti"],
         resample_resolution=input_params["resample_resolution"],
         resample_dimension=input_params["resample_dimension"],
         interpolation_method=input_params["image_interpolation_method"],
@@ -34,7 +33,6 @@ def process_patient_folder(input_params, patient_folder, structure_set):
     prep_mask = Preprocessing(
         input_data_type=input_params["input_data_type"],
         input_imaging_modality=input_params["input_imaging_modality"],
-        just_save_as_nifti=input_params["just_save_as_nifti"],
         resample_resolution=input_params["resample_resolution"],
         resample_dimension=input_params["resample_dimension"],
         interpolation_method=input_params["mask_interpolation_method"],

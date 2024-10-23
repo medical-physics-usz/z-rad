@@ -11,7 +11,7 @@ sys.excepthook = handle_uncaught_exception
 
 class Preprocessing:
 
-    def __init__(self, input_data_type, input_imaging_modality, just_save_as_nifti,
+    def __init__(self, input_data_type, input_imaging_modality, just_save_as_nifti=False,
                  resample_resolution=None, resample_dimension=None,
                  interpolation_method=None, interpolation_threshold=None):
         self.input_data_type = input_data_type

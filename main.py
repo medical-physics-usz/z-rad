@@ -78,7 +78,7 @@ class ZRad(QMainWindow):
         self.setCentralWidget(self.tab_widget)
 
         self.tabs = [
-            ("Resampling", PreprocessingTab()),
+            ("Preprocessing", PreprocessingTab()),
             ("Filtering", FilteringTab()),
             ("Radiomics", RadiomicsTab())
         ]

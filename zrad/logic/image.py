@@ -262,7 +262,6 @@ def validate_pet_dicom_tags(dicom_files):
         elif dicom.Units == 'CNTS' and 'PHILIPS' in dicom.Manufacturer.upper():
             try:
                 activity_scale_factor = dicom[(0x7053, 0x1009)].value
-                print(activity_scale_factor)
                 if activity_scale_factor == 0.0:
                     error_msg = f"For patient's {image_id} image, patient is excluded, Philips private activity scale factor (7053, 1009) = 0. (PET units CNTS)"
                     raise DataStructureError(error_msg)
@@ -279,49 +278,54 @@ def apply_suv_correction(dicom_files, suv_image):
 
         ds = pydicom.dcmread(dicom_file_path)
         units = ds.Units
-        injection_time = parse_time(ds.RadiopharmaceuticalInformationSequence[0].RadiopharmaceuticalStartTime)
-
-        if ds.DecayCorrection == 'START':
-            if 'PHILIPS' in ds.Manufacturer.upper():
-                acquisition_time = min_acquisition_time
-            elif 'SIEMENS' in ds.Manufacturer.upper() and units == 'BQML':
-                try:
-                    acquisition_time = parse_time(ds[(0x0071, 0x1022)].value).replace(year=injection_time.year,
-                                                                                      month=injection_time.month,
-                                                                                      day=injection_time.day)
-                except KeyError:
-                    acquisition_time = min_acquisition_time
-            elif 'GE' in ds.Manufacturer.upper() and units == 'BQML':
-                try:
-                    acquisition_time = parse_time(ds[(0x0009, 0x100d)].value).replace(year=injection_time.year,
-                                                                                      month=injection_time.month,
-                                                                                      day=injection_time.day)
-                except KeyError:
-                    acquisition_time = min_acquisition_time
-        elif ds.DecayCorrection == 'ADMIN':
-            acquisition_time = injection_time
-
-        patient_weight = float(ds.PatientWeight)
-        injected_dose = float(ds.RadiopharmaceuticalInformationSequence[0].RadionuclideTotalDose)
-
-        elapsed_time = (acquisition_time - injection_time).total_seconds()
-
-        half_life = float(ds.RadiopharmaceuticalInformationSequence[0].RadionuclideHalfLife)
-        decay_factor = np.exp(-1 * ((np.log(2) * elapsed_time) / half_life))
-
-        decay_corrected_dose = injected_dose * decay_factor
-
         image_data = ds.pixel_array
-        activity_concentration = (image_data * ds.RescaleSlope) + ds.RescaleIntercept
+        if units == 'GML':
+            suv = (image_data * ds.RescaleSlope) + ds.RescaleIntercept
 
-        if 'PHILIPS' in ds.Manufacturer.upper() and units == 'CNTS':
-            activity_concentration = activity_concentration * ds[(0x7053, 0x1009)].value
+        else:
+            injection_time = parse_time(ds.RadiopharmaceuticalInformationSequence[0].RadiopharmaceuticalStartTime)
+            patient_weight = float(ds.PatientWeight)
+            injected_dose = float(ds.RadiopharmaceuticalInformationSequence[0].RadionuclideTotalDose)
+            half_life = float(ds.RadiopharmaceuticalInformationSequence[0].RadionuclideHalfLife)
 
-        suv = activity_concentration / (decay_corrected_dose / (patient_weight * 1000))
+            if units == 'BQML':
+                if ds.DecayCorrection == 'START':
+                    if 'PHILIPS' in ds.Manufacturer.upper():
+                        acquisition_time = min_acquisition_time
+                    elif 'SIEMENS' in ds.Manufacturer.upper():
+                        try:
+                            acquisition_time = parse_time(ds[(0x0071, 0x1022)].value).replace(year=injection_time.year,
+                                                                                              month=injection_time.month,
+                                                                                              day=injection_time.day)
+                        except KeyError:
+                            acquisition_time = min_acquisition_time
+                    elif 'GE' in ds.Manufacturer.upper():
+                        try:
+                            acquisition_time = parse_time(ds[(0x0009, 0x100d)].value).replace(year=injection_time.year,
+                                                                                              month=injection_time.month,
+                                                                                              day=injection_time.day)
+                        except KeyError:
+                            acquisition_time = min_acquisition_time
+                elif ds.DecayCorrection == 'ADMIN':
+                    acquisition_time = injection_time
+
+            elapsed_time = (acquisition_time - injection_time).total_seconds()
+
+            decay_factor = np.exp(-1 * ((np.log(2) * elapsed_time) / half_life))
+
+            decay_corrected_dose = injected_dose * decay_factor
+
+            activity_concentration = (image_data * ds.RescaleSlope) + ds.RescaleIntercept
+
+            if 'PHILIPS' in ds.Manufacturer.upper() and units == 'CNTS':
+                activity_concentration = activity_concentration * ds[(0x7053, 0x1009)].value
+
+            suv = activity_concentration / (decay_corrected_dose / (patient_weight * 1000))
 
         suv = suv.T
 
         return suv
+
     intensity_array = np.zeros(suv_image.GetSize())
     acquisition_time_list = []
     for dicom_file in dicom_files:

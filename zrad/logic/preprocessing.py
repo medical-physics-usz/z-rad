@@ -11,10 +11,9 @@ sys.excepthook = handle_uncaught_exception
 
 class Preprocessing:
 
-    def __init__(self, input_data_type, input_imaging_modality,
+    def __init__(self, input_imaging_modality,
                  resample_resolution=None, resample_dimension=None,
                  interpolation_method=None, interpolation_threshold=None):
-        self.input_data_type = input_data_type
         self.input_imaging_modality = input_imaging_modality
 
         if not (isinstance(resample_resolution, (float, int)) and resample_resolution > 0):

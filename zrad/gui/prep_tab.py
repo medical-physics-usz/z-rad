@@ -4,6 +4,7 @@ import os
 from datetime import datetime
 
 from joblib import Parallel, delayed
+from tqdm import tqdm
 
 from ._base_tab import BaseTab, load_images, load_mask
 from .toolbox_gui import CustomLabel, CustomBox, CustomTextField, CustomWarningBox, CustomCheckBox, \
@@ -11,7 +12,7 @@ from .toolbox_gui import CustomLabel, CustomBox, CustomTextField, CustomWarningB
 from ..logic.exceptions import InvalidInputParametersError, DataStructureError
 from ..logic.image import get_all_structure_names, get_dicom_files
 from ..logic.preprocessing import Preprocessing
-from ..logic.toolbox_logic import get_logger, close_all_loggers
+from ..logic.toolbox_logic import get_logger, close_all_loggers, tqdm_joblib
 
 logging.captureWarnings(True)
 
@@ -40,7 +41,7 @@ def process_patient_folder(input_params, patient_folder, structure_set):
     logger.info(f"Processing patient's {patient_folder} image.")
     try:
         image = load_images(input_params, patient_folder)
-    except DataStructureError as e:
+    except (DataStructureError, ValueError) as e:
         logger.error(e)
         logger.error(f"Patient {patient_folder} could not be loaded and is skipped.")
         return
@@ -427,8 +428,8 @@ class PreprocessingTab(BaseTab):
 
         # Process each patient folder
         if list_of_patient_folders:
-            Parallel(n_jobs=self.input_params["number_of_threads"])(
-                delayed(process_patient_folder)(self.input_params, patient_folder, structure_set) for patient_folder in list_of_patient_folders)
+            with tqdm_joblib(tqdm(desc="Patient directories", total=len(list_of_patient_folders))):
+                Parallel(n_jobs=self.input_params["number_of_threads"])(delayed(process_patient_folder)(self.input_params, patient_folder, structure_set) for patient_folder in list_of_patient_folders)
         else:
             CustomWarningBox("No patients to calculate preprocess from.")
 

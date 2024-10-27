@@ -102,13 +102,8 @@ class Image:
             self.direction = image.GetDirection()
             self.shape = image.GetSize()
 
-    def read_dicom_mask(self, dicom_dir, structure_name, image):
-        dicom_files = get_dicom_files(directory=dicom_dir, modality='RTSTRUCT')
-        if len(dicom_files) != 1:
-            msg = f"Expected one RTSTRUCT file but found {len(dicom_files)}"
-            raise DataStructureError(msg)
-
-        mask = extract_dicom_mask(dicom_files[0]['file_path'], structure_name, image.sitk_image)
+    def read_dicom_mask(self, rtstruct_path, structure_name, image):
+        mask = extract_dicom_mask(rtstruct_path, structure_name, image.sitk_image)
         self.array = mask.array
         self.origin = mask.origin
         self.spacing = mask.spacing

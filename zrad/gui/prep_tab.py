@@ -56,10 +56,12 @@ def process_patient_folder(input_params, patient_folder, structure_set):
     output_path = os.path.join(input_params["output_directory"], patient_folder, 'image.nii.gz')
     image_new.save_as_nifti(output_path)
 
-    if input_params["use_all_structures"]:
+    # Process masks
+    if input_params["input_data_type"] == 'dicom':
         input_directory = os.path.join(input_params["input_directory"], patient_folder)
-        rtstruct_path = get_dicom_files(input_directory, modality='RTSTRUCT')[0]['file_path']
-        structure_set = get_all_structure_names(rtstruct_path)
+        input_params['rtstruct_path'] = get_dicom_files(input_directory, modality='RTSTRUCT')[0]['file_path']
+        if input_params["use_all_structures"]:
+            structure_set = get_all_structure_names(input_params['rtstruct_path'])
 
     if structure_set:
         mask_union = None

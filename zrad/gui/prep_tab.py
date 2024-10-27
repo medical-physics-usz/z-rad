@@ -3,6 +3,7 @@ import logging
 import os
 from datetime import datetime
 
+import numpy as np
 from joblib import Parallel, delayed
 from tqdm import tqdm
 
@@ -57,7 +58,7 @@ def process_patient_folder(input_params, patient_folder, structure_set):
 
     if input_params["use_all_structures"]:
         input_directory = os.path.join(input_params["input_directory"], patient_folder)
-        rtstruct_path = get_dicom_files(input_directory, modality='RTSTRUCT')[0]
+        rtstruct_path = get_dicom_files(input_directory, modality='RTSTRUCT')[0]['file_path']
         structure_set = get_all_structure_names(rtstruct_path)
 
     if structure_set:
@@ -77,7 +78,6 @@ def process_patient_folder(input_params, patient_folder, structure_set):
                 mask_new.save_as_nifti(output_path)
 
                 if input_params["mask_union"]:
-                    import numpy as np
                     if mask_union:
                         mask_union.array = np.bitwise_or(mask_union.array, mask_new.array).astype(np.int16)
                     else:

@@ -241,66 +241,101 @@ def validate_pet_dicom_tags(dicom_files):
         elif ds.Units == 'CNTS' and 'PHILIPS' in ds.Manufacturer.upper():
             try:
                 activity_scale_factor = ds[(0x7053, 0x1009)].value
-                print(activity_scale_factor)
                 if activity_scale_factor == 0.0:
                     error_msg = f"For patient's {image_id} image, patient is excluded, Philips private activity scale factor (7053, 1009) = 0. (PET units CNTS)"
                     raise DataStructureError(error_msg)
             except KeyError:
                 error_msg = f"For patient's {image_id} image, patient is excluded, Philips private activity scale factor (7053, 1009) is missing. (PET units CNTS)."
                 raise DataStructureError(error_msg)
+        elif ds.Units == 'GML':
+            if (0x0054, 0x1006) in ds:
+                if ds[0x0054, 0x1006].value != 'BW':
+                    error_msg = f"For patient's {image_id} image, patient is excluded, SUV Type is not BW (GML units)"
+                    raise DataStructureError(error_msg)
         else:
             error_msg = f"For patient's {image_id} image, patient is excluded, only supported PET Units are BQML for Philips, Siemens and GE or CNTS for Philips"
             raise DataStructureError(error_msg)
 
 
 def apply_suv_correction(dicom_files, suv_image):
-    def calculate_suv(dicom_file_path, min_acquisition_time):
+
+    def process_single_slice(dicom_file_path, min_acquisition_time):
+
+        def process_gml(pixel_array_units):
+            return pixel_array_units
+
+        def process_bqml(activity_concentration, ds, min_acquisition_time):
+            injection_time = parse_time(ds.RadiopharmaceuticalInformationSequence[0].RadiopharmaceuticalStartTime)
+            patient_weight = float(ds.PatientWeight)
+            injected_dose = float(ds.RadiopharmaceuticalInformationSequence[0].RadionuclideTotalDose)
+            half_life = float(ds.RadiopharmaceuticalInformationSequence[0].RadionuclideHalfLife)
+            manufacturer = ds.Manufacturer.upper()
+
+            if ds.DecayCorrection == 'START':
+                if 'PHILIPS' in manufacturer:
+                    acquisition_time = min_acquisition_time
+                elif 'SIEMENS' in manufacturer:
+                    try:
+                        acquisition_time = parse_time(ds[(0x0071, 0x1022)].value).replace(year=injection_time.year,
+                                                                                          month=injection_time.month,
+                                                                                          day=injection_time.day)
+                    except KeyError:
+                        acquisition_time = min_acquisition_time
+                elif 'GE' in manufacturer:
+                    try:
+                        acquisition_time = parse_time(ds[(0x0009, 0x100d)].value).replace(year=injection_time.year,
+                                                                                          month=injection_time.month,
+                                                                                          day=injection_time.day)
+                    except KeyError:
+                        acquisition_time = min_acquisition_time
+                else:
+                    error_msg = f"Vendor {ds.Manufacturer} is not supported with BQML units!"
+                    raise DataStructureError(error_msg)
+            elif ds.DecayCorrection == 'ADMIN':
+                acquisition_time = injection_time
+            else:
+                error_msg = f"Decay correction {ds.DecayCorrection} is not supported!"
+                raise DataStructureError(error_msg)
+
+            elapsed_time = (acquisition_time - injection_time).total_seconds()
+            decay_factor = np.exp(-1 * ((np.log(2) * elapsed_time) / half_life))
+            decay_corrected_dose = injected_dose * decay_factor
+            suv = activity_concentration / (decay_corrected_dose / (patient_weight * 1000))
+
+            return suv
+
+        def process_cnts(pixel_array_units, ds, min_acquisition_time):
+            if 'PHILIPS' in ds.Manufacturer.upper():
+                activity_concentration_bqml = pixel_array_units * ds[(0x7053, 0x1009)].value
+                suv = process_bqml(activity_concentration_bqml, ds, min_acquisition_time)
+            else:
+                error_msg = f"Vendor {ds.Manufacturer} is not supported with CNTS units!"
+                raise DataStructureError(error_msg)
+            return suv
 
         ds = pydicom.dcmread(dicom_file_path)
         units = ds.Units
-        injection_time = parse_time(ds.RadiopharmaceuticalInformationSequence[0].RadiopharmaceuticalStartTime)
+        pixel_array_units = (ds.pixel_array * ds.RescaleSlope) + ds.RescaleIntercept
 
-        if ds.DecayCorrection == 'START':
-            if 'PHILIPS' in ds.Manufacturer.upper():
-                acquisition_time = min_acquisition_time
-            elif 'SIEMENS' in ds.Manufacturer.upper() and units == 'BQML':
-                try:
-                    acquisition_time = parse_time(ds[(0x0071, 0x1022)].value).replace(year=injection_time.year,
-                                                                                      month=injection_time.month,
-                                                                                      day=injection_time.day)
-                except KeyError:
-                    acquisition_time = min_acquisition_time
-            elif 'GE' in ds.Manufacturer.upper() and units == 'BQML':
-                try:
-                    acquisition_time = parse_time(ds[(0x0009, 0x100d)].value).replace(year=injection_time.year,
-                                                                                      month=injection_time.month,
-                                                                                      day=injection_time.day)
-                except KeyError:
-                    acquisition_time = min_acquisition_time
-        elif ds.DecayCorrection == 'ADMIN':
-            acquisition_time = injection_time
+        if units == 'GML':
+            if (0x0054, 0x1006) in ds:
+                if ds[0x0054, 0x1006].value == 'BW':
+                    suv = process_gml(pixel_array_units)
+                else:
+                    error_msg = f"GML with {ds[0x0054, 0x1006].value} SUV normalizatoin is not supported!"
+                    raise DataStructureError(error_msg)
+            else:
+                suv = process_gml(pixel_array_units)
+        elif units == 'BQML':
+            suv = process_bqml(pixel_array_units, ds, min_acquisition_time)
+        elif units == 'CNTS':
+            suv = process_cnts(pixel_array_units, ds, min_acquisition_time)
+        else:
+            error_msg = f"Units {units} are not supported!"
+            raise DataStructureError(error_msg)
 
-        patient_weight = float(ds.PatientWeight)
-        injected_dose = float(ds.RadiopharmaceuticalInformationSequence[0].RadionuclideTotalDose)
+        return suv.T
 
-        elapsed_time = (acquisition_time - injection_time).total_seconds()
-
-        half_life = float(ds.RadiopharmaceuticalInformationSequence[0].RadionuclideHalfLife)
-        decay_factor = np.exp(-1 * ((np.log(2) * elapsed_time) / half_life))
-
-        decay_corrected_dose = injected_dose * decay_factor
-
-        image_data = ds.pixel_array
-        activity_concentration = (image_data * ds.RescaleSlope) + ds.RescaleIntercept
-
-        if 'PHILIPS' in ds.Manufacturer.upper() and units == 'CNTS':
-            activity_concentration = activity_concentration * ds[(0x7053, 0x1009)].value
-
-        suv = activity_concentration / (decay_corrected_dose / (patient_weight * 1000))
-
-        suv = suv.T
-
-        return suv
     intensity_array = np.zeros(suv_image.GetSize())
     acquisition_time_list = []
     for dicom_file in dicom_files:
@@ -310,7 +345,7 @@ def apply_suv_correction(dicom_files, suv_image):
 
     dicom_files = sorted(dicom_files, key=lambda f: float(f['ds'].ImagePositionPatient[2]))
     for z_slice_id, dicom_file in enumerate(dicom_files):
-        intensity_array[:, :, z_slice_id] = calculate_suv(dicom_file['file_path'], min_acquisition_time)
+        intensity_array[:, :, z_slice_id] = process_single_slice(dicom_file['file_path'], min_acquisition_time)
 
     # Flip from head to toe
     intensity_image = sitk.GetImageFromArray(intensity_array.T)

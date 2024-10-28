@@ -247,9 +247,9 @@ def validate_pet_dicom_tags(dicom_files):
             except KeyError:
                 error_msg = f"For patient's {image_id} image, patient is excluded, Philips private activity scale factor (7053, 1009) is missing. (PET units CNTS)."
                 raise DataStructureError(error_msg)
-        elif dicom.Units == 'GML':
-            if (0x0054, 0x1006) in dicom:
-                if dicom[0x0054, 0x1006].value != 'BW':
+        elif ds.Units == 'GML':
+            if (0x0054, 0x1006) in ds:
+                if ds[0x0054, 0x1006].value != 'BW':
                     error_msg = f"For patient's {image_id} image, patient is excluded, SUV Type is not BW (GML units)"
                     raise DataStructureError(error_msg)
         else:
@@ -339,13 +339,13 @@ def apply_suv_correction(dicom_files, suv_image):
     intensity_array = np.zeros(suv_image.GetSize())
     acquisition_time_list = []
     for dicom_file in dicom_files:
-        dcm_data = pydicom.dcmread(dicom_file)
+        dcm_data = dicom_file['ds']
         acquisition_time_list.append(parse_time(dcm_data.AcquisitionTime))
     min_acquisition_time = np.min(acquisition_time_list)
 
-    dicom_files = sorted(dicom_files, key=lambda f: float(pydicom.dcmread(f).ImagePositionPatient[2]))
+    dicom_files = sorted(dicom_files, key=lambda f: float(f['ds'].ImagePositionPatient[2]))
     for z_slice_id, dicom_file in enumerate(dicom_files):
-        intensity_array[:, :, z_slice_id] = process_single_slice(dicom_file, min_acquisition_time)
+        intensity_array[:, :, z_slice_id] = process_single_slice(dicom_file['file_path'], min_acquisition_time)
 
     # Flip from head to toe
     intensity_image = sitk.GetImageFromArray(intensity_array.T)

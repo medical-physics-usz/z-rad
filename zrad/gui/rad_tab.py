@@ -345,8 +345,15 @@ class RadiomicsTab(BaseTab):
 
         # Process each patient folder
         if list_of_patient_folders:
-            with tqdm_joblib(tqdm(desc="Patient directories", total=len(list_of_patient_folders))):
-                radiomic_features_list = Parallel(n_jobs=self.input_params["number_of_threads"])(delayed(process_patient_folder)(self.input_params, patient_folder, structure_set) for patient_folder in list_of_patient_folders)
+            n_jobs = self.input_params["number_of_threads"]
+            if n_jobs == 1:
+                radiomic_features_list = []
+                for patient_folder in tqdm(list_of_patient_folders, desc="Patient directories"):
+                    radiomic_features_list.append(process_patient_folder(self.input_params, patient_folder, structure_set))
+            else:
+                with tqdm_joblib(tqdm(desc="Patient directories", total=len(list_of_patient_folders))):
+                    radiomic_features_list = Parallel(n_jobs=n_jobs)(
+                        delayed(process_patient_folder)(self.input_params, patient_folder, structure_set) for patient_folder in list_of_patient_folders)
 
             # Save features to CSV
             if radiomic_features_list:

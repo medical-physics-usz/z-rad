@@ -25,6 +25,12 @@ def get_logger(logger_date_time):
         file_handler.setLevel(logging.DEBUG)
         logger.addHandler(file_handler)
 
+        # Console handler with UTF-8 encoding
+        console_handler = logging.StreamHandler(sys.stdout)
+        console_handler.setLevel(logging.ERROR)
+        console_handler.setFormatter(formatter)
+        logger.addHandler(console_handler)
+
     return logger
 
 

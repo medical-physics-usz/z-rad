@@ -342,6 +342,9 @@ def apply_suv_correction(dicom_files, suv_image):
             if (0x0054, 0x1006) in ds:
                 if ds[0x0054, 0x1006].value == 'BW':
                     suv = process_gml(pixel_array_units)
+                else:
+                    error_msg = f"GML with {ds[0x0054, 0x1006].value} SUV normalizatoin is not supported!"
+                    raise DataStructureError(error_msg)
             else:
                 suv = process_gml(pixel_array_units)
         elif units == 'BQML':

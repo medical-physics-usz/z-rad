@@ -23,22 +23,6 @@ def process_patient_folder(input_params, patient_folder, structure_set):
     # Logger
     logger_date_time = datetime.now().strftime("%Y-%m-%d_%H%M%S")
     logger = get_logger(logger_date_time + '_Preprocessing')
-
-    # Initialize Preprocessing instance
-    prep_image = Preprocessing(
-        input_imaging_modality=input_params["input_imaging_modality"],
-        resample_resolution=input_params["resample_resolution"],
-        resample_dimension=input_params["resample_dimension"],
-        interpolation_method=input_params["image_interpolation_method"],
-    )
-    prep_mask = Preprocessing(
-        input_imaging_modality=input_params["input_imaging_modality"],
-        resample_resolution=input_params["resample_resolution"],
-        resample_dimension=input_params["resample_dimension"],
-        interpolation_method=input_params["mask_interpolation_method"],
-        interpolation_threshold=input_params["mask_interpolation_threshold"]
-    )
-
     logger.info(f"Processing patient's {patient_folder} image.")
     try:
         image = load_images(input_params, patient_folder)
@@ -50,6 +34,12 @@ def process_patient_folder(input_params, patient_folder, structure_set):
     if input_params["just_save_as_nifti"]:
         image_new = image.copy()
     else:
+        prep_image = Preprocessing(
+            input_imaging_modality=input_params["input_imaging_modality"],
+            resample_resolution=input_params["resample_resolution"],
+            resample_dimension=input_params["resample_dimension"],
+            interpolation_method=input_params["image_interpolation_method"],
+        )
         image_new = prep_image.resample(image, image_type='image')
 
     # Save new image
@@ -73,6 +63,13 @@ def process_patient_folder(input_params, patient_folder, structure_set):
                 if input_params["just_save_as_nifti"]:
                     mask_new = mask.copy()
                 else:
+                    prep_mask = Preprocessing(
+                        input_imaging_modality=input_params["input_imaging_modality"],
+                        resample_resolution=input_params["resample_resolution"],
+                        resample_dimension=input_params["resample_dimension"],
+                        interpolation_method=input_params["mask_interpolation_method"],
+                        interpolation_threshold=input_params["mask_interpolation_threshold"]
+                    )
                     mask_new = prep_mask.resample(mask, image_type='mask')
 
                 # Save new mask

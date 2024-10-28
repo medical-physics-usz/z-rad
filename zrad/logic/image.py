@@ -102,13 +102,8 @@ class Image:
             self.direction = image.GetDirection()
             self.shape = image.GetSize()
 
-    def read_dicom_mask(self, dicom_dir, structure_name, image):
-        dicom_files = get_dicom_files(directory=dicom_dir, modality='RTSTRUCT')
-        if len(dicom_files) != 1:
-            msg = f"Expected one RTSTRUCT file but found {len(dicom_files)}"
-            raise DataStructureError(msg)
-
-        mask = extract_dicom_mask(dicom_files[0], structure_name, image.sitk_image)
+    def read_dicom_mask(self, rtstruct_path, structure_name, image):
+        mask = extract_dicom_mask(rtstruct_path, structure_name, image.sitk_image)
         self.array = mask.array
         self.origin = mask.origin
         self.spacing = mask.spacing
@@ -117,19 +112,9 @@ class Image:
 
 
 def get_dicom_files(directory, modality):
-    """
-    Recursively scans a directory and its subdirectories for DICOM files with the specified modality.
-
-    Args:
-        directory (str): The path to the directory containing files to be checked.
-
-    Returns:
-        list: A list of file paths for valid DICOM files with the specified modality.
-    """
     modality_mapping = {'PET': 'PT', 'CT': 'CT', 'MRI': 'MR', 'RTSTRUCT': 'RTSTRUCT'}
     modality_dicom = modality_mapping[modality]
-
-    dicom_files = []  # List to store valid DICOM files with the specified modality
+    dicom_files_info = []
 
     # Walk through all directories and subdirectories
     for root, _, files in os.walk(directory):
@@ -138,11 +123,11 @@ def get_dicom_files(directory, modality):
 
             try:
                 # Try to read the DICOM file without loading pixel data
-                dcm = pydicom.dcmread(file_path, stop_before_pixels=True)
+                ds = pydicom.dcmread(file_path, stop_before_pixels=True)
 
                 # Check if the DICOM file's Modality matches the desired modality
-                if dcm.Modality == modality_dicom:
-                    dicom_files.append(file_path)  # Add to the list if Modality matches
+                if ds.Modality == modality_dicom:
+                    dicom_files_info.append({'file_path': file_path, 'ds': ds})
 
             except InvalidDicomError:
                 # File is not a valid DICOM; skip it
@@ -151,15 +136,13 @@ def get_dicom_files(directory, modality):
                 # Handle any other unexpected exceptions
                 warning_msg = f"An error occurred while processing file {file_path}: {str(e)}"
                 warnings.warn(warning_msg, DataStructureWarning)
-    return dicom_files
+    return dicom_files_info
 
 
 def validate_z_spacing(dicom_files):
     slice_z_origin = []
     for dcm_file in dicom_files:
-        dicom_file_path = dcm_file
-        dicom = pydicom.dcmread(dicom_file_path)
-        slice_z_origin.append(float(dicom.ImagePositionPatient[2]))
+        slice_z_origin.append(float(dcm_file['ds'].ImagePositionPatient[2]))
     slice_z_origin = sorted(slice_z_origin)
     slice_thickness = [abs(slice_z_origin[i] - slice_z_origin[i + 1]) for i in range(len(slice_z_origin) - 1)]
     for i in range(len(slice_thickness) - 1):
@@ -172,16 +155,12 @@ def validate_pet_dicom_tags(dicom_files):
     time_mismatch = False
     acquisition_time_list = []
     for dcm_file in dicom_files:
-        dicom_file_path = dcm_file
-        dicom = pydicom.dcmread(dicom_file_path)
-        acquisition_time_list.append(parse_time(dicom.AcquisitionTime))
-
-        dicom_file_path = dcm_file
-        dicom = pydicom.dcmread(dicom_file_path)
-        image_id = dicom_file_path
+        ds = dcm_file['ds']
+        acquisition_time_list.append(parse_time(ds.AcquisitionTime))
+        image_id = dcm_file['file_path']
 
         try:
-            pat_weight = dicom[(0x0010, 0x1030)].value
+            pat_weight = ds[(0x0010, 0x1030)].value
             if float(pat_weight) < 1:
                 warning_msg = f"For patient's {image_id} image, patient's weight tag (0071, 1022) contains weight < 1kg. Patient is excluded from the analysis."
                 warnings.warn(warning_msg, DataStructureWarning)
@@ -189,24 +168,24 @@ def validate_pet_dicom_tags(dicom_files):
         except KeyError:
             warning_msg = f"For patient's {image_id} image, patient's weight tag (0071, 1022) is not present. Patient is excluded from the analysis."
             warnings.warn(warning_msg, DataStructureWarning)
-        if 'DECY' not in dicom[(0x0028, 0x0051)].value or 'ATTN' not in dicom[(0x0028, 0x0051)].value:
+        if 'DECY' not in ds[(0x0028, 0x0051)].value or 'ATTN' not in ds[(0x0028, 0x0051)].value:
             warning_msg = f"For patient's {image_id} image, in DICOM tag (0028, 0051) either no 'DECY' (decay correction) or 'ATTN' (attenuation correction). Patient is excluded from the analysis."
             warnings.warn(warning_msg, DataStructureWarning)
 
-        if dicom.Units == 'BQML':
+        if ds.Units == 'BQML':
             injection_time = parse_time(
-                dicom.RadiopharmaceuticalInformationSequence[0].RadiopharmaceuticalStartTime)
-            if dicom.DecayCorrection == 'START':
-                if 'PHILIPS' in dicom.Manufacturer.upper():
+                ds.RadiopharmaceuticalInformationSequence[0].RadiopharmaceuticalStartTime)
+            if ds.DecayCorrection == 'START':
+                if 'PHILIPS' in ds.Manufacturer.upper():
                     acquisition_time = np.min(acquisition_time_list)
-                elif 'SIEMENS' in dicom.Manufacturer.upper():
+                elif 'SIEMENS' in ds.Manufacturer.upper():
                     try:
-                        acquisition_time = parse_time(dicom[(0x0071, 0x1022)].value).replace(
+                        acquisition_time = parse_time(ds[(0x0071, 0x1022)].value).replace(
                             year=injection_time.year,
                             month=injection_time.month,
                             day=injection_time.day)
                         if (acquisition_time != np.min(acquisition_time_list)
-                                or acquisition_time != parse_time(dicom.SeriesTime) and not time_mismatch):
+                                or acquisition_time != parse_time(ds.SeriesTime) and not time_mismatch):
                             time_mismatch = True
                             warning_msg = f"For patient's {image_id} image, there is a mismatch between the earliest acquisition time, series time and Siemens private tag (0071, 1022). Time from the Siemens private tag was used."
                             warnings.warn(warning_msg, DataStructureWarning)
@@ -217,18 +196,18 @@ def validate_pet_dicom_tags(dicom_files):
                             warning_msg = f"For patient's {image_id} image, private Siemens tag (0071, 1022) is not present. The earliest of all acquisition times was used."
                             warnings.warn(warning_msg, DataStructureWarning)
 
-                        if acquisition_time != parse_time(dicom.SeriesTime) and not time_mismatch:
+                        if acquisition_time != parse_time(ds.SeriesTime) and not time_mismatch:
                             time_mismatch = True
                             warning_msg = f"For patient's {image_id} image, a mismatch present between the earliest acquisition time and series time. Earliest acquisition time was used."
                             warnings.warn(warning_msg, DataStructureWarning)
-                elif 'GE' in dicom.Manufacturer.upper():
+                elif 'GE' in ds.Manufacturer.upper():
                     try:
-                        acquisition_time = parse_time(dicom[(0x0009, 0x100d)].value).replace(
+                        acquisition_time = parse_time(ds[(0x0009, 0x100d)].value).replace(
                             year=injection_time.year,
                             month=injection_time.month,
                             day=injection_time.day)
                         if (acquisition_time != np.min(acquisition_time_list)
-                                or acquisition_time != parse_time(dicom.SeriesTime) and not time_mismatch):
+                                or acquisition_time != parse_time(ds.SeriesTime) and not time_mismatch):
                             time_mismatch = True
                             warning_msg = f"For patient's {image_id} image, a mismatch present between the earliest acquisition time, series time, and GE private tag. Time from the GE private tag was used."
                             warnings.warn(warning_msg, DataStructureWarning)
@@ -238,7 +217,7 @@ def validate_pet_dicom_tags(dicom_files):
                             time_mismatch = True
                             warning_msg = f"For patient's {image_id} image, private GE tag (0009, 100d) is not present. The earliest of all acquisition times was used."
                             warnings.warn(warning_msg, DataStructureWarning)
-                        if acquisition_time != parse_time(dicom.SeriesTime) and not time_mismatch:
+                        if acquisition_time != parse_time(ds.SeriesTime) and not time_mismatch:
                             time_mismatch = True
                             warning_msg = f"For patient's {image_id} image, a mismatch present between the earliest acquisition time and series time. Earliest acquisition time was used."
                             warnings.warn(warning_msg, DataStructureWarning)
@@ -246,22 +225,22 @@ def validate_pet_dicom_tags(dicom_files):
                     warning_msg = f"For patient's {image_id} image, an unknown PET scaner manufacturer is present. Z-Rad only supports Philips, Siemens, and GE."
                     raise DataStructureError(warning_msg)
 
-            elif dicom.DecayCorrection == 'ADMIN':
+            elif ds.DecayCorrection == 'ADMIN':
                 acquisition_time = injection_time
 
             else:
-                warning_msg = f"For patient's {image_id} image, An unsupported Decay Correction {dicom.DecayCorrection} is present. Only supported are 'START' and 'ADMIN'. Patient is excluded from the analysis."
+                warning_msg = f"For patient's {image_id} image, An unsupported Decay Correction {ds.DecayCorrection} is present. Only supported are 'START' and 'ADMIN'. Patient is excluded from the analysis."
                 raise DataStructureError(warning_msg)
             elapsed_time = (acquisition_time - injection_time).total_seconds()
             if elapsed_time < 0:
                 error_msg = f"For patient's {image_id} image, patient is excluded from the analysis due to the negative time difference in the decay factor."
                 raise DataStructureError(error_msg)
-            elif elapsed_time > 0 and abs(elapsed_time) < 1800 and dicom.DecayCorrection != 'ADMIN':
+            elif elapsed_time > 0 and abs(elapsed_time) < 1800 and ds.DecayCorrection != 'ADMIN':
                 warning_msg = f"Only {abs(elapsed_time) / 60} minutes after the injection."
                 warnings.warn(warning_msg, DataStructureWarning)
-        elif dicom.Units == 'CNTS' and 'PHILIPS' in dicom.Manufacturer.upper():
+        elif ds.Units == 'CNTS' and 'PHILIPS' in ds.Manufacturer.upper():
             try:
-                activity_scale_factor = dicom[(0x7053, 0x1009)].value
+                activity_scale_factor = ds[(0x7053, 0x1009)].value
                 if activity_scale_factor == 0.0:
                     error_msg = f"For patient's {image_id} image, patient is excluded, Philips private activity scale factor (7053, 1009) = 0. (PET units CNTS)"
                     raise DataStructureError(error_msg)
@@ -387,11 +366,11 @@ def process_dicom_series(directory, dicom_files):
 
     slice_z_origin = []
 
-    for dicom_file_path in dicom_files:
-        dicom = pydicom.dcmread(dicom_file_path)
-        if dicom.Modality in ['CT', 'PT', 'MR']:
-            pixel_spacing = dicom.PixelSpacing
-            slice_z_origin.append(float(dicom.ImagePositionPatient[2]))
+    for dicom_file in dicom_files:
+        ds = dicom_file['ds']
+        if ds.Modality in ['CT', 'PT', 'MR']:
+            pixel_spacing = ds.PixelSpacing
+            slice_z_origin.append(float(ds.ImagePositionPatient[2]))
 
     slice_z_origin = sorted(slice_z_origin)
     slice_thickness = abs(np.median([slice_z_origin[i] - slice_z_origin[i + 1]

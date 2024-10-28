@@ -11,18 +11,15 @@ sys.excepthook = handle_uncaught_exception
 
 class Preprocessing:
 
-    def __init__(self, input_data_type, input_imaging_modality, just_save_as_nifti,
+    def __init__(self, input_imaging_modality,
                  resample_resolution=None, resample_dimension=None,
                  interpolation_method=None, interpolation_threshold=None):
-        self.input_data_type = input_data_type
         self.input_imaging_modality = input_imaging_modality
-        self.just_save_as_nifti = just_save_as_nifti
 
-        if not self.just_save_as_nifti:
-            if not (isinstance(resample_resolution, (float, int)) and resample_resolution > 0):
-                raise ValueError(f'Resample resolution {resample_resolution} must be a positive int or float.')
-            if resample_dimension not in ['3D', '2D']:
-                raise ValueError(f"Resample dimension '{resample_dimension}' is not '2D' or '3D'.")
+        if not (isinstance(resample_resolution, (float, int)) and resample_resolution > 0):
+            raise ValueError(f'Resample resolution {resample_resolution} must be a positive int or float.')
+        if resample_dimension not in ['3D', '2D']:
+            raise ValueError(f"Resample dimension '{resample_dimension}' is not '2D' or '3D'.")
 
         self.resample_resolution = resample_resolution
         self.resample_dimension = resample_dimension

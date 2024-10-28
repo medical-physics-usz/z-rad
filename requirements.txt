@@ -10,3 +10,4 @@ scikit-image
 scikit-learn
 opencv-python-headless
 joblib
+tqdm

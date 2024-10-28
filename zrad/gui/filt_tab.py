@@ -4,12 +4,13 @@ import os
 from datetime import datetime
 
 from joblib import Parallel, delayed
+from tqdm import tqdm
 
 from ._base_tab import BaseTab, load_images
 from .toolbox_gui import CustomButton, CustomLabel, CustomBox, CustomTextField, CustomWarningBox, CustomInfo, CustomInfoBox
 from ..logic.exceptions import InvalidInputParametersError, DataStructureError
 from ..logic.filtering import Filtering
-from ..logic.toolbox_logic import get_logger, close_all_loggers
+from ..logic.toolbox_logic import get_logger, close_all_loggers, tqdm_joblib
 
 logging.captureWarnings(True)
 
@@ -64,7 +65,7 @@ def _get_filtering(input_params):
                 rotation_invariance=input_params["filter_wavelet_rot_inv"] == 'Enable'
             )
         else:
-            raise InvalidInputParametersError(f"Filter_dimension {input_params["filter_dimension"]} is not supported.")
+            raise InvalidInputParametersError(f"Filter_dimension {input_params['filter_dimension']} is not supported.")
     else:
          raise InvalidInputParametersError(f"Filter_type {input_params['filter_type']} not supported.")
 
@@ -445,9 +446,8 @@ class FilteringTab(BaseTab):
 
         # Process each patient folder
         if list_of_patient_folders:
-            Parallel(n_jobs=self.input_params["number_of_threads"])(
-                delayed(process_patient_folder)(self.input_params, patient_folder) for patient_folder in list_of_patient_folders)
-
+            with tqdm_joblib(tqdm(desc="Patient directories", total=len(list_of_patient_folders))):
+                Parallel(n_jobs=self.input_params["number_of_threads"])(delayed(process_patient_folder)(self.input_params, patient_folder) for patient_folder in list_of_patient_folders)
         else:
             CustomWarningBox("No patients to filter.")
 

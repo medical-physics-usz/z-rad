@@ -3,7 +3,9 @@ import logging
 import os
 from datetime import datetime
 
+import numpy as np
 from joblib import Parallel, delayed
+from tqdm import tqdm
 
 from ._base_tab import BaseTab, load_images, load_mask
 from .toolbox_gui import CustomLabel, CustomBox, CustomTextField, CustomWarningBox, CustomCheckBox, \
@@ -11,7 +13,7 @@ from .toolbox_gui import CustomLabel, CustomBox, CustomTextField, CustomWarningB
 from ..logic.exceptions import InvalidInputParametersError, DataStructureError
 from ..logic.image import get_all_structure_names, get_dicom_files
 from ..logic.preprocessing import Preprocessing
-from ..logic.toolbox_logic import get_logger, close_all_loggers
+from ..logic.toolbox_logic import get_logger, close_all_loggers, tqdm_joblib
 
 logging.captureWarnings(True)
 
@@ -24,17 +26,13 @@ def process_patient_folder(input_params, patient_folder, structure_set):
 
     # Initialize Preprocessing instance
     prep_image = Preprocessing(
-        input_data_type=input_params["input_data_type"],
         input_imaging_modality=input_params["input_imaging_modality"],
-        just_save_as_nifti=input_params["just_save_as_nifti"],
         resample_resolution=input_params["resample_resolution"],
         resample_dimension=input_params["resample_dimension"],
         interpolation_method=input_params["image_interpolation_method"],
     )
     prep_mask = Preprocessing(
-        input_data_type=input_params["input_data_type"],
         input_imaging_modality=input_params["input_imaging_modality"],
-        just_save_as_nifti=input_params["just_save_as_nifti"],
         resample_resolution=input_params["resample_resolution"],
         resample_dimension=input_params["resample_dimension"],
         interpolation_method=input_params["mask_interpolation_method"],
@@ -44,7 +42,7 @@ def process_patient_folder(input_params, patient_folder, structure_set):
     logger.info(f"Processing patient's {patient_folder} image.")
     try:
         image = load_images(input_params, patient_folder)
-    except DataStructureError as e:
+    except (DataStructureError, ValueError) as e:
         logger.error(e)
         logger.error(f"Patient {patient_folder} could not be loaded and is skipped.")
         return
@@ -58,12 +56,15 @@ def process_patient_folder(input_params, patient_folder, structure_set):
     output_path = os.path.join(input_params["output_directory"], patient_folder, 'image.nii.gz')
     image_new.save_as_nifti(output_path)
 
-    if input_params["use_all_structures"]:
+    # Process masks
+    if input_params["input_data_type"] == 'dicom':
         input_directory = os.path.join(input_params["input_directory"], patient_folder)
-        rtstruct_path = get_dicom_files(input_directory, modality='RTSTRUCT')[0]
-        structure_set = get_all_structure_names(rtstruct_path)
+        input_params['rtstruct_path'] = get_dicom_files(input_directory, modality='RTSTRUCT')[0]['file_path']
+        if input_params["use_all_structures"]:
+            structure_set = get_all_structure_names(input_params['rtstruct_path'])
 
     if structure_set:
+        mask_union = None
         for mask_name in structure_set:
             mask = load_mask(input_params, patient_folder, mask_name, image)
             if mask and mask.array is not None:
@@ -77,6 +78,16 @@ def process_patient_folder(input_params, patient_folder, structure_set):
                 # Save new mask
                 output_path = os.path.join(input_params["output_directory"], patient_folder, f'{mask_name}.nii.gz')
                 mask_new.save_as_nifti(output_path)
+
+                if input_params["mask_union"]:
+                    if mask_union:
+                        mask_union.array = np.bitwise_or(mask_union.array, mask_new.array).astype(np.int16)
+                    else:
+                        mask_union = mask_new.copy()
+
+        if mask_union:
+            output_path = os.path.join(input_params["output_directory"], patient_folder, f'mask_union.nii.gz')
+            mask_union.save_as_nifti(output_path)
 
 
 class PreprocessingTab(BaseTab):
@@ -159,6 +170,17 @@ class PreprocessingTab(BaseTab):
         )
         self.resample_resolution_text_field = CustomTextField(
             "E.g. 1", 420, 380, 90, 50, self
+        )
+
+        # Mask union
+        self.mask_union_check_box = CustomCheckBox(
+            'Mask Union',
+            580, 380, 150, 50, self)
+
+        self.mask_union_info_label = CustomInfo(
+            ' i',
+            'If selected, all chosen masks will be combined into a single mask and saved as a separate .nii.gz file.',
+            700, 380, 14, 14, self
         )
 
         # Image Interpolation Method ComboBox
@@ -372,6 +394,7 @@ class PreprocessingTab(BaseTab):
             'input_imaging_modality': self.input_imaging_mod_combo_box.currentText(),
             'just_save_as_nifti': self.just_save_as_nifti_check_box.checkState(),
             'use_all_structures': self.use_all_structures_check_box.checkState(),
+            'mask_union': self.mask_union_check_box.checkState(),
         }
         self.input_params = input_parameters
 
@@ -407,8 +430,8 @@ class PreprocessingTab(BaseTab):
 
         # Process each patient folder
         if list_of_patient_folders:
-            Parallel(n_jobs=self.input_params["number_of_threads"])(
-                delayed(process_patient_folder)(self.input_params, patient_folder, structure_set) for patient_folder in list_of_patient_folders)
+            with tqdm_joblib(tqdm(desc="Patient directories", total=len(list_of_patient_folders))):
+                Parallel(n_jobs=self.input_params["number_of_threads"])(delayed(process_patient_folder)(self.input_params, patient_folder, structure_set) for patient_folder in list_of_patient_folders)
         else:
             CustomWarningBox("No patients to calculate preprocess from.")
 
@@ -468,6 +491,7 @@ class PreprocessingTab(BaseTab):
                     data.get('prep_input_imaging_modality', 'Imaging Modality:'))
                 self.just_save_as_nifti_check_box.setCheckState(data.get('prep_just_save_as_nifti', 0))
                 self.use_all_structures_check_box.setCheckState(data.get('prep_use_all_structures', 0))
+                self.mask_union_check_box.setCheckState(data.get('prep_mask_union', 0))
 
         except FileNotFoundError:
             print("No previous data found!")

@@ -1,3 +1,4 @@
+import contextlib
 import json
 import logging
 import os
@@ -5,27 +6,24 @@ import sys
 import time
 import urllib.request
 
+import joblib
+
 
 def get_logger(logger_date_time):
     logger = logging.getLogger()
     logger.setLevel(logging.DEBUG)
 
     if not logger.handlers:
+        # Ensure the logs directory exists
+        logs_path = os.path.join(os.getcwd(), 'logs')
+        os.makedirs(logs_path, exist_ok=True)
+
         # File handler with UTF-8 encoding
-        if not os.path.exists(os.path.join(os.getcwd(), 'logs')):
-            os.makedirs(os.path.join(os.getcwd(), 'logs'))
-        file_handler = logging.FileHandler(os.path.join(os.getcwd(), 'logs', f'{logger_date_time}.log'),
-                                           encoding='utf-8')
+        file_handler = logging.FileHandler(os.path.join(logs_path, f'{logger_date_time}.log'), encoding='utf-8')
         formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
         file_handler.setFormatter(formatter)
         file_handler.setLevel(logging.DEBUG)
         logger.addHandler(file_handler)
-
-        # Console handler with UTF-8 encoding
-        console_handler = logging.StreamHandler(sys.stdout)
-        console_handler.setLevel(logging.INFO)
-        console_handler.setFormatter(formatter)
-        logger.addHandler(console_handler)
 
     return logger
 
@@ -180,3 +178,26 @@ def load_ibsi_phantom(chapter=1, phantom='ct_radiomics', imaging_format="dicom",
 
     directory_path = f"ibsi_{chapter}_{phantom}_phantom/{imaging_format.lower()}"
     fetch_github_directory_files(owner, repo, directory_path, save_path)
+
+
+@contextlib.contextmanager
+def tqdm_joblib(tqdm_object):
+    """Context manager to patch joblib to report into tqdm progress bar given as argument.
+    source: https://stackoverflow.com/a/58936697/3859823
+    """
+
+    class TqdmBatchCompletionCallback(joblib.parallel.BatchCompletionCallBack):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+
+        def __call__(self, *args, **kwargs):
+            tqdm_object.update(n=self.batch_size)
+            return super().__call__(*args, **kwargs)
+
+    old_batch_callback = joblib.parallel.BatchCompletionCallBack
+    joblib.parallel.BatchCompletionCallBack = TqdmBatchCompletionCallback
+    try:
+        yield tqdm_object
+    finally:
+        joblib.parallel.BatchCompletionCallBack = old_batch_callback
+        tqdm_object.close()

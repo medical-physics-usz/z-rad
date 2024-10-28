@@ -6,13 +6,14 @@ from datetime import datetime
 import numpy as np
 import pandas as pd
 from joblib import Parallel, delayed
+from tqdm import tqdm
 
 from ._base_tab import BaseTab, load_images, load_mask
 from .toolbox_gui import CustomLabel, CustomBox, CustomTextField, CustomCheckBox, CustomWarningBox, CustomInfo, CustomInfoBox
 from ..logic.exceptions import InvalidInputParametersError, DataStructureError
 from ..logic.image import get_dicom_files, get_all_structure_names
 from ..logic.radiomics import Radiomics
-from ..logic.toolbox_logic import get_logger, close_all_loggers
+from ..logic.toolbox_logic import get_logger, close_all_loggers, tqdm_joblib
 
 logging.captureWarnings(True)
 
@@ -60,10 +61,11 @@ def process_patient_folder(input_params, patient_folder, structure_set):
     except DataStructureError as e:
         logger.error(e)
 
-    if input_params["use_all_structures"]:
+    if input_params["input_data_type"] == 'dicom':
         input_directory = os.path.join(input_params["input_directory"], patient_folder)
-        rtstruct_path = get_dicom_files(input_directory, modality='RTSTRUCT')[0]
-        structure_set = get_all_structure_names(rtstruct_path)
+        input_params['rtstruct_path'] = get_dicom_files(input_directory, modality='RTSTRUCT')[0]['file_path']
+        if input_params["use_all_structures"]:
+            structure_set = get_all_structure_names(input_params['rtstruct_path'])
 
     radiomic_features_list = []
     for mask_name in structure_set:
@@ -343,8 +345,8 @@ class RadiomicsTab(BaseTab):
 
         # Process each patient folder
         if list_of_patient_folders:
-            radiomic_features_list = Parallel(n_jobs=self.input_params["number_of_threads"])(
-                delayed(process_patient_folder)(self.input_params, patient_folder, structure_set) for patient_folder in list_of_patient_folders)
+            with tqdm_joblib(tqdm(desc="Patient directories", total=len(list_of_patient_folders))):
+                radiomic_features_list = Parallel(n_jobs=self.input_params["number_of_threads"])(delayed(process_patient_folder)(self.input_params, patient_folder, structure_set) for patient_folder in list_of_patient_folders)
 
             # Save features to CSV
             if radiomic_features_list:

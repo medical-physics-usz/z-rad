@@ -3,7 +3,9 @@ import logging
 import os
 from datetime import datetime
 
+import numpy as np
 from joblib import Parallel, delayed
+from tqdm import tqdm
 
 from ._base_tab import BaseTab, load_images, load_mask
 from .toolbox_gui import CustomLabel, CustomBox, CustomTextField, CustomWarningBox, CustomCheckBox, \
@@ -11,7 +13,7 @@ from .toolbox_gui import CustomLabel, CustomBox, CustomTextField, CustomWarningB
 from ..logic.exceptions import InvalidInputParametersError, DataStructureError
 from ..logic.image import get_all_structure_names, get_dicom_files
 from ..logic.preprocessing import Preprocessing
-from ..logic.toolbox_logic import get_logger, close_all_loggers
+from ..logic.toolbox_logic import get_logger, close_all_loggers, tqdm_joblib
 
 logging.captureWarnings(True)
 
@@ -40,7 +42,7 @@ def process_patient_folder(input_params, patient_folder, structure_set):
     logger.info(f"Processing patient's {patient_folder} image.")
     try:
         image = load_images(input_params, patient_folder)
-    except DataStructureError as e:
+    except (DataStructureError, ValueError) as e:
         logger.error(e)
         logger.error(f"Patient {patient_folder} could not be loaded and is skipped.")
         return
@@ -54,10 +56,12 @@ def process_patient_folder(input_params, patient_folder, structure_set):
     output_path = os.path.join(input_params["output_directory"], patient_folder, 'image.nii.gz')
     image_new.save_as_nifti(output_path)
 
-    if input_params["use_all_structures"]:
+    # Process masks
+    if input_params["input_data_type"] == 'dicom':
         input_directory = os.path.join(input_params["input_directory"], patient_folder)
-        rtstruct_path = get_dicom_files(input_directory, modality='RTSTRUCT')[0]
-        structure_set = get_all_structure_names(rtstruct_path)
+        input_params['rtstruct_path'] = get_dicom_files(input_directory, modality='RTSTRUCT')[0]['file_path']
+        if input_params["use_all_structures"]:
+            structure_set = get_all_structure_names(input_params['rtstruct_path'])
 
     if structure_set:
         mask_union = None
@@ -76,7 +80,6 @@ def process_patient_folder(input_params, patient_folder, structure_set):
                 mask_new.save_as_nifti(output_path)
 
                 if input_params["mask_union"]:
-                    import numpy as np
                     if mask_union:
                         mask_union.array = np.bitwise_or(mask_union.array, mask_new.array).astype(np.int16)
                     else:
@@ -427,8 +430,8 @@ class PreprocessingTab(BaseTab):
 
         # Process each patient folder
         if list_of_patient_folders:
-            Parallel(n_jobs=self.input_params["number_of_threads"])(
-                delayed(process_patient_folder)(self.input_params, patient_folder, structure_set) for patient_folder in list_of_patient_folders)
+            with tqdm_joblib(tqdm(desc="Patient directories", total=len(list_of_patient_folders))):
+                Parallel(n_jobs=self.input_params["number_of_threads"])(delayed(process_patient_folder)(self.input_params, patient_folder, structure_set) for patient_folder in list_of_patient_folders)
         else:
             CustomWarningBox("No patients to calculate preprocess from.")
 

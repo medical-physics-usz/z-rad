@@ -256,7 +256,7 @@ def validate_pet_dicom_tags(dicom_files):
 def apply_suv_correction(dicom_files, suv_image):
     def calculate_suv(dicom_file_path, min_acquisition_time):
 
-        ds = dicom_files['ds']
+        ds = pydicom.dcmread(dicom_file_path)
         units = ds.Units
         injection_time = parse_time(ds.RadiopharmaceuticalInformationSequence[0].RadiopharmaceuticalStartTime)
 
@@ -304,13 +304,13 @@ def apply_suv_correction(dicom_files, suv_image):
     intensity_array = np.zeros(suv_image.GetSize())
     acquisition_time_list = []
     for dicom_file in dicom_files:
-        dcm_data = pydicom.dcmread(dicom_file)
+        dcm_data = dicom_file['ds']
         acquisition_time_list.append(parse_time(dcm_data.AcquisitionTime))
     min_acquisition_time = np.min(acquisition_time_list)
 
-    dicom_files = sorted(dicom_files, key=lambda f: float(pydicom.dcmread(f).ImagePositionPatient[2]))
+    dicom_files = sorted(dicom_files, key=lambda f: float(f['ds'].ImagePositionPatient[2]))
     for z_slice_id, dicom_file in enumerate(dicom_files):
-        intensity_array[:, :, z_slice_id] = calculate_suv(dicom_file, min_acquisition_time)
+        intensity_array[:, :, z_slice_id] = calculate_suv(dicom_file['file_path'], min_acquisition_time)
 
     # Flip from head to toe
     intensity_image = sitk.GetImageFromArray(intensity_array.T)

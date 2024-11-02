@@ -2,11 +2,11 @@ import sys
 
 import numpy as np
 
-from .image import Image
+from .. import Image
 from .radiomics_definitions import MorphologicalFeatures, LocalIntensityFeatures, IntensityBasedStatFeatures, \
     GLCM, GLRLM_GLSZM_GLDZM_NGLDM, NGTDM
-from .toolbox_logic import handle_uncaught_exception
-from ..logic.exceptions import DataStructureError
+from ..toolbox_logic import handle_uncaught_exception
+from ..exceptions import DataStructureError
 
 sys.excepthook = handle_uncaught_exception
 

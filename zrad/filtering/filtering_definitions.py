@@ -6,7 +6,7 @@ import numpy as np
 import pywt
 from scipy import ndimage as ndi
 
-from .toolbox_logic import get_logger, handle_uncaught_exception, close_all_loggers
+from ..toolbox_logic import get_logger, handle_uncaught_exception, close_all_loggers
 
 sys.excepthook = handle_uncaught_exception
 

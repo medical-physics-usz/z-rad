@@ -7,8 +7,8 @@ from PyQt5.QtWidgets import QFileDialog
 from PyQt5.QtWidgets import QWidget, QVBoxLayout
 
 from .toolbox_gui import CustomButton, CustomLabel, CustomBox, CustomTextField, CustomInfo, CustomWarningBox
-from ..logic.exceptions import InvalidInputParametersError, DataStructureError
-from ..logic.image import Image
+from ..exceptions import InvalidInputParametersError, DataStructureError
+from ..image import Image
 
 
 class BaseTabMeta(ABCMeta, type(QWidget)):

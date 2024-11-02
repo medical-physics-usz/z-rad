@@ -9,7 +9,7 @@ import pydicom
 from pydicom.errors import InvalidDicomError
 from skimage import draw
 
-from zrad.logic.exceptions import DataStructureWarning, DataStructureError
+from .exceptions import DataStructureWarning, DataStructureError
 
 
 def parse_time(time_str):

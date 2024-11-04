@@ -11,3 +11,4 @@ scikit-learn
 opencv-python-headless
 joblib
 tqdm
+pytest

@@ -2,9 +2,9 @@ import sys
 
 import numpy as np
 
-from .image import Image
-from .toolbox_logic import handle_uncaught_exception
-from ..logic.filtering_definitions import Mean, LoG, Wavelets2D, Wavelets3D, Laws
+from ..image import Image
+from ..toolbox_logic import handle_uncaught_exception
+from .filtering_definitions import Mean, LoG, Wavelets2D, Wavelets3D, Laws
 
 sys.excepthook = handle_uncaught_exception
 

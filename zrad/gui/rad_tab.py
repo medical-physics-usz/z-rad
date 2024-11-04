@@ -10,10 +10,10 @@ from tqdm import tqdm
 
 from ._base_tab import BaseTab, load_images, load_mask
 from .toolbox_gui import CustomLabel, CustomBox, CustomTextField, CustomCheckBox, CustomWarningBox, CustomInfo, CustomInfoBox
-from ..logic.exceptions import InvalidInputParametersError, DataStructureError
-from ..logic.image import get_dicom_files, get_all_structure_names
-from ..logic.radiomics import Radiomics
-from ..logic.toolbox_logic import get_logger, close_all_loggers, tqdm_joblib
+from ..exceptions import InvalidInputParametersError, DataStructureError
+from ..image import get_dicom_files, get_all_structure_names
+from ..radiomics import Radiomics
+from ..toolbox_logic import get_logger, close_all_loggers, tqdm_joblib
 
 logging.captureWarnings(True)
 

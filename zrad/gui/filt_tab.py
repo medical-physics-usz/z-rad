@@ -9,7 +9,7 @@ from tqdm import tqdm
 from ._base_tab import BaseTab, load_images
 from .toolbox_gui import CustomButton, CustomLabel, CustomBox, CustomTextField, CustomWarningBox, CustomInfo, CustomInfoBox
 from ..exceptions import InvalidInputParametersError, DataStructureError
-from .. import Filtering
+from ..filtering import Filtering
 from ..toolbox_logic import get_logger, close_all_loggers, tqdm_joblib
 
 logging.captureWarnings(True)

@@ -3,7 +3,7 @@ import sys
 import SimpleITK as sitk
 import numpy as np
 
-from .. import Image
+from ..image import Image
 from ..toolbox_logic import handle_uncaught_exception
 
 sys.excepthook = handle_uncaught_exception

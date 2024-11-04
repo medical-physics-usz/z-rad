@@ -12,7 +12,7 @@ from .toolbox_gui import CustomLabel, CustomBox, CustomTextField, CustomWarningB
     CustomInfo, CustomInfoBox
 from ..exceptions import InvalidInputParametersError, DataStructureError
 from ..image import get_all_structure_names, get_dicom_files
-from .. import Preprocessing
+from ..preprocessing import Preprocessing
 from ..toolbox_logic import get_logger, close_all_loggers, tqdm_joblib
 
 logging.captureWarnings(True)

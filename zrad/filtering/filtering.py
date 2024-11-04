@@ -2,7 +2,7 @@ import sys
 
 import numpy as np
 
-from .. import Image
+from ..image import Image
 from ..toolbox_logic import handle_uncaught_exception
 from .filtering_definitions import Mean, LoG, Wavelets2D, Wavelets3D, Laws
 

@@ -7,6 +7,47 @@ import time
 import urllib.request
 
 import joblib
+import numpy as np
+
+
+def get_bounding_box(arr):
+    """
+    Crops the input 3D array so that no face of the array is entirely NaN.
+
+    Parameters:
+    arr (np.ndarray): Input 3D array to crop.
+
+    Returns:
+    np.ndarray: Cropped 3D array.
+    """
+    # Create a mask of where the non-NaN values are located
+    mask = ~np.isnan(arr)
+
+    if arr.ndim == 2:
+        # Find the min and max indices along each dimension where non-NaN values exist
+        y_non_nan = np.where(mask.any(axis=1))[0]
+        x_non_nan = np.where(mask.any(axis=0))[0]
+
+        # Determine the bounds for cropping
+        ymin, ymax = y_non_nan[0], y_non_nan[-1] + 1
+        xmin, xmax = x_non_nan[0], x_non_nan[-1] + 1
+
+        # Crop the array using the determined bounds
+        return arr[ymin:ymax, xmin:xmax]
+
+    elif arr.ndim == 3:
+        # Find the min and max indices along each dimension where non-NaN values exist
+        z_non_nan = np.where(mask.any(axis=(1, 2)))[0]
+        y_non_nan = np.where(mask.any(axis=(0, 2)))[0]
+        x_non_nan = np.where(mask.any(axis=(0, 1)))[0]
+
+        # Determine the bounds for cropping
+        zmin, zmax = z_non_nan[0], z_non_nan[-1] + 1
+        ymin, ymax = y_non_nan[0], y_non_nan[-1] + 1
+        xmin, xmax = x_non_nan[0], x_non_nan[-1] + 1
+
+        # Crop the array using the determined bounds
+        return arr[zmin:zmax, ymin:ymax, xmin:xmax]
 
 
 def get_logger(logger_date_time):

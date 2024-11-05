@@ -2,40 +2,12 @@ import sys
 
 import numpy as np
 
-from ..image import Image
-from .radiomics_definitions import MorphologicalFeatures, LocalIntensityFeatures, IntensityBasedStatFeatures, \
-    GLCM, GLRLM_GLSZM_GLDZM_NGLDM, NGTDM
-from ..toolbox_logic import handle_uncaught_exception
+from .radiomics_definitions import MorphologicalFeatures, LocalIntensityFeatures, IntensityBasedStatFeatures, GLCM, GLRLM_GLSZM_GLDZM_NGLDM, NGTDM
 from ..exceptions import DataStructureError
+from ..image import Image
+from ..toolbox_logic import handle_uncaught_exception, get_bounding_box
 
 sys.excepthook = handle_uncaught_exception
-
-
-def _get_bounding_box(arr):
-    """
-    Crops the input 3D array so that no face of the array is entirely NaN.
-
-    Parameters:
-    arr (np.ndarray): Input 3D array to crop.
-
-    Returns:
-    np.ndarray: Cropped 3D array.
-    """
-    # Create a mask of where the non-NaN values are located
-    mask = ~np.isnan(arr)
-
-    # Find the min and max indices along each dimension where non-NaN values exist
-    z_non_nan = np.where(mask.any(axis=(1, 2)))[0]
-    y_non_nan = np.where(mask.any(axis=(0, 2)))[0]
-    x_non_nan = np.where(mask.any(axis=(0, 1)))[0]
-
-    # Determine the bounds for cropping
-    zmin, zmax = z_non_nan[0], z_non_nan[-1] + 1
-    ymin, ymax = y_non_nan[0], y_non_nan[-1] + 1
-    xmin, xmax = x_non_nan[0], x_non_nan[-1] + 1
-
-    # Crop the array using the determined bounds
-    return arr[zmin:zmax, ymin:ymax, xmin:xmax]
 
 
 class Radiomics:
@@ -144,18 +116,23 @@ class Radiomics:
         else:
             self.patient_image = image
 
-        self.patient_morphological_mask = mask.copy()
+        # Extract non-discretized features
+        mask_validated = self._validate_mask(mask, '3D')
+        self.patient_morphological_mask = mask_validated.copy()
         self.patient_morphological_mask.array = self.patient_morphological_mask.array.astype(np.int8)
-
-        self.patient_intensity_mask = mask.copy()
+        self.patient_intensity_mask = mask_validated.copy()
         self.patient_intensity_mask.array = np.where(self.patient_intensity_mask.array > 0, self.patient_image.array, np.nan)
-
-        self._validate_mask()
-
-        # extract features
         self._calc_mask_intensity_features()
         self._calc_mask_morphological_features()
-        self._calc_discretized_intensity_features()
+
+        # Extract discretized features
+        if self.aggr_dim != '3D':
+            mask_validated = self._validate_mask(mask, self.aggr_dim)
+            self.patient_morphological_mask = mask_validated.copy()
+            self.patient_morphological_mask.array = self.patient_morphological_mask.array.astype(np.int8)
+            self.patient_intensity_mask = mask_validated.copy()
+            self.patient_intensity_mask.array = np.where(self.patient_intensity_mask.array > 0, self.patient_image.array, np.nan)
+            self._calc_discretized_intensity_features()
         self._calc_texture_features()
 
         # compile features
@@ -167,7 +144,7 @@ class Radiomics:
         all_features_list_flat = [item for sublist in all_features_list for item in sublist[0]]
         self.features_ = dict(zip(self.columns, all_features_list_flat))
 
-    def _validate_mask(self):
+    def _validate_mask(self, mask, aggr_dim):
         """
         Validates the intensity mask for a patient by checking the bounding box dimensions
         and the number of valid voxels within the mask, with criteria differing based on
@@ -191,7 +168,9 @@ class Radiomics:
             - The log messages include the patient number and mask name for easier identification.
         """
         # Calculate the bounding box around the intensity mask and determine its shape.
-        bounding_box = _get_bounding_box(self.patient_intensity_mask.array)
+        masked_array = mask.array.copy()
+        masked_array[masked_array == 0] = np.nan
+        bounding_box = get_bounding_box(masked_array)
         bounding_box_shape = bounding_box.shape
         no_valid_voxels = np.sum(~np.isnan(bounding_box))
 
@@ -201,7 +180,7 @@ class Radiomics:
         min_voxel_number_2d = 9  # For 2D/2.5D: minimum 3x3 area
 
         # Check the bounding box size and the number of voxels based on the aggregation dimension.
-        if self.aggr_dim == '3D':
+        if aggr_dim == '3D':
             # Check if the bounding box size meets the minimum requirement for 3D.
             if min(bounding_box_shape) < min_box_size:
                 raise DataStructureError(f'The minimum size of the bounding box must be > {min_box_size}. Consider finer resampling.')
@@ -209,11 +188,30 @@ class Radiomics:
             if no_valid_voxels < min_voxel_number_3d:
                 raise DataStructureError(f'The number of valid voxels must be > {min_voxel_number_3d}. Consider finer resampling.')
         else:  # For 2D or 2.5D aggregation, only consider the first two dimensions.
-            if min(bounding_box_shape[:2]) < min_box_size:
-                raise DataStructureError(f'The minimum size of the bounding box in the first two dimensions must be > {min_box_size}. Consider finer resampling.')
-            # Check if the number of valid voxels meets the minimum requirement for 2D.
-            if no_valid_voxels < min_voxel_number_2d:
-                raise DataStructureError(f'The number of valid voxels must be > {min_voxel_number_2d}. Consider finer resampling.')
+            for slice_ix in range(masked_array.shape[0]):
+                slice_masked_array = masked_array[slice_ix, :, :]
+                if np.all(np.isnan(slice_masked_array)):
+                    continue
+                slice_bounding_box = get_bounding_box(slice_masked_array)
+                no_valid_voxels = np.sum(~np.isnan(slice_bounding_box))
+
+                # Remove contour data for slices that don't satisfy min requirements
+                if min(slice_bounding_box.shape) < min_box_size:
+                    # raise DataStructureError(f'The minimum size of the bounding box in the first two dimensions must be > {min_box_size}. Consider finer resampling.')
+                    masked_array[slice_ix, :, :] = np.nan
+                # Check if the number of valid voxels meets the minimum requirement for 2D.
+                if no_valid_voxels < min_voxel_number_2d:
+                    # raise DataStructureError(f'The number of valid voxels must be > {min_voxel_number_2d}. Consider finer resampling.')
+                    masked_array[slice_ix, :, :] = np.nan
+
+            # Check if there's at least one valid slice left
+            if np.all(np.isnan(masked_array)):
+                raise DataStructureError(f'Not a single slice met minimum requirements for radiomics extraction. Consider finer resampling.')
+
+            masked_array = np.nan_to_num(masked_array, nan=0)
+            mask.array = masked_array
+
+        return mask
 
 
     def _calc_mask_intensity_features(self):

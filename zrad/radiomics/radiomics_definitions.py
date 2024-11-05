@@ -345,12 +345,20 @@ class IntensityBasedStatFeatures:
         self.intensity_based_median_abs_deviation = np.nanmean(np.absolute(array - np.nanmedian(array)))
 
     def calc_intensity_based_variation_coef(self, array):  # 3.3.15, 3.4.16
-        self.intensity_based_variation_coef = np.nanstd(array) / np.nanmean(array)
+        denum = np.nanmean(array)
+        if denum == 0:
+            self.intensity_based_variation_coef = 1_000_000
+        else:
+            self.intensity_based_variation_coef = np.nanstd(array) / np.nanmean(array)
 
     def calc_intensity_based_quartile_coef_dispersion(self, array):  # 3.3.16, 3.4.17
         p25 = np.nanpercentile(array, 25)
         p75 = np.nanpercentile(array, 75)
-        self.intensity_based_quartile_coef_dispersion = (p75 - p25) / (p75 + p25)
+        denum = (p75 + p25)
+        if denum == 0:
+            self.intensity_based_quartile_coef_dispersion = 1_000_000
+        else:
+            self.intensity_based_quartile_coef_dispersion = (p75 - p25) / denum
 
     def calc_intensity_based_energy(self, array):  # 3.3.17
         self.intensity_based_energy = np.nansum(array ** 2)
@@ -2304,11 +2312,14 @@ class NGTDM:
         self.ngtd_2d_matrices = np.array(self.ngtd_2d_matrices)
 
     def calc_coarseness(self, matrix):
-        n = np.sum(matrix[:, 0])
+        num = np.sum(matrix[:, 0])
         denum = 0
         for i in range(matrix.shape[0]):
             denum += matrix[i, 0] * matrix[i, 1]
-        return n / denum
+        if denum == 0:
+            return 1_000_000  # IBSI 1 QCDE
+        else:
+            return num / denum
 
     def calc_contrast(self, matrix):
         n = np.sum(matrix[:, 0])
@@ -2319,10 +2330,17 @@ class NGTDM:
             s_2 += matrix[i, 1]
             for j in range(matrix.shape[0]):
                 s_1 += (matrix[i, 0] * matrix[j, 0] * (i - j) ** 2) / (n ** 2)
-        return (s_1 * s_2) / (n_g * (n_g - 1) * np.sum(matrix[:, 0]))
+        num = (s_1 * s_2)
+        denum = (n_g * (n_g - 1) * np.sum(matrix[:, 0]))
+        if denum == 0:
+            return 0
+        else:
+            return num / denum
 
     def calc_busyness(self, matrix):
         n = np.sum(matrix[:, 0])
+        if n == 0:
+            pass
         num = 0
         denum = 0
         for i in range(matrix.shape[0]):
@@ -2330,7 +2348,10 @@ class NGTDM:
             for j in range(matrix.shape[0]):
                 if matrix[i, 0] != 0 and matrix[j, 0] != 0:
                     denum += abs(i * matrix[i, 0] - j * matrix[j, 0]) / n
-        return num / denum
+        if denum == 0:
+            return 0
+        else:
+            return num / denum
 
     def calc_complexity(self, matrix):
         n = np.sum(matrix[:, 0])
@@ -2341,7 +2362,11 @@ class NGTDM:
                     num = ((matrix[i, 0] * matrix[i, 1] + matrix[j, 0] * matrix[j, 1]) * abs(i - j)) / n
                     denum = (matrix[i, 0] + matrix[j, 0]) / n
                     sum_compl += num / denum
-        return sum_compl / np.sum(matrix[:, 0])
+        denum = np.sum(matrix[:, 0])
+        if denum == 0:
+            return 0
+        else:
+            return sum_compl
 
     def calc_strength(self, matrix):
         n = np.sum(matrix[:, 0])
@@ -2352,7 +2377,10 @@ class NGTDM:
             for j in range(matrix.shape[0]):
                 if matrix[i, 0] != 0 and matrix[j, 0] != 0:
                     num += ((matrix[i, 0] + matrix[j, 0]) * (i - j) ** 2) / n
-        return num / denum
+        if denum == 0:
+            return 0
+        else:
+            return num / denum
 
     def calc_2d_ngtdm_features(self):
 

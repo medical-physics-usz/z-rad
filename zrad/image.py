@@ -17,7 +17,7 @@ def parse_time(time_str):
     Parse a time string into a datetime object using various possible formats.
 
     Args:
-        time_str (str): The time string to parse.
+        time_str (str or bytes): The time string to parse.
 
     Returns:
         datetime: Parsed datetime object.
@@ -25,12 +25,17 @@ def parse_time(time_str):
     Raises:
         ValueError: If the time string does not match any expected formats.
     """
+    if isinstance(time_str, bytes):
+        time_str = time_str.decode('utf-8').strip()
+
     for fmt in ('%H%M%S.%f', '%H%M%S', '%Y%m%d%H%M%S.%f'):
         try:
             return datetime.strptime(time_str, fmt)
         except ValueError:
             continue
-    raise ValueError(f"time data '{time_str}' does not match expected formats")
+        except TypeError:
+            continue
+    raise ValueError(f"Time data '{time_str}' does not match expected formats")
 
 
 class Image:

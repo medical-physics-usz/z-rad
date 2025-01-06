@@ -17,7 +17,7 @@ def parse_time(time_str):
     Parse a time string into a datetime object using various possible formats.
 
     Args:
-        time_str (str): The time string to parse.
+        time_str (str or bytes): The time string to parse.
 
     Returns:
         datetime: Parsed datetime object.
@@ -25,12 +25,17 @@ def parse_time(time_str):
     Raises:
         ValueError: If the time string does not match any expected formats.
     """
+    if isinstance(time_str, bytes):
+        time_str = time_str.decode('utf-8').strip()
+
     for fmt in ('%H%M%S.%f', '%H%M%S', '%Y%m%d%H%M%S.%f'):
         try:
             return datetime.strptime(time_str, fmt)
         except ValueError:
             continue
-    raise ValueError(f"time data '{time_str}' does not match expected formats")
+        except TypeError:
+            continue
+    raise ValueError(f"Time data '{time_str}' does not match expected formats")
 
 
 class Image:
@@ -146,8 +151,10 @@ def validate_z_spacing(dicom_files):
     slice_z_origin = sorted(slice_z_origin)
     slice_thickness = [abs(slice_z_origin[i] - slice_z_origin[i + 1]) for i in range(len(slice_z_origin) - 1)]
     for i in range(len(slice_thickness) - 1):
-        if abs((slice_thickness[i] - slice_thickness[i + 1])) > 10 ** (-3):
-            error_msg = f'Inconsistent z-spacing. Absolute deviation is more than 0.001 mm.'
+        spacing_difference = abs((slice_thickness[i] - slice_thickness[i + 1]))
+        spacing_threshold = 0.1
+        if spacing_difference > spacing_threshold:
+            error_msg = f'Inconsistent z-spacing. Absolute deviation is {spacing_difference:.3f} which is greater than {spacing_threshold:.3f} mm.'
             raise DataStructureError(error_msg)
 
 

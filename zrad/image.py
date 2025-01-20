@@ -172,7 +172,7 @@ def validate_pet_dicom_tags(dicom_files):
                 warning_msg = f"For patient's {image_id} image, patient's weight tag (0071, 1022) contains weight < 1kg. Patient is excluded from the analysis."
                 warnings.warn(warning_msg, DataStructureWarning)
 
-        except KeyError:
+        except (KeyError, TypeError):
             warning_msg = f"For patient's {image_id} image, patient's weight tag (0071, 1022) is not present. Patient is excluded from the analysis."
             warnings.warn(warning_msg, DataStructureWarning)
         if 'DECY' not in ds[(0x0028, 0x0051)].value or 'ATTN' not in ds[(0x0028, 0x0051)].value:
@@ -218,7 +218,7 @@ def validate_pet_dicom_tags(dicom_files):
                             time_mismatch = True
                             warning_msg = f"For patient's {image_id} image, a mismatch present between the earliest acquisition time, series time, and GE private tag. Time from the GE private tag was used."
                             warnings.warn(warning_msg, DataStructureWarning)
-                    except KeyError:
+                    except (KeyError, TypeError):
                         acquisition_time = np.min(acquisition_time_list)
                         if not time_mismatch:
                             time_mismatch = True
@@ -251,7 +251,7 @@ def validate_pet_dicom_tags(dicom_files):
                 if activity_scale_factor == 0.0:
                     error_msg = f"For patient's {image_id} image, patient is excluded, Philips private activity scale factor (7053, 1009) = 0. (PET units CNTS)"
                     raise DataStructureError(error_msg)
-            except KeyError:
+            except (KeyError, TypeError):
                 error_msg = f"For patient's {image_id} image, patient is excluded, Philips private activity scale factor (7053, 1009) is missing. (PET units CNTS)."
                 raise DataStructureError(error_msg)
         elif ds.Units == 'GML':
@@ -293,7 +293,7 @@ def apply_suv_correction(dicom_files, suv_image):
                         acquisition_time = parse_time(ds[(0x0009, 0x100d)].value).replace(year=injection_time.year,
                                                                                           month=injection_time.month,
                                                                                           day=injection_time.day)
-                    except KeyError:
+                    except (KeyError, TypeError):
                         acquisition_time = min_acquisition_time
                 else:
                     error_msg = f"Vendor {ds.Manufacturer} is not supported with BQML units!"

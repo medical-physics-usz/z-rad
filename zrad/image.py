@@ -25,10 +25,15 @@ def parse_time(time_str):
     Raises:
         ValueError: If the time string does not match any expected formats.
     """
+    if isinstance(time_str, bytes):
+        time_str = time_str.decode('utf-8').strip()
+
     for fmt in ('%H%M%S.%f', '%H%M%S', '%Y%m%d%H%M%S.%f', '%Y%m%d%H%M%S'):
         try:
             return datetime.strptime(time_str, fmt)
         except ValueError:
+            continue
+        except TypeError:
             continue
     raise ValueError(f"Time data '{time_str}' does not match expected formats")
 

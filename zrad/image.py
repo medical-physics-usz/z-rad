@@ -28,7 +28,7 @@ def parse_time(time_str):
     if isinstance(time_str, bytes):
         time_str = time_str.decode('utf-8').strip()
 
-    for fmt in ('%H%M%S.%f', '%H%M%S', '%Y%m%d%H%M%S.%f'):
+    for fmt in ('%H%M%S.%f', '%H%M%S', '%Y%m%d%H%M%S.%f', '%Y%m%d%H%M%S'):
         try:
             return datetime.strptime(time_str, fmt)
         except ValueError:
@@ -172,7 +172,7 @@ def validate_pet_dicom_tags(dicom_files):
                 warning_msg = f"For patient's {image_id} image, patient's weight tag (0071, 1022) contains weight < 1kg. Patient is excluded from the analysis."
                 warnings.warn(warning_msg, DataStructureWarning)
 
-        except KeyError:
+        except (KeyError, TypeError):
             warning_msg = f"For patient's {image_id} image, patient's weight tag (0071, 1022) is not present. Patient is excluded from the analysis."
             warnings.warn(warning_msg, DataStructureWarning)
         if 'DECY' not in ds[(0x0028, 0x0051)].value or 'ATTN' not in ds[(0x0028, 0x0051)].value:
@@ -185,7 +185,7 @@ def validate_pet_dicom_tags(dicom_files):
             if ds.DecayCorrection == 'START':
                 if 'PHILIPS' in ds.Manufacturer.upper():
                     acquisition_time = np.min(acquisition_time_list)
-                elif 'SIEMENS' in ds.Manufacturer.upper():
+                elif 'SIEMENS' in ds.Manufacturer.upper() or 'CPS' in ds.Manufacturer.upper():
                     try:
                         acquisition_time = parse_time(ds[(0x0071, 0x1022)].value).replace(
                             year=injection_time.year,
@@ -196,7 +196,7 @@ def validate_pet_dicom_tags(dicom_files):
                             time_mismatch = True
                             warning_msg = f"For patient's {image_id} image, there is a mismatch between the earliest acquisition time, series time and Siemens private tag (0071, 1022). Time from the Siemens private tag was used."
                             warnings.warn(warning_msg, DataStructureWarning)
-                    except KeyError:
+                    except (KeyError, TypeError):
                         acquisition_time = np.min(acquisition_time_list)
                         if not time_mismatch:
                             time_mismatch = True
@@ -218,7 +218,7 @@ def validate_pet_dicom_tags(dicom_files):
                             time_mismatch = True
                             warning_msg = f"For patient's {image_id} image, a mismatch present between the earliest acquisition time, series time, and GE private tag. Time from the GE private tag was used."
                             warnings.warn(warning_msg, DataStructureWarning)
-                    except KeyError:
+                    except (KeyError, TypeError):
                         acquisition_time = np.min(acquisition_time_list)
                         if not time_mismatch:
                             time_mismatch = True
@@ -251,7 +251,7 @@ def validate_pet_dicom_tags(dicom_files):
                 if activity_scale_factor == 0.0:
                     error_msg = f"For patient's {image_id} image, patient is excluded, Philips private activity scale factor (7053, 1009) = 0. (PET units CNTS)"
                     raise DataStructureError(error_msg)
-            except KeyError:
+            except (KeyError, TypeError):
                 error_msg = f"For patient's {image_id} image, patient is excluded, Philips private activity scale factor (7053, 1009) is missing. (PET units CNTS)."
                 raise DataStructureError(error_msg)
         elif ds.Units == 'GML':
@@ -281,19 +281,19 @@ def apply_suv_correction(dicom_files, suv_image):
             if ds.DecayCorrection == 'START':
                 if 'PHILIPS' in manufacturer:
                     acquisition_time = min_acquisition_time
-                elif 'SIEMENS' in manufacturer:
+                elif 'SIEMENS' in manufacturer or 'CPS' in manufacturer:
                     try:
                         acquisition_time = parse_time(ds[(0x0071, 0x1022)].value).replace(year=injection_time.year,
                                                                                           month=injection_time.month,
                                                                                           day=injection_time.day)
-                    except KeyError:
+                    except (KeyError, TypeError):
                         acquisition_time = min_acquisition_time
                 elif 'GE' in manufacturer:
                     try:
                         acquisition_time = parse_time(ds[(0x0009, 0x100d)].value).replace(year=injection_time.year,
                                                                                           month=injection_time.month,
                                                                                           day=injection_time.day)
-                    except KeyError:
+                    except (KeyError, TypeError):
                         acquisition_time = min_acquisition_time
                 else:
                     error_msg = f"Vendor {ds.Manufacturer} is not supported with BQML units!"

@@ -142,7 +142,22 @@ class Radiomics:
                              self.glrlm_features_list, self.glszm_features_list,
                              self.gldzm_features_list, self.ngtdm_features_list, self.ngldm_features_list]
         all_features_list_flat = [item for sublist in all_features_list for item in sublist[0]]
-        self.features_ = dict(zip(self.columns, all_features_list_flat))
+
+        self.new_columns = []
+        el_aggr_dim = '2_5D' if self.aggr_dim == '2.5D' else self.aggr_dim
+
+        aggr_method_map = {'AVER': 'avg', 'DIR_MERG': 'avg', 'SLICE_MERG': 'comb', 'MERG': 'comb'}
+
+        for el in self.columns:
+            if el.startswith(('cm', 'rlm')):
+                el_aggr_method = aggr_method_map.get(self.aggr_method, '')
+                self.new_columns.append(f'{el}_{el_aggr_dim}_{el_aggr_method}')
+            elif el.startswith(('szm', 'dzm', 'ngl')):
+                self.new_columns.append(f'{el}_{el_aggr_dim}')
+            else:
+                self.new_columns.append(el)
+
+        self.features_ = dict(zip(self.new_columns, all_features_list_flat))
 
     def _validate_mask(self, mask, aggr_dim):
         """

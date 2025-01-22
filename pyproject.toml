@@ -1,37 +1,47 @@
-[tool.poetry]
-name = "z-rad"
-version = "0.0.0"
-description = "Z-Rad is a radiomic feature extraction software with GUI and API."
-authors = ["Radiomics Team of Radiation Oncology Department at University Hospital Zurich <zrad@usz.ch>"]
-readme = "README.md"
+[build-system]
+# Packages needed to build and install via setuptools
+requires = [
+    "setuptools>=63.0.0",
+    "wheel"  # optional but recommended
+]
+build-backend = "setuptools.build_meta"
 
-packages = [
-    { include = "zrad" }
+[project]
+name = "z-rad"
+version = "25.01"
+description = "Z-Rad is a radiomic feature extraction software with GUI and API."
+readme = "README.md"
+requires-python = ">=3.10"
+
+# Authors
+authors = [
+    { name = "Radiomics Team of Radiation Oncology Department at University Hospital Zurich", email = "zrad@usz.ch" }
 ]
 
-[tool.poetry.dependencies]
-python = "^3.10"
-pydicom = "^3.0.0"
-pyqt5 = "^5.15.11"
-numpy = "^2.1.1"
-pandas = "^2.2.2"
-simpleitk = "^2.4.0"
-scipy = "^1.14.1"
-pywavelets = "^1.7.0"
-openpyxl = "^3.1.5"
-scikit-image = "^0.24.0"
-scikit-learn = "^1.5.2"
-opencv-python-headless = "^4.10.0.84"
-joblib = "^1.4.2"
-tqdm = "^4.66.5"
+# Dependencies
+dependencies = [
+    "pydicom>=3.0.0",
+    "pyqt5>=5.15.11",
+    "numpy>=2.1.1",
+    "pandas>=2.2.2",
+    "simpleitk>=2.4.0",
+    "scipy>=1.14.1",
+    "pywavelets>=1.7.0",
+    "openpyxl>=3.1.5",
+    "scikit-image>=0.24.0",
+    "scikit-learn>=1.5.2",
+    "opencv-python-headless>=4.10.0.84",
+    "joblib>=1.4.2",
+    "tqdm>=4.66.5"
+]
 
-[build-system]
-requires = ["poetry-core", "poetry-dynamic-versioning"]
-build-backend = "poetry_dynamic_versioning.backend"
+# Optional project URLs, license, etc.
+keywords = ["radiomics", "feature-extraction", "python", "GUI", "API"]
+license = { text = "MIT" }
 
-[tool.poetry-dynamic-versioning]
-enable = true
+[tool.setuptools]
+# Additional setuptools configuration
 
-[tool.poetry-dynamic-versioning.from-file]
-source = "zrad/__init__.py"
-pattern = "^__version__ = [\"'](?P<version>.+?)[\"']$"
+[tool.setuptools.packages.find]
+include = ["zrad"]
+

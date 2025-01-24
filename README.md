@@ -11,6 +11,7 @@ and lack of standardization.
 addresses these issues by offering a user-friendly, IBSI-compliant, and open-source solution for radiomics analysis.
 
 ## Z-Rad Features
+<img src="https://raw.githubusercontent.com/medical-physics-usz/z-rad/master/doc/images/zrad_screenshot.png" width="600" alt="Z-Rad screenshot"/>
 
 ### User-Friendly Interface
 - **Graphical User Interface (GUI)**: Designed for medical professionals with no programming skills.

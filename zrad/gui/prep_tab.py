@@ -49,9 +49,11 @@ def process_patient_folder(input_params, patient_folder, structure_set):
     # Process masks
     if input_params["input_data_type"] == 'dicom':
         input_directory = os.path.join(input_params["input_directory"], patient_folder)
-        input_params['rtstruct_path'] = get_dicom_files(input_directory, modality='RTSTRUCT')[0]['file_path']
-        if input_params["use_all_structures"]:
-            structure_set = get_all_structure_names(input_params['rtstruct_path'])
+        rtstruct_paths = get_dicom_files(input_directory, modality='RTSTRUCT')
+        if len(rtstruct_paths) > 0:
+            input_params['rtstruct_path'] = rtstruct_paths[0]['file_path']
+            if input_params["use_all_structures"]:
+                structure_set = get_all_structure_names(input_params['rtstruct_path'])
 
     if structure_set:
         mask_union = None

@@ -161,69 +161,72 @@ class Radiomics:
 
     def _validate_mask(self, mask, aggr_dim):
         """
-        Validates the intensity mask for a patient by checking the bounding box dimensions
-        and the number of valid voxels within the mask, with criteria differing based on
-        the aggregation dimension (2D/2.5D or 3D). If the mask does not meet the criteria,
-        processing for this mask is skipped.
-
-        Criteria for validation:
-            - For 3D aggregation:
-                - The smallest dimension of the 3D bounding box must be greater than `min_box_size`.
-                - The number of valid (non-NaN) voxels in the bounding box must be greater
-                  than `min_voxel_number_3d`.
-            - For 2D or 2.5D aggregation:
-                - The smallest dimension of the 2D slice (ignoring the third dimension) must be greater than `min_box_size`.
-                - The number of valid (non-NaN) voxels in the bounding box must be greater
-                  than `min_voxel_number_2d`.
-
-        Logs:
-            - A message is logged if the mask is skipped due to not meeting the
-              minimum bounding box size requirement.
-            - A message is logged if the mask is skipped due to insufficient valid voxels.
-            - The log messages include the patient number and mask name for easier identification.
+        Validates the intensity mask for a patient by checking bounding box dimensions
+        and number of valid voxels. Skips or discards slices that do not meet criteria.
         """
         # Calculate the bounding box around the intensity mask and determine its shape.
-        masked_array = mask.array.copy()
-        masked_array[masked_array == 0] = np.nan
-        bounding_box = get_bounding_box(masked_array)
-        bounding_box_shape = bounding_box.shape
-        no_valid_voxels = np.sum(~np.isnan(bounding_box))
+        masked_array = mask.array
 
         # Define the minimum size and voxel count requirements for validation.
         min_box_size = 3
-        min_voxel_number_3d = 27  # For 3D: minimum 3x3x3 volume
-        min_voxel_number_2d = 9  # For 2D/2.5D: minimum 3x3 area
+        min_voxel_number_3d = 27
+        min_voxel_number_2d = 9
 
         # Check the bounding box size and the number of voxels based on the aggregation dimension.
         if aggr_dim == '3D':
-            # Check if the bounding box size meets the minimum requirement for 3D.
-            if min(bounding_box_shape) < min_box_size:
-                raise DataStructureError(f'The minimum size of the bounding box must be > {min_box_size}. Consider finer resampling.')
-            # Check if the number of valid voxels meets the minimum requirement for 3D.
+            # Find all nonzero voxel coordinates
+            valid_coords = np.where(masked_array != 0)
+            if len(valid_coords[0]) == 0:
+                raise DataStructureError("No valid voxels in 3D array.")
+
+            # Compute bounding box from min to max across each dimension
+            zmin, zmax = valid_coords[0].min(), valid_coords[0].max() + 1
+            ymin, ymax = valid_coords[1].min(), valid_coords[1].max() + 1
+            xmin, xmax = valid_coords[2].min(), valid_coords[2].max() + 1
+
+            bbox_shape = (zmax - zmin, ymax - ymin, xmax - xmin)
+            no_valid_voxels = len(valid_coords[0])
+
+            # Validation checks for 3D
+            if min(bbox_shape) < min_box_size:
+                raise DataStructureError(f"3D bounding box dimension < {min_box_size}.")
             if no_valid_voxels < min_voxel_number_3d:
-                raise DataStructureError(f'The number of valid voxels must be > {min_voxel_number_3d}. Consider finer resampling.')
-        else:  # For 2D or 2.5D aggregation, only consider the first two dimensions.
-            for slice_ix in range(masked_array.shape[0]):
-                slice_masked_array = masked_array[slice_ix, :, :]
-                if np.all(np.isnan(slice_masked_array)):
+                raise DataStructureError(f"Valid voxel count < {min_voxel_number_3d}.")
+
+        else:
+            # 2D or 2.5D case: check each slice individually
+            n_slices = masked_array.shape[0]
+            for z in range(n_slices):
+                slice_arr = masked_array[z, :, :]
+                # If the slice is all zero, skip it
+                if not np.any(slice_arr):
                     continue
-                slice_bounding_box = get_bounding_box(slice_masked_array)
-                no_valid_voxels = np.sum(~np.isnan(slice_bounding_box))
 
-                # Remove contour data for slices that don't satisfy min requirements
-                if min(slice_bounding_box.shape) < min_box_size:
-                    # raise DataStructureError(f'The minimum size of the bounding box in the first two dimensions must be > {min_box_size}. Consider finer resampling.')
-                    masked_array[slice_ix, :, :] = np.nan
-                # Check if the number of valid voxels meets the minimum requirement for 2D.
-                if no_valid_voxels < min_voxel_number_2d:
-                    # raise DataStructureError(f'The number of valid voxels must be > {min_voxel_number_2d}. Consider finer resampling.')
-                    masked_array[slice_ix, :, :] = np.nan
+                # Find all nonzero coordinates in this slice
+                valid_coords = np.where(slice_arr != 0)
+                no_valid_voxels = len(valid_coords[0])
+                if no_valid_voxels == 0:
+                    # It's effectively empty
+                    continue
 
-            # Check if there's at least one valid slice left
-            if np.all(np.isnan(masked_array)):
-                raise DataStructureError(f'Not a single slice met minimum requirements for radiomics extraction. Consider finer resampling.')
+                ymin, ymax = valid_coords[0].min(), valid_coords[0].max() + 1
+                xmin, xmax = valid_coords[1].min(), valid_coords[1].max() + 1
+                height = ymax - ymin
+                width = xmax - xmin
 
-            masked_array = np.nan_to_num(masked_array, nan=0)
+                # Validation checks for each slice
+                if min(height, width) < min_box_size or no_valid_voxels < min_voxel_number_2d:
+                    # Mark this entire slice as invalid by setting it to 0
+                    slice_arr[:, :] = 0
+
+            # Check if all slices are now invalid (all zeros)
+            if not np.any(masked_array):
+                raise DataStructureError(
+                    "Not a single slice meets the minimum 2D/2.5D requirements. "
+                    "Consider finer resampling or check the data."
+                )
+
+            # Assign the possibly updated mask back (already in-place, but for clarity)
             mask.array = masked_array
 
         return mask

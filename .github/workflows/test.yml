@@ -25,7 +25,8 @@ jobs:
       - name: Run tests with coverage
         run: |
           coverage run -m pytest
-          coverage report -m
+          coverage report -m --skip-covered  # Hide fully covered files
+          coverage html
 
       - name: Upload coverage report as an artifact
         uses: actions/upload-artifact@v4

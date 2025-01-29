@@ -17,16 +17,16 @@ def ibsi_i_feature_tolerances(sheet_name):
 def ibsi_i_validation(ibsi_features, features, config_a=False):
     for tag in ibsi_features['tag']:
         if config_a and tag == 'ih_qcod':
-            pass
-        else:
-            if str(tag) in features:
-                val = float(ibsi_features[ibsi_features['tag'] == tag]['reference value'].iloc[0])
-                tol = float(ibsi_features[ibsi_features['tag'] == tag]['tolerance'].iloc[0])
-                upper_boundary = val + tol
-                lower_boundary = val - tol
+            continue
+            
+        if str(tag) in features:
+            val = float(ibsi_features[ibsi_features['tag'] == tag]['reference value'].iloc[0])
+            tol = float(ibsi_features[ibsi_features['tag'] == tag]['tolerance'].iloc[0])
+            upper_boundary = val + tol
+            lower_boundary = val - tol
 
-                if not (lower_boundary <= features[tag] <= upper_boundary):
-                    assert False
+            if not (lower_boundary <= features[tag] <= upper_boundary):
+                pytest.fail(f"Feature {tag} out of tolerance: {features[tag]} not in range ({lower_boundary}, {upper_boundary})")
 
 
 @pytest.fixture()

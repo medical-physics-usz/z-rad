@@ -32,11 +32,11 @@ def ibsi_i_validation(ibsi_features, features, config_a=False):
 @pytest.fixture()
 def ct_phantom_image():
 
-    if not os.path.isdir('data/IBSI_I'):
-        load_ibsi_phantom(chapter=1, phantom='ct_radiomics', imaging_format="nifti", save_path='data/IBSI_I')
+    if not os.path.isdir('tests/test_data/IBSI_I'):
+        load_ibsi_phantom(chapter=1, phantom='ct_radiomics', imaging_format="nifti", save_path='tests/test_data/IBSI_I')
 
     image = Image()
-    image.read_nifti_image('data/IBSI_I/image/phantom.nii.gz')
+    image.read_nifti_image('tests/test_data/IBSI_I/image/phantom.nii.gz')
     return image
 
 
@@ -44,7 +44,7 @@ def ct_phantom_image():
 def ct_phantom_mask():
 
     mask = Image()
-    mask.read_nifti_image('data/IBSI_I/mask/mask.nii.gz')
+    mask.read_nifti_image('tests/test_data/IBSI_I/mask/mask.nii.gz')
     return mask
 
 
@@ -110,6 +110,7 @@ def res3d_2mm_image_spline(ct_phantom_image):
     return res_image
 
 
+@pytest.mark.integration
 def test_ibsi_i_config_a(ct_phantom_image, ct_phantom_mask):
     ibsi_features = ibsi_i_feature_tolerances('config A')
     radiomics = Radiomics(aggr_dim='2D',
@@ -121,6 +122,7 @@ def test_ibsi_i_config_a(ct_phantom_image, ct_phantom_mask):
     ibsi_i_validation(ibsi_features, radiomics.features_, True)
 
 
+@pytest.mark.integration
 def test_ibsi_i_config_b(res2d_2mm_image_linear, res2d_2mm_mask_linear):
     ibsi_features = ibsi_i_feature_tolerances('config B')
     radiomics = Radiomics(aggr_dim='2D',
@@ -132,6 +134,7 @@ def test_ibsi_i_config_b(res2d_2mm_image_linear, res2d_2mm_mask_linear):
     ibsi_i_validation(ibsi_features, radiomics.features_)
 
 
+@pytest.mark.integration
 def test_ibsi_i_config_c(res3d_2mm_image_linear, res3d_2mm_mask_linear):
     ibsi_features = ibsi_i_feature_tolerances('config C')
     radiomics = Radiomics(aggr_dim='3D',
@@ -143,6 +146,7 @@ def test_ibsi_i_config_c(res3d_2mm_image_linear, res3d_2mm_mask_linear):
     ibsi_i_validation(ibsi_features, radiomics.features_)
 
 
+@pytest.mark.integration
 def test_ibsi_i_config_d(res3d_2mm_image_linear, res3d_2mm_mask_linear):
     ibsi_features = ibsi_i_feature_tolerances('config D')
     radiomics = Radiomics(aggr_dim='3D',
@@ -154,6 +158,7 @@ def test_ibsi_i_config_d(res3d_2mm_image_linear, res3d_2mm_mask_linear):
     ibsi_i_validation(ibsi_features, radiomics.features_)
 
 
+@pytest.mark.integration
 def test_ibsi_i_config_e(res3d_2mm_image_spline, res3d_2mm_mask_linear):
     ibsi_features = ibsi_i_feature_tolerances('config E')
     radiomics = Radiomics(aggr_dim='3D',

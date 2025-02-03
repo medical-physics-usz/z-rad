@@ -1,5 +1,6 @@
 import numpy as np
-from scipy.ndimage import distance_transform_cdt
+from scipy.ndimage import convolve
+from scipy.ndimage import distance_transform_cdt, label, generate_binary_structure
 from scipy.spatial import ConvexHull
 from scipy.special import legendre
 from scipy.stats import iqr, skew, kurtosis
@@ -66,22 +67,21 @@ class MorphologicalFeatures:
         self.mesh_verts = self.mesh_verts * self.spacing
 
     def calc_vol_and_area_mesh(self):
+        faces = np.asarray(self.mesh_faces)  # Ensure it's an array
+        verts = np.asarray(self.mesh_verts)  # Ensure it's an array
 
-        def volume(a, b, c):
-            return np.dot(a, np.cross(b, c)) / 6
+        # Get vertices corresponding to each face (Nx3x3 array)
+        a, b, c = verts[faces[:, 0]], verts[faces[:, 1]], verts[faces[:, 2]]
 
-        def area(a, b, c):
-            return np.linalg.norm(np.cross(b - a, c - a)) / 2
+        # Compute cross products
+        cross_bc = np.cross(b, c)  # Cross product for volume
+        cross_ba_ca = np.cross(b - a, c - a)  # Cross product for area
 
-        self.vol_mesh = 0
-        self.area_mesh = 0
+        # Compute volume using vectorized operations
+        self.vol_mesh = abs(np.einsum('ij,ij->i', a, cross_bc).sum() / 6)
 
-        for face in self.mesh_faces:
-            a, b, c = self.mesh_verts[face]
-            self.vol_mesh += volume(a, b, c)
-            self.area_mesh += area(a, b, c)
-
-        self.vol_mesh = abs(self.vol_mesh)
+        # Compute area using vectorized operations
+        self.area_mesh = np.linalg.norm(cross_ba_ca, axis=1).sum() / 2
 
     def calc_vol_count(self):
         self.vol_count = np.sum(self.array_mask) * self.unit_vol
@@ -503,26 +503,38 @@ class GLCM:
     def calc_glc_2d_matrices(self):
 
         def calc_2_d_glcm_slice(image, direction):
-
-            dx, dy, dz = direction
-
-            glcm_slice = np.zeros((self.lvl, self.lvl), dtype=int)
+            # Ensure only the first two values are used for 2D GLCM
+            dx, dy, *_ = direction  # Unpacks only dx and dy, ignoring dz
 
             rows, cols = image.shape
-            for i in range(rows):
-                for j in range(cols):
-                    if (0 <= i + dx < rows) and (0 <= j + dy < cols):
+            glcm_slice = np.zeros((self.lvl, self.lvl), dtype=int)
 
-                        row_pixel = image[i, j]
-                        col_pixel = image[i + dx, j + dy]
+            # Create mask for NaN values
+            nan_mask = np.isnan(image)
 
-                        # Check if either pixel is nan, skip if so
-                        if np.isnan(row_pixel) or np.isnan(col_pixel):
-                            continue
+            # Compute valid indices
+            if dx >= 0:
+                valid_i = np.arange(rows - dx)
+            else:
+                valid_i = np.arange(-dx, rows)
 
-                        # Update GLCM
-                        row_pixel, col_pixel = int(row_pixel), int(col_pixel)
-                        glcm_slice[row_pixel, col_pixel] += 1
+            if dy >= 0:
+                valid_j = np.arange(cols - dy)
+            else:
+                valid_j = np.arange(-dy, cols)
+
+            # Create meshgrid for valid pixel locations
+            i_grid, j_grid = np.meshgrid(valid_i, valid_j, indexing='ij')
+
+            # Get pixel values
+            row_pixels = image[i_grid, j_grid]
+            col_pixels = image[i_grid + dx, j_grid + dy]
+
+            # Mask invalid (NaN) pairs
+            valid_pairs = ~nan_mask[i_grid, j_grid] & ~nan_mask[i_grid + dx, j_grid + dy]
+
+            # Update GLCM using NumPy indexing
+            np.add.at(glcm_slice, (row_pixels[valid_pairs].astype(int), col_pixels[valid_pairs].astype(int)), 1)
 
             return glcm_slice
 
@@ -599,23 +611,27 @@ class GLCM:
         self.glcm_3d_matrix = np.array(self.glcm_3d_matrix)
 
     def calc_p_minus(self, matrix):
-        n_g = len(matrix)
+        matrix = np.asarray(matrix)  # Ensure input is a NumPy array
+        n_g = matrix.shape[0]
+
+        # Use NumPy advanced indexing to sum along diagonals
         p_minus = np.zeros(n_g)
-        for k in range(n_g - 1):
-            for i in range(n_g):
-                for j in range(n_g):
-                    if abs(i - j) == k:
-                        p_minus[k] += matrix[i][j]
+        for k in range(n_g):  # k should start at 0 (not n_g - 1)
+            mask = np.abs(np.subtract.outer(np.arange(n_g), np.arange(n_g))) == k
+            p_minus[k] = matrix[mask].sum()
+
         return p_minus
 
     def calc_p_plus(self, matrix):
-        n_g = len(matrix)
-        p_plus = np.zeros((2 * n_g - 1))
-        for k in range(2, 2 * n_g):
-            for i in range(n_g):
-                for j in range(n_g):
-                    if abs(i + j) == k:
-                        p_plus[k] += matrix[i][j]
+        matrix = np.asarray(matrix)  # Ensure input is a NumPy array
+        n_g = matrix.shape[0]
+
+        # Correct size of p_plus
+        p_plus = np.zeros(2 * n_g - 1)
+
+        for k in range(2 * n_g - 1):  # Adjust range to start from 0
+            mask = np.add.outer(np.arange(n_g), np.arange(n_g)) == k
+            p_plus[k] = matrix[mask].sum()
         return p_plus
 
     def calc_mu_i_and_sigma_i(self, matrix):
@@ -1286,30 +1302,41 @@ class GLRLM_GLSZM_GLDZM_NGLDM:
         self.energy_list = []
 
     def calc_glrl_2d_matrices(self):
-
+        """
+        Computes the 2D Gray Level Run Length Matrix (GLRLM) for each slice in a 3D image.
+        """
         x, y, z = self.image.shape
-        directions = [(0, 1), (1, -1), (1, 0), (1, 1)]
+        directions = [(0, 1), (1, -1), (1, 0), (1, 1)]  # Right, Diagonal Left, Down, Diagonal Right
 
         self.glrlm_2D_matrices = []
         self.no_of_roi_voxels = []
+
         for z_slice_index in self.range_z:
-            z_slice_list = []
             z_slice = self.image[:, :, z_slice_index]
-            # if np.sum(~np.isnan(z_slice)) != 0:
-            self.no_of_roi_voxels.append(np.sum(~np.isnan(z_slice)))
-            for direction in directions:
-                rlm = np.zeros((self.lvl, max(x, y)))
+            self.no_of_roi_voxels.append(np.count_nonzero(~np.isnan(z_slice)))
+
+            z_slice_list = []
+            for dx, dy in directions:
+                rlm = np.zeros((self.lvl, max(x, y)), dtype=int)
                 visited_array = np.zeros((x, y), dtype=bool)
-                for i in self.range_x:
-                    for j in self.range_y:
-                        if visited_array[i, j] or np.isnan(z_slice[i, j]):
+
+                # Get unique gray levels for faster iteration
+                unique_gray_levels = np.unique(z_slice[~np.isnan(z_slice)]).astype(int)
+
+                for gr_lvl in unique_gray_levels:
+                    mask = (z_slice == gr_lvl) & ~visited_array
+
+                    # Get indices of unvisited voxels for the current gray level
+                    indices = np.array(np.where(mask)).T
+
+                    for i, j in indices:
+                        if visited_array[i, j]:
                             continue
 
-                        dx, dy = direction
                         run_len = 1
-                        gr_lvl = int(z_slice[i, j])
                         visited_array[i, j] = True
 
+                        # Move in the direction (dx, dy)
                         new_i, new_j = i + dx, j + dy
                         while (0 <= new_i < x and 0 <= new_j < y and not np.isnan(z_slice[new_i, new_j])
                                and z_slice[new_i, new_j] == gr_lvl and not visited_array[new_i, new_j]):
@@ -1323,47 +1350,60 @@ class GLRLM_GLSZM_GLDZM_NGLDM:
                 z_slice_list.append(rlm)
 
             self.glrlm_2D_matrices.append(z_slice_list)
-        self.glrlm_2D_matrices = np.array(self.glrlm_2D_matrices).astype(np.int64)
+
+        self.glrlm_2D_matrices = np.array(self.glrlm_2D_matrices, dtype=np.int64)
 
     def calc_glrl_3d_matrix(self):
 
         x, y, z = self.image.shape
-        directions = [
+        directions = np.array([
             (0, 0, 1), (0, 1, -1), (0, 1, 0),
             (0, 1, 1), (1, -1, -1), (1, -1, 0),
             (1, -1, 1), (1, 0, -1), (1, 0, 0),
             (1, 0, 1), (1, 1, -1), (1, 1, 0),
-            (1, 1, 1)]
+            (1, 1, 1)
+        ])
 
-        self.glrlm_3D_matrix = []
-        for direction in directions:
-            rlm = np.zeros((self.lvl, max(x, y, z)))
-            visited_array = np.zeros(self.image.shape, dtype=bool)
-            for i in self.range_x:
-                for j in self.range_y:
-                    for k in self.range_z:
-                        if visited_array[i, j, k] or np.isnan(self.image[i, j, k]):
-                            continue  # Skip already visited cells or cells with np.nan
+        max_dim = max(x, y, z)
+        self.glrlm_3D_matrix = np.zeros((len(directions), self.lvl, max_dim), dtype=np.int64)
 
-                        dx, dy, dz = direction
-                        run_len = 1
-                        gr_lvl = int(self.image[i, j, k])
-                        visited_array[i, j, k] = True
+        # Mask for NaN values
+        nan_mask = np.isnan(self.image)
 
-                        new_i, new_j, new_k = i + dx, j + dy, k + dz
-                        while 0 <= new_i < x and 0 <= new_j < y and 0 <= new_k < z and not np.isnan(
-                                self.image[new_i, new_j, new_k]) and self.image[new_i, new_j, new_k] == gr_lvl and not \
-                                visited_array[new_i, new_j, new_k]:
-                            run_len += 1
-                            visited_array[new_i, new_j, new_k] = True
-                            new_i += dx
-                            new_j += dy
-                            new_k += dz
+        # Iterate over directions (necessary to track full run lengths)
+        for d_idx, (dx, dy, dz) in enumerate(directions):
+            rlm = np.zeros((self.lvl, max_dim), dtype=np.int64)
+            visited = np.zeros((x, y, z), dtype=bool)
 
-                        rlm[gr_lvl, run_len - 1] += 1
+            # Process all voxels in a vectorized manner
+            valid_voxels = ~nan_mask
+            i_idx, j_idx, k_idx = np.where(valid_voxels)
 
-            self.glrlm_3D_matrix.append(rlm)
-        self.glrlm_3D_matrix = np.array(self.glrlm_3D_matrix).astype(np.int64)
+            for i, j, k in zip(i_idx, j_idx, k_idx):
+                if visited[i, j, k]:
+                    continue  # Skip already processed voxels
+
+                gr_lvl = int(self.image[i, j, k])
+                run_len = 1
+                visited[i, j, k] = True
+
+                # Follow the run in the given direction
+                new_i, new_j, new_k = i + dx, j + dy, k + dz
+                while (0 <= new_i < x and 0 <= new_j < y and 0 <= new_k < z and
+                       self.image[new_i, new_j, new_k] == gr_lvl and
+                       not visited[new_i, new_j, new_k] and
+                       not nan_mask[new_i, new_j, new_k]):
+                    visited[new_i, new_j, new_k] = True
+                    run_len += 1
+                    new_i += dx
+                    new_j += dy
+                    new_k += dz
+
+                rlm[gr_lvl, run_len - 1] += 1  # Store run-length in RLM
+
+            self.glrlm_3D_matrix[d_idx] = rlm
+
+        self.glrlm_3D_matrix = self.glrlm_3D_matrix.astype(np.int64)
 
     def calc_glsz_gldz_3d_matrices(self, mask):
 
@@ -1388,17 +1428,29 @@ class GLRLM_GLSZM_GLDZM_NGLDM:
             stack = [start]
             size = 0
             min_dist = np.inf
+            x_max, y_max, z_max = self.image.shape
+
             while stack:
                 x, y, z = stack.pop()
-                if 0 <= x < self.image.shape[0] and 0 <= y < self.image.shape[1] and 0 <= z < self.image.shape[2]:
+
+                # Boundary check before accessing array elements
+                if 0 <= x < x_max and 0 <= y < y_max and 0 <= z < z_max:
                     if visited[x, y, z] == 0 and self.image[x, y, z] == intensity:
                         visited[x, y, z] = 1
                         size += 1
                         min_dist = min(min_dist, dist_map[x, y, z])
+
+                        # Add valid neighbors (26-connectivity)
                         for dx in [-1, 0, 1]:
                             for dy in [-1, 0, 1]:
                                 for dz in [-1, 0, 1]:
-                                    stack.append((x + dx, y + dy, z + dz))
+                                    if dx == 0 and dy == 0 and dz == 0:
+                                        continue  # Skip self
+                                    nx, ny, nz = x + dx, y + dy, z + dz
+                                    if 0 <= nx < x_max and 0 <= ny < y_max and 0 <= nz < z_max:
+                                        if visited[nx, ny, nz] == 0 and self.image[nx, ny, nz] == intensity:
+                                            stack.append((nx, ny, nz))
+
             return size, min_dist
 
         visited = np.zeros_like(self.image, dtype=int)
@@ -1416,108 +1468,170 @@ class GLRLM_GLSZM_GLDZM_NGLDM:
         self.gldzm_3D_matrix = gldzm.astype(np.int64)
 
     def calc_glsz_gldz_2d_matrices(self, mask):
+        """
+        Computes the 2D GLSZM (Gray Level Size Zone Matrix) and GLDZM (Gray Level Distance Zone Matrix)
+        for each slice of a 3D image.
+        """
+        # Compute max region size across slices efficiently
+        max_region_size = max(
+            np.max(np.bincount(z_slice[~np.isnan(z_slice)].flatten().astype(int)))
+            for z_slice in np.moveaxis(self.image, 2, 0)
+            if np.any(~np.isnan(z_slice))
+        )
 
-        max_region_size_list = []
-        for z_slice in self.image.T:
-            if np.sum(~np.isnan(z_slice)) != 0:
-                flattened_array = z_slice.flatten()
-                _, counts = np.unique(flattened_array[~np.isnan(flattened_array)], return_counts=True)
-                max_region_size_list.append(np.max(counts))
-        max_region_size = max(max_region_size_list)
-
-        def calc_dist_map_2d(image_orig):
-            image = image_orig.copy()
-            larger_array = np.zeros((image.shape[0] + 2, image.shape[1] + 2))
-            larger_array[1:-1, 1:-1] = image
-            distance_map = distance_transform_cdt(larger_array, metric='taxicab')[1:-1, 1:-1].astype(float)
-
-            return distance_map
-
-        def find_connected_region_2d(start, intensity):
-            stack = [start]
-            size = 0
-            min_dist = np.inf
-            while stack:
-                x, y = stack.pop()
-                if 0 <= x < z_slice.shape[0] and 0 <= y < z_slice.shape[1]:
-                    if visited[x, y] == 0 and z_slice[x, y] == intensity:
-                        visited[x, y] = 1
-                        size += 1
-                        min_dist = min(min_dist, dist_map[x, y])
-                        for dx in [-1, 0, 1]:
-                            for dy in [-1, 0, 1]:
-                                stack.append((x + dx, y + dy))
-            return size, min_dist
+        # Define 8-connectivity structure for labeling regions
+        connectivity = generate_binary_structure(2, 2)  # 8-connectivity
 
         self.glszm_2D_matrices = []
         self.gldzm_2D_matrices = []
         self.no_of_roi_voxels = []
+
         for z_slice_index in self.range_z:
             z_slice = self.image[:, :, z_slice_index]
-            # if np.sum(~np.isnan(z_slice)) != 0:
             z_slice_mask = mask[:, :, z_slice_index]
-            self.no_of_roi_voxels.append(np.sum(~np.isnan(z_slice)))
-            dist_map = calc_dist_map_2d(z_slice_mask)
+
+            # Compute distance map (taxicab metric)
+            dist_map = distance_transform_cdt(z_slice_mask, metric='taxicab').astype(float)
+
+            # Track valid ROI voxels
+            self.no_of_roi_voxels.append(np.count_nonzero(~np.isnan(z_slice)))
+
             glszm = np.zeros((self.lvl, max_region_size), dtype=int)
             gldzm = np.zeros((self.lvl, np.max(self.image.shape)), dtype=int)
-            visited = np.zeros((self.image.shape[0], self.image.shape[1]), dtype=int)
-            for x in self.range_x:
-                for y in self.range_y:
-                    if visited[x, y] == 0 and not np.isnan(z_slice[x, y]):
-                        intensity = int(z_slice[x, y])
-                        size, min_dist = find_connected_region_2d((x, y), intensity)
-                        if size > 0:
-                            glszm[intensity, size - 1] += 1
-                            gldzm[intensity, int(min_dist) - 1] += 1
+
+            # Process unique intensity levels
+            unique_intensities = np.unique(z_slice[~np.isnan(z_slice)]).astype(int)
+
+            for intensity in unique_intensities:
+                binary_mask = (z_slice == intensity)
+
+                # Label connected components (8-connectivity)
+                labeled_array, num_features = label(binary_mask, structure=connectivity)
+
+                if num_features == 0:
+                    continue
+
+                # Get sizes of connected regions
+                region_sizes = np.bincount(labeled_array.flatten())[1:]  # Ignore background (label 0)
+
+                # Get minimum distances for each region
+                min_distances = np.full(num_features, np.inf, dtype=float)
+
+                for idx in range(1, num_features + 1):
+                    region_mask = (labeled_array == idx)
+                    min_distances[idx - 1] = np.min(dist_map[region_mask])
+
+                # Update GLSZM and GLDZM matrices
+                for size, min_dist in zip(region_sizes, min_distances):
+                    glszm[intensity, size - 1] += 1
+                    gldzm[intensity, max(0, int(min_dist) - 1)] += 1  # Ensure valid index
+
             self.glszm_2D_matrices.append(glszm.astype(np.int64))
             self.gldzm_2D_matrices.append(gldzm.astype(np.int64))
 
-        self.glszm_2D_matrices = np.array(self.glszm_2D_matrices)
-        self.gldzm_2D_matrices = np.array(self.gldzm_2D_matrices)
+        # Convert lists to numpy arrays
+        self.glszm_2D_matrices = np.array(self.glszm_2D_matrices, dtype=np.int64)
+        self.gldzm_2D_matrices = np.array(self.gldzm_2D_matrices, dtype=np.int64)
 
     def calc_ngld_3d_matrix(self):
+        x, y, z = self.image.shape
+        ngldm = np.zeros((self.lvl, 27), dtype=np.int64)
 
-        ngldm = np.zeros((self.lvl, 27))
+        # Generate valid 3D offsets (excluding (0,0,0))
+        offsets = np.array([
+            (dx, dy, dz) for dx in range(-1, 2)
+            for dy in range(-1, 2)
+            for dz in range(-1, 2)
+            if not (dx == dy == dz == 0)
+        ])
 
-        valid_offsets = [(x, y, z) for x in range(-1, 2) for y in range(-1, 2) for z in range(-1, 2) if
-                         (z, y, x) != (0, 0, 0)]
+        # Get valid voxel positions (ignoring NaNs)
+        valid_mask = ~np.isnan(self.image)
+
         for lvl in range(self.lvl):
-            x_indices, y_indices, z_indices = np.where(self.image == lvl)
-            for x, y, z in zip(x_indices, y_indices, z_indices):
-                j_k = 0
-                for off in valid_offsets:
-                    neighbors = (x + off[0], y + off[1], z + off[2])
-                    if all(0 <= n < sz for n, sz in zip(neighbors, self.image.shape)) and not np.isnan(
-                            self.image[neighbors]) and self.image[neighbors] == lvl:
-                        j_k += 1
-                ngldm[int(lvl), int(j_k)] += 1
+            mask = (self.image == lvl) & valid_mask
+            lvl_i, lvl_j, lvl_k = np.where(mask)
+
+            if lvl_i.size == 0:
+                continue  # Skip if no occurrences of the level
+
+            # Compute neighbor positions using broadcasting
+            neighbor_i = lvl_i[:, None] + offsets[:, 0]
+            neighbor_j = lvl_j[:, None] + offsets[:, 1]
+            neighbor_k = lvl_k[:, None] + offsets[:, 2]
+
+            # Ensure neighbors are in bounds
+            valid_neighbors = (
+                    (0 <= neighbor_i) & (neighbor_i < x) &
+                    (0 <= neighbor_j) & (neighbor_j < y) &
+                    (0 <= neighbor_k) & (neighbor_k < z)
+            )
+
+            # Flatten and filter valid indices
+            neighbor_i = neighbor_i[valid_neighbors]
+            neighbor_j = neighbor_j[valid_neighbors]
+            neighbor_k = neighbor_k[valid_neighbors]
+
+            # Find valid neighbor mask
+            valid_neighbor_mask = mask[neighbor_i, neighbor_j, neighbor_k]
+
+            # Compute number of neighbors per voxel
+            neighbor_counts = np.sum(valid_neighbor_mask.reshape(len(lvl_i), -1), axis=1)
+
+            # Ensure counts fall within valid range before using bincount
+            if neighbor_counts.size > 0:
+                j_k = np.bincount(neighbor_counts, minlength=27)
+                ngldm[lvl, :len(j_k)] += j_k
+
         self.ngldm_3D_matrix = ngldm
 
     def calc_ngld_2d_matrices(self):
+        """
+        Computes the 2D Neighboring Gray Level Dependence Matrix (NGLDM) for each slice in a 3D image.
+        """
         self.ngldm_2d_matrices = []
         self.no_of_roi_voxels = []
 
+        # Define valid neighborhood offsets for 8-connectivity (excluding center)
+        valid_offsets = [(dx, dy) for dx in range(-1, 2) for dy in range(-1, 2) if (dx, dy) != (0, 0)]
+
         def calc_ngldm_slice(array):
-            ngldm = np.zeros((self.lvl, 9))
-            valid_offsets = [(x, y) for x in range(-1, 2) for y in range(-1, 2) if (y, x) != (0, 0)]
-            for lvl in range(self.lvl):
-                x_indices, y_indices = np.where(array == lvl)
+            """
+            Computes the NGLDM for a single 2D slice.
+            """
+            ngldm = np.zeros((self.lvl, 9), dtype=int)
+
+            # Extract unique intensity levels from the slice
+            unique_levels = np.unique(array[~np.isnan(array)]).astype(int)
+
+            for lvl in unique_levels:
+                mask = (array == lvl)
+
+                # Get coordinates of the given gray level
+                x_indices, y_indices = np.where(mask)
+
                 for x, y in zip(x_indices, y_indices):
-                    j_k = 0
-                    for off in valid_offsets:
-                        neighbors = (x + off[0], y + off[1])
-                        if all(0 <= n < sz for n, sz in zip(neighbors, array.shape)) and not np.isnan(
-                                array[neighbors]) and array[neighbors] == lvl:
-                            j_k += 1
-                    ngldm[int(lvl), int(j_k)] += 1
+                    j_k = 0  # Neighbor count
+
+                    for dx, dy in valid_offsets:
+                        nx, ny = x + dx, y + dy
+
+                        if 0 <= nx < array.shape[0] and 0 <= ny < array.shape[1]:  # Boundary check
+                            if not np.isnan(array[nx, ny]) and array[nx, ny] == lvl:
+                                j_k += 1
+
+                    ngldm[lvl, j_k] += 1
+
             return ngldm
 
         for z_slice_index in range(self.image.shape[2]):
             z_slice = self.image[:, :, z_slice_index]
-            if np.nansum(z_slice) != 0:
-                self.no_of_roi_voxels.append(np.sum(~np.isnan(z_slice)))
+
+            if np.any(~np.isnan(z_slice)):  # Check if there are valid values in the slice
+                self.no_of_roi_voxels.append(np.count_nonzero(~np.isnan(z_slice)))
                 self.ngldm_2d_matrices.append(calc_ngldm_slice(z_slice))
-        self.ngldm_2d_matrices = np.array(self.ngldm_2d_matrices)
+
+        self.ngldm_2d_matrices = np.array(self.ngldm_2d_matrices, dtype=np.int64)
 
     def calc_short_emphasis(self, m):
 
@@ -2254,24 +2368,28 @@ class NGTDM:
 
     def calc_ngtd_3d_matrix(self):
         ngtdm = np.zeros((self.lvl, 2))
+        image = self.image
 
-        valid_offsets = [(z, y, x) for z in range(-1, 2) for y in range(-1, 2) for x in range(-1, 2) if
-                         (z, y, x) != (0, 0, 0)]
+        # Define 3x3x3 kernel for convolution (excluding center voxel)
+        footprint = np.ones((3, 3, 3), dtype=np.float32)
+        footprint[1, 1, 1] = 0  # Exclude center voxel
 
+        # Count number of valid neighbors per voxel
+        valid_neighbors = np.isfinite(image).astype(np.float32)
+        neighbor_count = convolve(valid_neighbors, footprint, mode='constant', cval=0)
+
+        # Compute sum of valid neighbors
+        neighbor_sum = convolve(np.nan_to_num(image, nan=0), footprint, mode='constant', cval=0)
+
+        # Compute neighborhood mean (avoid division by zero)
+        mean_neighbors = np.where(neighbor_count > 0, neighbor_sum / neighbor_count, np.nan)
+
+        # Vectorized computation for all levels
         for lvl in range(self.lvl):
-            s_i = 0
-            n_i = 0
-            z_indices, y_indices, x_indices = np.where(self.image == lvl)
-            for z, y, x in zip(z_indices, y_indices, x_indices):
-                x_k = []
-                for off in valid_offsets:
-                    neighbors = (z + off[0], y + off[1], x + off[2])
-                    if all(0 <= n < sz for n, sz in zip(neighbors, self.image.shape)) and not np.isnan(
-                            self.image[neighbors]):
-                        x_k.append(self.image[neighbors])
-                if x_k:
-                    n_i += 1
-                    s_i += abs(lvl - np.mean(x_k))
+            mask = (image == lvl) & np.isfinite(mean_neighbors)
+            n_i = np.count_nonzero(mask)
+            s_i = np.nansum(np.abs(lvl - mean_neighbors[mask]))
+
             ngtdm[lvl, 0] = n_i
             ngtdm[lvl, 1] = s_i
 
@@ -2282,22 +2400,45 @@ class NGTDM:
         def calc_slice_ngtdm(matrix, n_bits):
             ngtdm_slice = np.zeros((n_bits, 2))
 
-            valid_offsets = [(x, y) for x in range(-1, 2) for y in range(-1, 2) if (x, y) != (0, 0)]
+            # Define valid 8-neighbor offsets (precomputed)
+            valid_offsets = np.array([(-1, -1), (-1, 0), (-1, 1),
+                                      (0, -1), (0, 1),
+                                      (1, -1), (1, 0), (1, 1)])
 
+            rows, cols = matrix.shape
+            nan_mask = np.isnan(matrix)
+
+            # Create padded matrix to handle edge cases without if-statements
+            padded_matrix = np.pad(matrix, pad_width=1, mode='constant', constant_values=np.nan)
+            padded_nan_mask = np.isnan(padded_matrix)
+
+            # Get all pixel coordinates (excluding padding)
+            x_indices, y_indices = np.where(~nan_mask)
+
+            # Create 8-neighbor coordinates using broadcasting
+            neighbor_x = x_indices[:, None] + valid_offsets[:, 0] + 1  # +1 for padding offset
+            neighbor_y = y_indices[:, None] + valid_offsets[:, 1] + 1
+
+            # Extract neighbor values efficiently
+            neighbor_values = padded_matrix[neighbor_x, neighbor_y]
+
+            # Mask out NaN values
+            valid_neighbors_mask = ~padded_nan_mask[neighbor_x, neighbor_y]
+            neighbor_values[~valid_neighbors_mask] = np.nan  # Ensure NaNs remain in ignored positions
+
+            # Compute mean of valid neighbors along axis 1
+            mean_neighbors = np.nanmean(neighbor_values, axis=1)
+
+            # Flatten mean_neighbors to ensure correct indexing
+            mean_neighbors_flat = np.full(matrix.shape, np.nan)
+            mean_neighbors_flat[x_indices, y_indices] = mean_neighbors  # Fill valid indices
+
+            # Iterate over levels and compute NGTDM values
             for lvl in range(n_bits):
-                s_i = 0
-                n_i = 0
-                x_indices, y_indices = np.where(matrix == lvl)
-                for x, y in zip(x_indices, y_indices):
-                    x_k = []
-                    for off in valid_offsets:
-                        neighbors = (x + off[0], y + off[1])
-                        if all(0 <= n < sz for n, sz in zip(neighbors, matrix.shape)) and not np.isnan(
-                                matrix[neighbors]):
-                            x_k.append(matrix[neighbors])
-                    if x_k:
-                        n_i += 1
-                        s_i += abs(lvl - np.mean(x_k))
+                level_mask = (matrix == lvl)
+
+                n_i = np.count_nonzero(level_mask)
+                s_i = np.nansum(np.abs(lvl - mean_neighbors_flat[level_mask]))
 
                 ngtdm_slice[lvl, 0] = n_i
                 ngtdm_slice[lvl, 1] = s_i

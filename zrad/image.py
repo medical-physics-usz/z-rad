@@ -93,7 +93,8 @@ class Image:
 
     def read_dicom_image(self, dicom_dir, modality):
         dicom_files = get_dicom_files(directory=dicom_dir, modality=modality)
-        validate_z_spacing(dicom_files)
+        if modality in ["CT", "MRI", "PET"]:
+            validate_z_spacing(dicom_files)
         image = process_dicom_series(dicom_dir, dicom_files)
         if modality == 'PET':
             validate_pet_dicom_tags(dicom_files)
@@ -117,7 +118,7 @@ class Image:
 
 
 def get_dicom_files(directory, modality):
-    modality_mapping = {'PET': 'PT', 'CT': 'CT', 'MRI': 'MR', 'RTSTRUCT': 'RTSTRUCT'}
+    modality_mapping = {'PET': 'PT', 'CT': 'CT', 'MRI': 'MR', 'RTSTRUCT': 'RTSTRUCT', 'MG': 'MG'}
     modality_dicom = modality_mapping[modality]
     dicom_files_info = []
 
@@ -375,13 +376,23 @@ def process_dicom_series(directory, dicom_files):
 
     for dicom_file in dicom_files:
         ds = dicom_file['ds']
+
         if ds.Modality in ['CT', 'PT', 'MR']:
             pixel_spacing = ds.PixelSpacing
             slice_z_origin.append(float(ds.ImagePositionPatient[2]))
 
+        if ds.Modality == 'MG':
+            pixel_spacing = ds.ImagerPixelSpacing
+            slice_z_origin.append(ds.BodyPartThickness)
+            image.SetOrigin([0, 0, 0])
+            image.SetDirection([1, 0, 0, 0, 1, 0, 0, 0, 1])
+
     slice_z_origin = sorted(slice_z_origin)
-    slice_thickness = abs(np.median([slice_z_origin[i] - slice_z_origin[i + 1]
-                                     for i in range(len(slice_z_origin) - 1)]))
+    if len(slice_z_origin) > 1:
+        slice_thickness = abs(np.median([slice_z_origin[i] - slice_z_origin[i + 1]
+                                         for i in range(len(slice_z_origin) - 1)]))
+    elif len(slice_z_origin) == 1:
+        slice_thickness = slice_z_origin[0]
 
     image.SetSpacing((float(pixel_spacing[0]), float(pixel_spacing[1]), float(slice_thickness)))
 

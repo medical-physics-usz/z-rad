@@ -1638,14 +1638,14 @@ class GLRLM_GLSZM_GLDZM_NGLDM:
         Ns = np.sum(m)
         _, j = np.indices(m.shape)
 
-        return np.sum(m / (j + 1) ** 2) / Ns
+        return np.sum(m / (j.astype(np.float64) + 1) ** 2) / Ns
 
     def calc_long_emphasis(self, m):
 
         Ns = np.sum(m)
         _, j = np.indices(m.shape)
 
-        return np.sum(m * (j + 1) ** 2) / Ns
+        return np.sum(m * (j.astype(np.float64) + 1) ** 2) / Ns
 
     def calc_low_gr_lvl_emphasis(self, M):
 
@@ -1670,14 +1670,14 @@ class GLRLM_GLSZM_GLDZM_NGLDM:
 
         M_j = M[mask] / (i[mask] ** 2)
 
-        return np.sum(M_j / ((j[mask] + 1) ** 2)) / Ns
+        return np.sum(M_j / ((j[mask].astype(np.float64) + 1) ** 2)) / Ns
 
     def calc_short_high_gr_lvl_emphasis(self, M):
 
         Ns = np.sum(M)
         i, j = np.indices(M.shape)
 
-        return np.sum((i ** 2 * M) / ((j + 1)) ** 2) / Ns
+        return np.sum((i ** 2 * M) / ((j.astype(np.float64) + 1)) ** 2) / Ns
 
     def calc_long_low_gr_lvl_emphasis(self, M):
 
@@ -1685,14 +1685,14 @@ class GLRLM_GLSZM_GLDZM_NGLDM:
         i, j = np.indices(M.shape)
         mask = i != 0
 
-        return np.sum((M[mask] * (j[mask] + 1) ** 2) / (i[mask]) ** 2) / Ns
+        return np.sum((M[mask] * (j[mask].astype(np.float64) + 1) ** 2) / (i[mask]) ** 2) / Ns
 
     def calc_long_high_gr_lvl_emphasis(self, M):
 
         n_s = np.sum(M)
         i, j = np.indices(M.shape)
 
-        return np.sum(M * (j + 1) ** 2 * i ** 2) / n_s
+        return np.sum(M * (j.astype(np.float64) + 1) ** 2 * i ** 2) / n_s
 
     def calc_non_uniformity(self, M):
 
@@ -1736,9 +1736,9 @@ class GLRLM_GLSZM_GLDZM_NGLDM:
 
         Ns = np.sum(M)
         _, j = np.indices(M.shape)
-        mu = np.sum(M * j / Ns)
+        mu = np.sum(M * j.astype(np.float64) / Ns)
 
-        return np.sum((j - mu) ** 2 * (M / Ns))
+        return np.sum((j.astype(np.float64) - mu) ** 2 * (M / Ns))
 
     def calc_entropy(self, M):
 

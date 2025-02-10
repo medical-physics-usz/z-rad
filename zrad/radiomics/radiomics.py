@@ -96,6 +96,11 @@ class Radiomics:
             'ngl_dc_entr', 'ngl_dc_energy']
 
     def extract_features(self, image, mask, filtered_image=None):
+        slice_2d = True if 1 in image.array.shape else False
+
+        if slice_2d:
+            self.columns = self.columns[23:]
+
         self.pat_binned_masked_image = {}
         self.patient_morf_features_list = []
         self.patient_local_intensity_features_list = []
@@ -115,18 +120,25 @@ class Radiomics:
             self.patient_image = image
 
         # Extract non-discretized features
-        mask_validated = self._validate_mask(mask, '3D')
+        if slice_2d:
+            mask_validated = mask
+        else:
+            mask_validated = self._validate_mask(mask, '3D')
         self.patient_morphological_mask = mask_validated.copy()
         self.patient_morphological_mask.array = self.patient_morphological_mask.array.astype(np.int8)
         self.patient_intensity_mask = mask_validated.copy()
         self.patient_intensity_mask.array = np.where(self.patient_intensity_mask.array > 0, self.patient_image.array, np.nan)
         self._outlier_removal_and_intensity_truncation()
         self._calc_mask_intensity_features()
-        self._calc_mask_morphological_features()
+        if not slice_2d:
+            self._calc_mask_morphological_features()
 
         # Extract discretized features
         if self.aggr_dim != '3D':
-            mask_validated = self._validate_mask(mask, self.aggr_dim)
+            if slice_2d:
+                mask_validated = mask
+            else:
+                mask_validated = self._validate_mask(mask, self.aggr_dim)
             self.patient_morphological_mask = mask_validated.copy()
             self.patient_morphological_mask.array = self.patient_morphological_mask.array.astype(np.int8)
             self.patient_intensity_mask = mask_validated.copy()
@@ -136,11 +148,13 @@ class Radiomics:
         self._calc_texture_features()
 
         # compile features
-        all_features_list = [self.patient_morf_features_list, self.patient_local_intensity_features_list,
+        all_features_list = [self.patient_local_intensity_features_list,
                              self.intensity_features_list, self.discr_intensity_features_list,
                              self.glcm_features_list,
                              self.glrlm_features_list, self.glszm_features_list,
                              self.gldzm_features_list, self.ngtdm_features_list, self.ngldm_features_list]
+        if not slice_2d:
+            all_features_list = [self.patient_morf_features_list] + all_features_list
         all_features_list_flat = [item for sublist in all_features_list for item in sublist[0]]
 
         self.new_columns = []

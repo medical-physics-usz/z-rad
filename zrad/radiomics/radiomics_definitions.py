@@ -1596,85 +1596,64 @@ class GLRLM_GLSZM_GLDZM_NGLDM:
         self.gldzm_3D_matrix = gldzm.astype(np.int64)
 
     def calc_glsz_gldz_2d_matrices(self, mask):
-        """
-        Computes the 2D GLSZM (Gray Level Size Zone Matrix) and GLDZM (Gray Level Distance Zone Matrix)
-        for each slice of a 3D image.
-        """
-        # Precompute maximum possible zone size (upper bound) across slices.
-        # For each slice we use np.bincount on the valid (non-NaN) intensities.
-        image_slices = np.moveaxis(self.image, 2, 0)
-        max_region_size = max(
-            np.max(np.bincount(slice_[~np.isnan(slice_)].astype(int).ravel()))
-            for slice_ in image_slices if np.any(~np.isnan(slice_))
-        )
 
-        # Precompute the maximum dimension of the image (used for GLDZM matrix)
-        max_dim = np.max(self.image.shape)
+        max_region_size_list = []
+        for z_slice in self.image.T:
+            if np.sum(~np.isnan(z_slice)) != 0:
+                flattened_array = z_slice.flatten()
+                _, counts = np.unique(flattened_array[~np.isnan(flattened_array)], return_counts=True)
+                max_region_size_list.append(np.max(counts))
+        max_region_size = max(max_region_size_list)
 
-        # Define an 8-connectivity structure for connected component labeling.
-        connectivity = generate_binary_structure(2, 2)  # 8-connectivity
+        def calc_dist_map_2d(image_orig):
+            image = image_orig.copy()
+            larger_array = np.zeros((image.shape[0] + 2, image.shape[1] + 2))
+            larger_array[1:-1, 1:-1] = image
+            distance_map = distance_transform_cdt(larger_array, metric='taxicab')[1:-1, 1:-1].astype(float)
 
-        # Prepare output lists.
-        glszm_list = []
-        gldzm_list = []
-        roi_voxel_counts = []
+            return distance_map
 
-        # Process each slice. self.range_z is assumed to be an iterable of slice indices.
-        for z in self.range_z:
-            # Extract the slice and its corresponding mask.
-            z_slice = self.image[:, :, z]
-            z_slice_mask = mask[:, :, z]
+        def find_connected_region_2d(start, intensity):
+            stack = [start]
+            size = 0
+            min_dist = np.inf
+            while stack:
+                x, y = stack.pop()
+                if 0 <= x < z_slice.shape[0] and 0 <= y < z_slice.shape[1]:
+                    if visited[x, y] == 0 and z_slice[x, y] == intensity:
+                        visited[x, y] = 1
+                        size += 1
+                        min_dist = min(min_dist, dist_map[x, y])
+                        for dx in [-1, 0, 1]:
+                            for dy in [-1, 0, 1]:
+                                stack.append((x + dx, y + dy))
+            return size, min_dist
 
-            # Compute the distance map for the mask (taxicab metric).
-            # Converting to float64 for consistency.
-            dist_map = distance_transform_cdt(z_slice_mask, metric='taxicab').astype(np.float64)
+        self.glszm_2D_matrices = []
+        self.gldzm_2D_matrices = []
+        self.no_of_roi_voxels = []
+        for z_slice_index in self.range_z:
+            z_slice = self.image[:, :, z_slice_index]
+            # if np.sum(~np.isnan(z_slice)) != 0:
+            z_slice_mask = mask[:, :, z_slice_index]
+            self.no_of_roi_voxels.append(np.sum(~np.isnan(z_slice)))
+            dist_map = calc_dist_map_2d(z_slice_mask)
+            glszm = np.zeros((self.lvl, max_region_size), dtype=int)
+            gldzm = np.zeros((self.lvl, np.max(self.image.shape)), dtype=int)
+            visited = np.zeros((self.image.shape[0], self.image.shape[1]), dtype=int)
+            for x in self.range_x:
+                for y in self.range_y:
+                    if visited[x, y] == 0 and not np.isnan(z_slice[x, y]):
+                        intensity = int(z_slice[x, y])
+                        size, min_dist = find_connected_region_2d((x, y), intensity)
+                        if size > 0:
+                            glszm[intensity, size - 1] += 1
+                            gldzm[intensity, int(min_dist) - 1] += 1
+            self.glszm_2D_matrices.append(glszm.astype(np.int64))
+            self.gldzm_2D_matrices.append(gldzm.astype(np.int64))
 
-            # Count valid (non-NaN) ROI voxels.
-            valid = ~np.isnan(z_slice)
-            roi_voxel_counts.append(np.count_nonzero(valid))
-
-            # Preallocate output matrices (using int64 to avoid later casting).
-            glszm = np.zeros((self.lvl, max_region_size), dtype=np.int64)
-            gldzm = np.zeros((self.lvl, max_dim), dtype=np.int64)
-
-            # Process only valid pixels.
-            unique_intensities = np.unique(z_slice[valid]).astype(int)
-
-            # Loop over each unique intensity in the slice.
-            for intensity in unique_intensities:
-                # Create binary mask for the current intensity.
-                binary_mask = (z_slice == intensity)
-
-                # Label connected components (zones) in the binary mask using 8-connectivity.
-                labeled_array, num_features = label(binary_mask, structure=connectivity)
-                if num_features == 0:
-                    continue
-
-                # Compute the size of each connected region.
-                # np.bincount returns counts for labels 0,1,...; label 0 is background.
-                region_sizes = np.bincount(labeled_array.ravel())[1:]
-
-                # Compute the minimum taxicab distance for each region using the distance map.
-                region_indices = np.arange(1, num_features + 1)
-                min_distances = minimum(dist_map, labeled_array, index=region_indices)
-
-                # Update the GLSZM for this intensity.
-                # Since region sizes start at 1, use (region_sizes - 1) as column indices.
-                np.add.at(glszm[intensity], region_sizes - 1, 1)
-
-                # Update the GLDZM for this intensity.
-                # Convert minimum distances to indices (using max(0, int(dist)-1) logic).
-                min_dist_indices = np.maximum(0, min_distances.astype(int) - 1)
-                np.add.at(gldzm[intensity], min_dist_indices, 1)
-
-            # Append the per-slice matrices.
-            glszm_list.append(glszm)
-            gldzm_list.append(gldzm)
-
-        # Store the results as attributes.
-        self.glszm_2D_matrices = np.array(glszm_list, dtype=np.int64)
-        self.gldzm_2D_matrices = np.array(gldzm_list, dtype=np.int64)
-        self.no_of_roi_voxels = roi_voxel_counts
+        self.glszm_2D_matrices = np.array(self.glszm_2D_matrices)
+        self.gldzm_2D_matrices = np.array(self.gldzm_2D_matrices)
 
     def calc_ngld_3d_matrix(self):
         x, y, z = self.image.shape

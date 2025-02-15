@@ -100,6 +100,9 @@ class Radiomics:
 
         if slice_2d:
             self.columns = columns[23:]
+        elif not slice_2d:
+            self.columns = columns
+
 
         self.pat_binned_masked_image = {}
         self.patient_morf_features_list = []

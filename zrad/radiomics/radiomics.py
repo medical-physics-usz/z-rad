@@ -64,7 +64,10 @@ class Radiomics:
         self.patient_folder = None
         self.patient_number = None
 
-        self.columns = [
+    def extract_features(self, image, mask, filtered_image=None):
+        slice_2d = True if 1 in image.array.shape else False
+        
+        columns = [
             'morph_volume', 'morph_vol_approx', 'morph_area_mesh', 'morph_av', 'morph_comp_1', 'morph_comp_2',
             'morph_sph_dispr', 'morph_sphericity', 'morph_asphericity', 'morph_com', 'morph_diam', 'morph_pca_maj_axis',
             'morph_pca_min_axis', 'morph_pca_least_axis', 'morph_pca_elongation', 'morph_pca_flatness',
@@ -95,11 +98,8 @@ class Radiomics:
             'ngl_glnu', 'ngl_glnu_norm', 'ngl_dcnu', 'ngl_dcnu_norm', 'ngl_dc_perc', 'ngl_gl_var', 'ngl_dc_var',
             'ngl_dc_entr', 'ngl_dc_energy']
 
-    def extract_features(self, image, mask, filtered_image=None):
-        slice_2d = True if 1 in image.array.shape else False
-
         if slice_2d:
-            self.columns = self.columns[23:]
+            self.columns = columns[23:]
 
         self.pat_binned_masked_image = {}
         self.patient_morf_features_list = []

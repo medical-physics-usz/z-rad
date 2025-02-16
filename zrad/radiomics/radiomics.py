@@ -119,7 +119,7 @@ class Radiomics:
         self.patient_morphological_mask.array = self.patient_morphological_mask.array.astype(np.int8)
         self.patient_intensity_mask = mask_validated.copy()
         self.patient_intensity_mask.array = np.where(self.patient_intensity_mask.array > 0, self.patient_image.array, np.nan)
-        self.outlier_removal_and_intensity_truncation()
+        self.apply_outlier_removal_and_intensity_truncation()
 
     def _ih_and_texture_extraction_preprocessing(self, mask):
         if self.aggr_dim != '3D':
@@ -131,7 +131,7 @@ class Radiomics:
             self.patient_morphological_mask.array = self.patient_morphological_mask.array.astype(np.int8)
             self.patient_intensity_mask = mask_validated.copy()
             self.patient_intensity_mask.array = np.where(self.patient_intensity_mask.array > 0, self.patient_image.array, np.nan)
-            self.outlier_removal_and_intensity_truncation()
+            self.apply_outlier_removal_and_intensity_truncation()
 
     def _set_images_and_preprocess(self, image, mask, filtered_image, use_texture_preprocessing=False):
         """Set image properties and run common preprocessing steps."""
@@ -142,7 +142,7 @@ class Radiomics:
         self._morphology_and_intensity_extraction_preprocessing(mask)
         if use_texture_preprocessing:
             self._ih_and_texture_extraction_preprocessing(mask)
-            self.discretisation()
+            self.apply_discretisation()
 
     def extract_morphological_features(self, image, mask, filtered_image=None):
         """Extract morphological features."""
@@ -201,20 +201,20 @@ class Radiomics:
                           | self.glcm_features_ | self.glrlm_features_ | self.glszm_features_ | self.glszm_features_ |
                           self.ngtdm_features_, self.ngldm_features_)
 
-    def discretisation(self):
+    def apply_discretisation(self):
         if self.calc_discr_bin_size:
             if self.calc_intensity_mask:
-                self.patient_intensity_mask = self.bin_size_discr(self.patient_intensity_mask,
-                                                                  self.discret_min_val,
-                                                                  self.bin_size)
+                self.patient_intensity_mask = self.apply_bin_size_discr(self.patient_intensity_mask,
+                                                                        self.discret_min_val,
+                                                                        self.bin_size)
             else:
-                self.patient_intensity_mask = self.bin_size_discr(self.patient_intensity_mask,
-                                                                  np.nanmin(self.patient_intensity_mask.array),
-                                                                  self.bin_size)
+                self.patient_intensity_mask = self.apply_bin_size_discr(self.patient_intensity_mask,
+                                                                        np.nanmin(self.patient_intensity_mask.array),
+                                                                        self.bin_size)
         if self.calc_discr_bin_number:
-            self.patient_intensity_mask = self.bin_number_discr(self.patient_intensity_mask, self.bin_number)
+            self.patient_intensity_mask = self.apply_bin_number_discr(self.patient_intensity_mask, self.bin_number)
 
-    def outlier_removal_and_intensity_truncation(self):
+    def apply_outlier_removal_and_intensity_truncation(self):
         if self.calc_intensity_mask:
             intensity_range_mask = np.where((self.orig_patient_image.array <= self.intensity_range[1])
                                             & (self.orig_patient_image.array >= self.intensity_range[0]),
@@ -245,7 +245,7 @@ class Radiomics:
                                                 direction=self.patient_intensity_mask.direction,
                                                 shape=self.patient_intensity_mask.shape)
 
-    def bin_size_discr(self, image, min_val, bin_size):
+    def apply_bin_size_discr(self, image, min_val, bin_size):
 
         return Image(array=np.floor((image.array - min_val) / bin_size) + 1,
                      origin=image.origin,
@@ -253,7 +253,7 @@ class Radiomics:
                      direction=image.direction,
                      shape=image.shape)
 
-    def bin_number_discr(self, image, bin_number):
+    def apply_bin_number_discr(self, image, bin_number):
 
         return Image(array=np.where(image.array != np.nanmax(image.array),
                                     np.floor(bin_number * (image.array - np.nanmin(image.array))

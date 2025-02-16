@@ -4,9 +4,8 @@ import numpy as np
 
 from .radiomics_definitions import MorphologicalFeatures, LocalIntensityFeatures, IntensityBasedStatFeatures, GLCM, \
     GLRLM_GLSZM_GLDZM_NGLDM, NGTDM
-from ..exceptions import DataStructureError
 from ..image import Image
-from ..toolbox_logic import handle_uncaught_exception
+from ..toolbox_logic import handle_uncaught_exception, validate_mask
 
 sys.excepthook = handle_uncaught_exception
 
@@ -64,44 +63,171 @@ class Radiomics:
         self.patient_folder = None
         self.patient_number = None
 
-        self.columns = [
+        self.morph_columns = [
             'morph_volume', 'morph_vol_approx', 'morph_area_mesh', 'morph_av', 'morph_comp_1', 'morph_comp_2',
             'morph_sph_dispr', 'morph_sphericity', 'morph_asphericity', 'morph_com', 'morph_diam', 'morph_pca_maj_axis',
             'morph_pca_min_axis', 'morph_pca_least_axis', 'morph_pca_elongation', 'morph_pca_flatness',
             'morph_vol_dens_aabb', 'morph_area_dens_aabb', 'morph_vol_dens_aee', 'morph_area_dens_aee',
-            'morph_vol_dens_conv_hull', 'morph_area_dens_conv_hull', 'morph_integ_int',
-            'loc_peak_loc', 'loc_peak_glob',
-            'stat_mean', 'stat_var', 'stat_skew', 'stat_kurt', 'stat_median', 'stat_min', 'stat_p10',
-            'stat_p90', 'stat_max', 'stat_iqr', 'stat_range', 'stat_mad', 'stat_rmad', 'stat_medad', 'stat_cov',
-            'stat_qcod', 'stat_energy', 'stat_rms',
-            'ih_mean', 'ih_var', 'ih_skew', 'ih_kurt', 'ih_median', 'ih_min', 'ih_p10', 'ih_p90', 'ih_max', 'ih_mode',
-            'ih_iqr', 'ih_range', 'ih_mad', 'ih_rmad', 'ih_medad', 'ih_cov', 'ih_qcod', 'ih_entropy', 'ih_uniformity',
-            'ih_max_grad', 'ih_max_grad_g', 'ih_min_grad', 'ih_min_grad_g',
-            'cm_joint_max', 'cm_joint_avg', 'cm_joint_var', 'cm_joint_entr', 'cm_diff_avg', 'cm_diff_var',
-            'cm_diff_entr', 'cm_sum_avg', 'cm_sum_var', 'cm_sum_entr', 'cm_energy', 'cm_contrast', 'cm_dissimilarity',
-            'cm_inv_diff', 'cm_inv_diff_norm', 'cm_inv_diff_mom', 'cm_inv_diff_mom_norm', 'cm_inv_var', 'cm_corr',
-            'cm_auto_corr', 'cm_clust_tend', 'cm_clust_shade', 'cm_clust_prom', 'cm_info_corr1', 'cm_info_corr2',
-            'rlm_sre', 'rlm_lre', 'rlm_lgre', 'rlm_hgre', 'rlm_srlge', 'rlm_srhge', 'rlm_lrlge', 'rlm_lrhge',
-            'rlm_glnu', 'rlm_glnu_norm', 'rlm_rlnu', 'rlm_rlnu_norm', 'rlm_r_perc', 'rlm_gl_var', 'rlm_rl_var',
-            'rlm_rl_entr',
-            'szm_sze', 'szm_lze', 'szm_lgze', 'szm_hgze', 'szm_szlge', 'szm_szhge', 'szm_lzlge', 'szm_lzhge',
-            'szm_glnu', 'szm_glnu_norm', 'szm_zsnu', 'szm_zsnu_norm', 'szm_z_perc', 'szm_gl_var', 'szm_zs_var',
-            'szm_zs_entr',
-            'dzm_sde', 'dzm_lde', 'dzm_lgze', 'dzm_hgze', 'dzm_sdlge', 'dzm_sdhge', 'dzm_ldlge', 'dzm_ldhge',
-            'dzm_glnu', 'dzm_glnu_norm', 'dzm_zdnu', 'dzm_zdnu_norm', 'dzm_z_perc', 'dzm_gl_var', 'dzm_zd_var',
-            'dzm_zd_entr',
-            'ngt_coarseness', 'ngt_contrast', 'ngt_busyness', 'ngt_complexity', 'ngt_strength',
-            'ngl_lde', 'ngl_hde', 'ngl_lgce', 'ngl_hgce', 'ngl_ldlge', 'ngl_ldhge', 'ngl_hdlge', 'ngl_hdhge',
-            'ngl_glnu', 'ngl_glnu_norm', 'ngl_dcnu', 'ngl_dcnu_norm', 'ngl_dc_perc', 'ngl_gl_var', 'ngl_dc_var',
-            'ngl_dc_entr', 'ngl_dc_energy']
+            'morph_vol_dens_conv_hull', 'morph_area_dens_conv_hull', 'morph_integ_int']
+        self.intensity_columns = ['loc_peak_loc', 'loc_peak_glob', 'stat_mean', 'stat_var', 'stat_skew', 'stat_kurt',
+            'stat_median', 'stat_min', 'stat_p10', 'stat_p90', 'stat_max', 'stat_iqr', 'stat_range', 'stat_mad',
+            'stat_rmad', 'stat_medad', 'stat_cov', 'stat_qcod', 'stat_energy', 'stat_rms',]
+        self.discretised_intensity_columns = ['ih_mean', 'ih_var', 'ih_skew', 'ih_kurt', 'ih_median', 'ih_min',
+            'ih_p10', 'ih_p90', 'ih_max', 'ih_mode', 'ih_iqr', 'ih_range', 'ih_mad', 'ih_rmad', 'ih_medad', 'ih_cov',
+            'ih_qcod', 'ih_entropy', 'ih_uniformity', 'ih_max_grad', 'ih_max_grad_g', 'ih_min_grad', 'ih_min_grad_g']
+        self.glcm_columns = ['cm_joint_max', 'cm_joint_avg', 'cm_joint_var', 'cm_joint_entr', 'cm_diff_avg',
+            'cm_diff_var', 'cm_diff_entr', 'cm_sum_avg', 'cm_sum_var', 'cm_sum_entr', 'cm_energy', 'cm_contrast',
+            'cm_dissimilarity', 'cm_inv_diff', 'cm_inv_diff_norm', 'cm_inv_diff_mom', 'cm_inv_diff_mom_norm',
+            'cm_inv_var', 'cm_corr', 'cm_auto_corr', 'cm_clust_tend', 'cm_clust_shade', 'cm_clust_prom',
+            'cm_info_corr1', 'cm_info_corr2']
+        self.glrlm_columns = ['rlm_sre', 'rlm_lre', 'rlm_lgre', 'rlm_hgre', 'rlm_srlge', 'rlm_srhge', 'rlm_lrlge',
+            'rlm_lrhge', 'rlm_glnu', 'rlm_glnu_norm', 'rlm_rlnu', 'rlm_rlnu_norm', 'rlm_r_perc', 'rlm_gl_var',
+            'rlm_rl_var', 'rlm_rl_entr']
+        self.glszm_columns = ['szm_sze', 'szm_lze', 'szm_lgze', 'szm_hgze', 'szm_szlge', 'szm_szhge', 'szm_lzlge',
+            'szm_lzhge', 'szm_glnu', 'szm_glnu_norm', 'szm_zsnu', 'szm_zsnu_norm', 'szm_z_perc', 'szm_gl_var',
+            'szm_zs_var', 'szm_zs_entr']
+        self.gldzm_columns = ['dzm_sde', 'dzm_lde', 'dzm_lgze', 'dzm_hgze', 'dzm_sdlge', 'dzm_sdhge',
+            'dzm_ldlge', 'dzm_ldhge', 'dzm_glnu', 'dzm_glnu_norm', 'dzm_zdnu', 'dzm_zdnu_norm', 'dzm_z_perc',
+            'dzm_gl_var', 'dzm_zd_var', 'dzm_zd_entr']
+        self.ngtdm_columns = ['ngt_coarseness', 'ngt_contrast', 'ngt_busyness', 'ngt_complexity', 'ngt_strength']
+        self.ngldm_columns = ['ngl_lde', 'ngl_hde', 'ngl_lgce', 'ngl_hgce', 'ngl_ldlge', 'ngl_ldhge', 'ngl_hdlge',
+            'ngl_hdhge', 'ngl_glnu', 'ngl_glnu_norm', 'ngl_dcnu', 'ngl_dcnu_norm', 'ngl_dc_perc', 'ngl_gl_var',
+            'ngl_dc_var', 'ngl_dc_entr', 'ngl_dc_energy']
+
+        self.columns = (self.morph_columns + self.intensity_columns + self.discretised_intensity_columns
+                        + self.glcm_columns + self.glrlm_columns + self.glszm_gldzm_columns + self.ngtdm_columns
+                        + self.ngldm_columns)
+    def _rename_to_ibsi_standards(self, columns):
+
+        new_columns = []
+
+        el_aggr_dim = '2_5D' if self.aggr_dim == '2.5D' else self.aggr_dim
+
+        aggr_method_map = {'AVER': 'avg', 'DIR_MERG': 'avg', 'SLICE_MERG': 'comb', 'MERG': 'comb'}
+
+        for el in columns:
+            if el.startswith(('cm', 'rlm')):
+                el_aggr_method = aggr_method_map.get(self.aggr_method, '')
+                new_columns.append(f'{el}_{el_aggr_dim}_{el_aggr_method}')
+            elif el.startswith(('szm', 'dzm', 'ngl')):
+                new_columns.append(f'{el}_{el_aggr_dim}')
+            else:
+                new_columns.append(el)
+        return new_columns
+
+    def _morphology_and_intensity_extraction_preprocessing(self, mask):
+        if self.slice_2d:
+            mask_validated = mask
+        else:
+            mask_validated = validate_mask(mask, '3D')
+        self.patient_morphological_mask = mask_validated.copy()
+        self.patient_morphological_mask.array = self.patient_morphological_mask.array.astype(np.int8)
+        self.patient_intensity_mask = mask_validated.copy()
+        self.patient_intensity_mask.array = np.where(self.patient_intensity_mask.array > 0, self.patient_image.array, np.nan)
+        self.outlier_removal_and_intensity_truncation()
+
+    def _ih_and_texture_extraction_preprocessing(self, mask):
+        if self.aggr_dim != '3D':
+            if self.slice_2d:
+                mask_validated = mask
+            else:
+                mask_validated = validate_mask(mask, self.aggr_dim)
+            self.patient_morphological_mask = mask_validated.copy()
+            self.patient_morphological_mask.array = self.patient_morphological_mask.array.astype(np.int8)
+            self.patient_intensity_mask = mask_validated.copy()
+            self.patient_intensity_mask.array = np.where(self.patient_intensity_mask.array > 0, self.patient_image.array, np.nan)
+            self.outlier_removal_and_intensity_truncation()
+
+    def extract_morphological_features(self, image, mask, filtered_image=None):
+        self.slice_2d = True if 1 in image.array.shape else False
+
+        if self.slice_2d:
+            self.morphological_features_ = {}
+        else:
+            self.orig_patient_image = image
+            if filtered_image:
+                self.patient_image = filtered_image
+            else:
+                self.patient_image = image
+            self._morphology_and_intensity_extraction_preprocessing(mask)
+            self.calc_morphological_features()
+
+    def extract_intensity_features(self, image, mask, filtered_image=None):
+        self.slice_2d = True if 1 in image.array.shape else False
+
+        self.orig_patient_image = image
+        if filtered_image:
+            self.patient_image = filtered_image
+        else:
+            self.patient_image = image
+        self._morphology_and_intensity_extraction_preprocessing(mask)
+        self.calc_intensity_features()
+
+    def extract_discr_intensity_features(self, image, mask, filtered_image=None):
+        self.slice_2d = True if 1 in image.array.shape else False
+
+        self.orig_patient_image = image
+        if filtered_image:
+            self.patient_image = filtered_image
+        else:
+            self.patient_image = image
+        self._ih_and_texture_extraction_preprocessing(mask)
+        self.discretisation()
+        self.calc_discretised_intensity_features()
+
+    def extract_glcm_features(self, image, mask, filtered_image=None):
+        self.slice_2d = True if 1 in image.array.shape else False
+
+        self.orig_patient_image = image
+        if filtered_image:
+            self.patient_image = filtered_image
+        else:
+            self.patient_image = image
+        self._ih_and_texture_extraction_preprocessing(mask)
+        self.discretisation()
+        self.calc_glcm_features()
+
+    def extract_glrlm_features(self, image, mask, filtered_image=None):
+        self.slice_2d = True if 1 in image.array.shape else False
+
+        self.orig_patient_image = image
+        if filtered_image:
+            self.patient_image = filtered_image
+        else:
+            self.patient_image = image
+        self._ih_and_texture_extraction_preprocessing(mask)
+        self.discretisation()
+        self.calc_glrlm_features()
+
+    def extract_glszm_gldzm_features(self, image, mask, filtered_image=None):
+        self.slice_2d = True if 1 in image.array.shape else False
+
+        self.orig_patient_image = image
+        if filtered_image:
+            self.patient_image = filtered_image
+        else:
+            self.patient_image = image
+        self._ih_and_texture_extraction_preprocessing(mask)
+        self.discretisation()
+        self.calc_glszm_gldzm_features()
+
 
     def extract_features(self, image, mask, filtered_image=None):
-        slice_2d = True if 1 in image.array.shape else False
+        self.extract_morphological_features(image, mask, filtered_image)
+        self.extract_intensity_features(image, mask, filtered_image)
+        self.extract_discr_intensity_features(image, mask, filtered_image)
+        self.extract_glcm_features(image, mask, filtered_image)
+        self.extract_glrlm_features(image, mask, filtered_image)
+        self.extract_glszm_gldzm_features(image, mask, filtered_image)
+        self.features_ = (self.morphological_features_ | self.intensity_features_ | self.discr_intensity_features_ | self.glcm_features_ | self.glrlm_features_)
 
-        if slice_2d:
+
+    def old_extract_features(self, image, mask, filtered_image=None):
+        self.slice_2d = True if 1 in image.array.shape else False
+
+        if self.slice_2d:
             self.columns = self.columns[23:]
 
-        self.pat_binned_masked_image = {}
         self.patient_morf_features_list = []
         self.patient_local_intensity_features_list = []
         self.intensity_features_list = []
@@ -120,32 +246,19 @@ class Radiomics:
             self.patient_image = image
 
         # Extract non-discretized features
-        if slice_2d:
-            mask_validated = mask
-        else:
-            mask_validated = self._validate_mask(mask, '3D')
-        self.patient_morphological_mask = mask_validated.copy()
-        self.patient_morphological_mask.array = self.patient_morphological_mask.array.astype(np.int8)
-        self.patient_intensity_mask = mask_validated.copy()
-        self.patient_intensity_mask.array = np.where(self.patient_intensity_mask.array > 0, self.patient_image.array, np.nan)
-        self._outlier_removal_and_intensity_truncation()
-        self._calc_mask_intensity_features()
-        if not slice_2d:
-            self._calc_mask_morphological_features()
+        self._morphology_and_intensity_extraction_preprocessing(mask)
+        if not self.slice_2d:
+            self.calc_morphological_features()
+        self.calc_intensity_features()
 
         # Extract discretized features
-        if self.aggr_dim != '3D':
-            if slice_2d:
-                mask_validated = mask
-            else:
-                mask_validated = self._validate_mask(mask, self.aggr_dim)
-            self.patient_morphological_mask = mask_validated.copy()
-            self.patient_morphological_mask.array = self.patient_morphological_mask.array.astype(np.int8)
-            self.patient_intensity_mask = mask_validated.copy()
-            self.patient_intensity_mask.array = np.where(self.patient_intensity_mask.array > 0, self.patient_image.array, np.nan)
-            self._outlier_removal_and_intensity_truncation()
-        self._calc_discretized_intensity_features()
-        self._calc_texture_features()
+        self._ih_and_texture_extraction_preprocessing(mask)
+        self.calc_discretised_intensity_features()
+        self.calc_glcm_features()
+        self.calc_glrlm_features()
+        self.calc_glszm_gldzm_features()
+        self.calc_ngtdm_features()
+        self.calc_ngldm_features()
 
         # compile features
         all_features_list = [self.patient_local_intensity_features_list,
@@ -153,99 +266,28 @@ class Radiomics:
                              self.glcm_features_list,
                              self.glrlm_features_list, self.glszm_features_list,
                              self.gldzm_features_list, self.ngtdm_features_list, self.ngldm_features_list]
-        if not slice_2d:
+        if not self.slice_2d:
             all_features_list = [self.patient_morf_features_list] + all_features_list
         all_features_list_flat = [item for sublist in all_features_list for item in sublist[0]]
 
-        self.new_columns = []
-        el_aggr_dim = '2_5D' if self.aggr_dim == '2.5D' else self.aggr_dim
-
-        aggr_method_map = {'AVER': 'avg', 'DIR_MERG': 'avg', 'SLICE_MERG': 'comb', 'MERG': 'comb'}
-
-        for el in self.columns:
-            if el.startswith(('cm', 'rlm')):
-                el_aggr_method = aggr_method_map.get(self.aggr_method, '')
-                self.new_columns.append(f'{el}_{el_aggr_dim}_{el_aggr_method}')
-            elif el.startswith(('szm', 'dzm', 'ngl')):
-                self.new_columns.append(f'{el}_{el_aggr_dim}')
-            else:
-                self.new_columns.append(el)
+        self.new_columns = self._rename_to_ibsi_standards(self.columns)
 
         self.features_ = dict(zip(self.new_columns, all_features_list_flat))
 
-    def _validate_mask(self, mask, aggr_dim):
-        """
-        Validates the intensity mask for a patient by checking bounding box dimensions
-        and number of valid voxels. Skips or discards slices that do not meet criteria.
-        """
-        # Calculate the bounding box around the intensity mask and determine its shape.
-        masked_array = mask.array
+    def discretisation(self):
+        if self.calc_discr_bin_size:
+            if self.calc_intensity_mask:
+                self.patient_intensity_mask = self.bin_size_discr(self.patient_intensity_mask,
+                                                                  self.discret_min_val,
+                                                                  self.bin_size)
+            else:
+                self.patient_intensity_mask = self.bin_size_discr(self.patient_intensity_mask,
+                                                                  np.nanmin(self.patient_intensity_mask.array),
+                                                                  self.bin_size)
+        if self.calc_discr_bin_number:
+            self.patient_intensity_mask = self.bin_number_discr(self.patient_intensity_mask, self.bin_number)
 
-        # Define the minimum size and voxel count requirements for validation.
-        min_box_size = 3
-        min_voxel_number_3d = 27
-        min_voxel_number_2d = 9
-
-        # Check the bounding box size and the number of voxels based on the aggregation dimension.
-        if aggr_dim == '3D':
-            # Find all nonzero voxel coordinates
-            valid_coords = np.where(masked_array != 0)
-            if len(valid_coords[0]) == 0:
-                raise DataStructureError("No valid voxels in 3D array.")
-
-            # Compute bounding box from min to max across each dimension
-            zmin, zmax = valid_coords[0].min(), valid_coords[0].max() + 1
-            ymin, ymax = valid_coords[1].min(), valid_coords[1].max() + 1
-            xmin, xmax = valid_coords[2].min(), valid_coords[2].max() + 1
-
-            bbox_shape = (zmax - zmin, ymax - ymin, xmax - xmin)
-            no_valid_voxels = len(valid_coords[0])
-
-            # Validation checks for 3D
-            if min(bbox_shape) < min_box_size:
-                raise DataStructureError(f"3D bounding box dimension < {min_box_size}.")
-            if no_valid_voxels < min_voxel_number_3d:
-                raise DataStructureError(f"Valid voxel count < {min_voxel_number_3d}.")
-
-        else:
-            # 2D or 2.5D case: check each slice individually
-            n_slices = masked_array.shape[0]
-            for z in range(n_slices):
-                slice_arr = masked_array[z, :, :]
-                # If the slice is all zero, skip it
-                if not np.any(slice_arr):
-                    continue
-
-                # Find all nonzero coordinates in this slice
-                valid_coords = np.where(slice_arr != 0)
-                no_valid_voxels = len(valid_coords[0])
-                if no_valid_voxels == 0:
-                    # It's effectively empty
-                    continue
-
-                ymin, ymax = valid_coords[0].min(), valid_coords[0].max() + 1
-                xmin, xmax = valid_coords[1].min(), valid_coords[1].max() + 1
-                height = ymax - ymin
-                width = xmax - xmin
-
-                # Validation checks for each slice
-                if min(height, width) < min_box_size or no_valid_voxels < min_voxel_number_2d:
-                    # Mark this entire slice as invalid by setting it to 0
-                    slice_arr[:, :] = 0
-
-            # Check if all slices are now invalid (all zeros)
-            if not np.any(masked_array):
-                raise DataStructureError(
-                    "Not a single slice meets the minimum 2D/2.5D requirements. "
-                    "Consider finer resampling or check the data."
-                )
-
-            # Assign the possibly updated mask back (already in-place, but for clarity)
-            mask.array = masked_array
-
-        return mask
-
-    def _outlier_removal_and_intensity_truncation(self):
+    def outlier_removal_and_intensity_truncation(self):
         if self.calc_intensity_mask:
             intensity_range_mask = np.where((self.orig_patient_image.array <= self.intensity_range[1])
                                             & (self.orig_patient_image.array >= self.intensity_range[0]),
@@ -276,7 +318,7 @@ class Radiomics:
                                                 direction=self.patient_intensity_mask.direction,
                                                 shape=self.patient_intensity_mask.shape)
 
-    def _bin_size_discr(self, image, min_val, bin_size):
+    def bin_size_discr(self, image, min_val, bin_size):
 
         return Image(array=np.floor((image.array - min_val) / bin_size) + 1,
                      origin=image.origin,
@@ -284,7 +326,7 @@ class Radiomics:
                      direction=image.direction,
                      shape=image.shape)
 
-    def _bin_number_discr(self, image, bin_number):
+    def bin_number_discr(self, image, bin_number):
 
         return Image(array=np.where(image.array != np.nanmax(image.array),
                                     np.floor(bin_number * (image.array - np.nanmin(image.array))
@@ -294,7 +336,7 @@ class Radiomics:
                      direction=image.direction,
                      shape=image.shape)
 
-    def _calc_mask_intensity_features(self):
+    def calc_intensity_features(self):
 
         local_intensity_features = LocalIntensityFeatures(self.patient_image.array,
                                                           self.patient_intensity_mask.array,
@@ -302,9 +344,9 @@ class Radiomics:
 
         local_intensity_features.calc_local_intensity_peak()
         local_intensity_features.calc_global_intensity_peak()
-        self.local_intensity_features = [local_intensity_features.local_intensity_peak,
-                                         local_intensity_features.global_intensity_peak]
-        self.patient_local_intensity_features_list.append(self.local_intensity_features)
+        #self.local_intensity_features = [local_intensity_features.local_intensity_peak,
+         #                                local_intensity_features.global_intensity_peak]
+        #self.patient_local_intensity_features_list.append(self.local_intensity_features)
 
         intensity_features = IntensityBasedStatFeatures()
         intensity_features.calc_mean_intensity(self.patient_intensity_mask.array)
@@ -326,7 +368,9 @@ class Radiomics:
         intensity_features.calc_intensity_based_energy(self.patient_intensity_mask.array)
         intensity_features.calc_root_mean_square_intensity(self.patient_intensity_mask.array)
 
-        self.intensity_based_features = [intensity_features.mean_intensity,
+        self.intensity_based_features = [local_intensity_features.local_intensity_peak,
+                                         local_intensity_features.global_intensity_peak,
+                                         intensity_features.mean_intensity,
                                          intensity_features.intensity_variance,
                                          intensity_features.intensity_skewness,
                                          intensity_features.intensity_kurtosis,
@@ -345,20 +389,11 @@ class Radiomics:
                                          intensity_features.intensity_based_energy,
                                          intensity_features.root_mean_square_intensity]
 
-        self.intensity_features_list.append(self.intensity_based_features)
+        #self.intensity_features_list.append(self.intensity_based_features)
 
-    def _calc_discretized_intensity_features(self):
-        if self.calc_discr_bin_size:
-            if self.calc_intensity_mask:
-                self.patient_intensity_mask = self._bin_size_discr(self.patient_intensity_mask,
-                                                                       self.discret_min_val,
-                                                                       self.bin_size)
-            else:
-                self.patient_intensity_mask = self._bin_size_discr(self.patient_intensity_mask,
-                                                                   np.nanmin(self.patient_intensity_mask.array),
-                                                                   self.bin_size)
-        if self.calc_discr_bin_number:
-            self.patient_intensity_mask = self._bin_number_discr(self.patient_intensity_mask, self.bin_number)
+        self.intensity_features_ = dict(zip(self.intensity_columns, self.intensity_based_features))
+
+    def calc_discretised_intensity_features(self):
 
         discr_intensity_features = IntensityBasedStatFeatures()
         discr_intensity_features.calc_mean_intensity(self.patient_intensity_mask.array)
@@ -409,9 +444,11 @@ class Radiomics:
                                                discr_intensity_features.min_hist_gradient,
                                                discr_intensity_features.min_hist_gradient_intensity]
 
-        self.discr_intensity_features_list.append(self.discr_intensity_based_features)
+        #self.discr_intensity_features_list.append(self.discr_intensity_based_features)
 
-    def _calc_texture_features(self):
+        self.discr_intensity_features_ = dict(zip(self.discretised_intensity_columns, self.discr_intensity_based_features))
+
+    def calc_glcm_features(self):
         glcm = GLCM(image=self.patient_intensity_mask.array.T, slice_weight=self.slice_weighting,
                     slice_median=self.slice_median)
         if self.aggr_dim == '3D':
@@ -457,7 +494,11 @@ class Radiomics:
                               glcm.cluster_prominence,
                               glcm.inf_cor_1,
                               glcm.inf_cor_2]
-        self.glcm_features_list.append(self.glcm_features)
+        #self.glcm_features_list.append(self.glcm_features)
+
+        self.glcm_features_ = dict(zip(self._rename_to_ibsi_standards(self.glcm_columns), self.glcm_features))
+
+    def calc_glrlm_features(self):
         glrlm = GLRLM_GLSZM_GLDZM_NGLDM(image=self.patient_intensity_mask.array.T, slice_weight=self.slice_weighting,
                                         slice_median=self.slice_median)
         if self.aggr_dim == '3D':
@@ -496,138 +537,70 @@ class Radiomics:
                                glrlm.gr_lvl_var,
                                glrlm.length_var,
                                glrlm.entropy]
-        self.glrlm_features_list.append(self.glrlm_features)
 
-        glszm_gldzm = GLRLM_GLSZM_GLDZM_NGLDM(image=self.patient_intensity_mask.array.T,
-                                              slice_weight=self.slice_weighting, slice_median=self.slice_median)
+        #self.glrlm_features_list.append(self.glrlm_features)
+        self.glrlm_features_ = dict(zip(self._rename_to_ibsi_standards(self.glrlm_columns), self.glrlm_features))
+
+    def calc_glszm_gldzm_features(self):
+        def extract_features(glszm_gldzm):
+            return [
+                glszm_gldzm.short_runs_emphasis,
+                glszm_gldzm.long_runs_emphasis,
+                glszm_gldzm.low_grey_level_run_emphasis,
+                glszm_gldzm.high_gr_lvl_emphasis,
+                glszm_gldzm.short_low_gr_lvl_emphasis,
+                glszm_gldzm.short_high_gr_lvl_emphasis,
+                glszm_gldzm.long_low_gr_lvl_emphasis,
+                glszm_gldzm.long_high_gr_lvl_emphasis,
+                glszm_gldzm.non_uniformity,
+                glszm_gldzm.norm_non_uniformity,
+                glszm_gldzm.length_non_uniformity,
+                glszm_gldzm.norm_length_non_uniformity,
+                glszm_gldzm.percentage,
+                glszm_gldzm.gr_lvl_var,
+                glszm_gldzm.length_var,
+                glszm_gldzm.entropy,
+            ]
+
+        glszm_gldzm = GLRLM_GLSZM_GLDZM_NGLDM(
+            image=self.patient_intensity_mask.array.T,
+            slice_weight=self.slice_weighting,
+            slice_median=self.slice_median,
+        )
+
         if self.aggr_dim == '3D':
             glszm_gldzm.calc_glsz_gldz_3d_matrices(self.patient_morphological_mask.array.T)
             glszm_gldzm.calc_3d_glszm_features()
-
-            self.glszm_features = [glszm_gldzm.short_runs_emphasis,
-                                   glszm_gldzm.long_runs_emphasis,
-                                   glszm_gldzm.low_grey_level_run_emphasis,
-                                   glszm_gldzm.high_gr_lvl_emphasis,
-                                   glszm_gldzm.short_low_gr_lvl_emphasis,
-                                   glszm_gldzm.short_high_gr_lvl_emphasis,
-                                   glszm_gldzm.long_low_gr_lvl_emphasis,
-                                   glszm_gldzm.long_high_gr_lvl_emphasis,
-                                   glszm_gldzm.non_uniformity,
-                                   glszm_gldzm.norm_non_uniformity,
-                                   glszm_gldzm.length_non_uniformity,
-                                   glszm_gldzm.norm_length_non_uniformity,
-                                   glszm_gldzm.percentage,
-                                   glszm_gldzm.gr_lvl_var,
-                                   glszm_gldzm.length_var,
-                                   glszm_gldzm.entropy]
-            self.glszm_features_list.append(self.glszm_features)
+            self.glszm_features = extract_features(glszm_gldzm)
+            #self.glszm_features_list.append(self.glszm_features)
 
             glszm_gldzm.reset_fields()
             glszm_gldzm.calc_3d_gldzm_features()
-
-            self.gldzm_features = [glszm_gldzm.short_runs_emphasis,
-                                   glszm_gldzm.long_runs_emphasis,
-                                   glszm_gldzm.low_grey_level_run_emphasis,
-                                   glszm_gldzm.high_gr_lvl_emphasis,
-                                   glszm_gldzm.short_low_gr_lvl_emphasis,
-                                   glszm_gldzm.short_high_gr_lvl_emphasis,
-                                   glszm_gldzm.long_low_gr_lvl_emphasis,
-                                   glszm_gldzm.long_high_gr_lvl_emphasis,
-                                   glszm_gldzm.non_uniformity,
-                                   glszm_gldzm.norm_non_uniformity,
-                                   glszm_gldzm.length_non_uniformity,
-                                   glszm_gldzm.norm_length_non_uniformity,
-                                   glszm_gldzm.percentage,
-                                   glszm_gldzm.gr_lvl_var,
-                                   glszm_gldzm.length_var,
-                                   glszm_gldzm.entropy]
-            self.gldzm_features_list.append(self.gldzm_features)
+            self.gldzm_features = extract_features(glszm_gldzm)
+            #self.gldzm_features_list.append(self.gldzm_features)
 
         else:
             glszm_gldzm.calc_glsz_gldz_2d_matrices(self.patient_morphological_mask.array.T)
             if self.aggr_dim == '2.5D':
                 glszm_gldzm.calc_2_5d_glszm_features()
-
-                self.glszm_features = [glszm_gldzm.short_runs_emphasis,
-                                       glszm_gldzm.long_runs_emphasis,
-                                       glszm_gldzm.low_grey_level_run_emphasis,
-                                       glszm_gldzm.high_gr_lvl_emphasis,
-                                       glszm_gldzm.short_low_gr_lvl_emphasis,
-                                       glszm_gldzm.short_high_gr_lvl_emphasis,
-                                       glszm_gldzm.long_low_gr_lvl_emphasis,
-                                       glszm_gldzm.long_high_gr_lvl_emphasis,
-                                       glszm_gldzm.non_uniformity,
-                                       glszm_gldzm.norm_non_uniformity,
-                                       glszm_gldzm.length_non_uniformity,
-                                       glszm_gldzm.norm_length_non_uniformity,
-                                       glszm_gldzm.percentage,
-                                       glszm_gldzm.gr_lvl_var,
-                                       glszm_gldzm.length_var,
-                                       glszm_gldzm.entropy]
-                self.glszm_features_list.append(self.glszm_features)
+                self.glszm_features = extract_features(glszm_gldzm)
+                #self.glszm_features_list.append(self.glszm_features)
 
                 glszm_gldzm.reset_fields()
                 glszm_gldzm.calc_2_5d_gldzm_features()
-
-                self.gldzm_features = [glszm_gldzm.short_runs_emphasis,
-                                       glszm_gldzm.long_runs_emphasis,
-                                       glszm_gldzm.low_grey_level_run_emphasis,
-                                       glszm_gldzm.high_gr_lvl_emphasis,
-                                       glszm_gldzm.short_low_gr_lvl_emphasis,
-                                       glszm_gldzm.short_high_gr_lvl_emphasis,
-                                       glszm_gldzm.long_low_gr_lvl_emphasis,
-                                       glszm_gldzm.long_high_gr_lvl_emphasis,
-                                       glszm_gldzm.non_uniformity,
-                                       glszm_gldzm.norm_non_uniformity,
-                                       glszm_gldzm.length_non_uniformity,
-                                       glszm_gldzm.norm_length_non_uniformity,
-                                       glszm_gldzm.percentage,
-                                       glszm_gldzm.gr_lvl_var,
-                                       glszm_gldzm.length_var,
-                                       glszm_gldzm.entropy]
-                self.gldzm_features_list.append(self.gldzm_features)
+                self.gldzm_features = extract_features(glszm_gldzm)
+                #self.gldzm_features_list.append(self.gldzm_features)
             else:
                 glszm_gldzm.calc_2d_glszm_features()
-
-                self.glszm_features = [glszm_gldzm.short_runs_emphasis,
-                                       glszm_gldzm.long_runs_emphasis,
-                                       glszm_gldzm.low_grey_level_run_emphasis,
-                                       glszm_gldzm.high_gr_lvl_emphasis,
-                                       glszm_gldzm.short_low_gr_lvl_emphasis,
-                                       glszm_gldzm.short_high_gr_lvl_emphasis,
-                                       glszm_gldzm.long_low_gr_lvl_emphasis,
-                                       glszm_gldzm.long_high_gr_lvl_emphasis,
-                                       glszm_gldzm.non_uniformity,
-                                       glszm_gldzm.norm_non_uniformity,
-                                       glszm_gldzm.length_non_uniformity,
-                                       glszm_gldzm.norm_length_non_uniformity,
-                                       glszm_gldzm.percentage,
-                                       glszm_gldzm.gr_lvl_var,
-                                       glszm_gldzm.length_var,
-                                       glszm_gldzm.entropy]
-                self.glszm_features_list.append(self.glszm_features)
+                self.glszm_features = extract_features(glszm_gldzm)
+                #self.glszm_features_list.append(self.glszm_features)
 
                 glszm_gldzm.reset_fields()
                 glszm_gldzm.calc_2d_gldzm_features()
+                self.gldzm_features = extract_features(glszm_gldzm)
+                #self.gldzm_features_list.append(self.gldzm_features)
 
-                self.gldzm_features = [glszm_gldzm.short_runs_emphasis,
-                                       glszm_gldzm.long_runs_emphasis,
-                                       glszm_gldzm.low_grey_level_run_emphasis,
-                                       glszm_gldzm.high_gr_lvl_emphasis,
-                                       glszm_gldzm.short_low_gr_lvl_emphasis,
-                                       glszm_gldzm.short_high_gr_lvl_emphasis,
-                                       glszm_gldzm.long_low_gr_lvl_emphasis,
-                                       glszm_gldzm.long_high_gr_lvl_emphasis,
-                                       glszm_gldzm.non_uniformity,
-                                       glszm_gldzm.norm_non_uniformity,
-                                       glszm_gldzm.length_non_uniformity,
-                                       glszm_gldzm.norm_length_non_uniformity,
-                                       glszm_gldzm.percentage,
-                                       glszm_gldzm.gr_lvl_var,
-                                       glszm_gldzm.length_var,
-                                       glszm_gldzm.entropy]
-                self.gldzm_features_list.append(self.gldzm_features)
-
+    def calc_ngtdm_features(self):
         ngtdm = NGTDM(image=self.patient_intensity_mask.array.T, slice_weight=self.slice_weighting,
                       slice_median=self.slice_median)
         if self.aggr_dim == '3D':
@@ -647,6 +620,7 @@ class Radiomics:
                                ngtdm.strength]
         self.ngtdm_features_list.append(self.ngtdm_features)
 
+    def calc_ngldm_features(self):
         ngldm = GLRLM_GLSZM_GLDZM_NGLDM(image=self.patient_intensity_mask.array.T, slice_weight=self.slice_weighting,
                                         slice_median=self.slice_median)
         if self.aggr_dim == '3D':
@@ -678,7 +652,7 @@ class Radiomics:
                                ngldm.energy]
         self.ngldm_features_list.append(self.ngldm_features)
 
-    def _calc_mask_morphological_features(self):
+    def calc_morphological_features(self):
         morf_features = MorphologicalFeatures(self.patient_morphological_mask.array,
                                               (self.patient_morphological_mask.spacing[::-1]))
         morf_features.calc_mesh()
@@ -704,29 +678,31 @@ class Radiomics:
         morf_features.calc_area_density_ch()
         morf_features.calc_integrated_intensity(self.patient_intensity_mask.array)
 
-        self.mort_features = [morf_features.vol_mesh,
-                              morf_features.vol_count,
-                              morf_features.area_mesh,
-                              morf_features.surf_to_vol_ratio,
-                              morf_features.compactness_1,
-                              morf_features.compactness_2,
-                              morf_features.spherical_disproportion,
-                              morf_features.sphericity,
-                              morf_features.asphericity,
-                              morf_features.centre_of_shift,
-                              morf_features.max_diameter,
-                              morf_features.major_axis_len,
-                              morf_features.minor_axis_len,
-                              morf_features.least_axis_len,
-                              morf_features.elongation,
-                              morf_features.flatness,
-                              morf_features.vol_density_aabb,
-                              morf_features.area_density_aabb,
-                              morf_features.vol_density_aee,
-                              morf_features.area_density_aee,
-                              morf_features.vol_density_ch,
-                              morf_features.area_density_ch,
-                              morf_features.integrated_intensity
-                              ]
+        self.morph_features = [morf_features.vol_mesh,
+                               morf_features.vol_count,
+                               morf_features.area_mesh,
+                               morf_features.surf_to_vol_ratio,
+                               morf_features.compactness_1,
+                               morf_features.compactness_2,
+                               morf_features.spherical_disproportion,
+                               morf_features.sphericity,
+                               morf_features.asphericity,
+                               morf_features.centre_of_shift,
+                               morf_features.max_diameter,
+                               morf_features.major_axis_len,
+                               morf_features.minor_axis_len,
+                               morf_features.least_axis_len,
+                               morf_features.elongation,
+                               morf_features.flatness,
+                               morf_features.vol_density_aabb,
+                               morf_features.area_density_aabb,
+                               morf_features.vol_density_aee,
+                               morf_features.area_density_aee,
+                               morf_features.vol_density_ch,
+                               morf_features.area_density_ch,
+                               morf_features.integrated_intensity
+                               ]
 
-        self.patient_morf_features_list.append(self.mort_features)
+        #self.patient_morf_features_list.append(self.morph_features)
+
+        self.morphological_features_ = dict(zip(self.morph_columns, self.morph_features))

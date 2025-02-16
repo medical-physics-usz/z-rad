@@ -131,6 +131,7 @@ def sphere_phantom(load_nii_radiomics_phantoms):
     return sphere
 
 
+@pytest.mark.integration
 def test_ibsi_ii_ph_i_1(load_response_maps, checkerboard_phantom, impulse_phantom):
 
     for config, params_and_images in {'1.a.1': ['constant', '3D', checkerboard_phantom, '1_a_1-ValidCRM.nii'],
@@ -151,6 +152,7 @@ def test_ibsi_ii_ph_i_1(load_response_maps, checkerboard_phantom, impulse_phanto
         ibsi_ii_ph_i_validation(filtered_image.array, response_map.array, config)
 
 
+@pytest.mark.integration
 def test_ibsi_ii_ph_i_2(load_response_maps, checkerboard_phantom, impulse_phantom):
 
     for config, params_and_images in {'2.a': ['constant', '3D', 3.0, impulse_phantom, '2_a-ValidCRM.nii'],
@@ -170,6 +172,7 @@ def test_ibsi_ii_ph_i_2(load_response_maps, checkerboard_phantom, impulse_phanto
         ibsi_ii_ph_i_validation(filtered_image.array, response_map.array, config)
 
 
+@pytest.mark.integration
 def test_ibsi_ii_ph_i_3(load_response_maps, checkerboard_phantom, impulse_phantom):
 
     for config, params_and_images in {'3.a.1': ['constant', '3D', 'E5L5S5', False, None, False, 0, impulse_phantom, '3_a_1-ValidCRM.nii'],
@@ -199,6 +202,7 @@ def test_ibsi_ii_ph_i_3(load_response_maps, checkerboard_phantom, impulse_phanto
         ibsi_ii_ph_i_validation(filtered_image.array, response_map.array, config)
 
 
+@pytest.mark.integration
 def test_ibsi_ii_ph_i_5(load_response_maps, impulse_phantom):
 
     for config, params_and_images in {'5.a.1': ['constant', 'LHL', False, impulse_phantom, '5_a_1-ValidCRM.nii'],
@@ -219,6 +223,7 @@ def test_ibsi_ii_ph_i_5(load_response_maps, impulse_phantom):
         ibsi_ii_ph_i_validation(filtered_image.array, response_map.array, config)
 
 
+@pytest.mark.integration
 def test_ibsi_ii_ph_i_6(load_response_maps, sphere_phantom):
 
     for config, params_and_images in {'6.a.1': ['wrap', 'HHL', False, sphere_phantom, '6_a_1-ValidCRM.nii'],
@@ -239,6 +244,7 @@ def test_ibsi_ii_ph_i_6(load_response_maps, sphere_phantom):
         ibsi_ii_ph_i_validation(filtered_image.array, response_map.array, config)
 
 
+@pytest.mark.integration
 def test_ibsi_ii_ph_i_7(load_response_maps, checkerboard_phantom):
 
     for config, params_and_images in {'7.a.1': ['reflect', 'LLL', False, checkerboard_phantom, '7_a_1-ValidCRM.nii'],
@@ -259,6 +265,7 @@ def test_ibsi_ii_ph_i_7(load_response_maps, checkerboard_phantom):
         ibsi_ii_ph_i_validation(filtered_image.array, response_map.array, config)
 
 
+@pytest.mark.integration
 def test_ibsi_ii_ph_ii_2a(ct_phantom_image, ct_phantom_mask):
     ibsi_features = ibsi_ii_feature_tolerances('2.A')
 
@@ -278,6 +285,7 @@ def test_ibsi_ii_ph_ii_2a(ct_phantom_image, ct_phantom_mask):
     ibsi_ii_ph_ii_validation(ibsi_features, radiomics.features_)
 
 
+@pytest.mark.integration
 def test_ibsi_ii_ph_ii_2b(res3d_1mm_image_spline, res3d_1mm_mask_linear):
     ibsi_features = ibsi_ii_feature_tolerances('2.B')
 
@@ -297,6 +305,7 @@ def test_ibsi_ii_ph_ii_2b(res3d_1mm_image_spline, res3d_1mm_mask_linear):
     ibsi_ii_ph_ii_validation(ibsi_features, radiomics.features_)
 
 
+@pytest.mark.integration
 def test_ibsi_ii_ph_ii_3a(ct_phantom_image, ct_phantom_mask):
     ibsi_features = ibsi_ii_feature_tolerances('3.A')
 
@@ -317,6 +326,7 @@ def test_ibsi_ii_ph_ii_3a(ct_phantom_image, ct_phantom_mask):
     ibsi_ii_ph_ii_validation(ibsi_features, radiomics.features_)
 
 
+@pytest.mark.integration
 def test_ibsi_ii_ph_ii_3b(res3d_1mm_image_spline, res3d_1mm_mask_linear):
     ibsi_features = ibsi_ii_feature_tolerances('3.B')
 
@@ -337,6 +347,7 @@ def test_ibsi_ii_ph_ii_3b(res3d_1mm_image_spline, res3d_1mm_mask_linear):
     ibsi_ii_ph_ii_validation(ibsi_features, radiomics.features_)
 
 
+@pytest.mark.integration
 def test_ibsi_ii_ph_ii_4a(ct_phantom_image, ct_phantom_mask):
     ibsi_features = ibsi_ii_feature_tolerances('4.A')
 
@@ -360,6 +371,7 @@ def test_ibsi_ii_ph_ii_4a(ct_phantom_image, ct_phantom_mask):
     ibsi_ii_ph_ii_validation(ibsi_features, radiomics.features_)
 
 
+@pytest.mark.integration
 def test_ibsi_ii_ph_ii_4b(res3d_1mm_image_spline, res3d_1mm_mask_linear):
     ibsi_features = ibsi_ii_feature_tolerances('4.B')
 
@@ -383,6 +395,7 @@ def test_ibsi_ii_ph_ii_4b(res3d_1mm_image_spline, res3d_1mm_mask_linear):
     ibsi_ii_ph_ii_validation(ibsi_features, radiomics.features_)
 
 
+@pytest.mark.integration
 def test_ibsi_ii_ph_ii_6a(ct_phantom_image, ct_phantom_mask):
     ibsi_features = ibsi_ii_feature_tolerances('6.A')
 
@@ -405,6 +418,7 @@ def test_ibsi_ii_ph_ii_6a(ct_phantom_image, ct_phantom_mask):
     ibsi_ii_ph_ii_validation(ibsi_features, radiomics.features_)
 
 
+@pytest.mark.integration
 def test_ibsi_ii_ph_ii_6b(res3d_1mm_image_spline, res3d_1mm_mask_linear):
     ibsi_features = ibsi_ii_feature_tolerances('6.B')
 
@@ -427,6 +441,7 @@ def test_ibsi_ii_ph_ii_6b(res3d_1mm_image_spline, res3d_1mm_mask_linear):
     ibsi_ii_ph_ii_validation(ibsi_features, radiomics.features_)
 
 
+@pytest.mark.integration
 def test_ibsi_ii_ph_ii_7a(ct_phantom_image, ct_phantom_mask):
     ibsi_features = ibsi_ii_feature_tolerances('7.A')
 
@@ -449,6 +464,7 @@ def test_ibsi_ii_ph_ii_7a(ct_phantom_image, ct_phantom_mask):
     ibsi_ii_ph_ii_validation(ibsi_features, radiomics.features_)
 
 
+@pytest.mark.integration
 def test_ibsi_ii_ph_ii_7b(res3d_1mm_image_spline, res3d_1mm_mask_linear):
     ibsi_features = ibsi_ii_feature_tolerances('7.B')
 

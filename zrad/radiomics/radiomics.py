@@ -17,6 +17,7 @@ class Radiomics:
                  intensity_range=None, outlier_range=None,
                  number_of_bins=None, bin_size=None,
                  slice_weighting=False, slice_median=False):
+
         self.patient_morphological_mask = None
         self.patient_intensity_mask = None
 
@@ -60,15 +61,12 @@ class Radiomics:
             raise ValueError(f"Wrong aggregation dim {aggr_method}. "
                              "Available 'MERG', 'AVER', 'SLICE_MERG', and 'DIR_MERG'.")
 
-        self.patient_folder = None
-        self.patient_number = None
 
-        self.morph_columns = [
-            'morph_volume', 'morph_vol_approx', 'morph_area_mesh', 'morph_av', 'morph_comp_1', 'morph_comp_2',
-            'morph_sph_dispr', 'morph_sphericity', 'morph_asphericity', 'morph_com', 'morph_diam', 'morph_pca_maj_axis',
-            'morph_pca_min_axis', 'morph_pca_least_axis', 'morph_pca_elongation', 'morph_pca_flatness',
-            'morph_vol_dens_aabb', 'morph_area_dens_aabb', 'morph_vol_dens_aee', 'morph_area_dens_aee',
-            'morph_vol_dens_conv_hull', 'morph_area_dens_conv_hull', 'morph_integ_int']
+        self.morph_columns = ['morph_volume', 'morph_vol_approx', 'morph_area_mesh', 'morph_av', 'morph_comp_1',
+            'morph_comp_2', 'morph_sph_dispr', 'morph_sphericity', 'morph_asphericity', 'morph_com', 'morph_diam',
+            'morph_pca_maj_axis', 'morph_pca_min_axis', 'morph_pca_least_axis', 'morph_pca_elongation',
+            'morph_pca_flatness', 'morph_vol_dens_aabb', 'morph_area_dens_aabb', 'morph_vol_dens_aee',
+            'morph_area_dens_aee', 'morph_vol_dens_conv_hull', 'morph_area_dens_conv_hull', 'morph_integ_int']
         self.intensity_columns = ['loc_peak_loc', 'loc_peak_glob', 'stat_mean', 'stat_var', 'stat_skew', 'stat_kurt',
             'stat_median', 'stat_min', 'stat_p10', 'stat_p90', 'stat_max', 'stat_iqr', 'stat_range', 'stat_mad',
             'stat_rmad', 'stat_medad', 'stat_cov', 'stat_qcod', 'stat_energy', 'stat_rms',]
@@ -94,9 +92,6 @@ class Radiomics:
             'ngl_hdhge', 'ngl_glnu', 'ngl_glnu_norm', 'ngl_dcnu', 'ngl_dcnu_norm', 'ngl_dc_perc', 'ngl_gl_var',
             'ngl_dc_var', 'ngl_dc_entr', 'ngl_dc_energy']
 
-        self.columns = (self.morph_columns + self.intensity_columns + self.discretised_intensity_columns
-                        + self.glcm_columns + self.glrlm_columns + self.glszm_gldzm_columns + self.ngtdm_columns
-                        + self.ngldm_columns)
     def _rename_to_ibsi_standards(self, columns):
 
         new_columns = []
@@ -138,141 +133,73 @@ class Radiomics:
             self.patient_intensity_mask.array = np.where(self.patient_intensity_mask.array > 0, self.patient_image.array, np.nan)
             self.outlier_removal_and_intensity_truncation()
 
-    def extract_morphological_features(self, image, mask, filtered_image=None):
+    def _set_images_and_preprocess(self, image, mask, filtered_image, use_texture_preprocessing=False):
+        """Set image properties and run common preprocessing steps."""
         self.slice_2d = True if 1 in image.array.shape else False
+        self.orig_patient_image = image
+        self.patient_image = filtered_image if filtered_image else image
 
-        if self.slice_2d:
+        self._morphology_and_intensity_extraction_preprocessing(mask)
+        if use_texture_preprocessing:
+            self._ih_and_texture_extraction_preprocessing(mask)
+            self.discretisation()
+
+    def extract_morphological_features(self, image, mask, filtered_image=None):
+        """Extract morphological features."""
+        if 1 in image.array.shape:
             self.morphological_features_ = {}
         else:
-            self.orig_patient_image = image
-            if filtered_image:
-                self.patient_image = filtered_image
-            else:
-                self.patient_image = image
-            self._morphology_and_intensity_extraction_preprocessing(mask)
+            self._set_images_and_preprocess(image, mask, filtered_image)
             self.calc_morphological_features()
 
     def extract_intensity_features(self, image, mask, filtered_image=None):
-        self.slice_2d = True if 1 in image.array.shape else False
-
-        self.orig_patient_image = image
-        if filtered_image:
-            self.patient_image = filtered_image
-        else:
-            self.patient_image = image
-        self._morphology_and_intensity_extraction_preprocessing(mask)
+        """Extract intensity features."""
+        self._set_images_and_preprocess(image, mask, filtered_image)
         self.calc_intensity_features()
 
     def extract_discr_intensity_features(self, image, mask, filtered_image=None):
-        self.slice_2d = True if 1 in image.array.shape else False
-
-        self.orig_patient_image = image
-        if filtered_image:
-            self.patient_image = filtered_image
-        else:
-            self.patient_image = image
-        self._ih_and_texture_extraction_preprocessing(mask)
-        self.discretisation()
+        """Extract discretised intensity features."""
+        self._set_images_and_preprocess(image, mask, filtered_image, use_texture_preprocessing=True)
         self.calc_discretised_intensity_features()
 
     def extract_glcm_features(self, image, mask, filtered_image=None):
-        self.slice_2d = True if 1 in image.array.shape else False
-
-        self.orig_patient_image = image
-        if filtered_image:
-            self.patient_image = filtered_image
-        else:
-            self.patient_image = image
-        self._ih_and_texture_extraction_preprocessing(mask)
-        self.discretisation()
+        """Extract GLCM features."""
+        self._set_images_and_preprocess(image, mask, filtered_image, use_texture_preprocessing=True)
         self.calc_glcm_features()
 
     def extract_glrlm_features(self, image, mask, filtered_image=None):
-        self.slice_2d = True if 1 in image.array.shape else False
-
-        self.orig_patient_image = image
-        if filtered_image:
-            self.patient_image = filtered_image
-        else:
-            self.patient_image = image
-        self._ih_and_texture_extraction_preprocessing(mask)
-        self.discretisation()
+        """Extract GLRLM features."""
+        self._set_images_and_preprocess(image, mask, filtered_image, use_texture_preprocessing=True)
         self.calc_glrlm_features()
 
     def extract_glszm_gldzm_features(self, image, mask, filtered_image=None):
-        self.slice_2d = True if 1 in image.array.shape else False
-
-        self.orig_patient_image = image
-        if filtered_image:
-            self.patient_image = filtered_image
-        else:
-            self.patient_image = image
-        self._ih_and_texture_extraction_preprocessing(mask)
-        self.discretisation()
+        """Extract GLSZM and GLDZM features."""
+        self._set_images_and_preprocess(image, mask, filtered_image, use_texture_preprocessing=True)
         self.calc_glszm_gldzm_features()
 
+    def extract_ngtdm_features(self, image, mask, filtered_image=None):
+        """Extract NGTDM features."""
+        self._set_images_and_preprocess(image, mask, filtered_image, use_texture_preprocessing=True)
+        self.calc_ngtdm_features()
+
+    def extract_ngldm_features(self, image, mask, filtered_image=None):
+        """Extract NGLDM features."""
+        self._set_images_and_preprocess(image, mask, filtered_image, use_texture_preprocessing=True)
+        self.calc_ngldm_features()
 
     def extract_features(self, image, mask, filtered_image=None):
+        """Extract All features."""
         self.extract_morphological_features(image, mask, filtered_image)
         self.extract_intensity_features(image, mask, filtered_image)
         self.extract_discr_intensity_features(image, mask, filtered_image)
         self.extract_glcm_features(image, mask, filtered_image)
         self.extract_glrlm_features(image, mask, filtered_image)
         self.extract_glszm_gldzm_features(image, mask, filtered_image)
-        self.features_ = (self.morphological_features_ | self.intensity_features_ | self.discr_intensity_features_ | self.glcm_features_ | self.glrlm_features_)
-
-
-    def old_extract_features(self, image, mask, filtered_image=None):
-        self.slice_2d = True if 1 in image.array.shape else False
-
-        if self.slice_2d:
-            self.columns = self.columns[23:]
-
-        self.patient_morf_features_list = []
-        self.patient_local_intensity_features_list = []
-        self.intensity_features_list = []
-        self.discr_intensity_features_list = []
-        self.glcm_features_list = []
-        self.glrlm_features_list = []
-        self.glszm_features_list = []
-        self.gldzm_features_list = []
-        self.ngtdm_features_list = []
-        self.ngldm_features_list = []
-
-        self.orig_patient_image = image
-        if filtered_image:
-            self.patient_image = filtered_image
-        else:
-            self.patient_image = image
-
-        # Extract non-discretized features
-        self._morphology_and_intensity_extraction_preprocessing(mask)
-        if not self.slice_2d:
-            self.calc_morphological_features()
-        self.calc_intensity_features()
-
-        # Extract discretized features
-        self._ih_and_texture_extraction_preprocessing(mask)
-        self.calc_discretised_intensity_features()
-        self.calc_glcm_features()
-        self.calc_glrlm_features()
-        self.calc_glszm_gldzm_features()
-        self.calc_ngtdm_features()
-        self.calc_ngldm_features()
-
-        # compile features
-        all_features_list = [self.patient_local_intensity_features_list,
-                             self.intensity_features_list, self.discr_intensity_features_list,
-                             self.glcm_features_list,
-                             self.glrlm_features_list, self.glszm_features_list,
-                             self.gldzm_features_list, self.ngtdm_features_list, self.ngldm_features_list]
-        if not self.slice_2d:
-            all_features_list = [self.patient_morf_features_list] + all_features_list
-        all_features_list_flat = [item for sublist in all_features_list for item in sublist[0]]
-
-        self.new_columns = self._rename_to_ibsi_standards(self.columns)
-
-        self.features_ = dict(zip(self.new_columns, all_features_list_flat))
+        self.extract_ngtdm_features(image, mask, filtered_image)
+        self.extract_ngldm_features(image, mask, filtered_image)
+        self.features_ = (self.morphological_features_ | self.intensity_features_ | self.discr_intensity_features_
+                          | self.glcm_features_ | self.glrlm_features_ | self.glszm_features_ | self.glszm_features_ |
+                          self.ngtdm_features_, self.ngldm_features_)
 
     def discretisation(self):
         if self.calc_discr_bin_size:
@@ -344,9 +271,6 @@ class Radiomics:
 
         local_intensity_features.calc_local_intensity_peak()
         local_intensity_features.calc_global_intensity_peak()
-        #self.local_intensity_features = [local_intensity_features.local_intensity_peak,
-         #                                local_intensity_features.global_intensity_peak]
-        #self.patient_local_intensity_features_list.append(self.local_intensity_features)
 
         intensity_features = IntensityBasedStatFeatures()
         intensity_features.calc_mean_intensity(self.patient_intensity_mask.array)
@@ -388,8 +312,6 @@ class Radiomics:
                                          intensity_features.intensity_based_quartile_coef_dispersion,
                                          intensity_features.intensity_based_energy,
                                          intensity_features.root_mean_square_intensity]
-
-        #self.intensity_features_list.append(self.intensity_based_features)
 
         self.intensity_features_ = dict(zip(self.intensity_columns, self.intensity_based_features))
 
@@ -444,8 +366,6 @@ class Radiomics:
                                                discr_intensity_features.min_hist_gradient,
                                                discr_intensity_features.min_hist_gradient_intensity]
 
-        #self.discr_intensity_features_list.append(self.discr_intensity_based_features)
-
         self.discr_intensity_features_ = dict(zip(self.discretised_intensity_columns, self.discr_intensity_based_features))
 
     def calc_glcm_features(self):
@@ -494,7 +414,6 @@ class Radiomics:
                               glcm.cluster_prominence,
                               glcm.inf_cor_1,
                               glcm.inf_cor_2]
-        #self.glcm_features_list.append(self.glcm_features)
 
         self.glcm_features_ = dict(zip(self._rename_to_ibsi_standards(self.glcm_columns), self.glcm_features))
 
@@ -538,7 +457,6 @@ class Radiomics:
                                glrlm.length_var,
                                glrlm.entropy]
 
-        #self.glrlm_features_list.append(self.glrlm_features)
         self.glrlm_features_ = dict(zip(self._rename_to_ibsi_standards(self.glrlm_columns), self.glrlm_features))
 
     def calc_glszm_gldzm_features(self):
@@ -571,34 +489,28 @@ class Radiomics:
         if self.aggr_dim == '3D':
             glszm_gldzm.calc_glsz_gldz_3d_matrices(self.patient_morphological_mask.array.T)
             glszm_gldzm.calc_3d_glszm_features()
-            self.glszm_features = extract_features(glszm_gldzm)
-            #self.glszm_features_list.append(self.glszm_features)
+            self.glszm_features_ = dict(zip(self._rename_to_ibsi_standards(self.glszm_columns), extract_features(glszm_gldzm)))
 
             glszm_gldzm.reset_fields()
             glszm_gldzm.calc_3d_gldzm_features()
-            self.gldzm_features = extract_features(glszm_gldzm)
-            #self.gldzm_features_list.append(self.gldzm_features)
+            self.gldzm_features_ = dict(zip(self._rename_to_ibsi_standards(self.gldzm_columns), extract_features(glszm_gldzm)))
 
         else:
             glszm_gldzm.calc_glsz_gldz_2d_matrices(self.patient_morphological_mask.array.T)
             if self.aggr_dim == '2.5D':
                 glszm_gldzm.calc_2_5d_glszm_features()
-                self.glszm_features = extract_features(glszm_gldzm)
-                #self.glszm_features_list.append(self.glszm_features)
+                self.glszm_features_ = dict(zip(self._rename_to_ibsi_standards(self.glszm_columns), extract_features(glszm_gldzm)))
 
                 glszm_gldzm.reset_fields()
                 glszm_gldzm.calc_2_5d_gldzm_features()
-                self.gldzm_features = extract_features(glszm_gldzm)
-                #self.gldzm_features_list.append(self.gldzm_features)
+                self.gldzm_features_ = dict(zip(self._rename_to_ibsi_standards(self.gldzm_columns), extract_features(glszm_gldzm)))
             else:
                 glszm_gldzm.calc_2d_glszm_features()
-                self.glszm_features = extract_features(glszm_gldzm)
-                #self.glszm_features_list.append(self.glszm_features)
+                self.glszm_features_ = dict(zip(self._rename_to_ibsi_standards(self.glszm_columns), extract_features(glszm_gldzm)))
 
                 glszm_gldzm.reset_fields()
                 glszm_gldzm.calc_2d_gldzm_features()
-                self.gldzm_features = extract_features(glszm_gldzm)
-                #self.gldzm_features_list.append(self.gldzm_features)
+                self.gldzm_features_ = dict(zip(self._rename_to_ibsi_standards(self.gldzm_columns), extract_features(glszm_gldzm)))
 
     def calc_ngtdm_features(self):
         ngtdm = NGTDM(image=self.patient_intensity_mask.array.T, slice_weight=self.slice_weighting,
@@ -613,12 +525,13 @@ class Radiomics:
             ngtdm.calc_ngtd_2d_matrices()
             ngtdm.calc_2d_ngtdm_features()
 
-        self.ngtdm_features = [ngtdm.coarseness,
+        ngtdm_features = [ngtdm.coarseness,
                                ngtdm.contrast,
                                ngtdm.busyness,
                                ngtdm.complexity,
                                ngtdm.strength]
-        self.ngtdm_features_list.append(self.ngtdm_features)
+
+        self.ngtdm_features_ = dict(zip(self._rename_to_ibsi_standards(self.ngtdm_columns), ngtdm_features))
 
     def calc_ngldm_features(self):
         ngldm = GLRLM_GLSZM_GLDZM_NGLDM(image=self.patient_intensity_mask.array.T, slice_weight=self.slice_weighting,
@@ -633,7 +546,7 @@ class Radiomics:
             ngldm.calc_ngld_2d_matrices()
             ngldm.calc_2d_ngldm_features()
 
-        self.ngldm_features = [ngldm.short_runs_emphasis,
+        ngldm_features = [ngldm.short_runs_emphasis,
                                ngldm.long_runs_emphasis,
                                ngldm.low_grey_level_run_emphasis,
                                ngldm.high_gr_lvl_emphasis,
@@ -650,7 +563,8 @@ class Radiomics:
                                ngldm.length_var,
                                ngldm.entropy,
                                ngldm.energy]
-        self.ngldm_features_list.append(self.ngldm_features)
+
+        self.ngldm_features_ = dict(zip(self._rename_to_ibsi_standards(self.ngldm_columns), ngldm_features))
 
     def calc_morphological_features(self):
         morf_features = MorphologicalFeatures(self.patient_morphological_mask.array,
@@ -678,7 +592,7 @@ class Radiomics:
         morf_features.calc_area_density_ch()
         morf_features.calc_integrated_intensity(self.patient_intensity_mask.array)
 
-        self.morph_features = [morf_features.vol_mesh,
+        morph_features = [morf_features.vol_mesh,
                                morf_features.vol_count,
                                morf_features.area_mesh,
                                morf_features.surf_to_vol_ratio,
@@ -700,9 +614,6 @@ class Radiomics:
                                morf_features.area_density_aee,
                                morf_features.vol_density_ch,
                                morf_features.area_density_ch,
-                               morf_features.integrated_intensity
-                               ]
+                               morf_features.integrated_intensity]
 
-        #self.patient_morf_features_list.append(self.morph_features)
-
-        self.morphological_features_ = dict(zip(self.morph_columns, self.morph_features))
+        self.morphological_features_ = dict(zip(self.morph_columns, morph_features))

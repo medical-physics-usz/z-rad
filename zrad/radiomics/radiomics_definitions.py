@@ -1596,64 +1596,100 @@ class GLRLM_GLSZM_GLDZM_NGLDM:
         self.gldzm_3D_matrix = gldzm.astype(np.int64)
 
     def calc_glsz_gldz_2d_matrices(self, mask):
-
+        # Precompute a maximum region size based on overall intensity counts per slice.
         max_region_size_list = []
-        for z_slice in self.image.T:
-            if np.sum(~np.isnan(z_slice)) != 0:
-                flattened_array = z_slice.flatten()
-                _, counts = np.unique(flattened_array[~np.isnan(flattened_array)], return_counts=True)
-                max_region_size_list.append(np.max(counts))
-        max_region_size = max(max_region_size_list)
+        for z_idx in self.range_z:
+            z_slice = self.image[:, :, z_idx]
+            valid = ~np.isnan(z_slice)
+            if np.any(valid):
+                # Count occurrences for each intensity (assumed integer)
+                counts = np.bincount(z_slice[valid].astype(int))
+                if counts.size:
+                    max_region_size_list.append(counts.max())
+        max_region_size = max(max_region_size_list) if max_region_size_list else 0
 
         def calc_dist_map_2d(image_orig):
-            image = image_orig.copy()
-            larger_array = np.zeros((image.shape[0] + 2, image.shape[1] + 2))
-            larger_array[1:-1, 1:-1] = image
+            # Create a border (padding) around the mask before applying the taxicab distance transform.
+            larger_array = np.zeros((image_orig.shape[0] + 2, image_orig.shape[1] + 2))
+            larger_array[1:-1, 1:-1] = image_orig
+            # Compute the taxicab (city-block) distance transform and remove the border.
             distance_map = distance_transform_cdt(larger_array, metric='taxicab')[1:-1, 1:-1].astype(float)
-
             return distance_map
 
-        def find_connected_region_2d(start, intensity):
-            stack = [start]
-            size = 0
-            min_dist = np.inf
-            while stack:
-                x, y = stack.pop()
-                if 0 <= x < z_slice.shape[0] and 0 <= y < z_slice.shape[1]:
-                    if visited[x, y] == 0 and z_slice[x, y] == intensity:
-                        visited[x, y] = 1
-                        size += 1
-                        min_dist = min(min_dist, dist_map[x, y])
-                        for dx in [-1, 0, 1]:
-                            for dy in [-1, 0, 1]:
-                                stack.append((x + dx, y + dy))
-            return size, min_dist
+        glszm_matrices = []
+        gldzm_matrices = []
+        roi_voxels = []
+        # Define an 8-connected structure (3x3 array of ones)
+        structure = np.ones((3, 3), dtype=int)
 
-        self.glszm_2D_matrices = []
-        self.gldzm_2D_matrices = []
-        self.no_of_roi_voxels = []
-        for z_slice_index in self.range_z:
-            z_slice = self.image[:, :, z_slice_index]
-            # if np.sum(~np.isnan(z_slice)) != 0:
-            z_slice_mask = mask[:, :, z_slice_index]
-            self.no_of_roi_voxels.append(np.sum(~np.isnan(z_slice)))
-            dist_map = calc_dist_map_2d(z_slice_mask)
+        for z_idx in self.range_z:
+            z_slice = self.image[:, :, z_idx]
+            z_mask = mask[:, :, z_idx]
+            roi_voxels.append(np.sum(~np.isnan(z_slice)))
+            dist_map = calc_dist_map_2d(z_mask)
+            # Allocate matrices: note that the number of columns is based on the maximum possible region size
             glszm = np.zeros((self.lvl, max_region_size), dtype=int)
             gldzm = np.zeros((self.lvl, np.max(self.image.shape)), dtype=int)
-            visited = np.zeros((self.image.shape[0], self.image.shape[1]), dtype=int)
-            for x in self.range_x:
-                for y in self.range_y:
-                    if visited[x, y] == 0 and not np.isnan(z_slice[x, y]):
-                        intensity = int(z_slice[x, y])
-                        size, min_dist = find_connected_region_2d((x, y), intensity)
-                        if size > 0:
-                            glszm[intensity, size - 1] += 1
-                            gldzm[intensity, int(min_dist) - 1] += 1
-            self.glszm_2D_matrices.append(glszm.astype(np.int64))
-            self.gldzm_2D_matrices.append(gldzm.astype(np.int64))
 
-        self.glszm_2D_matrices = np.array(self.glszm_2D_matrices)
-        self.gldzm_2D_matrices = np.array(self.gldzm_2D_matrices)
+            # Process each intensity separately using connected component labeling.
+            for intensity in range(self.lvl):
+                comp_mask = (z_slice == intensity)
+                if not np.any(comp_mask):
+                    continue
+                # Label connected components (8-connectivity)
+                labeled, num_features = label(comp_mask, structure=structure)
+                if num_features == 0:
+                    continue
+
+                # Region sizes (skip the background label 0)
+                sizes = np.bincount(labeled.ravel())[1:]
+                # Compute the minimum distance within each connected region using the precomputed distance map.
+                min_dists = minimum(dist_map, labeled, index=np.arange(1, num_features + 1))
+
+                # Update the gray level size zone matrix (GLSZM)
+                unique_sizes, counts_sizes = np.unique(sizes, return_counts=True)
+                for s, count in zip(unique_sizes, counts_sizes):
+                    if s - 1 < glszm.shape[1]:
+                        glszm[intensity, s - 1] += count
+
+                # Update the gray level distance zone matrix (GLDZM)
+                # (Convert min distances to int – they are taxicab distances)
+                min_dists_int = min_dists.astype(int)
+                unique_dists, counts_dists = np.unique(min_dists_int, return_counts=True)
+                for d, count in zip(unique_dists, counts_dists):
+                    if d - 1 < gldzm.shape[1]:
+                        gldzm[intensity, d - 1] += count
+
+            glszm_matrices.append(glszm.astype(np.int64))
+            gldzm_matrices.append(gldzm.astype(np.int64))
+
+        self.glszm_2D_matrices = np.array(glszm_matrices)
+        self.gldzm_2D_matrices = np.array(gldzm_matrices)
+        self.no_of_roi_voxels = roi_voxels
+
+    def calc_ngld_3d_matrix(self):
+        x, y, z = self.image.shape
+        ngldm = np.zeros((self.lvl, 27), dtype=np.int64)
+        valid_mask = ~np.isnan(self.image)
+
+        # Use a 3x3x3 kernel with the central voxel excluded.
+        kernel = np.ones((3, 3, 3), dtype=int)
+        kernel[1, 1, 1] = 0
+
+        # Instead of iterating over each voxel, convolve the binary mask for each intensity.
+        for lvl in range(self.lvl):
+            M = ((self.image == lvl) & valid_mask).astype(np.int64)
+            if np.sum(M) == 0:
+                continue
+            # Convolve to count how many neighbors (of the 26 possible) have the same level.
+            neighbor_counts = convolve(M, kernel, mode='constant', cval=0)
+            # Select the counts only for voxels that are part of the current level.
+            counts = neighbor_counts[M.astype(bool)]
+            if counts.size:
+                bincounts = np.bincount(counts, minlength=27)
+                ngldm[lvl, :len(bincounts)] += bincounts
+
+        self.ngldm_3D_matrix = ngldm
 
     def calc_ngld_3d_matrix(self):
         x, y, z = self.image.shape

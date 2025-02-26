@@ -62,6 +62,9 @@ class MorphologicalFeatures:
         self.area_density_ch = None  # 3.1.26
         # --------------------------------------
         self.integrated_intensity = None  # 3.1.27
+        # --------------------------------------
+        self.moran_i = None
+        self.geary_c = None
 
     def calc_mesh(self):
         self.mesh_verts, self.mesh_faces, self.mesh_normals, self.mesh_values = measure.marching_cubes(self.array_mask,
@@ -215,6 +218,94 @@ class MorphologicalFeatures:
 
     def calc_integrated_intensity(self, image_array):
         self.integrated_intensity = np.nanmean(image_array) * self.vol_mesh
+
+    def calc_moran_i(self, image_array):
+
+        # Get indices of voxels in the ROI intensity mask
+        indices = np.argwhere(self.array_mask)
+        # Scale indices by voxel spacing to obtain physical coordinates
+        scaled_indices = indices * self.spacing
+
+        # Extract intensity values at these voxel indices
+        intensities = image_array[indices[:, 0], indices[:, 1], indices[:, 2]]
+
+        # Filter out any NaN intensity values
+        valid = ~np.isnan(intensities)
+        if np.sum(valid) < 2:
+            self.moran_i = np.nan
+            return
+
+        scaled_indices = scaled_indices[valid]
+        intensities = intensities[valid]
+
+        # Total number of valid voxels
+        N = len(intensities)
+        # Mean intensity
+        mu = np.mean(intensities)
+
+        # Compute pairwise distances between voxel coordinates
+        from scipy.spatial.distance import pdist, squareform
+        distances = squareform(pdist(scaled_indices))
+
+        # Create a weight matrix: weight = 1/distance for nonzero distances, 0 otherwise
+        weights = np.where(distances > 0, 1.0 / distances, 0)
+
+        # Sum of all weights (excluding self-pairs, since diagonal is 0)
+        S0 = np.sum(weights)
+
+        # Compute the numerator: sum_{i≠j} w_{ij} (X_i - μ)(X_j - μ)
+        diff = intensities - mu
+        diff_outer = np.outer(diff, diff)
+        numerator = np.sum(weights * diff_outer)
+
+        # Compute the denominator: sum_{k} (X_k - μ)^2
+        denominator = np.sum(diff ** 2)
+
+        # Calculate Moran's I
+        self.moran_i = (N / S0) * (numerator / denominator)
+
+    def calc_geary_c(self, image_array):
+
+        # Extract voxel indices from the ROI mask and scale them by voxel spacing
+        indices = np.argwhere(self.array_mask)
+        scaled_indices = indices * self.spacing
+
+        # Retrieve intensity values for these voxels from the image_array
+        intensities = image_array[indices[:, 0], indices[:, 1], indices[:, 2]]
+
+        # Exclude NaN values from the intensity data
+        valid = ~np.isnan(intensities)
+        if np.sum(valid) < 2:
+            self.geary_c = np.nan
+            return
+
+        scaled_indices = scaled_indices[valid]
+        intensities = intensities[valid]
+
+        # Total number of valid voxels and mean intensity
+        N = len(intensities)
+        mu = np.mean(intensities)
+
+        # Compute pairwise Euclidean distances between voxel coordinates
+        from scipy.spatial.distance import pdist, squareform
+        distances = squareform(pdist(scaled_indices))
+
+        # Define weights as the inverse of distance (with 0 weight for zero distances)
+        weights = np.where(distances > 0, 1.0 / distances, 0)
+
+        # Sum of all weights
+        S0 = np.sum(weights)
+
+        # Calculate the numerator: sum_{i≠j} w_{ij} (X_i - X_j)^2
+        diff_matrix = np.subtract.outer(intensities, intensities)
+        squared_diff = diff_matrix ** 2
+        numerator = np.sum(weights * squared_diff)
+
+        # Calculate the denominator: sum_{i} (X_i - μ)^2
+        denominator = np.sum((intensities - mu) ** 2)
+
+        # Compute Geary's C measure
+        self.geary_c = ((N - 1) / (2 * S0)) * (numerator / denominator)
 
 
 class LocalIntensityFeatures:

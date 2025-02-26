@@ -69,7 +69,7 @@ class Radiomics:
             'morph_sph_dispr', 'morph_sphericity', 'morph_asphericity', 'morph_com', 'morph_diam', 'morph_pca_maj_axis',
             'morph_pca_min_axis', 'morph_pca_least_axis', 'morph_pca_elongation', 'morph_pca_flatness',
             'morph_vol_dens_aabb', 'morph_area_dens_aabb', 'morph_vol_dens_aee', 'morph_area_dens_aee',
-            'morph_vol_dens_conv_hull', 'morph_area_dens_conv_hull', 'morph_integ_int',
+            'morph_vol_dens_conv_hull', 'morph_area_dens_conv_hull', 'morph_integ_int', 'morph_moran_i', 'morph_geary_c',
             'loc_peak_loc', 'loc_peak_glob',
             'stat_mean', 'stat_var', 'stat_skew', 'stat_kurt', 'stat_median', 'stat_min', 'stat_p10',
             'stat_p90', 'stat_max', 'stat_iqr', 'stat_range', 'stat_mad', 'stat_rmad', 'stat_medad', 'stat_cov',
@@ -703,6 +703,8 @@ class Radiomics:
         morf_features.calc_vol_density_ch()
         morf_features.calc_area_density_ch()
         morf_features.calc_integrated_intensity(self.patient_intensity_mask.array)
+        morf_features.calc_moran_i(self.patient_intensity_mask.array)
+        morf_features.calc_geary_c(self.patient_intensity_mask.array)
 
         self.mort_features = [morf_features.vol_mesh,
                               morf_features.vol_count,
@@ -726,7 +728,9 @@ class Radiomics:
                               morf_features.area_density_aee,
                               morf_features.vol_density_ch,
                               morf_features.area_density_ch,
-                              morf_features.integrated_intensity
+                              morf_features.integrated_intensity,
+                              morf_features.moran_i,
+                              morf_features.geary_c
                               ]
 
         self.patient_morf_features_list.append(self.mort_features)

@@ -2,7 +2,7 @@ import numpy as np
 from scipy.ndimage import convolve
 from scipy.ndimage import distance_transform_cdt, label, generate_binary_structure, minimum
 from scipy.ndimage.morphology import generate_binary_structure
-from scipy.spatial.distance import pdist
+from scipy.spatial.distance import pdist, squareform
 from scipy.spatial import ConvexHull
 from scipy.special import legendre
 from scipy.stats import iqr, skew, kurtosis
@@ -287,7 +287,6 @@ class MorphologicalFeatures:
         mu = np.mean(intensities)
 
         # Compute pairwise Euclidean distances between voxel coordinates
-        from scipy.spatial.distance import pdist, squareform
         distances = squareform(pdist(scaled_indices))
 
         # Define weights as the inverse of distance (with 0 weight for zero distances)

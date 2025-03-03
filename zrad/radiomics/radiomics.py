@@ -151,41 +151,50 @@ class Radiomics:
         else:
             self._set_images_and_preprocess(image, mask, filtered_image)
             self.calc_morphological_features()
+            self.features_ = self.morphological_features_
 
     def extract_intensity_features(self, image, mask, filtered_image=None):
         """Extract intensity features."""
         self._set_images_and_preprocess(image, mask, filtered_image)
         self.calc_intensity_features()
+        self.features_ = self.intensity_features_
 
     def extract_discr_intensity_features(self, image, mask, filtered_image=None):
         """Extract discretised intensity features."""
         self._set_images_and_preprocess(image, mask, filtered_image, use_texture_preprocessing=True)
         self.calc_discretised_intensity_features()
+        self.features_ = self.intensity_features_
 
     def extract_glcm_features(self, image, mask, filtered_image=None):
         """Extract GLCM features."""
         self._set_images_and_preprocess(image, mask, filtered_image, use_texture_preprocessing=True)
         self.calc_glcm_features()
+        self.features_ = self.glcm_features_
 
     def extract_glrlm_features(self, image, mask, filtered_image=None):
         """Extract GLRLM features."""
         self._set_images_and_preprocess(image, mask, filtered_image, use_texture_preprocessing=True)
         self.calc_glrlm_features()
+        self.features_ = self.glrlm_features_
+
 
     def extract_glszm_gldzm_features(self, image, mask, filtered_image=None):
         """Extract GLSZM and GLDZM features."""
         self._set_images_and_preprocess(image, mask, filtered_image, use_texture_preprocessing=True)
         self.calc_glszm_gldzm_features()
+        self.features_ = (self.glszm_features_ | self.gldzm_features_)
 
     def extract_ngtdm_features(self, image, mask, filtered_image=None):
         """Extract NGTDM features."""
         self._set_images_and_preprocess(image, mask, filtered_image, use_texture_preprocessing=True)
         self.calc_ngtdm_features()
+        self.features_ = self.ngtdm_features_
 
     def extract_ngldm_features(self, image, mask, filtered_image=None):
         """Extract NGLDM features."""
         self._set_images_and_preprocess(image, mask, filtered_image, use_texture_preprocessing=True)
         self.calc_ngldm_features()
+        self.features_ = self.ngldm_features_
 
     def extract_features(self, image, mask, filtered_image=None):
         """Extract All features."""
@@ -198,7 +207,7 @@ class Radiomics:
         self.extract_ngtdm_features(image, mask, filtered_image)
         self.extract_ngldm_features(image, mask, filtered_image)
         self.features_ = (self.morphological_features_ | self.intensity_features_ | self.discr_intensity_features_
-                          | self.glcm_features_ | self.glrlm_features_ | self.glszm_features_ | self.glszm_features_ |
+                          | self.glcm_features_ | self.glrlm_features_ | self.glszm_features_ | self.gldzm_features_ |
                           self.ngtdm_features_, self.ngldm_features_)
 
     def apply_discretisation(self):

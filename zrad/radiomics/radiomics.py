@@ -65,7 +65,7 @@ class Radiomics:
         self.patient_number = None
 
     def extract_features(self, image, mask, filtered_image=None):
-        slice_2d = True if 1 in image.array.shape else False
+        slice_2d = True if image.shape[2] == 1 else False
         
         columns = [
             'morph_volume', 'morph_vol_approx', 'morph_area_mesh', 'morph_av', 'morph_comp_1', 'morph_comp_2',

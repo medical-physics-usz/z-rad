@@ -92,17 +92,17 @@ class Radiomics:
             'ngl_hdhge', 'ngl_glnu', 'ngl_glnu_norm', 'ngl_dcnu', 'ngl_dcnu_norm', 'ngl_dc_perc', 'ngl_gl_var',
             'ngl_dc_var', 'ngl_dc_entr', 'ngl_dc_energy']
 
-    def _rename_to_ibsi_standards(self, columns):
+    def _rename_to_ibsi_standards(self, columns, aggr_dim, aggr_method):
 
         new_columns = []
 
-        el_aggr_dim = '2_5D' if self.aggr_dim == '2.5D' else self.aggr_dim
+        el_aggr_dim = '2_5D' if aggr_dim == '2.5D' else aggr_dim
 
         aggr_method_map = {'AVER': 'avg', 'DIR_MERG': 'avg', 'SLICE_MERG': 'comb', 'MERG': 'comb'}
 
         for el in columns:
             if el.startswith(('cm', 'rlm')):
-                el_aggr_method = aggr_method_map.get(self.aggr_method, '')
+                el_aggr_method = aggr_method_map.get(aggr_method, '')
                 new_columns.append(f'{el}_{el_aggr_dim}_{el_aggr_method}')
             elif el.startswith(('szm', 'dzm', 'ngl')):
                 new_columns.append(f'{el}_{el_aggr_dim}')
@@ -424,7 +424,7 @@ class Radiomics:
                               glcm.inf_cor_1,
                               glcm.inf_cor_2]
 
-        self.glcm_features_ = dict(zip(self._rename_to_ibsi_standards(self.glcm_columns), self.glcm_features))
+        self.glcm_features_ = dict(zip(self._rename_to_ibsi_standards(self.glcm_columns, self.aggr_dim, self.aggr_method), self.glcm_features))
 
     def calc_glrlm_features(self):
         glrlm = GLRLM_GLSZM_GLDZM_NGLDM(image=self.patient_intensity_mask.array.T, slice_weight=self.slice_weighting,
@@ -466,7 +466,7 @@ class Radiomics:
                                glrlm.length_var,
                                glrlm.entropy]
 
-        self.glrlm_features_ = dict(zip(self._rename_to_ibsi_standards(self.glrlm_columns), self.glrlm_features))
+        self.glrlm_features_ = dict(zip(self._rename_to_ibsi_standards(self.glrlm_columns, self.aggr_dim, self.aggr_method), self.glrlm_features))
 
     def calc_glszm_gldzm_features(self):
         def extract_features(glszm_gldzm):
@@ -498,28 +498,28 @@ class Radiomics:
         if self.aggr_dim == '3D':
             glszm_gldzm.calc_glsz_gldz_3d_matrices(self.patient_morphological_mask.array.T)
             glszm_gldzm.calc_3d_glszm_features()
-            self.glszm_features_ = dict(zip(self._rename_to_ibsi_standards(self.glszm_columns), extract_features(glszm_gldzm)))
+            self.glszm_features_ = dict(zip(self._rename_to_ibsi_standards(self.glszm_columns, self.aggr_dim, self.aggr_method), extract_features(glszm_gldzm)))
 
             glszm_gldzm.reset_fields()
             glszm_gldzm.calc_3d_gldzm_features()
-            self.gldzm_features_ = dict(zip(self._rename_to_ibsi_standards(self.gldzm_columns), extract_features(glszm_gldzm)))
+            self.gldzm_features_ = dict(zip(self._rename_to_ibsi_standards(self.gldzm_columns, self.aggr_dim, self.aggr_method), extract_features(glszm_gldzm)))
 
         else:
             glszm_gldzm.calc_glsz_gldz_2d_matrices(self.patient_morphological_mask.array.T)
             if self.aggr_dim == '2.5D':
                 glszm_gldzm.calc_2_5d_glszm_features()
-                self.glszm_features_ = dict(zip(self._rename_to_ibsi_standards(self.glszm_columns), extract_features(glszm_gldzm)))
+                self.glszm_features_ = dict(zip(self._rename_to_ibsi_standards(self.glszm_columns, self.aggr_dim, self.aggr_method), extract_features(glszm_gldzm)))
 
                 glszm_gldzm.reset_fields()
                 glszm_gldzm.calc_2_5d_gldzm_features()
-                self.gldzm_features_ = dict(zip(self._rename_to_ibsi_standards(self.gldzm_columns), extract_features(glszm_gldzm)))
+                self.gldzm_features_ = dict(zip(self._rename_to_ibsi_standards(self.gldzm_columns, self.aggr_dim, self.aggr_method), extract_features(glszm_gldzm)))
             else:
                 glszm_gldzm.calc_2d_glszm_features()
-                self.glszm_features_ = dict(zip(self._rename_to_ibsi_standards(self.glszm_columns), extract_features(glszm_gldzm)))
+                self.glszm_features_ = dict(zip(self._rename_to_ibsi_standards(self.glszm_columns, self.aggr_dim, self.aggr_method), extract_features(glszm_gldzm)))
 
                 glszm_gldzm.reset_fields()
                 glszm_gldzm.calc_2d_gldzm_features()
-                self.gldzm_features_ = dict(zip(self._rename_to_ibsi_standards(self.gldzm_columns), extract_features(glszm_gldzm)))
+                self.gldzm_features_ = dict(zip(self._rename_to_ibsi_standards(self.gldzm_columns, self.aggr_dim, self.aggr_method), extract_features(glszm_gldzm)))
 
     def calc_ngtdm_features(self):
         ngtdm = NGTDM(image=self.patient_intensity_mask.array.T, slice_weight=self.slice_weighting,
@@ -540,7 +540,7 @@ class Radiomics:
                                ngtdm.complexity,
                                ngtdm.strength]
 
-        self.ngtdm_features_ = dict(zip(self._rename_to_ibsi_standards(self.ngtdm_columns), ngtdm_features))
+        self.ngtdm_features_ = dict(zip(self._rename_to_ibsi_standards(self.ngtdm_columns, self.aggr_dim, self.aggr_method), ngtdm_features))
 
     def calc_ngldm_features(self):
         ngldm = GLRLM_GLSZM_GLDZM_NGLDM(image=self.patient_intensity_mask.array.T, slice_weight=self.slice_weighting,
@@ -573,7 +573,7 @@ class Radiomics:
                                ngldm.entropy,
                                ngldm.energy]
 
-        self.ngldm_features_ = dict(zip(self._rename_to_ibsi_standards(self.ngldm_columns), ngldm_features))
+        self.ngldm_features_ = dict(zip(self._rename_to_ibsi_standards(self.ngldm_columns, self.aggr_dim, self.aggr_method), ngldm_features))
 
     def calc_morphological_features(self):
         morf_features = MorphologicalFeatures(self.patient_morphological_mask.array,

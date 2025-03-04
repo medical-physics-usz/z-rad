@@ -9,6 +9,8 @@ import urllib.request
 import joblib
 import numpy as np
 
+from .exceptions import DataStructureError
+
 
 def get_bounding_box(arr):
     """
@@ -248,3 +250,76 @@ def tqdm_joblib(tqdm_object):
     finally:
         joblib.parallel.BatchCompletionCallBack = old_batch_callback
         tqdm_object.close()
+
+
+def validate_mask(mask, aggr_dim):
+    """
+    Validates the intensity mask for a patient by checking bounding box dimensions
+    and number of valid voxels. Skips or discards slices that do not meet criteria.
+    """
+    # Calculate the bounding box around the intensity mask and determine its shape.
+    masked_array = mask.array
+
+    # Define the minimum size and voxel count requirements for validation.
+    min_box_size = 3
+    min_voxel_number_3d = 27
+    min_voxel_number_2d = 9
+
+    # Check the bounding box size and the number of voxels based on the aggregation dimension.
+    if aggr_dim == '3D':
+        # Find all nonzero voxel coordinates
+        valid_coords = np.where(masked_array != 0)
+        if len(valid_coords[0]) == 0:
+            raise DataStructureError("No valid voxels in 3D array.")
+
+        # Compute bounding box from min to max across each dimension
+        zmin, zmax = valid_coords[0].min(), valid_coords[0].max() + 1
+        ymin, ymax = valid_coords[1].min(), valid_coords[1].max() + 1
+        xmin, xmax = valid_coords[2].min(), valid_coords[2].max() + 1
+
+        bbox_shape = (zmax - zmin, ymax - ymin, xmax - xmin)
+        no_valid_voxels = len(valid_coords[0])
+
+        # Validation checks for 3D
+        if min(bbox_shape) < min_box_size:
+            raise DataStructureError(f"3D bounding box dimension < {min_box_size}.")
+        if no_valid_voxels < min_voxel_number_3d:
+            raise DataStructureError(f"Valid voxel count < {min_voxel_number_3d}.")
+
+    else:
+        # 2D or 2.5D case: check each slice individually
+        n_slices = masked_array.shape[0]
+        for z in range(n_slices):
+            slice_arr = masked_array[z, :, :]
+            # If the slice is all zero, skip it
+            if not np.any(slice_arr):
+                continue
+
+            # Find all nonzero coordinates in this slice
+            valid_coords = np.where(slice_arr != 0)
+            no_valid_voxels = len(valid_coords[0])
+            if no_valid_voxels == 0:
+                # It's effectively empty
+                continue
+
+            ymin, ymax = valid_coords[0].min(), valid_coords[0].max() + 1
+            xmin, xmax = valid_coords[1].min(), valid_coords[1].max() + 1
+            height = ymax - ymin
+            width = xmax - xmin
+
+            # Validation checks for each slice
+            if min(height, width) < min_box_size or no_valid_voxels < min_voxel_number_2d:
+                # Mark this entire slice as invalid by setting it to 0
+                slice_arr[:, :] = 0
+
+        # Check if all slices are now invalid (all zeros)
+        if not np.any(masked_array):
+            raise DataStructureError(
+                "Not a single slice meets the minimum 2D/2.5D requirements. "
+                "Consider finer resampling or check the data."
+            )
+
+        # Assign the possibly updated mask back (already in-place, but for clarity)
+        mask.array = masked_array
+
+    return mask

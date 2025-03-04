@@ -551,6 +551,59 @@ class GLCM:
         self.inf_cor_1_list = []  # 3.6.24
         self.inf_cor_2_list = []  # 3.6.25
 
+    def reset_fields(self):
+        self.joint_max = 0  # 3.6.1
+        self.joint_average = 0  # 3.6.2
+        self.joint_var = 0  # 3.6.3
+        self.joint_entropy = 0  # 3.6.4
+        self.dif_average = 0  # 3.6.5
+        self.dif_var = 0  # 3.6.6
+        self.dif_entropy = 0  # 3.6.7
+        self.sum_average = 0  # 3.6.8
+        self.sum_var = 0  # 3.6.9
+        self.sum_entropy = 0  # 3.6.10
+        self.ang_second_moment = 0  # 3.6.11
+        self.contrast = 0  # 3.6.12
+        self.dissimilarity = 0  # 3.6.13
+        self.inv_diff = 0  # 3.6.14
+        self.norm_inv_diff = 0  # 3.6.15
+        self.inv_diff_moment = 0  # 3.6.16
+        self.norm_inv_diff_moment = 0  # 3.6.17
+        self.inv_variance = 0  # 3.6.18
+        self.cor = 0  # 3.6.19
+        self.autocor = 0  # 3.6.20
+        self.cluster_tendency = 0  # 3.6.21
+        self.cluster_shade = 0  # 3.6.22
+        self.cluster_prominence = 0  # 3.6.23
+        self.inf_cor_1 = 0  # 3.6.24
+        self.inf_cor_2 = 0  # 3.6.25
+
+        self.joint_max_list = []  # 3.6.1
+        self.joint_average_list = []  # 3.6.2
+        self.joint_var_list = []  # 3.6.3
+        self.joint_entropy_list = []  # 3.6.4
+        self.dif_average_list = []  # 3.6.5
+        self.dif_var_list = []  # 3.6.6
+        self.dif_entropy_list = []  # 3.6.7
+        self.sum_average_list = []  # 3.6.8
+        self.sum_var_list = []  # 3.6.9
+        self.sum_entropy_list = []  # 3.6.10
+        self.ang_second_moment_list = []  # 3.6.11
+        self.contrast_list = []  # 3.6.12
+        self.dissimilarity_list = []  # 3.6.13
+        self.inv_diff_list = []  # 3.6.14
+        self.norm_inv_diff_list = []  # 3.6.15
+        self.inv_diff_moment_list = []  # 3.6.16
+        self.norm_inv_diff_moment_list = []  # 3.6.17
+        self.inv_variance_list = []  # 3.6.18
+        self.cor_list = []  # 3.6.19
+        self.autocor_list = []  # 3.6.20
+        self.cluster_tendency_list = []  # 3.6.21
+        self.cluster_shade_list = []  # 3.6.22
+        self.cluster_prominence_list = []  # 3.6.23
+        self.inf_cor_1_list = []  # 3.6.24
+        self.inf_cor_2_list = []  # 3.6.25
+
     def calc_glc_2d_matrices(self):
 
         def calc_2_d_glcm_slice(image, direction):
@@ -2525,6 +2578,20 @@ class NGTDM:
         self.ngtd_2d_matrices = []
         self.ngtd_3d_matrix = None
         self.slice_no_of_roi_voxels = []
+
+        self.coarseness = 0
+        self.contrast = 0
+        self.busyness = 0
+        self.complexity = 0
+        self.strength = 0
+
+        self.coarsness_list = []
+        self.contrast_list = []
+        self.busyness_list = []
+        self.complexity_list = []
+        self.strength_list = []
+
+    def reset_fields(self):
 
         self.coarseness = 0
         self.contrast = 0

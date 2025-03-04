@@ -13,7 +13,7 @@ sys.excepthook = handle_uncaught_exception
 class Radiomics:
 
     def __init__(self,
-                 aggr_dim='3D', aggr_method='AVER',
+                 aggr_dim='3D',
                  intensity_range=None, outlier_range=None,
                  number_of_bins=None, bin_size=None,
                  slice_weighting=False, slice_median=False):
@@ -55,13 +55,6 @@ class Radiomics:
         else:
             raise ValueError(f"Wrong aggregation dim {aggr_dim}. Available '2D', '2.5D', and '3D'.")
 
-        if aggr_method in ['MERG', 'AVER', 'SLICE_MERG', 'DIR_MERG']:
-            self.aggr_method = aggr_method
-        else:
-            raise ValueError(f"Wrong aggregation dim {aggr_method}. "
-                             "Available 'MERG', 'AVER', 'SLICE_MERG', and 'DIR_MERG'.")
-
-
         self.morph_columns = ['morph_volume', 'morph_vol_approx', 'morph_area_mesh', 'morph_av', 'morph_comp_1',
             'morph_comp_2', 'morph_sph_dispr', 'morph_sphericity', 'morph_asphericity', 'morph_com', 'morph_diam',
             'morph_pca_maj_axis', 'morph_pca_min_axis', 'morph_pca_least_axis', 'morph_pca_elongation',
@@ -92,7 +85,7 @@ class Radiomics:
             'ngl_hdhge', 'ngl_glnu', 'ngl_glnu_norm', 'ngl_dcnu', 'ngl_dcnu_norm', 'ngl_dc_perc', 'ngl_gl_var',
             'ngl_dc_var', 'ngl_dc_entr', 'ngl_dc_energy']
 
-    def _rename_to_ibsi_standards(self, columns, aggr_dim, aggr_method):
+    def _rename_to_ibsi_standards(self, columns, aggr_dim, aggr_method=None):
 
         new_columns = []
 
@@ -378,98 +371,161 @@ class Radiomics:
         self.discr_intensity_features_ = dict(zip(self.discretised_intensity_columns, self.discr_intensity_based_features))
 
     def calc_glcm_features(self):
-        glcm = GLCM(image=self.patient_intensity_mask.array.T, slice_weight=self.slice_weighting,
-                    slice_median=self.slice_median)
+        glcm = GLCM(
+            image=self.patient_intensity_mask.array.T,
+            slice_weight=self.slice_weighting,
+            slice_median=self.slice_median
+        )
+
+        def get_features():
+            return [
+                glcm.joint_max,
+                glcm.joint_average,
+                glcm.joint_var,
+                glcm.joint_entropy,
+                glcm.dif_average,
+                glcm.dif_var,
+                glcm.dif_entropy,
+                glcm.sum_average,
+                glcm.sum_var,
+                glcm.sum_entropy,
+                glcm.ang_second_moment,
+                glcm.contrast,
+                glcm.dissimilarity,
+                glcm.inv_diff,
+                glcm.norm_inv_diff,
+                glcm.inv_diff_moment,
+                glcm.norm_inv_diff_moment,
+                glcm.inv_variance,
+                glcm.cor,
+                glcm.autocor,
+                glcm.cluster_tendency,
+                glcm.cluster_shade,
+                glcm.cluster_prominence,
+                glcm.inf_cor_1,
+                glcm.inf_cor_2
+            ]
+
+        def calc_get_features(calc_method, reset_after=True):
+            calc_method()
+            feats = get_features()
+            if reset_after:
+                glcm.reset_fields()
+            return feats
+
+        def build_feature_dict(dim, agg, features):
+            keys = self._rename_to_ibsi_standards(self.glcm_columns, dim, agg)
+            return dict(zip(keys, features))
+
         if self.aggr_dim == '3D':
             glcm.calc_glc_3d_matrix()
-            if self.aggr_method == 'AVER':
-                glcm.calc_3d_averaged_glcm_features()
-            elif self.aggr_method == 'MERG':
-                glcm.calc_3d_merged_glcm_features()
+            features_3d_dir_aver = calc_get_features(glcm.calc_3d_averaged_glcm_features, reset_after=True)
+            features_3d_dir_merg = calc_get_features(glcm.calc_3d_merged_glcm_features, reset_after=False)
 
-        elif self.aggr_dim == '2.5D' or self.aggr_dim == '2D':
+            self.glcm_features_3d_dir_aver = features_3d_dir_aver
+            self.glcm_features_3d_dir_merg = features_3d_dir_merg
+
+            self.glcm_features_ = (
+                    build_feature_dict('3D', 'AVER', features_3d_dir_aver) |
+                    build_feature_dict('3D', 'MERG', features_3d_dir_merg)
+            )
+        elif self.aggr_dim == '2D':
             glcm.calc_glc_2d_matrices()
-            if self.aggr_method == 'DIR_MERG':
-                glcm.calc_2_5d_direction_merged_glcm_features()
-            elif self.aggr_method == 'MERG':
-                glcm.calc_2_5d_merged_glcm_features()
-            elif self.aggr_method == 'AVER':
-                glcm.calc_2d_averaged_glcm_features()
-            elif self.aggr_method == 'SLICE_MERG':
-                glcm.calc_2d_slice_merged_glcm_features()
+            features_2_5d_dir_merg = calc_get_features(glcm.calc_2_5d_direction_merged_glcm_features, reset_after=True)
+            features_2_5d_merg = calc_get_features(glcm.calc_2_5d_merged_glcm_features, reset_after=True)
+            features_2d_aver = calc_get_features(glcm.calc_2d_averaged_glcm_features, reset_after=True)
+            features_2d_slice_merg = calc_get_features(glcm.calc_2d_slice_merged_glcm_features, reset_after=False)
 
-        self.glcm_features = [glcm.joint_max,
-                              glcm.joint_average,
-                              glcm.joint_var,
-                              glcm.joint_entropy,
-                              glcm.dif_average,
-                              glcm.dif_var,
-                              glcm.dif_entropy,
-                              glcm.sum_average,
-                              glcm.sum_var,
-                              glcm.sum_entropy,
-                              glcm.ang_second_moment,
-                              glcm.contrast,
-                              glcm.dissimilarity,
-                              glcm.inv_diff,
-                              glcm.norm_inv_diff,
-                              glcm.inv_diff_moment,
-                              glcm.norm_inv_diff_moment,
-                              glcm.inv_variance,
-                              glcm.cor,
-                              glcm.autocor,
-                              glcm.cluster_tendency,
-                              glcm.cluster_shade,
-                              glcm.cluster_prominence,
-                              glcm.inf_cor_1,
-                              glcm.inf_cor_2]
+            self.glcm_features_2_5d_dir_merg = features_2_5d_dir_merg
+            self.glcm_features_2_5d_merg = features_2_5d_merg
+            self.glcm_features_2d_aver = features_2d_aver
+            self.glcm_features_2d_slice_merg = features_2d_slice_merg
 
-        self.glcm_features_ = dict(zip(self._rename_to_ibsi_standards(self.glcm_columns, self.aggr_dim, self.aggr_method), self.glcm_features))
+            self.glcm_features_ = (
+                    build_feature_dict('2.5D', 'DIR_MERG', features_2_5d_dir_merg) |
+                    build_feature_dict('2.5D', 'MERG', features_2_5d_merg) |
+                    build_feature_dict('2D', 'AVER', features_2d_aver) |
+                    build_feature_dict('2D', 'SLICE_MERG', features_2d_slice_merg)
+            )
 
     def calc_glrlm_features(self):
-        glrlm = GLRLM_GLSZM_GLDZM_NGLDM(image=self.patient_intensity_mask.array.T, slice_weight=self.slice_weighting,
-                                        slice_median=self.slice_median)
+        glrlm = GLRLM_GLSZM_GLDZM_NGLDM(
+            image=self.patient_intensity_mask.array.T,
+            slice_weight=self.slice_weighting,
+            slice_median=self.slice_median
+        )
+
+        def get_features():
+            return [
+                glrlm.short_runs_emphasis,
+                glrlm.long_runs_emphasis,
+                glrlm.low_grey_level_run_emphasis,
+                glrlm.high_gr_lvl_emphasis,
+                glrlm.short_low_gr_lvl_emphasis,
+                glrlm.short_high_gr_lvl_emphasis,
+                glrlm.long_low_gr_lvl_emphasis,
+                glrlm.long_high_gr_lvl_emphasis,
+                glrlm.non_uniformity,
+                glrlm.norm_non_uniformity,
+                glrlm.length_non_uniformity,
+                glrlm.norm_length_non_uniformity,
+                glrlm.percentage,
+                glrlm.gr_lvl_var,
+                glrlm.length_var,
+                glrlm.entropy
+            ]
+
+        def calc_get_features(calc_method, reset_after=True):
+            calc_method()
+            feats = get_features()
+            if reset_after:
+                glrlm.reset_fields()
+            return feats
+
+        def build_feature_dict(dim, agg, features):
+            keys = self._rename_to_ibsi_standards(self.glrlm_columns, dim, agg)
+            return dict(zip(keys, features))
+
         if self.aggr_dim == '3D':
-
             glrlm.calc_glrl_3d_matrix()
-            if self.aggr_method == 'AVER':
-                glrlm.calc_3d_averaged_glrlm_features()
-            elif self.aggr_method == 'MERG':
-                glrlm.calc_3d_merged_glrlm_features()
+            features_3d_av = calc_get_features(glrlm.calc_3d_averaged_glrlm_features, reset_after=True)
+            features_3d_merg = calc_get_features(glrlm.calc_3d_merged_glrlm_features, reset_after=True)
 
-        elif self.aggr_dim == '2.5D' or self.aggr_dim == '2D':
+            self.glrlm_features_3d_av = features_3d_av
+            self.glrlm_features_3d_merg = features_3d_merg
+
+            self.glrlm_features_ = (
+                    build_feature_dict('3D', 'AVER', features_3d_av) |
+                    build_feature_dict('3D', 'MERG', features_3d_merg)
+            )
+        elif self.aggr_dim == '2D':
             glrlm.calc_glrl_2d_matrices()
+            features_2_5d_dir_merg = calc_get_features(glrlm.calc_2_5d_direction_merged_glrlm_features,
+                                                       reset_after=True)
+            features_2_5d_merg = calc_get_features(glrlm.calc_2_5d_merged_glrlm_features, reset_after=True)
+            features_2d_aver = calc_get_features(glrlm.calc_2d_averaged_glrlm_features, reset_after=True)
+            features_2d_slice_merg = calc_get_features(glrlm.calc_2d_slice_merged_glrlm_features, reset_after=True)
 
-            if self.aggr_method == 'DIR_MERG':
-                glrlm.calc_2_5d_direction_merged_glrlm_features()
-            elif self.aggr_method == 'MERG':
-                glrlm.calc_2_5d_merged_glrlm_features()
-            elif self.aggr_method == 'AVER':
-                glrlm.calc_2d_averaged_glrlm_features()
-            elif self.aggr_method == 'SLICE_MERG':
-                glrlm.calc_2d_slice_merged_glrlm_features()
+            self.glrlm_features_2_5d_dir_merg = features_2_5d_dir_merg
+            self.glrlm_features_2_5d_merg = features_2_5d_merg
+            self.glrlm_features_2d_aver = features_2d_aver
+            self.glrlm_features_2d_slice_merg = features_2d_slice_merg
 
-        self.glrlm_features = [glrlm.short_runs_emphasis,
-                               glrlm.long_runs_emphasis,
-                               glrlm.low_grey_level_run_emphasis,
-                               glrlm.high_gr_lvl_emphasis,
-                               glrlm.short_low_gr_lvl_emphasis,
-                               glrlm.short_high_gr_lvl_emphasis,
-                               glrlm.long_low_gr_lvl_emphasis,
-                               glrlm.long_high_gr_lvl_emphasis,
-                               glrlm.non_uniformity,
-                               glrlm.norm_non_uniformity,
-                               glrlm.length_non_uniformity,
-                               glrlm.norm_length_non_uniformity,
-                               glrlm.percentage,
-                               glrlm.gr_lvl_var,
-                               glrlm.length_var,
-                               glrlm.entropy]
-
-        self.glrlm_features_ = dict(zip(self._rename_to_ibsi_standards(self.glrlm_columns, self.aggr_dim, self.aggr_method), self.glrlm_features))
+            self.glrlm_features_ = (
+                    build_feature_dict('2.5D', 'DIR_MERG', features_2_5d_dir_merg) |
+                    build_feature_dict('2.5D', 'MERG', features_2_5d_merg) |
+                    build_feature_dict('2D', 'AVER', features_2d_aver) |
+                    build_feature_dict('2D', 'SLICE_MERG', features_2d_slice_merg)
+            )
 
     def calc_glszm_gldzm_features(self):
-        def extract_features(glszm_gldzm):
+        glszm_gldzm = GLRLM_GLSZM_GLDZM_NGLDM(
+            image=self.patient_intensity_mask.array.T,
+            slice_weight=self.slice_weighting,
+            slice_median=self.slice_median
+        )
+
+        def get_features():
             return [
                 glszm_gldzm.short_runs_emphasis,
                 glszm_gldzm.long_runs_emphasis,
@@ -489,91 +545,133 @@ class Radiomics:
                 glszm_gldzm.entropy,
             ]
 
-        glszm_gldzm = GLRLM_GLSZM_GLDZM_NGLDM(
-            image=self.patient_intensity_mask.array.T,
-            slice_weight=self.slice_weighting,
-            slice_median=self.slice_median,
-        )
+        def build_feature_dict(columns, dim, agg, features):
+            if agg is not None:
+                keys = self._rename_to_ibsi_standards(columns, dim, agg)
+            else:
+                keys = self._rename_to_ibsi_standards(columns, dim)
+            return dict(zip(keys, features))
 
         if self.aggr_dim == '3D':
             glszm_gldzm.calc_glsz_gldz_3d_matrices(self.patient_morphological_mask.array.T)
+            # GLSZM features
             glszm_gldzm.calc_3d_glszm_features()
-            self.glszm_features_ = dict(zip(self._rename_to_ibsi_standards(self.glszm_columns, self.aggr_dim, self.aggr_method), extract_features(glszm_gldzm)))
+            self.glszm_features_ = build_feature_dict(self.glszm_columns, self.aggr_dim, None, get_features())
 
             glszm_gldzm.reset_fields()
+            # GLDZM features
             glszm_gldzm.calc_3d_gldzm_features()
-            self.gldzm_features_ = dict(zip(self._rename_to_ibsi_standards(self.gldzm_columns, self.aggr_dim, self.aggr_method), extract_features(glszm_gldzm)))
-
+            self.gldzm_features_ = build_feature_dict(self.gldzm_columns, self.aggr_dim, None, get_features())
         else:
             glszm_gldzm.calc_glsz_gldz_2d_matrices(self.patient_morphological_mask.array.T)
-            if self.aggr_dim == '2.5D':
-                glszm_gldzm.calc_2_5d_glszm_features()
-                self.glszm_features_ = dict(zip(self._rename_to_ibsi_standards(self.glszm_columns, self.aggr_dim, self.aggr_method), extract_features(glszm_gldzm)))
+            # 2.5D features for GLSZM
+            glszm_gldzm.calc_2_5d_glszm_features()
+            glszm_features_2_5d = build_feature_dict(self.glszm_columns, '2.5D', None, get_features())
 
-                glszm_gldzm.reset_fields()
-                glszm_gldzm.calc_2_5d_gldzm_features()
-                self.gldzm_features_ = dict(zip(self._rename_to_ibsi_standards(self.gldzm_columns, self.aggr_dim, self.aggr_method), extract_features(glszm_gldzm)))
-            else:
-                glszm_gldzm.calc_2d_glszm_features()
-                self.glszm_features_ = dict(zip(self._rename_to_ibsi_standards(self.glszm_columns, self.aggr_dim, self.aggr_method), extract_features(glszm_gldzm)))
+            glszm_gldzm.reset_fields()
+            # 2.5D features for GLDZM
+            glszm_gldzm.calc_2_5d_gldzm_features()
+            gldzm_features_2_5d = build_feature_dict(self.gldzm_columns, '2.5D', None, get_features())
 
-                glszm_gldzm.reset_fields()
-                glszm_gldzm.calc_2d_gldzm_features()
-                self.gldzm_features_ = dict(zip(self._rename_to_ibsi_standards(self.gldzm_columns, self.aggr_dim, self.aggr_method), extract_features(glszm_gldzm)))
+            # 2D features for GLSZM
+            glszm_gldzm.calc_2d_glszm_features()
+            glszm_features_2d = build_feature_dict(self.glszm_columns, '2D', None, get_features())
+
+            glszm_gldzm.reset_fields()
+            # 2D features for GLDZM
+            glszm_gldzm.calc_2d_gldzm_features()
+            gldzm_features_2d = build_feature_dict(self.gldzm_columns, '2D', None, get_features())
+
+            self.glszm_features_ = glszm_features_2d | glszm_features_2_5d
+            self.gldzm_features_ = gldzm_features_2d | gldzm_features_2_5d
 
     def calc_ngtdm_features(self):
-        ngtdm = NGTDM(image=self.patient_intensity_mask.array.T, slice_weight=self.slice_weighting,
-                      slice_median=self.slice_median)
+        ngtdm = NGTDM(
+            image=self.patient_intensity_mask.array.T,
+            slice_weight=self.slice_weighting,
+            slice_median=self.slice_median
+        )
+        feature_names = [
+            "coarseness",
+            "contrast",
+            "busyness",
+            "complexity",
+            "strength"
+        ]
+
+        def get_features():
+            return [getattr(ngtdm, attr) for attr in feature_names]
+
+        def build_feature_dict(columns, features, dim):
+            keys = self._rename_to_ibsi_standards(columns, dim)
+            return dict(zip(keys, features))
+
         if self.aggr_dim == '3D':
             ngtdm.calc_ngtd_3d_matrix()
             ngtdm.calc_3d_ngtdm_features()
-        elif self.aggr_dim == '2.5D':
-            ngtdm.calc_ngtd_2d_matrices()
-            ngtdm.calc_2_5d_ngtdm_features()
+            self.ngtdm_features_ = build_feature_dict(self.ngtdm_columns, get_features(), self.aggr_dim)
         elif self.aggr_dim == '2D':
             ngtdm.calc_ngtd_2d_matrices()
+            ngtdm.calc_2_5d_ngtdm_features()
+            features_2_5d = get_features()
+
+            ngtdm.reset_fields()
             ngtdm.calc_2d_ngtdm_features()
+            features_2d = get_features()
 
-        ngtdm_features = [ngtdm.coarseness,
-                               ngtdm.contrast,
-                               ngtdm.busyness,
-                               ngtdm.complexity,
-                               ngtdm.strength]
-
-        self.ngtdm_features_ = dict(zip(self._rename_to_ibsi_standards(self.ngtdm_columns, self.aggr_dim, self.aggr_method), ngtdm_features))
+            keys_2D = self._rename_to_ibsi_standards(self.ngtdm_columns, '2D')
+            keys_2_5D = self._rename_to_ibsi_standards(self.ngtdm_columns, '2.5D')
+            self.ngtdm_features_ = dict(zip(keys_2D, features_2d)) | dict(zip(keys_2_5D, features_2_5d))
 
     def calc_ngldm_features(self):
-        ngldm = GLRLM_GLSZM_GLDZM_NGLDM(image=self.patient_intensity_mask.array.T, slice_weight=self.slice_weighting,
-                                        slice_median=self.slice_median)
+        ngldm = GLRLM_GLSZM_GLDZM_NGLDM(
+            image=self.patient_intensity_mask.array.T,
+            slice_weight=self.slice_weighting,
+            slice_median=self.slice_median
+        )
+        feature_names = [
+            "short_runs_emphasis",
+            "long_runs_emphasis",
+            "low_grey_level_run_emphasis",
+            "high_gr_lvl_emphasis",
+            "short_low_gr_lvl_emphasis",
+            "short_high_gr_lvl_emphasis",
+            "long_low_gr_lvl_emphasis",
+            "long_high_gr_lvl_emphasis",
+            "non_uniformity",
+            "norm_non_uniformity",
+            "length_non_uniformity",
+            "norm_length_non_uniformity",
+            "percentage",
+            "gr_lvl_var",
+            "length_var",
+            "entropy",
+            "energy"
+        ]
+
+        def get_features():
+            return [getattr(ngldm, attr) for attr in feature_names]
+
+        def build_feature_dict(columns, features, dim):
+            keys = self._rename_to_ibsi_standards(columns, dim)
+            return dict(zip(keys, features))
+
         if self.aggr_dim == '3D':
             ngldm.calc_ngld_3d_matrix()
             ngldm.calc_3d_ngldm_features()
-        elif self.aggr_dim == '2.5D':
-            ngldm.calc_ngld_2d_matrices()
-            ngldm.calc_2_5d_ngldm_features()
+            self.ngldm_features_ = build_feature_dict(self.ngldm_columns, get_features(), self.aggr_dim)
         elif self.aggr_dim == '2D':
             ngldm.calc_ngld_2d_matrices()
+            ngldm.calc_2_5d_ngldm_features()
+            features_2_5d = get_features()
+
+            ngldm.reset_fields()
             ngldm.calc_2d_ngldm_features()
+            features_2d = get_features()
 
-        ngldm_features = [ngldm.short_runs_emphasis,
-                               ngldm.long_runs_emphasis,
-                               ngldm.low_grey_level_run_emphasis,
-                               ngldm.high_gr_lvl_emphasis,
-                               ngldm.short_low_gr_lvl_emphasis,
-                               ngldm.short_high_gr_lvl_emphasis,
-                               ngldm.long_low_gr_lvl_emphasis,
-                               ngldm.long_high_gr_lvl_emphasis,
-                               ngldm.non_uniformity,
-                               ngldm.norm_non_uniformity,
-                               ngldm.length_non_uniformity,
-                               ngldm.norm_length_non_uniformity,
-                               ngldm.percentage,
-                               ngldm.gr_lvl_var,
-                               ngldm.length_var,
-                               ngldm.entropy,
-                               ngldm.energy]
-
-        self.ngldm_features_ = dict(zip(self._rename_to_ibsi_standards(self.ngldm_columns, self.aggr_dim, self.aggr_method), ngldm_features))
+            keys_2d = self._rename_to_ibsi_standards(self.ngldm_columns, '2D')
+            keys_2_5d = self._rename_to_ibsi_standards(self.ngldm_columns, '2.5D')
+            self.ngldm_features_ = dict(zip(keys_2d, features_2d)) | dict(zip(keys_2_5d, features_2_5d))
 
     def calc_morphological_features(self):
         morf_features = MorphologicalFeatures(self.patient_morphological_mask.array,

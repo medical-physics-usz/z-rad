@@ -32,11 +32,11 @@ def ibsi_i_validation(ibsi_features, features, config_a=False):
 @pytest.fixture()
 def ct_phantom_image():
 
-    if not os.path.isdir('tests/test_data/IBSI_I'):
-        load_ibsi_phantom(chapter=1, phantom='ct_radiomics', imaging_format="nifti", save_path='tests/test_data/IBSI_I')
+    if not os.path.isdir('tests/test_data/IBSI_I/nifti'):
+        load_ibsi_phantom(chapter=1, phantom='ct_radiomics', imaging_format="nifti", save_path='tests/test_data/IBSI_I/nifti')
 
     image = Image()
-    image.read_nifti_image('tests/test_data/IBSI_I/image/phantom.nii.gz')
+    image.read_nifti_image('tests/test_data/IBSI_I/nifti/image/phantom.nii.gz')
     return image
 
 
@@ -44,7 +44,7 @@ def ct_phantom_image():
 def ct_phantom_mask():
 
     mask = Image()
-    mask.read_nifti_image('tests/test_data/IBSI_I/mask/mask.nii.gz')
+    mask.read_nifti_image('tests/test_data/IBSI_I/nifti/mask/mask.nii.gz')
     return mask
 
 

@@ -425,16 +425,6 @@ def extract_dicom_mask(rtstruct_path, roi_name, image):
 
             # Compute rounded z indices for each point
             z_indices = np.rint(transformed_points[:, 2]).astype(int)
-            # If the points lie essentially on one slice (within 1 voxel), use the median slice;
-            # otherwise, use all unique rounded z values.
-            if np.ptp(z_indices) <= 1:
-                z_slices = [int(round(np.median(z_indices)))]
-            else:
-                z_slices = np.unique(z_indices)
-            # Filter out-of-bound slices
-            z_slices = [z for z in z_slices if 0 <= z < depth]
-            if not z_slices:
-                continue
 
             # Prepare polygon coordinates for x and y. Note: polygon2mask expects (row, col) = (y, x)
             polygon_coords = np.column_stack((transformed_points[:, 1], transformed_points[:, 0]))
@@ -442,7 +432,7 @@ def extract_dicom_mask(rtstruct_path, roi_name, image):
 
             # Combine the mask on each relevant slice:
             # Use XOR for "CLOSEDPLANARXOR" contours; for others, simply add (logical OR).
-            for z in z_slices:
+            for z in z_indices:
                 if contour_type == 'CLOSEDPLANARXOR':
                     mask_array[z] = np.logical_xor(mask_array[z], mask_layer).astype(np.uint8)
                 else:

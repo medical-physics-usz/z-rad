@@ -540,31 +540,31 @@ class IntensityBasedStatFeatures:
 
 
 class IntensityVolumeHistogramFeatures:
-    def __init__(self, array):
+    def __init__(self, array, min_intensity, max_intensity, discr=1):
+        # Flatten array and remove NaN values
+        self.min_intensity = min_intensity
+        self.max_intensity = max_intensity
         self.valid_values = array.ravel()[~np.isnan(array.ravel())]
-        self.min_intensity = int(np.min(self.valid_values))
-        self.max_intensity = int(np.max(self.valid_values))
-        self.fractional_volumes = np.zeros(len(range(self.min_intensity, self.max_intensity + 1)))
-        self.intensity_fractions = np.zeros(len(range(self.min_intensity, self.max_intensity + 1)))
-        self.intensity = np.zeros(len(range(self.min_intensity, self.max_intensity + 1)))
-
-        self.volume_at_intensity_fraction_x_per_cent = None  # 3.5.1
-        self.intensity_at_volume_fraction_x_per_cent = None  # 3.5.2
-        self.volume_fraction_diff_intensity_fractions = None  # 3.5.3
-        self.intensity_fraction_diff_volume_fractions = None  # 3.5.4
+        # Create a discretized list of intensities using the given step size
+        self.intensities = np.arange(min_intensity, max_intensity + discr, discr)
+        self.fractional_volumes = np.zeros(len(self.intensities))
+        self.intensity_fractions = np.zeros(len(self.intensities))
+        # Copy the discretized intensities (optional, kept for clarity)
+        self.intensity = np.copy(self.intensities)
 
         self._fractions()
 
     def _fractions(self):
-        for i in range(self.min_intensity, self.max_intensity + 1):
-            # Calculate νi for each intensity
-            self.fractional_volumes[i - 1] = 1 - np.sum(self.valid_values < i) / len(self.valid_values)
-            # Calculate γi for each intensity
-            self.intensity_fractions[i - 1] = (i - self.min_intensity) / (self.max_intensity - self.min_intensity)
-            self.intensity[i - 1] = i
+        # Calculate fractions for each discrete intensity value.
+        for idx, intensity_value in enumerate(self.intensities):
+            # Calculate fractional volume (νi): fraction of values with intensity >= intensity_value
+            self.fractional_volumes[idx] = 1 - np.sum(self.valid_values < intensity_value) / len(self.valid_values)
+            # Calculate intensity fraction (γi): relative position of intensity_value in the intensity range
+            self.intensity_fractions[idx] = (intensity_value - self.min_intensity) / (self.max_intensity - self.min_intensity)
 
     def calc_volume_at_intensity_fraction(self, x):
-        return np.max(self.fractional_volumes[self.intensity_fractions > x / 100])
+        valid_indices = np.where(self.intensity_fractions > x / 100)
+        return np.max(self.fractional_volumes[valid_indices])
 
     def calc_intensity_at_volume_fraction(self, x):
         return np.min(self.intensity[self.fractional_volumes <= x / 100])

@@ -3,7 +3,7 @@ import sys
 import numpy as np
 
 from .radiomics_definitions import MorphologicalFeatures, LocalIntensityFeatures, IntensityBasedStatFeatures, GLCM, \
-    GLRLM_GLSZM_GLDZM_NGLDM, NGTDM
+    GLRLM_GLSZM_GLDZM_NGLDM, NGTDM, IntensityVolumeHistogramFeatures
 from ..exceptions import DataStructureError
 from ..image import Image
 from ..toolbox_logic import handle_uncaught_exception
@@ -17,6 +17,9 @@ class Radiomics:
                  aggr_dim='3D', aggr_method='AVER',
                  intensity_range=None, outlier_range=None,
                  number_of_bins=None, bin_size=None,
+                 calc_ivh_features=False,
+                 ivh_number_of_bins=None, ivh_bin_size=None,
+                 calc_morph_moran_i_and_geary_c_features = False,
                  slice_weighting=False, slice_median=False):
         self.patient_morphological_mask = None
         self.patient_intensity_mask = None
@@ -33,6 +36,7 @@ class Radiomics:
             self.calc_intensity_mask = True
             self.intensity_range = intensity_range
             self.discret_min_val = intensity_range[0]
+            self.discret_max_val = intensity_range[1]
 
         self.calc_outlier_mask = False
         if str(outlier_range).strip().replace('.', '').isdigit():
@@ -49,6 +53,18 @@ class Radiomics:
         if bin_size is not None:
             self.calc_discr_bin_size = True
             self.bin_size = bin_size
+
+        self.calc_ivh_features = calc_ivh_features
+        self.calc_discr_ivh_bin_number = False
+        self.calc_discr_ivh_bin_size = False
+
+        if ivh_number_of_bins is not None:
+            self.calc_discr_ivh_bin_number = True
+            self.ivh_bin_number = ivh_number_of_bins
+
+        if ivh_bin_size is not None:
+            self.calc_discr_ivh_bin_size = True
+            self.ivh_bin_size = ivh_bin_size
 
         if aggr_dim in ['2D', '2.5D', '3D']:
             self.aggr_dim = aggr_dim
@@ -72,7 +88,7 @@ class Radiomics:
             'morph_sph_dispr', 'morph_sphericity', 'morph_asphericity', 'morph_com', 'morph_diam', 'morph_pca_maj_axis',
             'morph_pca_min_axis', 'morph_pca_least_axis', 'morph_pca_elongation', 'morph_pca_flatness',
             'morph_vol_dens_aabb', 'morph_area_dens_aabb', 'morph_vol_dens_aee', 'morph_area_dens_aee',
-            'morph_vol_dens_conv_hull', 'morph_area_dens_conv_hull', 'morph_integ_int', 'morph_moran_i', 'morph_geary_c',
+            'morph_vol_dens_conv_hull', 'morph_area_dens_conv_hull', 'morph_integ_int',# 'morph_moran_i', 'morph_geary_c',
             'loc_peak_loc', 'loc_peak_glob',
             'stat_mean', 'stat_var', 'stat_skew', 'stat_kurt', 'stat_median', 'stat_min', 'stat_p10',
             'stat_p90', 'stat_max', 'stat_iqr', 'stat_range', 'stat_mad', 'stat_rmad', 'stat_medad', 'stat_cov',
@@ -80,6 +96,7 @@ class Radiomics:
             'ih_mean', 'ih_var', 'ih_skew', 'ih_kurt', 'ih_median', 'ih_min', 'ih_p10', 'ih_p90', 'ih_max', 'ih_mode',
             'ih_iqr', 'ih_range', 'ih_mad', 'ih_rmad', 'ih_medad', 'ih_cov', 'ih_qcod', 'ih_entropy', 'ih_uniformity',
             'ih_max_grad', 'ih_max_grad_g', 'ih_min_grad', 'ih_min_grad_g',
+           # 'ivh_v10', 'ivh_v90', 'ivh_i10', 'ivh_i90', 'ivh_diff_v10_v90', 'ivh_diff_i10_i90',
             'cm_joint_max', 'cm_joint_avg', 'cm_joint_var', 'cm_joint_entr', 'cm_diff_avg', 'cm_diff_var',
             'cm_diff_entr', 'cm_sum_avg', 'cm_sum_var', 'cm_sum_entr', 'cm_energy', 'cm_contrast', 'cm_dissimilarity',
             'cm_inv_diff', 'cm_inv_diff_norm', 'cm_inv_diff_mom', 'cm_inv_diff_mom_norm', 'cm_inv_var', 'cm_corr',
@@ -108,6 +125,7 @@ class Radiomics:
         self.patient_morf_features_list = []
         self.patient_local_intensity_features_list = []
         self.intensity_features_list = []
+        self.ivh_features = {}
         self.discr_intensity_features_list = []
         self.glcm_features_list = []
         self.glrlm_features_list = []
@@ -147,6 +165,8 @@ class Radiomics:
             self.patient_intensity_mask = mask_validated.copy()
             self.patient_intensity_mask.array = np.where(self.patient_intensity_mask.array > 0, self.patient_image.array, np.nan)
             self._outlier_removal_and_intensity_truncation()
+        if self.calc_ivh_features:
+            self._calc_ivh_features()
         self._calc_discretized_intensity_features()
         self._calc_texture_features()
 
@@ -175,6 +195,7 @@ class Radiomics:
                 self.new_columns.append(el)
 
         self.features_ = dict(zip(self.new_columns, all_features_list_flat))
+        self.features_ = self.features_ | self.ivh_features
 
     def _validate_mask(self, mask, aggr_dim):
         """
@@ -297,6 +318,24 @@ class Radiomics:
                      direction=image.direction,
                      shape=image.shape)
 
+    def _ivh_bin_size_discr(self, image, min_val, bin_size):
+
+        return Image(array=min_val + ((np.floor((image.array - min_val) / bin_size) + 1) - 0.5) * bin_size,
+                     origin=image.origin,
+                     spacing=image.spacing,
+                     direction=image.direction,
+                     shape=image.shape)
+
+    def _ivh_bin_number_discr(self, image, bin_number):
+
+        return Image(array=np.where(image.array != np.nanmax(image.array),
+                                    np.floor(bin_number * (image.array - np.nanmin(image.array))
+                                             / (np.nanmax(image.array) - np.nanmin(image.array))) + 1, bin_number),
+                     origin=image.origin,
+                     spacing=image.spacing,
+                     direction=image.direction,
+                     shape=image.shape)
+
     def _calc_mask_intensity_features(self):
 
         local_intensity_features = LocalIntensityFeatures(self.patient_image.array,
@@ -349,6 +388,55 @@ class Radiomics:
                                          intensity_features.root_mean_square_intensity]
 
         self.intensity_features_list.append(self.intensity_based_features)
+
+    def _calc_ivh_features(self):
+        self.ihv_patient_intensity_mask = self.patient_intensity_mask
+
+        if self.calc_discr_ivh_bin_size:
+
+            if self.calc_intensity_mask:
+
+                self.ihv_patient_intensity_mask = Image(array=self.discret_min_val + (self._bin_size_discr(self.ihv_patient_intensity_mask,
+                                                                           self.discret_min_val,
+                                                                           self.ivh_bin_size).array - 0.5) * self.ivh_bin_size,
+                                                        origin=self.patient_intensity_mask.origin,
+                                                        spacing=self.patient_intensity_mask.spacing,
+                                                        direction=self.patient_intensity_mask.direction,
+                                                        shape=self.patient_intensity_mask.shape)
+                ivh_features = IntensityVolumeHistogramFeatures(self.ihv_patient_intensity_mask.array,
+                                                                self.discret_min_val + 0.5 * self.ivh_bin_size,
+                                                                self.discret_max_val - 0.5 * self.ivh_bin_size,
+                                                                self.ivh_bin_size)
+            else:
+                self.ihv_patient_intensity_mask = Image(
+                    array=np.nanmin(self.ihv_patient_intensity_mask.array) + (self._bin_size_discr(self.ihv_patient_intensity_mask,
+                                                                       np.nanmin(self.ihv_patient_intensity_mask.array),
+                                                                       self.ivh_bin_size).array - 0.5) * self.ivh_bin_size,
+                    origin=self.patient_intensity_mask.origin,
+                    spacing=self.patient_intensity_mask.spacing,
+                    direction=self.patient_intensity_mask.direction,
+                    shape=self.patient_intensity_mask.shape)
+                ivh_features = IntensityVolumeHistogramFeatures(self.ihv_patient_intensity_mask.array, np.nanmin(
+                    self.ihv_patient_intensity_mask.array) + 0.5 * self.ivh_bin_size,
+                                                                np.nanmax(
+                                                                    self.ihv_patient_intensity_mask.array) - 0.5 * self.ivh_bin_size,
+                                                                self.ivh_bin_size)
+        if self.calc_discr_ivh_bin_number:
+            self.ihv_patient_intensity_mask = self._bin_number_discr(self.ihv_patient_intensity_mask, self.ivh_bin_number)
+            ivh_features = IntensityVolumeHistogramFeatures(self.ihv_patient_intensity_mask.array,
+                                                            np.nanmin(self.ihv_patient_intensity_mask.array),
+                                                            np.nanmax(self.ihv_patient_intensity_mask.array))
+        else:
+            ivh_features = IntensityVolumeHistogramFeatures(self.ihv_patient_intensity_mask.array,
+                                                            np.nanmin(self.ihv_patient_intensity_mask.array),
+                                                            np.nanmax(self.ihv_patient_intensity_mask.array))
+
+        self.ivh_features = {'ivh_v10': ivh_features.calc_volume_at_intensity_fraction(10),
+                             'ivh_v90': ivh_features.calc_volume_at_intensity_fraction(90),
+                             'ivh_i10': ivh_features.calc_intensity_at_volume_fraction(10),
+                             'ivh_i90': ivh_features.calc_intensity_at_volume_fraction(90),
+                             'ivh_diff_v10_v90': ivh_features.calc_volume_fraction_diff_intensity_fractions(),
+                             'ivh_diff_i10_i90': ivh_features.calc_intensity_fraction_diff_volume_fractions()}
 
     def _calc_discretized_intensity_features(self):
         if self.calc_discr_bin_size:
@@ -732,8 +820,8 @@ class Radiomics:
                               morf_features.vol_density_ch,
                               morf_features.area_density_ch,
                               morf_features.integrated_intensity,
-                              morf_features.moran_i,
-                              morf_features.geary_c
+                              #morf_features.moran_i,
+                              #morf_features.geary_c
                               ]
 
         self.patient_morf_features_list.append(self.mort_features)

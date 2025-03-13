@@ -88,7 +88,7 @@ class Radiomics:
             'morph_sph_dispr', 'morph_sphericity', 'morph_asphericity', 'morph_com', 'morph_diam', 'morph_pca_maj_axis',
             'morph_pca_min_axis', 'morph_pca_least_axis', 'morph_pca_elongation', 'morph_pca_flatness',
             'morph_vol_dens_aabb', 'morph_area_dens_aabb', 'morph_vol_dens_aee', 'morph_area_dens_aee',
-            'morph_vol_dens_conv_hull', 'morph_area_dens_conv_hull', 'morph_integ_int',# 'morph_moran_i', 'morph_geary_c',
+            'morph_vol_dens_conv_hull', 'morph_area_dens_conv_hull', 'morph_integ_int',
             'loc_peak_loc', 'loc_peak_glob',
             'stat_mean', 'stat_var', 'stat_skew', 'stat_kurt', 'stat_median', 'stat_min', 'stat_p10',
             'stat_p90', 'stat_max', 'stat_iqr', 'stat_range', 'stat_mad', 'stat_rmad', 'stat_medad', 'stat_cov',
@@ -96,7 +96,6 @@ class Radiomics:
             'ih_mean', 'ih_var', 'ih_skew', 'ih_kurt', 'ih_median', 'ih_min', 'ih_p10', 'ih_p90', 'ih_max', 'ih_mode',
             'ih_iqr', 'ih_range', 'ih_mad', 'ih_rmad', 'ih_medad', 'ih_cov', 'ih_qcod', 'ih_entropy', 'ih_uniformity',
             'ih_max_grad', 'ih_max_grad_g', 'ih_min_grad', 'ih_min_grad_g',
-           # 'ivh_v10', 'ivh_v90', 'ivh_i10', 'ivh_i90', 'ivh_diff_v10_v90', 'ivh_diff_i10_i90',
             'cm_joint_max', 'cm_joint_avg', 'cm_joint_var', 'cm_joint_entr', 'cm_diff_avg', 'cm_diff_var',
             'cm_diff_entr', 'cm_sum_avg', 'cm_sum_var', 'cm_sum_entr', 'cm_energy', 'cm_contrast', 'cm_dissimilarity',
             'cm_inv_diff', 'cm_inv_diff_norm', 'cm_inv_diff_mom', 'cm_inv_diff_mom_norm', 'cm_inv_var', 'cm_corr',
@@ -123,6 +122,7 @@ class Radiomics:
 
         self.pat_binned_masked_image = {}
         self.patient_morf_features_list = []
+        self.morph_moran_i_and_geary_c_features = {}
         self.patient_local_intensity_features_list = []
         self.intensity_features_list = []
         self.ivh_features = {}
@@ -195,7 +195,7 @@ class Radiomics:
                 self.new_columns.append(el)
 
         self.features_ = dict(zip(self.new_columns, all_features_list_flat))
-        self.features_ = self.features_ | self.ivh_features
+        self.features_ = self.features_ | self.ivh_features | self.morph_moran_i_and_geary_c_features
 
     def _validate_mask(self, mask, aggr_dim):
         """
@@ -390,7 +390,7 @@ class Radiomics:
         self.intensity_features_list.append(self.intensity_based_features)
 
     def _calc_ivh_features(self):
-        self.ihv_patient_intensity_mask = self.patient_intensity_mask
+        self.ihv_patient_intensity_mask = self.patient_intensity_mask.copy()
 
         if self.calc_discr_ivh_bin_size:
 
@@ -426,7 +426,7 @@ class Radiomics:
             ivh_features = IntensityVolumeHistogramFeatures(self.ihv_patient_intensity_mask.array,
                                                             np.nanmin(self.ihv_patient_intensity_mask.array),
                                                             np.nanmax(self.ihv_patient_intensity_mask.array))
-        else:
+        if not self.calc_discr_ivh_bin_size and not self.calc_discr_ivh_bin_number:
             ivh_features = IntensityVolumeHistogramFeatures(self.ihv_patient_intensity_mask.array,
                                                             np.nanmin(self.ihv_patient_intensity_mask.array),
                                                             np.nanmax(self.ihv_patient_intensity_mask.array))
@@ -794,8 +794,6 @@ class Radiomics:
         morf_features.calc_vol_density_ch()
         morf_features.calc_area_density_ch()
         morf_features.calc_integrated_intensity(self.patient_intensity_mask.array)
-        morf_features.calc_moran_i(self.patient_intensity_mask.array)
-        morf_features.calc_geary_c(self.patient_intensity_mask.array)
 
         self.mort_features = [morf_features.vol_mesh,
                               morf_features.vol_count,
@@ -820,8 +818,14 @@ class Radiomics:
                               morf_features.vol_density_ch,
                               morf_features.area_density_ch,
                               morf_features.integrated_intensity,
-                              #morf_features.moran_i,
-                              #morf_features.geary_c
                               ]
 
         self.patient_morf_features_list.append(self.mort_features)
+
+    def _calc_morph_moran_i_and_geary_c_features(self):
+        morf_features = MorphologicalFeatures(self.patient_morphological_mask.array,
+                                              (self.patient_morphological_mask.spacing[::-1]))
+        morf_features.calc_moran_i(self.patient_intensity_mask.array)
+        morf_features.calc_geary_c(self.patient_intensity_mask.array)
+        self.morph_moran_i_and_geary_c_features = {'morph_moran_i':  morf_features.moran_i,
+         'morph_geary_c': morf_features.geary_c}

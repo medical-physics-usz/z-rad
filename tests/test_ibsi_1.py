@@ -28,122 +28,144 @@ def ibsi_i_validation(ibsi_features, features, config_a=False):
             if not (lower_boundary <= features[tag] <= upper_boundary):
                 pytest.fail(f"Feature {tag} out of tolerance: {features[tag]} not in range ({lower_boundary}, {upper_boundary})")
 
-
 @pytest.fixture()
-def ct_phantom_image():
+def dcm_ct_phantom_image():
 
-    if not os.path.isdir('tests/test_data/IBSI_I'):
-        load_ibsi_phantom(chapter=1, phantom='ct_radiomics', imaging_format="nifti", save_path='tests/test_data/IBSI_I')
+    if not os.path.isdir('tests/test_data/IBSI_I/dicom'):
+        load_ibsi_phantom(chapter=1, phantom='ct_radiomics', imaging_format="dicom", save_path='tests/test_data/IBSI_I/dicom')
 
     image = Image()
-    image.read_nifti_image('tests/test_data/IBSI_I/image/phantom.nii.gz')
+    image.read_dicom_image(dicom_dir='tests/test_data/IBSI_I/dicom/image', modality='CT')
+    return image
+
+@pytest.fixture()
+def dcm_ct_phantom_mask(dcm_ct_phantom_image):
+
+    image = Image()
+    image.read_dicom_mask(image=dcm_ct_phantom_image,
+                          rtstruct_path='tests/test_data/IBSI_I/dicom/mask/DCM_RS_00060.dcm',
+                          structure_name='GTV-1')
+    return image
+
+@pytest.fixture()
+def nii_ct_phantom_image():
+
+    if not os.path.isdir('tests/test_data/IBSI_I/nifti'):
+        load_ibsi_phantom(chapter=1, phantom='ct_radiomics', imaging_format="nifti", save_path='tests/test_data/IBSI_I/nifti')
+
+    image = Image()
+    image.read_nifti_image('tests/test_data/IBSI_I/nifti/image/phantom.nii.gz')
     return image
 
 
 @pytest.fixture()
-def ct_phantom_mask():
+def nii_ct_phantom_mask(nii_ct_phantom_image):
 
     mask = Image()
-    mask.read_nifti_image('tests/test_data/IBSI_I/mask/mask.nii.gz')
+    mask.read_nifti_mask(image=nii_ct_phantom_image, mask_path='tests/test_data/IBSI_I/nifti/mask/mask.nii.gz')
     return mask
 
 
 @pytest.fixture()
-def res2d_2mm_image_linear(ct_phantom_image):
+def res2d_2mm_image_linear(nii_ct_phantom_image):
 
     preprocessing = Preprocessing(input_imaging_modality='CT',
                                   resample_resolution=2,
                                   resample_dimension='2D',
                                   interpolation_method='Linear')
-    res_image = preprocessing.resample(ct_phantom_image, image_type='image')
+    res_image = preprocessing.resample(nii_ct_phantom_image, image_type='image')
 
     return res_image
 
 
 @pytest.fixture()
-def res2d_2mm_mask_linear(ct_phantom_mask):
+def res2d_2mm_mask_linear(nii_ct_phantom_mask):
 
     preprocessing = Preprocessing(input_imaging_modality='CT',
                                   resample_resolution=2,
                                   resample_dimension='2D',
                                   interpolation_method='Linear',
                                   interpolation_threshold=.5)
-    res_mask = preprocessing.resample(ct_phantom_mask, image_type='mask')
+    res_mask = preprocessing.resample(nii_ct_phantom_mask, image_type='mask')
 
     return res_mask
 
 
 @pytest.fixture()
-def res3d_2mm_image_linear(ct_phantom_image):
+def res3d_2mm_image_linear(nii_ct_phantom_image):
 
     preprocessing = Preprocessing(input_imaging_modality='CT',
                                   resample_resolution=2,
                                   resample_dimension='3D',
                                   interpolation_method='Linear')
-    res_image = preprocessing.resample(ct_phantom_image, image_type='image')
+    res_image = preprocessing.resample(nii_ct_phantom_image, image_type='image')
 
     return res_image
 
 
 @pytest.fixture()
-def res3d_2mm_mask_linear(ct_phantom_mask):
+def res3d_2mm_mask_linear(nii_ct_phantom_mask):
 
     preprocessing = Preprocessing(input_imaging_modality='CT',
                                   resample_resolution=2,
                                   resample_dimension='3D',
                                   interpolation_method='Linear',
                                   interpolation_threshold=.5)
-    res_mask = preprocessing.resample(ct_phantom_mask, image_type='mask')
+    res_mask = preprocessing.resample(nii_ct_phantom_mask, image_type='mask')
 
     return res_mask
 
 
 @pytest.fixture()
-def res3d_2mm_image_spline(ct_phantom_image):
+def res3d_2mm_image_spline(dcm_ct_phantom_image):
 
     preprocessing = Preprocessing(input_imaging_modality='CT',
                                   resample_resolution=2,
                                   resample_dimension='3D',
                                   interpolation_method='BSpline')
-    res_image = preprocessing.resample(ct_phantom_image, image_type='image')
+    res_image = preprocessing.resample(dcm_ct_phantom_image, image_type='image')
 
     return res_image
 
 
 @pytest.mark.integration
-def test_ibsi_i_config_a(ct_phantom_image, ct_phantom_mask):
+def test_ibsi_i_config_a(dcm_ct_phantom_image, dcm_ct_phantom_mask):
     ibsi_features = ibsi_i_feature_tolerances('config A')
 
     radiomics = Radiomics(aggr_dim='2D',
                           aggr_method='AVER',
                           intensity_range=[-500, 400],
-                          bin_size=25)
+                          bin_size=25,
+                          calc_ivh_features=True)
 
-    radiomics.extract_features(image=ct_phantom_image, mask=ct_phantom_mask)
+    radiomics.extract_features(image=dcm_ct_phantom_image, mask=dcm_ct_phantom_mask)
     ibsi_i_validation(ibsi_features, radiomics.features_, True)
 
     radiomics = Radiomics(aggr_dim='2D',
                           aggr_method='SLICE_MERG',
                           intensity_range=[-500, 400],
-                          bin_size=25)
+                          bin_size=25,
+                          calc_ivh_features=True)
 
-    radiomics.extract_features(image=ct_phantom_image, mask=ct_phantom_mask)
+    radiomics.extract_features(image=dcm_ct_phantom_image, mask=dcm_ct_phantom_mask)
     ibsi_i_validation(ibsi_features, radiomics.features_, True)
 
     radiomics = Radiomics(aggr_dim='2.5D',
                           aggr_method='DIR_MERG',
                           intensity_range=[-500, 400],
-                          bin_size=25)
+                          bin_size=25,
+                          calc_ivh_features=True)
 
-    radiomics.extract_features(image=ct_phantom_image, mask=ct_phantom_mask)
+    radiomics.extract_features(image=dcm_ct_phantom_image, mask=dcm_ct_phantom_mask)
     ibsi_i_validation(ibsi_features, radiomics.features_, True)
 
     radiomics = Radiomics(aggr_dim='2.5D',
                           aggr_method='MERG',
                           intensity_range=[-500, 400],
-                          bin_size=25)
+                          bin_size=25,
+                          calc_ivh_features=True)
 
-    radiomics.extract_features(image=ct_phantom_image, mask=ct_phantom_mask)
+    radiomics.extract_features(image=dcm_ct_phantom_image, mask=dcm_ct_phantom_mask)
     ibsi_i_validation(ibsi_features, radiomics.features_, True)
 
 
@@ -161,7 +183,8 @@ def test_ibsi_i_config_b(res2d_2mm_image_linear, res2d_2mm_mask_linear):
     radiomics = Radiomics(aggr_dim='2D',
                           aggr_method='SLICE_MERG',
                           intensity_range=[-500, 400],
-                          number_of_bins=32)
+                          number_of_bins=32,
+                          calc_ivh_features=True)
 
     radiomics.extract_features(image=res2d_2mm_image_linear, mask=res2d_2mm_mask_linear)
     ibsi_i_validation(ibsi_features, radiomics.features_)
@@ -169,7 +192,8 @@ def test_ibsi_i_config_b(res2d_2mm_image_linear, res2d_2mm_mask_linear):
     radiomics = Radiomics(aggr_dim='2.5D',
                           aggr_method='DIR_MERG',
                           intensity_range=[-500, 400],
-                          number_of_bins=32)
+                          number_of_bins=32,
+                          calc_ivh_features=True)
 
     radiomics.extract_features(image=res2d_2mm_image_linear, mask=res2d_2mm_mask_linear)
     ibsi_i_validation(ibsi_features, radiomics.features_)
@@ -177,7 +201,8 @@ def test_ibsi_i_config_b(res2d_2mm_image_linear, res2d_2mm_mask_linear):
     radiomics = Radiomics(aggr_dim='2.5D',
                           aggr_method='MERG',
                           intensity_range=[-500, 400],
-                          number_of_bins=32)
+                          number_of_bins=32,
+                          calc_ivh_features=True)
 
     radiomics.extract_features(image=res2d_2mm_image_linear, mask=res2d_2mm_mask_linear)
     ibsi_i_validation(ibsi_features, radiomics.features_)
@@ -190,7 +215,10 @@ def test_ibsi_i_config_c(res3d_2mm_image_linear, res3d_2mm_mask_linear):
     radiomics = Radiomics(aggr_dim='3D',
                           aggr_method='AVER',
                           intensity_range=[-1000, 400],
-                          bin_size=25)
+                          bin_size=25,
+                          calc_ivh_features=True,
+                          ivh_bin_size=2.5
+                          )
 
     radiomics.extract_features(image=res3d_2mm_image_linear, mask=res3d_2mm_mask_linear)
     ibsi_i_validation(ibsi_features, radiomics.features_)
@@ -198,7 +226,10 @@ def test_ibsi_i_config_c(res3d_2mm_image_linear, res3d_2mm_mask_linear):
     radiomics = Radiomics(aggr_dim='3D',
                           aggr_method='MERG',
                           intensity_range=[-1000, 400],
-                          bin_size=25)
+                          bin_size=25,
+                          calc_ivh_features=True,
+                          ivh_bin_size=2.5
+                          )
 
     radiomics.extract_features(image=res3d_2mm_image_linear, mask=res3d_2mm_mask_linear)
     ibsi_i_validation(ibsi_features, radiomics.features_)
@@ -211,7 +242,8 @@ def test_ibsi_i_config_d(res3d_2mm_image_linear, res3d_2mm_mask_linear):
     radiomics = Radiomics(aggr_dim='3D',
                           aggr_method='AVER',
                           outlier_range=3,
-                          number_of_bins=32)
+                          number_of_bins=32,
+                          calc_ivh_features=True)
 
     radiomics.extract_features(image=res3d_2mm_image_linear, mask=res3d_2mm_mask_linear)
     ibsi_i_validation(ibsi_features, radiomics.features_)
@@ -219,7 +251,8 @@ def test_ibsi_i_config_d(res3d_2mm_image_linear, res3d_2mm_mask_linear):
     radiomics = Radiomics(aggr_dim='3D',
                           aggr_method='MERG',
                           outlier_range=3,
-                          number_of_bins=32)
+                          number_of_bins=32,
+                          calc_ivh_features=True)
 
     radiomics.extract_features(image=res3d_2mm_image_linear, mask=res3d_2mm_mask_linear)
     ibsi_i_validation(ibsi_features, radiomics.features_)
@@ -233,7 +266,9 @@ def test_ibsi_i_config_e(res3d_2mm_image_spline, res3d_2mm_mask_linear):
                           aggr_method='AVER',
                           intensity_range=[-1000, 400],
                           outlier_range=3,
-                          number_of_bins=32)
+                          number_of_bins=32,
+                          calc_ivh_features=True,
+                          ivh_number_of_bins=1000)
 
     radiomics.extract_features(image=res3d_2mm_image_spline, mask=res3d_2mm_mask_linear)
     ibsi_i_validation(ibsi_features, radiomics.features_)
@@ -242,7 +277,9 @@ def test_ibsi_i_config_e(res3d_2mm_image_spline, res3d_2mm_mask_linear):
                           aggr_method='MERG',
                           intensity_range=[-1000, 400],
                           outlier_range=3,
-                          number_of_bins=32)
+                          number_of_bins=32,
+                          calc_ivh_features=True,
+                          ivh_number_of_bins=1000)
 
     radiomics.extract_features(image=res3d_2mm_image_spline, mask=res3d_2mm_mask_linear)
     ibsi_i_validation(ibsi_features, radiomics.features_)

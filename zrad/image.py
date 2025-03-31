@@ -93,7 +93,8 @@ class Image:
 
     def read_dicom_image(self, dicom_dir, modality):
         dicom_files = get_dicom_files(directory=dicom_dir, modality=modality)
-        validate_z_spacing(dicom_files)
+        if modality in ["CT", "MRI", "PET"]:
+            validate_z_spacing(dicom_files)
         image = process_dicom_series(dicom_dir, dicom_files)
         if modality == 'PET':
             validate_pet_dicom_tags(dicom_files)
@@ -117,7 +118,7 @@ class Image:
 
 
 def get_dicom_files(directory, modality):
-    modality_mapping = {'PET': 'PT', 'CT': 'CT', 'MRI': 'MR', 'RTSTRUCT': 'RTSTRUCT'}
+    modality_mapping = {'PET': 'PT', 'CT': 'CT', 'MRI': 'MR', 'RTSTRUCT': 'RTSTRUCT', 'MG': 'MG'}
     modality_dicom = modality_mapping[modality]
     dicom_files_info = []
 
@@ -375,13 +376,23 @@ def process_dicom_series(directory, dicom_files):
 
     for dicom_file in dicom_files:
         ds = dicom_file['ds']
+
         if ds.Modality in ['CT', 'PT', 'MR']:
             pixel_spacing = ds.PixelSpacing
             slice_z_origin.append(float(ds.ImagePositionPatient[2]))
 
+        if ds.Modality == 'MG':
+            pixel_spacing = ds.ImagerPixelSpacing
+            slice_z_origin.append(ds.BodyPartThickness)
+            image.SetOrigin([0, 0, 0])
+            image.SetDirection([1, 0, 0, 0, 1, 0, 0, 0, 1])
+
     slice_z_origin = sorted(slice_z_origin)
-    slice_thickness = abs(np.median([slice_z_origin[i] - slice_z_origin[i + 1]
-                                     for i in range(len(slice_z_origin) - 1)]))
+    if len(slice_z_origin) > 1:
+        slice_thickness = abs(np.median([slice_z_origin[i] - slice_z_origin[i + 1]
+                                         for i in range(len(slice_z_origin) - 1)]))
+    elif len(slice_z_origin) == 1:
+        slice_thickness = slice_z_origin[0]
 
     image.SetSpacing((float(pixel_spacing[0]), float(pixel_spacing[1]), float(slice_thickness)))
 
@@ -389,28 +400,43 @@ def process_dicom_series(directory, dicom_files):
 
 
 def extract_dicom_mask(rtstruct_path, roi_name, image):
+    def generate_mask_array(contours, sitk_image):
 
-    def generate_mask_array(contours, dcm_im):
-        dimensions = dcm_im.GetSize()
-
-        # Create an empty mask with the same size and metadata as dcm_im
-        mask_array = np.zeros(dcm_im.GetSize()[::-1], dtype=np.uint8)
+        # Get image dimensions: (width, height, depth)
+        width, height, depth = sitk_image.GetSize()
+        # Create an empty 3D mask with shape (depth, height, width)
+        mask_array = np.zeros((depth, height, width), dtype=np.uint8)
 
         for contour in contours:
-            if contour['type'].upper().replace('_', '').strip() not in ['CLOSEDPLANAR', 'INTERPOLATEDPLANAR',
-                                                                        'CLOSEDPLANARXOR']:
+            # Normalize contour type string
+            contour_type = contour['type'].upper().replace('_', '').strip()
+            if contour_type not in ['CLOSEDPLANAR', 'INTERPOLATEDPLANAR', 'CLOSEDPLANARXOR']:
                 continue
 
             points = contour['points']
-            transformed_points = np.array(
-                [dcm_im.TransformPhysicalPointToContinuousIndex((points['x'][i], points['y'][i], points['z'][i]))
-                 for i in range(len(points['x']))])
+            num_points = len(points['x'])
+            # Transform all physical points to continuous index coordinates
+            transformed_points = np.array([
+                sitk_image.TransformPhysicalPointToContinuousIndex(
+                    (points['x'][i], points['y'][i], points['z'][i])
+                )
+                for i in range(num_points)
+            ])
 
-            z_coord = int(round(transformed_points[0, 2]))
-            mask_layer = draw.polygon2mask([dimensions[0], dimensions[1]][::-1],
-                                           np.column_stack((transformed_points[:, 1], transformed_points[:, 0])))
-            updated_mask = np.logical_xor(mask_array[z_coord, :, :], mask_layer)
-            mask_array[z_coord, :, :] = np.where(updated_mask, 1, 0)
+            # Compute rounded z indices for each point
+            z_indices = np.rint(transformed_points[:, 2]).astype(int)
+
+            # Prepare polygon coordinates for x and y. Note: polygon2mask expects (row, col) = (y, x)
+            polygon_coords = np.column_stack((transformed_points[:, 1], transformed_points[:, 0]))
+            mask_layer = draw.polygon2mask((height, width), polygon_coords)
+
+            # Combine the mask on each relevant slice:
+            # Use XOR for "CLOSEDPLANARXOR" contours; for others, simply add (logical OR).
+            for z in z_indices:
+                if contour_type == 'CLOSEDPLANARXOR':
+                    mask_array[z] = np.logical_xor(mask_array[z], mask_layer).astype(np.uint8)
+                else:
+                    mask_array[z] = np.logical_or(mask_array[z], mask_layer).astype(np.uint8)
 
         return mask_array
 

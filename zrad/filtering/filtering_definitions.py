@@ -1,9 +1,11 @@
 import sys
 from datetime import datetime
 from itertools import permutations
+from itertools import product
 
 import numpy as np
 import pywt
+from cv2 import getGaborKernel
 from scipy import ndimage as ndi
 
 from ..toolbox_logic import get_logger, handle_uncaught_exception, close_all_loggers
@@ -516,3 +518,71 @@ class Laws:
         else:
             energy_map = None
         return energy_map
+
+class Gabor:
+    """Gabor filtering."""
+
+    def __init__(self, padding_type, res_mm, sigma_mm, lambda_mm, gamma, theta,
+                 rotation_invariance=False, orthogonal_planes=False):
+        self.rotation_invariance = rotation_invariance
+        self.res_mm = res_mm
+        self.theta = theta
+        self.gamma = gamma
+        self.lambda_mm = lambda_mm
+        self.sigma_mm = sigma_mm
+        self.padding_type = padding_type
+        self.orthogonal_planes = orthogonal_planes
+
+    def _filter(self, img, theta, plane2d=(0, 1)):
+        # Calculate sigma and lambda in pixels.
+        sigma = self.sigma_mm / self.res_mm
+        lambd = self.lambda_mm / self.res_mm
+
+        # Rearrange image so that filtering is done on the first two axes.
+        # (The third axis will index independent slices.)
+        z_axis = (set(range(3)) - set(plane2d)).pop()
+        if z_axis != 2:
+            img = np.swapaxes(img, 2, z_axis)
+
+        # Determine the kernel size from the first two dimensions,
+        # ensuring odd dimensions.
+        kernel_size = []
+        for idx in (0, 1):
+            size = img.shape[idx]
+            if size % 2 == 0:
+                size += 1
+            kernel_size.append(size)
+
+        # Precompute the Gabor kernels (real and imaginary parts) once.
+        kernel_real = getGaborKernel(ksize=tuple(kernel_size), sigma=sigma, theta=theta,
+                                     lambd=lambd, gamma=self.gamma, psi=0)
+        kernel_imag = getGaborKernel(ksize=tuple(kernel_size), sigma=sigma, theta=theta,
+                                     lambd=lambd, gamma=self.gamma, psi=np.pi / 2)
+        # Expand to 3D (singleton in the slice dimension) so that the entire 3D volume
+        # can be convolved slice‐wise in one call.
+        kernel_real = kernel_real[:, :, np.newaxis]
+        kernel_imag = kernel_imag[:, :, np.newaxis]
+
+        # Convolve the 3D image using the 2D kernel (applied independently on each slice).
+        filt_real = ndi.convolve(img, kernel_real, mode=self.padding_type)
+        filt_imag = ndi.convolve(img, kernel_imag, mode=self.padding_type)
+        filtered_img = np.hypot(filt_real, filt_imag)
+
+        # Swap axes back if necessary.
+        if z_axis != 2:
+            filtered_img = np.swapaxes(filtered_img, 2, z_axis)
+        return filtered_img
+
+    def filter(self, img):
+        if self.rotation_invariance:
+            thetas = np.arange(0, 2 * np.pi, self.theta)
+            planes = [(0, 1), (0, 2), (1, 2)] if self.orthogonal_planes else [(0, 1)]
+            parameter_space = list(product(thetas, planes))
+            # Compute responses for all combinations.
+            filtered_images = [self._filter(img, delta_theta, plane2d)
+                               for delta_theta, plane2d in parameter_space]
+            # Average over the parameter space.
+            filtered_img = np.mean(np.stack(filtered_images, axis=0), axis=0)
+        else:
+            filtered_img = self._filter(img, self.theta)
+        return filtered_img

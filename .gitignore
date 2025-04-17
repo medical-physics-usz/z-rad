@@ -94,3 +94,4 @@ config.json
 **/*.json
 
 **/__pycache__/
+/tests/test_data

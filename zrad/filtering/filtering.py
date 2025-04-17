@@ -46,7 +46,8 @@ class Filtering:
                 gamma=float(params['gamma']),
                 theta=float(params['theta']),
                 rotation_invariance=params.get('rotation_invariance', False),
-                orthogonal_planes=params.get('orthogonal_planes', False)
+                orthogonal_planes=params.get('orthogonal_planes', False),
+                n_stds=params.get('n_stds', None),
             )
         elif filtering_method == 'Wavelets':
             dim = params['dimensionality']
@@ -71,7 +72,7 @@ class Filtering:
         if self.filtering_method == 'Laplacian of Gaussian':
             try:
                 self.filter.res_mm = float(image.spacing[0])
-            except (AttributeError, ValueError) as e:
+            except (AttributeError, ValueError, TypeError) as e:
                 raise ValueError(f"Invalid image spacing data: {e}")
 
         # Prepare array: (Z,Y,X) -> (Y,X,Z)

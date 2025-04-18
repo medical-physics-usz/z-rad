@@ -1,7 +1,9 @@
 import sys
 from datetime import datetime
+from functools import lru_cache
 from itertools import permutations
 
+import cv2
 import numpy as np
 import pywt
 from scipy import ndimage as ndi
@@ -516,3 +518,190 @@ class Laws:
         else:
             energy_map = None
         return energy_map
+
+
+class Gabor:
+    """
+    Gabor filter bank for 3D volumes, supporting single-θ or rotation-invariant responses.
+
+    This class constructs and applies 2D Gabor filters slice‑wise along any orthogonal plane
+    of a 3D image, caching filter kernels and optionally averaging over orientations and planes.
+    """
+    _PADDING_MAP = {
+        'reflect': cv2.BORDER_REFLECT,
+        'mirror': cv2.BORDER_REFLECT_101,
+        'constant': cv2.BORDER_CONSTANT,
+        'nearest': cv2.BORDER_REPLICATE,
+        'wrap': cv2.BORDER_WRAP,
+    }
+
+    def __init__(self,
+                 padding_type: str,
+                 res_mm: float,
+                 sigma_mm: float,
+                 lambda_mm: float,
+                 gamma: float,
+                 theta: float,
+                 rotation_invariance: bool = False,
+                 orthogonal_planes: bool = False,
+                 n_stds: float = None):
+        """
+        Initialize a Gabor filter instance.
+
+        Parameters
+        ----------
+        padding_type
+            One of {'reflect', 'mirror', 'constant', 'nearest', 'wrap'}; maps to OpenCV borderType.
+        res_mm
+            Image resolution in millimetres per pixel.
+        sigma_mm
+            Gaussian envelope standard deviation in millimetres.
+        lambda_mm
+            Wavelength of the sinusoidal component in millimetres.
+        gamma
+            Spatial aspect ratio (controls ellipticity).
+        theta
+            Angular frequency or step increment (in radians) for orientation(s).
+        rotation_invariance
+            If True, average responses over a full orientation bank.
+        orthogonal_planes
+            If True and rotation_invariance, include (0,2) and (1,2) planes as well.
+        n_stds
+            Number of σ (in pixels) to span for the kernel half‑width; if None, defaults internally.
+
+        Raises
+        ------
+        ValueError
+            If `padding_type` is not a recognized key.
+        """
+
+        try:
+            self._border = self._PADDING_MAP[padding_type]
+        except KeyError:
+            raise ValueError(f"padding_type must be one of {list(self._PADDING_MAP)}, "
+                             f"got {padding_type!r}")
+        self.rotation_invariance = rotation_invariance
+        self.res_mm = res_mm
+        self.theta = theta
+        self.gamma = gamma
+        self.lambda_mm = lambda_mm
+        self.sigma_mm = sigma_mm
+        self.padding_type = padding_type
+        self.orthogonal_planes = orthogonal_planes
+        self.n_stds = n_stds
+
+    # -------------------------------------------------------------------------
+    # 1.  KERNEL FACTORY WITH CACHING
+    # -------------------------------------------------------------------------
+    @lru_cache(maxsize=128)  # theta‑specific, shape‑specific memoisation
+    def _make_kernels(self, theta, ksize):
+        """
+        Build and cache real & imaginary 2D Gabor kernels in pixel units.
+
+        This method enforces an odd `ksize`, converts `sigma_mm` and `lambda_mm`
+        to pixels via `res_mm`, and returns float32 kernels for `psi=0` and `psi=π/2`.
+
+        Parameters
+        ----------
+        theta
+            Filter orientation angle in radians.
+        ksize
+            Proposed kernel dimension (will be bumped to odd if even).
+
+        Returns
+        -------
+        kern_real : np.ndarray
+            Real (cosine-phase) Gabor kernel of shape (ksize, ksize).
+        kern_imag : np.ndarray
+            Imaginary (sine-phase) Gabor kernel of shape (ksize, ksize).
+        """
+        if ksize % 2 == 0:
+            ksize += 1
+        kern_real = cv2.getGaborKernel(
+            (ksize, ksize), self.sigma_mm / self.res_mm,
+            theta, self.lambda_mm / self.res_mm,
+            self.gamma, 0, ktype=cv2.CV_32F)
+        kern_imag = cv2.getGaborKernel(
+            (ksize, ksize), self.sigma_mm / self.res_mm,
+            theta, self.lambda_mm / self.res_mm,
+            self.gamma, np.pi / 2, ktype=cv2.CV_32F)
+        return kern_real, kern_imag
+
+    # -------------------------------------------------------------------------
+    # 2.  INNER WORKHORSE – single θ, single 2‑D plane
+    # -------------------------------------------------------------------------
+    def _filter(self, img, theta, plane2d=(0, 1)):
+        """
+        Compute the magnitude response for one θ on a single 2D plane within a 3D image.
+
+        This method:
+        1. Reorders axes so `plane2d` maps to (y,x).
+        2. Selects a kernel size via `n_stds` or default.
+        3. Convolves each slice with the cached Gabor kernels.
+        4. Returns the magnitude response and restores the original axis order.
+
+        Parameters
+        ----------
+        img
+            Input 3D image array.
+        theta
+            Orientation angle in radians.
+        plane2d
+            Tuple of two axes to filter (e.g., (0,1), (0,2), (1,2)).
+
+        Returns
+        -------
+        filtered_img : np.ndarray
+            3D volume of the same shape as `img`, containing the magnitude response.
+        """
+        # --- a. bring the target plane to (y, x, z) order without copying -----
+        axes = list(plane2d) + [i for i in range(3) if i not in plane2d]
+        img_view = np.transpose(img, axes).astype(np.float32, copy=False)
+
+        # --- b. pick a compact kernel  ------
+        if self.n_stds is None:
+            ksize = int(np.ceil(7 * (self.sigma_mm / self.res_mm))) | 1
+        else:
+            ksize = int(np.ceil(self.n_stds * (self.sigma_mm / self.res_mm))) | 1
+        kern_r, kern_i = self._make_kernels(theta, ksize)
+
+        # --- c. convolve each slice with OpenCV’s highly vectorised filter ----
+        out = np.empty_like(img_view)
+        for z in range(img_view.shape[2]):
+            slice_ = img_view[:, :, z]
+            # ‑ OpenCV is > 2× faster than scipy.ndimage.convolve on small kernels
+            out_r = cv2.filter2D(slice_, -1, kern_r, borderType=self._border)
+            out_i = cv2.filter2D(slice_, -1, kern_i, borderType=self._border)
+            out[:, :, z] = np.hypot(out_r, out_i)
+
+        # --- d. put axes back ------
+        return np.transpose(out, np.argsort(axes))
+
+    # -------------------------------------------------------------------------
+    # 3.  PUBLIC WRAPPER – multiple θ and planes
+    # -------------------------------------------------------------------------
+    def filter(self, img):
+        """
+        Apply the Gabor filter to a 3D image, optionally with rotation invariance.
+
+        If `rotation_invariance=True`, this computes responses at orientations
+        from 0 to 2π with step `theta` and averages over the specified plane(s).
+        By default, only the (0,1) plane is used; if `self.orthogonal_planes=True`,
+        the method also includes the (0,2) and (1,2) planes in the averaging.
+
+        Parameters
+        ----------
+        img : np.ndarray
+            Input 3D image array.
+
+        Returns
+        -------
+        result : np.ndarray
+            Filtered 3D image of the same shape as `img`.
+        """
+        if self.rotation_invariance:
+            thetas = np.arange(0, 2 * np.pi, self.theta, dtype=np.float32)
+            planes = [(0, 1), (0, 2), (1, 2)] if self.orthogonal_planes else [(0, 1)]
+            resp = [self._filter(img, th, pl) for th in thetas for pl in planes]
+            return np.mean(resp, axis=0, dtype=np.float32)
+        return self._filter(img, self.theta)

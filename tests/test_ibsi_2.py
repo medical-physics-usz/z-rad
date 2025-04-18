@@ -203,6 +203,46 @@ def test_ibsi_ii_ph_i_3(load_response_maps, checkerboard_phantom, impulse_phanto
 
 
 @pytest.mark.integration
+@pytest.mark.parametrize(
+    "config,padding,res_mm,sigma_mm,lambda_mm,gamma,theta,rot_inv,orth_planes,n_stds,phantom,truth_file",
+    [
+        ("4.a.1", "constant", 2.0, 10.0,   4.0, 1/2,     np.pi/3, False, False, 11, "impulse_phantom", "4_a_1-ValidCRM.nii"),
+        ("4.a.2", "constant", 2.0, 10.0,   4.0, 1/2,     np.pi/4, True,  True,  11, "impulse_phantom", "4_a_2-ValidCRM.nii"),
+        ("4.b.1", "reflect",  2.0, 20.0,   8.0, 5/2, 5*np.pi/4, False, False, None, "sphere_phantom",  "4_b_1-ValidCRM.nii"),
+        ("4.b.2", "reflect",  2.0, 20.0,   8.0, 5/2,   np.pi/8, True,  True,  None, "sphere_phantom",  "4_b_2-ValidCRM.nii"),
+    ],
+    ids=lambda val, *_: val  # use the config string as the test‐id
+)
+def test_ibsi_ii_ph_i_4(
+    config, padding, res_mm, sigma_mm, lambda_mm, gamma, theta,
+    rot_inv, orth_planes, n_stds, phantom, truth_file,
+    impulse_phantom, sphere_phantom
+):
+    # pick the right fixture
+    phantom_data = {'impulse_phantom': impulse_phantom,
+                    'sphere_phantom': sphere_phantom}[phantom]
+
+    filtering = Filtering(
+        filtering_method='Gabor',
+        padding_type=padding,
+        res_mm=res_mm,
+        sigma_mm=sigma_mm,
+        lambda_mm=lambda_mm,
+        gamma=gamma,
+        theta=theta,
+        rotation_invariance=rot_inv,
+        orthogonal_planes=orth_planes,
+        n_stds=n_stds
+    )
+    filtered_image = filtering.apply_filter(phantom_data)
+
+    response_map = Image()
+    response_map.read_nifti_image(f'tests/test_data/IBSI_II/Ph_I/response_maps/{truth_file}')
+
+    ibsi_ii_ph_i_validation(filtered_image.array, response_map.array, config)
+
+
+@pytest.mark.integration
 def test_ibsi_ii_ph_i_5(load_response_maps, impulse_phantom):
 
     for config, params_and_images in {'5.a.1': ['constant', 'LHL', False, impulse_phantom, '5_a_1-ValidCRM.nii'],
@@ -394,6 +434,57 @@ def test_ibsi_ii_ph_ii_4b(res3d_1mm_image_spline, res3d_1mm_mask_linear):
     radiomics.extract_features(image=res3d_1mm_image_spline, filtered_image=filtered_image, mask=res3d_1mm_mask_linear)
     ibsi_ii_ph_ii_validation(ibsi_features, radiomics.features_)
 
+# Gabor
+@pytest.mark.integration
+def test_ibsi_ii_ph_ii_5a(ct_phantom_image, ct_phantom_mask):
+    ibsi_features = ibsi_ii_feature_tolerances('5.A')
+
+    filtering = Filtering(filtering_method='Gabor',
+                          padding_type='reflect',
+                          dimensionality='2D',
+                          res_mm=0.977,
+                          sigma_mm=5.0,
+                          lambda_mm=2.0,
+                          gamma=3/2,
+                          theta=np.pi/8,
+                          rotation_invariance=True,
+                          orthogonal_planes=False)
+
+    filtered_image = filtering.apply_filter(ct_phantom_image)
+
+    radiomics = Radiomics(aggr_dim='2D',
+                          aggr_method='AVER',
+                          intensity_range=[-1000, 400],
+                          bin_size=25)
+
+    radiomics.extract_features(image=ct_phantom_image, filtered_image=filtered_image, mask=ct_phantom_mask)
+    ibsi_ii_ph_ii_validation(ibsi_features, radiomics.features_)
+
+
+@pytest.mark.integration
+def test_ibsi_ii_ph_ii_5b(res3d_1mm_image_spline, res3d_1mm_mask_linear):
+    ibsi_features = ibsi_ii_feature_tolerances('5.B')
+
+    filtering = Filtering(filtering_method='Gabor',
+                          padding_type="reflect",
+                          dimensionality="3D",
+                          res_mm=1.0,
+                          sigma_mm=5.0,
+                          lambda_mm=2.0,
+                          gamma=3/2,
+                          theta=np.pi/8,
+                          rotation_invariance=True,
+                          orthogonal_planes=True)
+
+    filtered_image = filtering.apply_filter(res3d_1mm_image_spline)
+
+    radiomics = Radiomics(aggr_dim='2D',
+                          aggr_method='AVER',
+                          intensity_range=[-1000, 400],
+                          bin_size=25)
+
+    radiomics.extract_features(image=res3d_1mm_image_spline, filtered_image=filtered_image, mask=res3d_1mm_mask_linear)
+    ibsi_ii_ph_ii_validation(ibsi_features, radiomics.features_)
 
 @pytest.mark.integration
 def test_ibsi_ii_ph_ii_6a(ct_phantom_image, ct_phantom_mask):

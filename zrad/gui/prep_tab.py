@@ -54,6 +54,8 @@ def process_patient_folder(input_params, patient_folder, structure_set):
             input_params['rtstruct_path'] = rtstruct_paths[0]['file_path']
             if input_params["use_all_structures"]:
                 structure_set = get_all_structure_names(input_params['rtstruct_path'])
+        else:
+            input_params['rtstruct_path'] = None
 
     if structure_set:
         mask_union = None

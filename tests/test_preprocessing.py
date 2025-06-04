@@ -10,16 +10,16 @@ from zrad.image import Image
 @pytest.mark.unit
 def test_constructor_valid_inputs():
     preprocessing = Preprocessing(
-        input_imaging_modality='CT',
+        input_imaging_modality="CT",
         resample_resolution=2.0,
-        resample_dimension='3D',
-        interpolation_method='Linear',
-        interpolation_threshold=0.5
+        resample_dimension="3D",
+        interpolation_method="Linear",
+        interpolation_threshold=0.5,
     )
-    assert preprocessing.input_imaging_modality == 'CT'
+    assert preprocessing.input_imaging_modality == "CT"
     assert preprocessing.resample_resolution == 2.0
-    assert preprocessing.resample_dimension == '3D'
-    assert preprocessing.interpolation_method == 'Linear'
+    assert preprocessing.resample_dimension == "3D"
+    assert preprocessing.interpolation_method == "Linear"
     assert preprocessing.interpolation_threshold == 0.5
 
 
@@ -28,10 +28,10 @@ def test_constructor_valid_inputs():
 def test_constructor_invalid_resolution(invalid_resolution):
     with pytest.raises(ValueError) as exc_info:
         Preprocessing(
-            input_imaging_modality='CT',
+            input_imaging_modality="CT",
             resample_resolution=invalid_resolution,
-            resample_dimension='2D',
-            interpolation_method='Linear'
+            resample_dimension="2D",
+            interpolation_method="Linear",
         )
     assert "must be a positive int or float" in str(exc_info.value)
 
@@ -41,10 +41,10 @@ def test_constructor_invalid_resolution(invalid_resolution):
 def test_constructor_invalid_dimension(invalid_dimension):
     with pytest.raises(ValueError) as exc_info:
         Preprocessing(
-            input_imaging_modality='CT',
+            input_imaging_modality="CT",
             resample_resolution=2.0,
             resample_dimension=invalid_dimension,
-            interpolation_method='Linear'
+            interpolation_method="Linear",
         )
     assert "Resample dimension" in str(exc_info.value)
     assert "is not '2D' or '3D'." in str(exc_info.value)
@@ -52,17 +52,17 @@ def test_constructor_invalid_dimension(invalid_dimension):
 
 @pytest.mark.unit
 def test_get_interpolator_supported_method():
-    interpolator = Preprocessing.get_interpolator('Linear')
+    interpolator = Preprocessing.get_interpolator("Linear")
     assert interpolator == sitk.sitkLinear
 
-    interpolator = Preprocessing.get_interpolator('BSpline')
+    interpolator = Preprocessing.get_interpolator("BSpline")
     assert interpolator == sitk.sitkBSpline
 
 
 @pytest.mark.unit
 def test_get_interpolator_unsupported_method():
     with pytest.raises(ValueError) as exc_info:
-        Preprocessing.get_interpolator('SomeUnsupportedMethod')
+        Preprocessing.get_interpolator("SomeUnsupportedMethod")
     assert "is not supported" in str(exc_info.value)
 
 
@@ -100,18 +100,18 @@ def test_resample_image_2d():
         origin=[0.0, 0.0, 0.0],
         spacing=[1.0, 1.0, 2.0],  # We can assume (x, y, z) or (y, x, z) as needed
         direction=[1, 0, 0, 0, 1, 0, 0, 0, 1],
-        shape=(1, 10, 10)
+        shape=(1, 10, 10),
     )
 
     preprocessing = Preprocessing(
-        input_imaging_modality='CT',
+        input_imaging_modality="CT",
         resample_resolution=2.0,
-        resample_dimension='2D',   # We'll only change x and y spacing
-        interpolation_method='Linear',
-        interpolation_threshold=0.5
+        resample_dimension="2D",  # We'll only change x and y spacing
+        interpolation_method="Linear",
+        interpolation_threshold=0.5,
     )
 
-    resampled_image = preprocessing.resample(original_image, image_type='image')
+    resampled_image = preprocessing.resample(original_image, image_type="image")
 
     # Verify dimensions, shape, spacing have changed for x,y but not for z
     assert resampled_image.shape[0] == 1  # z dimension unchanged
@@ -132,30 +132,51 @@ def test_resample_mask_3d():
     Create a small 3D mask image and verify thresholding is applied
     when resampling.
     """
-    dummy_mask_array = np.array([[[0.4, 0.6],
-                                  [1.0, 0.2]],
-                                 [[0.9, 0.5],
-                                  [0.2, 0.8]]],
-                                dtype=np.float64)
+    dummy_mask_array = np.array(
+        [[[0.4, 0.6], [1.0, 0.2]], [[0.9, 0.5], [0.2, 0.8]]], dtype=np.float64
+    )
     # shape = (2, 2, 2) in z,y,x order
     original_mask = Image(
         array=dummy_mask_array,
         origin=[0.0, 0.0, 0.0],
         spacing=[1.0, 1.0, 1.0],
         direction=[1, 0, 0, 0, 1, 0, 0, 0, 1],
-        shape=dummy_mask_array.shape
+        shape=dummy_mask_array.shape,
     )
 
     preprocessing = Preprocessing(
-        input_imaging_modality='CT',  # Modality is not as critical for masks
+        input_imaging_modality="CT",  # Modality is not as critical for masks
         resample_resolution=2.0,
-        resample_dimension='3D',
-        interpolation_method='Linear',
-        interpolation_threshold=0.5
+        resample_dimension="3D",
+        interpolation_method="Linear",
+        interpolation_threshold=0.5,
     )
 
-    resampled_mask = preprocessing.resample(original_mask, image_type='mask')
+    resampled_mask = preprocessing.resample(original_mask, image_type="mask")
 
     # Ensure the resampled array is in {0,1} due to the thresholding
     unique_values = np.unique(resampled_mask.array)
-    assert all(val in [0, 1] for val in unique_values), "Mask should only have 0 or 1 after thresholding"
+    assert all(
+        val in [0, 1] for val in unique_values
+    ), "Mask should only have 0 or 1 after thresholding"
+
+
+@pytest.mark.unit
+def test_resample_mask_without_threshold():
+    mask = Image(
+        array=np.ones((1, 5, 5), dtype=np.float64),
+        origin=[0.0, 0.0, 0.0],
+        spacing=[1.0, 1.0, 1.0],
+        direction=[1, 0, 0, 0, 1, 0, 0, 0, 1],
+        shape=(1, 5, 5),
+    )
+
+    preprocessing = Preprocessing(
+        input_imaging_modality="CT",
+        resample_resolution=2.0,
+        resample_dimension="3D",
+        interpolation_method="Linear",
+    )
+
+    with pytest.raises(ValueError):
+        preprocessing.resample(mask, image_type="mask")

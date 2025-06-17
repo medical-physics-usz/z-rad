@@ -94,4 +94,8 @@ config.json
 **/*.json
 
 **/__pycache__/
-/tests/test_data
+
+# DICOM and NIfTI files
+*.dcm
+*.nii
+*.nii.gz

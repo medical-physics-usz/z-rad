@@ -159,6 +159,15 @@ def validate_z_spacing(dicom_files):
             raise DataStructureError(error_msg)
 
 
+def calc_elapsed_time(ds, decay_constant, acquisition_time, injection_time):
+    frame_reference_time = float(ds.FrameReferenceTime) / 1000
+    decay_during_frame = decay_constant * ds.ActualFrameDuration / 1000
+    avg_count_rate_time = (1 / decay_constant) * np.log(
+        decay_during_frame / (1 - np.exp(-decay_during_frame)))
+
+    return (acquisition_time - injection_time).total_seconds() + avg_count_rate_time - frame_reference_time
+
+
 def validate_pet_dicom_tags(dicom_files):
     for dcm_file in dicom_files:
         ds = dcm_file['ds']
@@ -189,11 +198,8 @@ def validate_pet_dicom_tags(dicom_files):
                     acquisition_time = parse_time(ds.AcquisitionTime).replace(year=injection_time.year,
                                                                               month=injection_time.month,
                                                                               day=injection_time.day)
-                    frame_reference_time = float(ds.FrameReferenceTime) / 1000
-                    decay_during_frame = decay_constant * ds.ActualFrameDuration / 1000
-                    avg_count_rate_time = (1 / decay_constant) * np.log(decay_during_frame / (1 - np.exp(-decay_during_frame)))
 
-                    elapsed_time = (acquisition_time - injection_time).total_seconds() + avg_count_rate_time - frame_reference_time
+                    elapsed_time = calc_elapsed_time(ds, decay_constant, acquisition_time, injection_time)
                 elif 'SIEMENS' in ds.Manufacturer.upper() or 'CPS' in ds.Manufacturer.upper():
                     try:
                         elapsed_time = (
@@ -207,12 +213,7 @@ def validate_pet_dicom_tags(dicom_files):
                                                                                   month=injection_time.month,
                                                                                   day=injection_time.day)
 
-                        frame_reference_time = float(ds.FrameReferenceTime) / 1000
-                        decay_during_frame = decay_constant * ds.ActualFrameDuration / 1000
-                        avg_count_rate_time = (1 / decay_constant) * np.log(
-                            decay_during_frame / (1 - np.exp(-decay_during_frame)))
-
-                        elapsed_time = (acquisition_time - injection_time).total_seconds() + avg_count_rate_time - frame_reference_time
+                        elapsed_time = calc_elapsed_time(ds, decay_constant, acquisition_time, injection_time)
                 elif 'GE' in ds.Manufacturer.upper():
                     try:
                         elapsed_time = (
@@ -276,12 +277,8 @@ def apply_suv_correction(dicom_files, suv_image):
                     acquisition_time = parse_time(ds.AcquisitionTime).replace(year=injection_time.year,
                                                                               month=injection_time.month,
                                                                               day=injection_time.day)
-                    frame_reference_time = float(ds.FrameReferenceTime) / 1000
-                    decay_during_frame = decay_constant * ds.ActualFrameDuration / 1000
-                    avg_count_rate_time = (1 / decay_constant) * np.log(
-                        decay_during_frame / (1 - np.exp(-decay_during_frame)))
 
-                    elapsed_time = (acquisition_time - injection_time).total_seconds() + avg_count_rate_time - frame_reference_time
+                    elapsed_time = calc_elapsed_time(ds, decay_constant, acquisition_time, injection_time)
 
                 elif 'SIEMENS' in manufacturer or 'CPS' in manufacturer:
                     try:
@@ -296,12 +293,7 @@ def apply_suv_correction(dicom_files, suv_image):
                                                                                   month=injection_time.month,
                                                                                   day=injection_time.day)
 
-                        frame_reference_time = float(ds.FrameReferenceTime) / 1000
-                        decay_during_frame = decay_constant * ds.ActualFrameDuration / 1000
-                        avg_count_rate_time = (1 / decay_constant) * np.log(
-                            decay_during_frame / (1 - np.exp(-decay_during_frame)))
-
-                        elapsed_time = (acquisition_time - injection_time).total_seconds() + avg_count_rate_time - frame_reference_time
+                        elapsed_time = calc_elapsed_time(ds, decay_constant, acquisition_time, injection_time)
                 elif 'GE' in manufacturer:
                     try:
                         elapsed_time = (

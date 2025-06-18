@@ -1,8 +1,5 @@
 import pytest
-import numpy as np
-
 from zrad.filtering.filtering import Filtering
-from zrad.image import Image
 
 
 @pytest.mark.unit

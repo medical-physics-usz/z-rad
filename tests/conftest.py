@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 
-def _acquire_lock(lock_path: Path, timeout: float = 60.0, check_interval: float = 0.1):
+def _acquire_file_lock(lock_path: Path, timeout: float = 60.0, check_interval: float = 0.1):
     """
     Acquire an exclusive file-based lock by creating a lock file.
 
@@ -30,7 +30,7 @@ def _acquire_lock(lock_path: Path, timeout: float = 60.0, check_interval: float 
             time.sleep(check_interval)
 
 
-def _release_lock(lock_path: Path):
+def _release_file_lock(lock_path: Path):
     """
     Release a previously acquired lock by deleting the lock file.
 
@@ -90,14 +90,14 @@ def _prepare_data_dir(zip_path: Path, extract_dir: Path):
     extraction_flag = extract_dir.joinpath('.extraction_finished.flag')
     lock_file = extract_dir.with_suffix('.lock')
 
-    _acquire_lock(lock_file)
+    _acquire_file_lock(lock_file)
     try:
         if not extraction_flag.exists():
             if not extract_dir.exists():
                 _extract_zip_to_dir(zip_path, extract_dir)
             extraction_flag.touch()
     finally:
-        _release_lock(lock_file)
+        _release_file_lock(lock_file)
 
     while not extraction_flag.exists():
         time.sleep(1)

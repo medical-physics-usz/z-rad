@@ -159,12 +159,18 @@ def validate_z_spacing(dicom_files):
             raise DataStructureError(error_msg)
 
 
+def calc_elapsed_time(ds, decay_constant, acquisition_time, injection_time):
+    frame_reference_time = float(ds.FrameReferenceTime) / 1000
+    decay_during_frame = decay_constant * ds.ActualFrameDuration / 1000
+    avg_count_rate_time = (1 / decay_constant) * np.log(
+        decay_during_frame / (1 - np.exp(-decay_during_frame)))
+
+    return (acquisition_time - injection_time).total_seconds() + avg_count_rate_time - frame_reference_time
+
+
 def validate_pet_dicom_tags(dicom_files):
-    time_mismatch = False
-    acquisition_time_list = []
     for dcm_file in dicom_files:
         ds = dcm_file['ds']
-        acquisition_time_list.append(parse_time(ds.AcquisitionTime))
         image_id = dcm_file['file_path']
 
         try:
@@ -183,63 +189,54 @@ def validate_pet_dicom_tags(dicom_files):
         if ds.Units == 'BQML':
             injection_time = parse_time(
                 ds.RadiopharmaceuticalInformationSequence[0].RadiopharmaceuticalStartTime)
+            half_life = float(ds.RadiopharmaceuticalInformationSequence[0].RadionuclideHalfLife)
+            decay_constant = np.log(2) / half_life
+
             if ds.DecayCorrection == 'START':
                 if 'PHILIPS' in ds.Manufacturer.upper():
-                    acquisition_time = np.min(acquisition_time_list)
+
+                    acquisition_time = parse_time(ds.AcquisitionTime).replace(year=injection_time.year,
+                                                                              month=injection_time.month,
+                                                                              day=injection_time.day)
+
+                    elapsed_time = calc_elapsed_time(ds, decay_constant, acquisition_time, injection_time)
                 elif 'SIEMENS' in ds.Manufacturer.upper() or 'CPS' in ds.Manufacturer.upper():
                     try:
-                        acquisition_time = parse_time(ds[(0x0071, 0x1022)].value).replace(
-                            year=injection_time.year,
-                            month=injection_time.month,
-                            day=injection_time.day)
-                        if (acquisition_time != np.min(acquisition_time_list)
-                                or acquisition_time != parse_time(ds.SeriesTime) and not time_mismatch):
-                            time_mismatch = True
-                            warning_msg = f"For patient's {image_id} image, there is a mismatch between the earliest acquisition time, series time and Siemens private tag (0071, 1022). Time from the Siemens private tag was used."
-                            warnings.warn(warning_msg, DataStructureWarning)
-                    except (KeyError, TypeError):
-                        acquisition_time = np.min(acquisition_time_list)
-                        if not time_mismatch:
-                            time_mismatch = True
-                            warning_msg = f"For patient's {image_id} image, private Siemens tag (0071, 1022) is not present. The earliest of all acquisition times was used."
-                            warnings.warn(warning_msg, DataStructureWarning)
+                        elapsed_time = (
+                                    parse_time(ds[(0x0071, 0x1022)].value).replace(year=injection_time.year,
+                                                                                   month=injection_time.month,
+                                                                                   day=injection_time.day)
+                                    - injection_time).total_seconds()
 
-                        if acquisition_time != parse_time(ds.SeriesTime) and not time_mismatch:
-                            time_mismatch = True
-                            warning_msg = f"For patient's {image_id} image, a mismatch present between the earliest acquisition time and series time. Earliest acquisition time was used."
-                            warnings.warn(warning_msg, DataStructureWarning)
+                    except (KeyError, TypeError):
+                        acquisition_time = parse_time(ds.AcquisitionTime).replace(year=injection_time.year,
+                                                                                  month=injection_time.month,
+                                                                                  day=injection_time.day)
+
+                        elapsed_time = calc_elapsed_time(ds, decay_constant, acquisition_time, injection_time)
                 elif 'GE' in ds.Manufacturer.upper():
                     try:
-                        acquisition_time = parse_time(ds[(0x0009, 0x100d)].value).replace(
-                            year=injection_time.year,
-                            month=injection_time.month,
-                            day=injection_time.day)
-                        if (acquisition_time != np.min(acquisition_time_list)
-                                or acquisition_time != parse_time(ds.SeriesTime) and not time_mismatch):
-                            time_mismatch = True
-                            warning_msg = f"For patient's {image_id} image, a mismatch present between the earliest acquisition time, series time, and GE private tag. Time from the GE private tag was used."
-                            warnings.warn(warning_msg, DataStructureWarning)
+                        elapsed_time = (
+                                    parse_time(ds[(0x0009, 0x100d)].value).replace(year=injection_time.year,
+                                                                                   month=injection_time.month,
+                                                                                   day=injection_time.day)
+                                    - injection_time).total_seconds()
                     except (KeyError, TypeError):
-                        acquisition_time = np.min(acquisition_time_list)
-                        if not time_mismatch:
-                            time_mismatch = True
-                            warning_msg = f"For patient's {image_id} image, private GE tag (0009, 100d) is not present. The earliest of all acquisition times was used."
-                            warnings.warn(warning_msg, DataStructureWarning)
-                        if acquisition_time != parse_time(ds.SeriesTime) and not time_mismatch:
-                            time_mismatch = True
-                            warning_msg = f"For patient's {image_id} image, a mismatch present between the earliest acquisition time and series time. Earliest acquisition time was used."
-                            warnings.warn(warning_msg, DataStructureWarning)
+                        acquisition_time = parse_time(ds.AcquisitionTime).replace(year=injection_time.year,
+                                                                                  month=injection_time.month,
+                                                                                  day=injection_time.day)
+                        frame_reference_time = float(ds.FrameReferenceTime) / 1000
+
+                        elapsed_time = (acquisition_time - injection_time).total_seconds() - frame_reference_time
                 else:
                     warning_msg = f"For patient's {image_id} image, an unknown PET scaner manufacturer is present. Z-Rad only supports Philips, Siemens, and GE."
                     raise DataStructureError(warning_msg)
 
             elif ds.DecayCorrection == 'ADMIN':
-                acquisition_time = injection_time
-
+                elapsed_time = 0
             else:
                 warning_msg = f"For patient's {image_id} image, An unsupported Decay Correction {ds.DecayCorrection} is present. Only supported are 'START' and 'ADMIN'. Patient is excluded from the analysis."
                 raise DataStructureError(warning_msg)
-            elapsed_time = (acquisition_time - injection_time).total_seconds()
             if elapsed_time < 0:
                 error_msg = f"For patient's {image_id} image, patient is excluded from the analysis due to the negative time difference in the decay factor."
                 raise DataStructureError(error_msg)
@@ -247,13 +244,8 @@ def validate_pet_dicom_tags(dicom_files):
                 warning_msg = f"Only {abs(elapsed_time) / 60} minutes after the injection."
                 warnings.warn(warning_msg, DataStructureWarning)
         elif ds.Units == 'CNTS' and 'PHILIPS' in ds.Manufacturer.upper():
-            try:
-                activity_scale_factor = ds[(0x7053, 0x1009)].value
-                if activity_scale_factor == 0.0:
-                    error_msg = f"For patient's {image_id} image, patient is excluded, Philips private activity scale factor (7053, 1009) = 0. (PET units CNTS)"
-                    raise DataStructureError(error_msg)
-            except (KeyError, TypeError):
-                error_msg = f"For patient's {image_id} image, patient is excluded, Philips private activity scale factor (7053, 1009) is missing. (PET units CNTS)."
+            if not (((0x7053, 0x1009) in ds and ds[(0x7053, 0x1009)].value != 0) or ((0x7053, 0x1000) in ds and ds[(0x7053, 0x1000)].value != 0)):
+                error_msg = f"For patient's {image_id} image, patient is excluded, Philips scale factors not present (PET units CNTS)"
                 raise DataStructureError(error_msg)
         elif ds.Units == 'GML':
             if (0x0054, 0x1006) in ds:
@@ -267,59 +259,91 @@ def validate_pet_dicom_tags(dicom_files):
 
 def apply_suv_correction(dicom_files, suv_image):
 
-    def process_single_slice(dicom_file_path, min_acquisition_time):
+    def process_single_slice(dicom_file_path):
 
         def process_gml(pixel_array_units):
             return pixel_array_units
 
-        def process_bqml(activity_concentration, ds, min_acquisition_time):
+        def process_bqml(activity_concentration, ds):
             injection_time = parse_time(ds.RadiopharmaceuticalInformationSequence[0].RadiopharmaceuticalStartTime)
             patient_weight = float(ds.PatientWeight)
             injected_dose = float(ds.RadiopharmaceuticalInformationSequence[0].RadionuclideTotalDose)
             half_life = float(ds.RadiopharmaceuticalInformationSequence[0].RadionuclideHalfLife)
+            decay_constant = np.log(2) / half_life
             manufacturer = ds.Manufacturer.upper()
 
             if ds.DecayCorrection == 'START':
                 if 'PHILIPS' in manufacturer:
-                    acquisition_time = min_acquisition_time
+                    acquisition_time = parse_time(ds.AcquisitionTime).replace(year=injection_time.year,
+                                                                              month=injection_time.month,
+                                                                              day=injection_time.day)
+
+                    elapsed_time = calc_elapsed_time(ds, decay_constant, acquisition_time, injection_time)
+
                 elif 'SIEMENS' in manufacturer or 'CPS' in manufacturer:
                     try:
-                        acquisition_time = parse_time(ds[(0x0071, 0x1022)].value).replace(year=injection_time.year,
-                                                                                          month=injection_time.month,
-                                                                                          day=injection_time.day)
+                        elapsed_time = (
+                                parse_time(ds[(0x0071, 0x1022)].value).replace(year=injection_time.year,
+                                                                               month=injection_time.month,
+                                                                               day=injection_time.day)
+                                - injection_time).total_seconds()
+
                     except (KeyError, TypeError):
-                        acquisition_time = min_acquisition_time
+                        acquisition_time = parse_time(ds.AcquisitionTime).replace(year=injection_time.year,
+                                                                                  month=injection_time.month,
+                                                                                  day=injection_time.day)
+
+                        elapsed_time = calc_elapsed_time(ds, decay_constant, acquisition_time, injection_time)
                 elif 'GE' in manufacturer:
                     try:
-                        acquisition_time = parse_time(ds[(0x0009, 0x100d)].value).replace(year=injection_time.year,
-                                                                                          month=injection_time.month,
-                                                                                          day=injection_time.day)
+                        elapsed_time = (
+                                parse_time(ds[(0x0009, 0x100d)].value).replace(year=injection_time.year,
+                                                                               month=injection_time.month,
+                                                                               day=injection_time.day)
+                                - injection_time).total_seconds()
                     except (KeyError, TypeError):
-                        acquisition_time = min_acquisition_time
+                        acquisition_time = parse_time(ds.AcquisitionTime).replace(year=injection_time.year,
+                                                                                  month=injection_time.month,
+                                                                                  day=injection_time.day)
+                        frame_reference_time = float(ds.FrameReferenceTime) / 1000
+
+                        elapsed_time = (acquisition_time - injection_time).total_seconds() - frame_reference_time
                 else:
                     error_msg = f"Vendor {ds.Manufacturer} is not supported with BQML units!"
                     raise DataStructureError(error_msg)
             elif ds.DecayCorrection == 'ADMIN':
-                acquisition_time = injection_time
+                elapsed_time = 0
             else:
                 error_msg = f"Decay correction {ds.DecayCorrection} is not supported!"
                 raise DataStructureError(error_msg)
 
-            elapsed_time = (acquisition_time - injection_time).total_seconds()
             decay_factor = np.exp(-1 * ((np.log(2) * elapsed_time) / half_life))
             decay_corrected_dose = injected_dose * decay_factor
             suv = activity_concentration / (decay_corrected_dose / (patient_weight * 1000))
 
             return suv
 
-        def process_cnts(pixel_array_units, ds, min_acquisition_time):
+        def process_cnts(pixel_array_units, ds):
             if 'PHILIPS' in ds.Manufacturer.upper():
-                activity_concentration_bqml = pixel_array_units * ds[(0x7053, 0x1009)].value
-                suv = process_bqml(activity_concentration_bqml, ds, min_acquisition_time)
+
+                if (0x7053, 0x1009) in ds and ds[(0x7053, 0x1009)].value != 0:
+                    activity_concentration_bqml = pixel_array_units * ds[(0x7053, 0x1009)].value
+                    suv = process_bqml(activity_concentration_bqml, ds)
+
+                    return suv
+
+                elif (0x7053, 0x1000) in ds and ds[(0x7053, 0x1000)].value != 0:
+                    suv = pixel_array_units * ds[(0x7053, 0x1000)].value
+
+                    return suv
+
+                else:
+                    error_msg = f"Philips-specific scaling factors not present!"
+                    raise DataStructureError(error_msg)
+
             else:
                 error_msg = f"Vendor {ds.Manufacturer} is not supported with CNTS units!"
                 raise DataStructureError(error_msg)
-            return suv
 
         ds = pydicom.dcmread(dicom_file_path)
         units = ds.Units
@@ -335,9 +359,9 @@ def apply_suv_correction(dicom_files, suv_image):
             else:
                 suv = process_gml(pixel_array_units)
         elif units == 'BQML':
-            suv = process_bqml(pixel_array_units, ds, min_acquisition_time)
+            suv = process_bqml(pixel_array_units, ds)
         elif units == 'CNTS':
-            suv = process_cnts(pixel_array_units, ds, min_acquisition_time)
+            suv = process_cnts(pixel_array_units, ds)
         else:
             error_msg = f"Units {units} are not supported!"
             raise DataStructureError(error_msg)
@@ -345,15 +369,10 @@ def apply_suv_correction(dicom_files, suv_image):
         return suv.T
 
     intensity_array = np.zeros(suv_image.GetSize())
-    acquisition_time_list = []
-    for dicom_file in dicom_files:
-        dcm_data = dicom_file['ds']
-        acquisition_time_list.append(parse_time(dcm_data.AcquisitionTime))
-    min_acquisition_time = np.min(acquisition_time_list)
 
     dicom_files = sorted(dicom_files, key=lambda f: float(f['ds'].ImagePositionPatient[2]))
     for z_slice_id, dicom_file in enumerate(dicom_files):
-        intensity_array[:, :, z_slice_id] = process_single_slice(dicom_file['file_path'], min_acquisition_time)
+        intensity_array[:, :, z_slice_id] = process_single_slice(dicom_file['file_path'])
 
     # Flip from head to toe
     intensity_image = sitk.GetImageFromArray(intensity_array.T)

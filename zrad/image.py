@@ -398,9 +398,18 @@ def process_dicom_series(directory, dicom_files):
 
         if ds.Modality in ['CT', 'PT', 'MR']:
             pixel_spacing = ds.PixelSpacing
-            slice_z_origin.append(float(ds.ImagePositionPatient[2]))
 
-        if ds.Modality == 'MG':
+            # Use full 3D position
+            iop = np.array(ds.ImageOrientationPatient, dtype=float)  # 6 values
+            row_cosines = iop[:3]
+            col_cosines = iop[3:]
+            normal = np.cross(row_cosines, col_cosines)  # image plane normal
+
+            # Project position onto normal vector
+            distance_along_normal = np.dot(np.array(ds.ImagePositionPatient, dtype=float), normal)
+            slice_z_origin.append(distance_along_normal)
+
+        elif ds.Modality == 'MG':
             pixel_spacing = ds.ImagerPixelSpacing
             slice_z_origin.append(ds.BodyPartThickness)
             image.SetOrigin([0, 0, 0])
@@ -408,8 +417,10 @@ def process_dicom_series(directory, dicom_files):
 
     slice_z_origin = sorted(slice_z_origin)
     if len(slice_z_origin) > 1:
-        slice_thickness = abs(np.median([slice_z_origin[i] - slice_z_origin[i + 1]
-                                         for i in range(len(slice_z_origin) - 1)]))
+        slice_thickness = abs(np.median([
+            slice_z_origin[i + 1] - slice_z_origin[i]
+            for i in range(len(slice_z_origin) - 1)
+        ]))
     elif len(slice_z_origin) == 1:
         slice_thickness = slice_z_origin[0]
 

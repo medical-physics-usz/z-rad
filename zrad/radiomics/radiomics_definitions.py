@@ -2629,28 +2629,38 @@ class NGTDM:
         self.strength_list = []
 
     def calc_ngtd_3d_matrix(self):
-        ngtdm = np.zeros((self.lvl, 2))
-        image = self.image
+        img = self.image
+        # boolean mask of valid voxels
+        valid = ~np.isnan(img)
+        # fill NaNs with zero for the sum convolution
+        img_filled = np.where(valid, img, 0.0)
 
-        # Define 3x3x3 kernel for convolution (excluding center voxel)
-        footprint = np.ones((3, 3, 3), dtype=np.float32)
-        footprint[1, 1, 1] = 0  # Exclude center voxel
+        # 3×3×3 kernel of ones, with center zeroed
+        kernel = np.ones((3, 3, 3), dtype=np.int8)
+        kernel[1, 1, 1] = 0
 
-        # Count number of valid neighbors per voxel
-        valid_neighbors = np.isfinite(image).astype(np.float32)
-        neighbor_count = convolve(valid_neighbors, footprint, mode='constant', cval=0)
+        # sum of neighbor intensities
+        neighbor_sum = convolve(img_filled, kernel, mode='constant', cval=0.0)
+        # count of valid neighbors
+        neighbor_count = convolve(valid.astype(np.int8), kernel, mode='constant', cval=0)
 
-        # Compute sum of valid neighbors
-        neighbor_sum = convolve(np.nan_to_num(image, nan=0), footprint, mode='constant', cval=0)
+        # prepare output
+        ngtdm = np.zeros((self.lvl, 2), dtype=np.float64)
 
-        # Compute neighborhood mean (avoid division by zero)
-        mean_neighbors = np.where(neighbor_count > 0, neighbor_sum / neighbor_count, np.nan)
-
-        # Vectorized computation for all levels
         for lvl in range(self.lvl):
-            mask = (image == lvl) & np.isfinite(mean_neighbors)
-            n_i = np.count_nonzero(mask)
-            s_i = np.nansum(np.abs(lvl - mean_neighbors[mask]))
+            # voxels at this grey‐level
+            mask_lvl = (img == lvl)
+            # require at least one valid neighbor
+            mask_good = mask_lvl & (neighbor_count > 0)
+
+            n_i = np.count_nonzero(mask_good)
+            if n_i > 0:
+                # mean neighbor value at each voxel
+                mean_nb = neighbor_sum[mask_good] / neighbor_count[mask_good]
+                # accumulate |i - μ_k|
+                s_i = np.sum(np.abs(lvl - mean_nb))
+            else:
+                s_i = 0.0
 
             ngtdm[lvl, 0] = n_i
             ngtdm[lvl, 1] = s_i
@@ -2658,62 +2668,51 @@ class NGTDM:
         self.ngtd_3d_matrix = ngtdm
 
     def calc_ngtd_2d_matrices(self):
+        # 3×3 kernel of ones with center zeroed
+        kernel2d = np.ones((3,3), dtype=np.int8)
+        kernel2d[1,1] = 0
 
-        def calc_slice_ngtdm(matrix, n_bits):
-            ngtdm_slice = np.zeros((n_bits, 2))
+        slice_matrices = []
+        slice_voxel_counts = []
 
-            # Define valid 8-neighbor offsets (precomputed)
-            valid_offsets = np.array([(-1, -1), (-1, 0), (-1, 1),
-                                      (0, -1), (0, 1),
-                                      (1, -1), (1, 0), (1, 1)])
+        for z in self.range_z:
+            sl = self.image[:, :, z]
+            valid = ~np.isnan(sl)
+            n_vox = valid.sum()
+            if n_vox == 0:
+                continue
 
-            rows, cols = matrix.shape
-            nan_mask = np.isnan(matrix)
+            # record how many ROI voxels in this slice
+            slice_voxel_counts.append(int(n_vox))
 
-            # Create padded matrix to handle edge cases without if-statements
-            padded_matrix = np.pad(matrix, pad_width=1, mode='constant', constant_values=np.nan)
-            padded_nan_mask = np.isnan(padded_matrix)
+            # replace NaNs with zero so they don't contribute to the sum
+            filled = np.where(valid, sl, 0.0)
 
-            # Get all pixel coordinates (excluding padding)
-            x_indices, y_indices = np.where(~nan_mask)
+            # convolve to get per‑pixel neighbor sums and counts
+            neighbor_sum   = convolve(filled,       kernel2d, mode='constant', cval=0.0)
+            neighbor_count = convolve(valid.astype(np.int8),
+                                     kernel2d, mode='constant', cval=0)
 
-            # Create 8-neighbor coordinates using broadcasting
-            neighbor_x = x_indices[:, None] + valid_offsets[:, 0] + 1  # +1 for padding offset
-            neighbor_y = y_indices[:, None] + valid_offsets[:, 1] + 1
-
-            # Extract neighbor values efficiently
-            neighbor_values = padded_matrix[neighbor_x, neighbor_y]
-
-            # Mask out NaN values
-            valid_neighbors_mask = ~padded_nan_mask[neighbor_x, neighbor_y]
-            neighbor_values[~valid_neighbors_mask] = np.nan  # Ensure NaNs remain in ignored positions
-
-            # Compute mean of valid neighbors along axis 1
-            mean_neighbors = np.nanmean(neighbor_values, axis=1)
-
-            # Flatten mean_neighbors to ensure correct indexing
-            mean_neighbors_flat = np.full(matrix.shape, np.nan)
-            mean_neighbors_flat[x_indices, y_indices] = mean_neighbors  # Fill valid indices
-
-            # Iterate over levels and compute NGTDM values
-            for lvl in range(n_bits):
-                level_mask = (matrix == lvl)
-
-                n_i = np.count_nonzero(level_mask)
-                s_i = np.nansum(np.abs(lvl - mean_neighbors_flat[level_mask]))
+            # build the N_g × 2 matrix
+            ngtdm_slice = np.zeros((self.lvl, 2), dtype=np.float64)
+            for lvl in range(self.lvl):
+                # voxels at this grey level with ≥1 valid neighbour
+                mask = (sl == lvl) & (neighbor_count > 0)
+                n_i = mask.sum()
+                if n_i > 0:
+                    mean_nb = neighbor_sum[mask] / neighbor_count[mask]
+                    s_i = np.abs(lvl - mean_nb).sum()
+                else:
+                    s_i = 0.0
 
                 ngtdm_slice[lvl, 0] = n_i
                 ngtdm_slice[lvl, 1] = s_i
 
-            return ngtdm_slice
+            slice_matrices.append(ngtdm_slice)
 
-        for z_slice_index in self.range_z:
-            z_slice = self.image[:, :, z_slice_index]
-            if np.sum(~np.isnan(z_slice)) != 0:
-                self.slice_no_of_roi_voxels.append(np.sum(~np.isnan(z_slice)))
-                self.ngtd_2d_matrices.append(calc_slice_ngtdm(z_slice, self.lvl))
-        self.ngtd_2d_matrices = np.array(self.ngtd_2d_matrices)
-
+        # store results back into object
+        self.slice_no_of_roi_voxels = slice_voxel_counts
+        self.ngtd_2d_matrices       = np.array(slice_matrices)
     def calc_coarseness(self, matrix):
         num = np.sum(matrix[:, 0])
         denum = 0
@@ -2758,18 +2757,30 @@ class NGTDM:
 
     def calc_complexity(self, matrix):
         n = np.sum(matrix[:, 0])
-        sum_compl = 0
-        for i in range(matrix.shape[0]):
-            for j in range(matrix.shape[0]):
-                if matrix[i, 0] != 0 and matrix[j, 0] != 0:
-                    num = ((matrix[i, 0] * matrix[i, 1] + matrix[j, 0] * matrix[j, 1]) * abs(i - j)) / n
-                    denum = (matrix[i, 0] + matrix[j, 0]) / n
-                    sum_compl += num / denum
-        denum = np.sum(matrix[:, 0])
-        if denum == 0:
+        if n == 0:
             return 0
-        else:
-            return sum_compl
+
+        sum_compl = 0.0
+        # build the double‐sum
+        for i in range(matrix.shape[0]):
+            p_i, s_i = matrix[i, 0], matrix[i, 1]
+            if p_i == 0:
+                continue
+            for j in range(matrix.shape[0]):
+                p_j, s_j = matrix[j, 0], matrix[j, 1]
+                if p_j == 0:
+                    continue
+
+                # per-IBSI numerator and denominator
+                num = (p_i * s_i + p_j * s_j) * abs(i - j) / n
+                den = (p_i + p_j) / n
+                sum_compl += num / den
+
+        # normalize by N_{v,c} = sum_i p_i
+        N_vc = n
+        if N_vc == 0:
+            return 0
+        return sum_compl / N_vc
 
     def calc_strength(self, matrix):
         n = np.sum(matrix[:, 0])

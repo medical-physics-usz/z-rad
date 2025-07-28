@@ -189,7 +189,7 @@ class Radiomics:
             if el.startswith(('cm', 'rlm')):
                 el_aggr_method = aggr_method_map.get(self.aggr_method, '')
                 self.new_columns.append(f'{el}_{el_aggr_dim}_{el_aggr_method}')
-            elif el.startswith(('szm', 'dzm', 'ngl')):
+            elif el.startswith(('szm', 'dzm', 'ngt', 'ngl')):
                 self.new_columns.append(f'{el}_{el_aggr_dim}')
             else:
                 self.new_columns.append(el)

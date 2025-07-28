@@ -44,6 +44,7 @@ htmlcov/
 nosetests.xml
 coverage.xml
 *,cover
+*.flag
 
 # Translations
 *.mo
@@ -94,3 +95,8 @@ config.json
 **/*.json
 
 **/__pycache__/
+
+# DICOM and NIfTI files
+*.dcm
+*.nii
+*.nii.gz

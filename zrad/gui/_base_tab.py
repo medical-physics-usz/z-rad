@@ -157,7 +157,7 @@ class BaseTab(QWidget, ABC, metaclass=BaseTabMeta):
         self.input_imaging_mod_combo_box = CustomBox(
             200, 140, 160, 50, self,
             item_list=[
-                "Imaging Modality:", "CT", "MRI", "PET", "MG"
+                "Imaging Modality:", "CT", "MRI", "PET", "MG", "RTDOSE"
             ]
         )
 

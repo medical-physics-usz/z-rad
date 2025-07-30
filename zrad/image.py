@@ -417,10 +417,8 @@ def process_dicom_series(directory, dicom_files):
 
     slice_z_origin = sorted(slice_z_origin)
     if len(slice_z_origin) > 1:
-        slice_thickness = abs(np.median([
-            slice_z_origin[i + 1] - slice_z_origin[i]
-            for i in range(len(slice_z_origin) - 1)
-        ]))
+        slice_thickness = np.median(np.abs(np.diff(np.asarray(slice_z_origin, float))))
+
     elif len(slice_z_origin) == 1:
         slice_thickness = slice_z_origin[0]
 

@@ -95,10 +95,14 @@ class Image:
         dicom_files = get_dicom_files(directory=dicom_dir, modality=modality)
         if modality in ["CT", "MRI", "PET"]:
             validate_z_spacing(dicom_files)
-        image = process_dicom_series(dicom_dir, dicom_files)
+        if modality in ["CT", "MRI", "PET", "MG"]:
+            image = process_dicom_series(dicom_dir, dicom_files)
         if modality == 'PET':
             validate_pet_dicom_tags(dicom_files)
             image = apply_suv_correction(dicom_files, image)
+        if modality == 'RTDOSE':
+            file_path = dicom_files[0]['file_path']
+            image = self.read_dicom_dose(file_path)
         if image:
             array = sitk.GetArrayFromImage(image)
             self.sitk_image = image
@@ -116,9 +120,28 @@ class Image:
         self.direction = mask.direction
         self.shape = mask.shape
 
+    def read_dicom_dose(self, rtdose_path):
+        ds = pydicom.dcmread(rtdose_path)
+        if ds.DoseUnits != 'GY':
+            raise TypeError(f"Only dose in Gy is supported. Provided {ds.DoseUnits}")
+        if ds.DoseType != 'PHYSICAL':
+            raise TypeError(f"Only physical dose is supported. Provided {ds.DoseType}")
+        raw_dose_image = sitk.ReadImage(rtdose_path)
+        dose_array = sitk.GetArrayFromImage(raw_dose_image) * ds.DoseGridScaling
+        dose_image = sitk.GetImageFromArray(
+            dose_array)  # dose_array is a NumPy array that contains the dose values (after applying DoseGridScaling). This line converts dose_array back into a SITK image.
+        dose_image.SetOrigin(
+            raw_dose_image.GetOrigin())  # Copies the origin (spatial reference of the image in the coordinate system) from the original DICOM image (raw_dose_image) to dose_image.
+        dose_image.SetSpacing(
+            raw_dose_image.GetSpacing())  # Ensures that the voxel spacing (physical size of each pixel in millimeters) is retained from the original dose DICOM file.
+        dose_image.SetDirection(
+            raw_dose_image.GetDirection())  # Copies the image orientation (how the image is aligned in 3D space) from the original dose DICOM file.
+
+        return dose_image
+
 
 def get_dicom_files(directory, modality):
-    modality_mapping = {'PET': 'PT', 'CT': 'CT', 'MRI': 'MR', 'RTSTRUCT': 'RTSTRUCT', 'MG': 'MG'}
+    modality_mapping = {'PET': 'PT', 'CT': 'CT', 'MRI': 'MR', 'RTSTRUCT': 'RTSTRUCT', 'MG': 'MG', 'RTDOSE': 'RTDOSE'}
     modality_dicom = modality_mapping[modality]
     dicom_files_info = []
 

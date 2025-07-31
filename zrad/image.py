@@ -143,7 +143,7 @@ class Image:
 def get_dicom_files(directory, modality):
     modality_dicom = modality_mapping(modality)
     dicom_files_info = []
-    if modality_dicom != 'RTSTRUCT':
+    if modality_dicom in ['CT', 'PT', 'MR']:
         reader = sitk.ImageSeriesReader()
         series_IDs = reader.GetGDCMSeriesIDs(directory)
         selected_series = None

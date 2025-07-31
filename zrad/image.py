@@ -96,7 +96,7 @@ class Image:
         if modality in ["CT", "MRI", "PET"]:
             validate_z_spacing(dicom_files)
         if modality in ["CT", "MRI", "PET", "MG"]:
-            image = process_dicom_series(dicom_dir, dicom_files)
+            image = process_dicom_series(dicom_dir, dicom_files, modality)
         if modality == 'PET':
             validate_pet_dicom_tags(dicom_files)
             image = apply_suv_correction(dicom_files, image)
@@ -405,13 +405,20 @@ def apply_suv_correction(dicom_files, suv_image):
     return intensity_image
 
 
-def process_dicom_series(directory, dicom_files):
+def process_dicom_series(directory, dicom_files, modality):
     reader = sitk.ImageSeriesReader()
-    series_ids = reader.GetGDCMSeriesIDs(directory)
-    if not series_ids:
-        raise ValueError("No DICOM series found in the directory.")
-    file_names = reader.GetGDCMSeriesFileNames(directory, series_ids[0])
-    reader.SetFileNames(file_names)
+    series_IDs = reader.GetGDCMSeriesIDs(directory)
+    selected_series = None
+    for sid in series_IDs:
+        files = reader.GetGDCMSeriesFileNames(directory, sid)
+        dcm = pydicom.dcmread(os.path.join(directory, files[0]), stop_before_pixels=True)
+        if dcm.Modality == modality:
+            selected_series = sid
+            break
+    if selected_series is None:
+        raise RuntimeError(f"No {modality} series found.")
+
+    reader.SetFileNames(reader.GetGDCMSeriesFileNames(directory, selected_series))
     image = reader.Execute()
 
     slice_z_origin = []

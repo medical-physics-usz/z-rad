@@ -96,7 +96,7 @@ class Image:
         if modality in ["CT", "MRI", "PET"]:
             validate_z_spacing(dicom_files)
         if modality in ["CT", "MRI", "PET", "MG"]:
-            image = process_dicom_series(dicom_dir, dicom_files)
+            image = process_dicom_series(dicom_dir, dicom_files, modality)
         if modality == 'PET':
             validate_pet_dicom_tags(dicom_files)
             image = apply_suv_correction(dicom_files, image)

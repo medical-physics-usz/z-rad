@@ -93,6 +93,8 @@ class Image:
 
     def read_dicom_image(self, dicom_dir, modality):
         dicom_files = get_dicom_files(directory=dicom_dir, modality=modality)
+        if len(dicom_files) == 0:
+            raise TypeError(f"No {modality} data found in {dicom_dir}")
         if modality in ["CT", "MRI", "PET"]:
             validate_z_spacing(dicom_files)
         if modality in ["CT", "MRI", "PET", "MG"]:
@@ -165,7 +167,7 @@ def get_dicom_files(directory, modality):
 
             # Check if the DICOM file's Modality matches the desired modality
             if ds.Modality == modality_dicom:
-                if hasattr(ds, 'ImageType') and 'LOCALIZER' in ds.ImageType:
+                if hasattr(ds, 'ImageType') and ('LOCALIZER' in ds.ImageType or any('MIP' in entry for entry in ds.ImageType)):
                     continue
                 dicom_files_info.append({'file_path': file_path, 'ds': ds})
         except InvalidDicomError:

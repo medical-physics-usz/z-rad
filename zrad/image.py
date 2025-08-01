@@ -93,10 +93,12 @@ class Image:
 
     def read_dicom_image(self, dicom_dir, modality):
         dicom_files = get_dicom_files(directory=dicom_dir, modality=modality)
+        if len(dicom_files) == 0:
+            raise TypeError(f"No {modality} data found in {dicom_dir}")
         if modality in ["CT", "MRI", "PET"]:
             validate_z_spacing(dicom_files)
         if modality in ["CT", "MRI", "PET", "MG"]:
-            image = process_dicom_series(dicom_dir, dicom_files, modality)
+            image = process_dicom_series(dicom_files)
         if modality == 'PET':
             validate_pet_dicom_tags(dicom_files)
             image = apply_suv_correction(dicom_files, image)
@@ -141,30 +143,40 @@ class Image:
 
 
 def get_dicom_files(directory, modality):
-    modality_mapping = {'PET': 'PT', 'CT': 'CT', 'MRI': 'MR', 'RTSTRUCT': 'RTSTRUCT', 'MG': 'MG', 'RTDOSE': 'RTDOSE'}
-    modality_dicom = modality_mapping[modality]
+    modality_dicom = modality_mapping(modality)
     dicom_files_info = []
+    if modality_dicom in ['CT', 'PT', 'MR']:
+        reader = sitk.ImageSeriesReader()
+        series_IDs = reader.GetGDCMSeriesIDs(directory)
+        selected_series = None
+        for sid in series_IDs:
+            files = reader.GetGDCMSeriesFileNames(directory, sid)
+            dcm = pydicom.dcmread(os.path.join(directory, files[0]), stop_before_pixels=True)
+            if dcm.Modality == modality_dicom:
+                selected_series = sid
+                break
+        if selected_series is None:
+            raise RuntimeError(f"No {modality_dicom} series found.")
+        all_files = reader.GetGDCMSeriesFileNames(directory, selected_series)
+    else:
+        all_files = [os.path.join(directory, i) for i in os.listdir(directory)]
+    for file_path in all_files:
+        try:
+            # Try to read the DICOM file without loading pixel data
+            ds = pydicom.dcmread(file_path, stop_before_pixels=True)
 
-    # Walk through all directories and subdirectories
-    for root, _, files in os.walk(directory):
-        for f in files:
-            file_path = os.path.join(root, f)  # Full path of the file
-
-            try:
-                # Try to read the DICOM file without loading pixel data
-                ds = pydicom.dcmread(file_path, stop_before_pixels=True)
-
-                # Check if the DICOM file's Modality matches the desired modality
-                if ds.Modality == modality_dicom:
-                    dicom_files_info.append({'file_path': file_path, 'ds': ds})
-
-            except InvalidDicomError:
-                # File is not a valid DICOM; skip it
-                continue
-            except Exception as e:
-                # Handle any other unexpected exceptions
-                warning_msg = f"An error occurred while processing file {file_path}: {str(e)}"
-                warnings.warn(warning_msg, DataStructureWarning)
+            # Check if the DICOM file's Modality matches the desired modality
+            if ds.Modality == modality_dicom:
+                if hasattr(ds, 'ImageType') and ('LOCALIZER' in ds.ImageType or any('MIP' in entry for entry in ds.ImageType)):
+                    continue
+                dicom_files_info.append({'file_path': file_path, 'ds': ds})
+        except InvalidDicomError:
+            # File is not a valid DICOM; skip it
+            continue
+        except Exception as e:
+            # Handle any other unexpected exceptions
+            warning_msg = f"An error occurred while processing file {file_path}: {str(e)}"
+            warnings.warn(warning_msg, DataStructureWarning)
     return dicom_files_info
 
 
@@ -404,21 +416,14 @@ def apply_suv_correction(dicom_files, suv_image):
     intensity_image.SetDirection(np.array(suv_image.GetDirection()))
     return intensity_image
 
+def modality_mapping(modality):
+    modality_map = {'PET': 'PT', 'CT': 'CT', 'MRI': 'MR', 'RTSTRUCT': 'RTSTRUCT', 'MG': 'MG', 'RTDOSE': 'RTDOSE'}
+    return modality_map[modality]
 
-def process_dicom_series(directory, dicom_files, modality):
+def process_dicom_series(dicom_files):
     reader = sitk.ImageSeriesReader()
-    series_IDs = reader.GetGDCMSeriesIDs(directory)
-    selected_series = None
-    for sid in series_IDs:
-        files = reader.GetGDCMSeriesFileNames(directory, sid)
-        dcm = pydicom.dcmread(os.path.join(directory, files[0]), stop_before_pixels=True)
-        if dcm.Modality == modality:
-            selected_series = sid
-            break
-    if selected_series is None:
-        raise RuntimeError(f"No {modality} series found.")
-
-    reader.SetFileNames(reader.GetGDCMSeriesFileNames(directory, selected_series))
+    file_names = [i['file_path'] for i in dicom_files]
+    reader.SetFileNames(file_names)
     image = reader.Execute()
 
     slice_z_origin = []
@@ -428,9 +433,18 @@ def process_dicom_series(directory, dicom_files, modality):
 
         if ds.Modality in ['CT', 'PT', 'MR']:
             pixel_spacing = ds.PixelSpacing
-            slice_z_origin.append(float(ds.ImagePositionPatient[2]))
 
-        if ds.Modality == 'MG':
+            # Use full 3D position
+            iop = np.array(ds.ImageOrientationPatient, dtype=float)  # 6 values
+            row_cosines = iop[:3]
+            col_cosines = iop[3:]
+            normal = np.cross(row_cosines, col_cosines)  # image plane normal
+
+            # Project position onto normal vector
+            distance_along_normal = np.dot(np.array(ds.ImagePositionPatient, dtype=float), normal)
+            slice_z_origin.append(distance_along_normal)
+
+        elif ds.Modality == 'MG':
             pixel_spacing = ds.ImagerPixelSpacing
             slice_z_origin.append(ds.BodyPartThickness)
             image.SetOrigin([0, 0, 0])
@@ -438,8 +452,8 @@ def process_dicom_series(directory, dicom_files, modality):
 
     slice_z_origin = sorted(slice_z_origin)
     if len(slice_z_origin) > 1:
-        slice_thickness = abs(np.median([slice_z_origin[i] - slice_z_origin[i + 1]
-                                         for i in range(len(slice_z_origin) - 1)]))
+        slice_thickness = np.median(np.abs(np.diff(np.asarray(slice_z_origin, float))))
+
     elif len(slice_z_origin) == 1:
         slice_thickness = slice_z_origin[0]
 

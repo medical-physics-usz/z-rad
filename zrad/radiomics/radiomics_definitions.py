@@ -248,7 +248,10 @@ class MorphologicalFeatures:
         distances = squareform(pdist(scaled_indices))
 
         # Create a weight matrix: weight = 1/distance for nonzero distances, 0 otherwise
-        weights = np.where(distances > 0, 1.0 / distances, 0)
+        weights = np.zeros_like(distances)
+        nonzero_mask = distances > 0
+        weights[nonzero_mask] = 1.0 / distances[nonzero_mask]
+        # weights = np.where(distances > 0, 1.0 / distances, 0)
 
         # Sum of all weights (excluding self-pairs, since diagonal is 0)
         S0 = np.sum(weights)
@@ -290,7 +293,10 @@ class MorphologicalFeatures:
         distances = squareform(pdist(scaled_indices))
 
         # Define weights as the inverse of distance (with 0 weight for zero distances)
-        weights = np.where(distances > 0, 1.0 / distances, 0)
+        weights = np.zeros_like(distances)
+        nonzero_mask = distances > 0
+        weights[nonzero_mask] = 1.0 / distances[nonzero_mask]
+        #weights = np.where(distances > 0, 1.0 / distances, 0)
 
         # Sum of all weights
         S0 = np.sum(weights)

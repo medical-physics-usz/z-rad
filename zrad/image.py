@@ -94,7 +94,7 @@ class Image:
     def read_dicom_image(self, dicom_dir, modality):
         dicom_files = get_dicom_files(directory=dicom_dir, modality=modality)
         if len(dicom_files) == 0:
-            raise TypeError(f"No {modality} data found in {dicom_dir}")
+            raise DataStructureError(f"No {modality} data found in {dicom_dir}. Patient skipped.")
         if modality in ["CT", "MRI", "PET"]:
             validate_z_spacing(dicom_files)
         if modality in ["CT", "MRI", "PET", "MG"]:
@@ -125,9 +125,9 @@ class Image:
     def read_dicom_dose(self, rtdose_path):
         ds = pydicom.dcmread(rtdose_path)
         if ds.DoseUnits != 'GY':
-            raise TypeError(f"Only dose in Gy is supported. Provided {ds.DoseUnits}")
+            raise DataStructureError(f"Only dose in Gy is supported. Provided {ds.DoseUnits}. Patient skipped")
         if ds.DoseType != 'PHYSICAL':
-            raise TypeError(f"Only physical dose is supported. Provided {ds.DoseType}")
+            raise DataStructureError(f"Only physical dose is supported. Provided {ds.DoseType}. Patient skipped.")
         raw_dose_image = sitk.ReadImage(rtdose_path)
         dose_array = sitk.GetArrayFromImage(raw_dose_image) * ds.DoseGridScaling
         dose_image = sitk.GetImageFromArray(
@@ -156,7 +156,7 @@ def get_dicom_files(directory, modality):
                 selected_series = sid
                 break
         if selected_series is None:
-            raise RuntimeError(f"No {modality_dicom} series found.")
+            raise DataStructureError(f"No {modality_dicom} series found for {directory}. Patient skipped")
         all_files = reader.GetGDCMSeriesFileNames(directory, selected_series)
     else:
         all_files = [os.path.join(directory, i) for i in os.listdir(directory)]
@@ -458,6 +458,10 @@ def process_dicom_series(dicom_files):
         slice_thickness = slice_z_origin[0]
 
     image.SetSpacing((float(pixel_spacing[0]), float(pixel_spacing[1]), float(slice_thickness)))
+
+    if dicom_files[0]['ds'].Modality == 'CT' and np.min(sitk.GetArrayFromImage(image)) >= 0:
+        error_msg = f'Non-negative CT intensity. SITK failed to convert CT into HU for {dicom_files[0]["file_path"]}. The patient is excluded from analysis'
+        raise DataStructureError(error_msg)
 
     return image
 

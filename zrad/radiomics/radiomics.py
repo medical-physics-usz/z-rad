@@ -45,7 +45,7 @@ class Radiomics:
 
         self.calc_discr_bin_number = False
         self.calc_discr_bin_size = False
-
+        self.calc_morph_moran_i_and_geary_c_features = calc_morph_moran_i_and_geary_c_features
         if number_of_bins is not None:
             self.calc_discr_bin_number = True
             self.bin_number = number_of_bins
@@ -153,6 +153,9 @@ class Radiomics:
         self._calc_mask_intensity_features()
         if not slice_2d:
             self._calc_mask_morphological_features()
+        if self.calc_morph_moran_i_and_geary_c_features:
+            self._calc_morph_moran_i_and_geary_c_features()
+
 
         # Extract discretized features
         if self.aggr_dim != '3D':
@@ -178,8 +181,10 @@ class Radiomics:
                              self.gldzm_features_list, self.ngtdm_features_list, self.ngldm_features_list]
         if not slice_2d:
             all_features_list = [self.patient_morf_features_list] + all_features_list
+        if self.calc_morph_moran_i_and_geary_c_features:
+            columns += list(self.morph_moran_i_and_geary_c_features.keys())
+            all_features_list += [[list(self.morph_moran_i_and_geary_c_features.values())]]
         all_features_list_flat = [item for sublist in all_features_list for item in sublist[0]]
-
         self.new_columns = []
         el_aggr_dim = '2_5D' if self.aggr_dim == '2.5D' else self.aggr_dim
 

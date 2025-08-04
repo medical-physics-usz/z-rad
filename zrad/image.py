@@ -459,6 +459,10 @@ def process_dicom_series(dicom_files):
 
     image.SetSpacing((float(pixel_spacing[0]), float(pixel_spacing[1]), float(slice_thickness)))
 
+    if dicom_files[0]['ds'].Modality == 'CT' and sitk.GetArrayFromImage(image).min() >= 0:
+        error_msg = f'Non-negative CT intensity. SITK failed to convert CT into HU for {dicom_files[0]['file_path']}. The patient is excluded from analysis'
+        raise DataStructureError(error_msg)
+
     return image
 
 

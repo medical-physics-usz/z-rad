@@ -127,7 +127,7 @@ class Image:
         if ds.DoseUnits != 'GY':
             raise DataStructureError(f"Only dose in Gy is supported. Provided {ds.DoseUnits}. Patient skipped")
         if ds.DoseType != 'PHYSICAL':
-            raise DataStructureError(f"Only physical dose is supported. Provided {ds.DoseType}")
+            raise DataStructureError(f"Only physical dose is supported. Provided {ds.DoseType}. Patient skipped.")
         raw_dose_image = sitk.ReadImage(rtdose_path)
         dose_array = sitk.GetArrayFromImage(raw_dose_image) * ds.DoseGridScaling
         dose_image = sitk.GetImageFromArray(
@@ -460,7 +460,7 @@ def process_dicom_series(dicom_files):
     image.SetSpacing((float(pixel_spacing[0]), float(pixel_spacing[1]), float(slice_thickness)))
 
     if dicom_files[0]['ds'].Modality == 'CT' and np.min(sitk.GetArrayFromImage(image)) >= 0:
-        error_msg = f'Non-negative CT intensity. SITK failed to convert CT into HU for {dicom_files[0]['file_path']}. The patient is excluded from analysis'
+        error_msg = f'Non-negative CT intensity. SITK failed to convert CT into HU for {dicom_files[0]["file_path"]}. The patient is excluded from analysis'
         raise DataStructureError(error_msg)
 
     return image

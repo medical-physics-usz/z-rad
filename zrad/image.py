@@ -427,7 +427,7 @@ def process_dicom_series(dicom_files):
     image = reader.Execute()
 
     slice_z_origin = []
-
+    direction = None
     for dicom_file in dicom_files:
         ds = dicom_file['ds']
 
@@ -439,7 +439,8 @@ def process_dicom_series(dicom_files):
             row_cosines = iop[:3]
             col_cosines = iop[3:]
             normal = np.cross(row_cosines, col_cosines)  # image plane normal
-
+            if direction is None:
+                direction = np.vstack([row_cosines, col_cosines, normal]).flatten(order="F")
             # Project position onto normal vector
             distance_along_normal = np.dot(np.array(ds.ImagePositionPatient, dtype=float), normal)
             slice_z_origin.append(distance_along_normal)
@@ -448,7 +449,7 @@ def process_dicom_series(dicom_files):
             pixel_spacing = ds.ImagerPixelSpacing
             slice_z_origin.append(ds.BodyPartThickness)
             image.SetOrigin([0, 0, 0])
-            image.SetDirection([1, 0, 0, 0, 1, 0, 0, 0, 1])
+            direction = [1, 0, 0, 0, 1, 0, 0, 0, 1]
 
     slice_z_origin = sorted(slice_z_origin)
     if len(slice_z_origin) > 1:
@@ -458,7 +459,7 @@ def process_dicom_series(dicom_files):
         slice_thickness = slice_z_origin[0]
 
     image.SetSpacing((float(pixel_spacing[0]), float(pixel_spacing[1]), float(slice_thickness)))
-
+    image.SetDirection(direction)
     if dicom_files[0]['ds'].Modality == 'CT' and np.min(sitk.GetArrayFromImage(image)) >= 0:
         error_msg = f'Non-negative CT intensity. SITK failed to convert CT into HU for {dicom_files[0]["file_path"]}. The patient is excluded from analysis'
         raise DataStructureError(error_msg)

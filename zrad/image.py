@@ -449,7 +449,7 @@ def process_dicom_series(dicom_files):
             pixel_spacing = ds.ImagerPixelSpacing
             slice_z_origin.append(ds.BodyPartThickness)
             image.SetOrigin([0, 0, 0])
-            image.SetDirection([1, 0, 0, 0, 1, 0, 0, 0, 1])
+            direction = [1, 0, 0, 0, 1, 0, 0, 0, 1]
 
     slice_z_origin = sorted(slice_z_origin)
     if len(slice_z_origin) > 1:

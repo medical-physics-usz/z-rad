@@ -523,7 +523,7 @@ class FilteringTab(BaseTab):
                     process_patient_folder(self.input_params, patient_folder)
             else:
                 with tqdm_joblib(tqdm(desc="Patient directories", total=len(list_of_patient_folders))):
-                    Parallel(n_jobs=n_jobs)(delayed(process_patient_folder)(self.input_params, patient_folder) for patient_folder in list_of_patient_folders)
+                    Parallel(n_jobs=n_jobs, backend="threading")(delayed(process_patient_folder)(self.input_params, patient_folder) for patient_folder in list_of_patient_folders)
         else:
             CustomWarningBox("No patients to filter.")
 

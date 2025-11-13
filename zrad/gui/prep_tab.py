@@ -437,7 +437,7 @@ class PreprocessingTab(BaseTab):
                     process_patient_folder(self.input_params, patient_folder, structure_set)
             else:
                 with tqdm_joblib(tqdm(desc="Patient directories", total=len(list_of_patient_folders))):
-                    Parallel(n_jobs=n_jobs)(delayed(process_patient_folder)(self.input_params, patient_folder, structure_set) for patient_folder in list_of_patient_folders)
+                    Parallel(n_jobs=n_jobs, backend="threading")(delayed(process_patient_folder)(self.input_params, patient_folder, structure_set) for patient_folder in list_of_patient_folders)
         else:
             CustomWarningBox("No patients to calculate preprocess from.")
 

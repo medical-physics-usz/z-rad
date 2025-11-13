@@ -19,18 +19,12 @@ def _pca_eigenvalues(points: np.ndarray) -> np.ndarray:
     if n_samples < 3:
         raise ValueError("At least three points are required to compute PCA")
 
-    # Use double precision to match scikit-learn's numerical behaviour.
     points = points.astype(np.float64, copy=False)
     centered = points - np.mean(points, axis=0, keepdims=True)
-
-    # ``rowvar=False`` matches the feature-oriented layout expected by PCA.
     cov = np.cov(centered, rowvar=False, bias=False)
-
-    # Eigenvalues of a symmetric covariance matrix are guaranteed real.
     eigenvalues, _ = np.linalg.eigh(cov)
-
-    # Sort descending to match sklearn's component ordering.
     order = np.argsort(eigenvalues)[::-1]
+
     return eigenvalues[order]
 
 

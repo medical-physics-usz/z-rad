@@ -29,7 +29,6 @@ dependencies = [
     "pywavelets>=1.7.0",
     "openpyxl>=3.1.5",
     "scikit-image>=0.24.0",
-    "scikit-learn>=1.5.2",
     "opencv-python-headless>=4.10.0.84",
     "joblib>=1.4.2",
     "tqdm>=4.66.5"

@@ -39,7 +39,6 @@ addresses these issues by offering a user-friendly, IBSI-compliant, and open-sou
   - PyQt5
   - PyWavelets
   - Scikit-image
-  - Scikit-learn
   - SciPy
   - SimpleITK
   - tqdm

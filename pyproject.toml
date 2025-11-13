@@ -27,7 +27,6 @@ dependencies = [
     "simpleitk>=2.4.0",
     "scipy>=1.14.1",
     "pywavelets>=1.7.0",
-    "openpyxl>=3.1.5",
     "scikit-image>=0.24.0",
     "opencv-python-headless>=4.10.0.84",
     "joblib>=1.4.2",

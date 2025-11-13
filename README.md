@@ -33,7 +33,6 @@ addresses these issues by offering a user-friendly, IBSI-compliant, and open-sou
   - Joblib
   - NumPy
   - OpenCV
-  - OpenPyXL
   - Pandas
   - PyDicom
   - PyQt5

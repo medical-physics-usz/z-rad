@@ -43,5 +43,4 @@ license = { text = "MIT" }
 # Additional setuptools configuration
 
 [tool.setuptools.packages.find]
-include = ["zrad"]
-
+include = ["zrad", "zrad.preprocessing", "zrad.filtering", "zrad.radiomics"]

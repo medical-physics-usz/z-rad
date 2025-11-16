@@ -174,7 +174,7 @@ def get_dicom_files(directory, modality):
                     continue
                 if hasattr(ds, 'AcquisitionNumber') and ds.AcquisitionNumber == acquisition_number:
                     dicom_files_info.append({'file_path': file_path, 'ds': ds})
-                elif not hasattr(ds, 'AcquisitionNumber'):
+                elif not hasattr(ds, 'AcquisitionNumber') and acquisition_number is None:
                     dicom_files_info.append({'file_path': file_path, 'ds': ds})
                 else:
                     continue

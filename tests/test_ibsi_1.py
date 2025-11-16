@@ -9,8 +9,8 @@ from zrad.radiomics import Radiomics
 
 
 def ibsi_i_feature_tolerances(sheet_name):
-    xlsx_path = Path(__file__).parent / 'data' / 'ibsi_1_reference_values.xlsx'
-    return pd.read_excel(xlsx_path, sheet_name=sheet_name)
+    csv_path = Path(__file__).parent / 'data' / f'ibsi_1_reference_values_{sheet_name}.csv'
+    return pd.read_csv(csv_path)
 
 
 def ibsi_i_validation(ibsi_features, features, config_a=False):
@@ -121,7 +121,7 @@ def res3d_2mm_image_spline(dcm_ct_phantom_image):
 
 @pytest.mark.integration
 def test_ibsi_i_config_a(dcm_ct_phantom_image, dcm_ct_phantom_mask):
-    ibsi_features = ibsi_i_feature_tolerances('config A')
+    ibsi_features = ibsi_i_feature_tolerances('config_A')
 
     radiomics = Radiomics(aggr_dim='2D',
                           aggr_method='AVER',
@@ -162,7 +162,7 @@ def test_ibsi_i_config_a(dcm_ct_phantom_image, dcm_ct_phantom_mask):
 
 @pytest.mark.integration
 def test_ibsi_i_config_b(res2d_2mm_image_linear, res2d_2mm_mask_linear):
-    ibsi_features = ibsi_i_feature_tolerances('config B')
+    ibsi_features = ibsi_i_feature_tolerances('config_B')
 
     radiomics = Radiomics(aggr_dim='2D',
                           aggr_method='AVER',
@@ -201,7 +201,7 @@ def test_ibsi_i_config_b(res2d_2mm_image_linear, res2d_2mm_mask_linear):
 
 @pytest.mark.integration
 def test_ibsi_i_config_c(res3d_2mm_image_linear, res3d_2mm_mask_linear):
-    ibsi_features = ibsi_i_feature_tolerances('config C')
+    ibsi_features = ibsi_i_feature_tolerances('config_C')
 
     radiomics = Radiomics(aggr_dim='3D',
                           aggr_method='AVER',
@@ -228,7 +228,7 @@ def test_ibsi_i_config_c(res3d_2mm_image_linear, res3d_2mm_mask_linear):
 
 @pytest.mark.integration
 def test_ibsi_i_config_d(res3d_2mm_image_linear, res3d_2mm_mask_linear):
-    ibsi_features = ibsi_i_feature_tolerances('config D')
+    ibsi_features = ibsi_i_feature_tolerances('config_D')
 
     radiomics = Radiomics(aggr_dim='3D',
                           aggr_method='AVER',
@@ -251,7 +251,7 @@ def test_ibsi_i_config_d(res3d_2mm_image_linear, res3d_2mm_mask_linear):
 
 @pytest.mark.integration
 def test_ibsi_i_config_e(res3d_2mm_image_spline, res3d_2mm_mask_linear):
-    ibsi_features = ibsi_i_feature_tolerances('config E')
+    ibsi_features = ibsi_i_feature_tolerances('config_E')
 
     radiomics = Radiomics(aggr_dim='3D',
                           aggr_method='AVER',

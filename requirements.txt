@@ -5,9 +5,7 @@ pandas
 SimpleITK
 scipy
 PyWavelets
-openpyxl
 scikit-image
-scikit-learn
 opencv-python-headless
 joblib
 tqdm

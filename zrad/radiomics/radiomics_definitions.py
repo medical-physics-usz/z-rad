@@ -7,7 +7,25 @@ from scipy.spatial import ConvexHull
 from scipy.special import legendre
 from scipy.stats import iqr, skew, kurtosis
 from skimage import measure
-from sklearn.decomposition import PCA
+
+
+def _pca_eigenvalues(points: np.ndarray) -> np.ndarray:
+    """Return eigenvalues of the covariance matrix of ``points`` sorted descending."""
+
+    if points.ndim != 2 or points.shape[1] != 3:
+        raise ValueError("Expected an (n_samples, 3) array of points")
+
+    n_samples = points.shape[0]
+    if n_samples < 3:
+        raise ValueError("At least three points are required to compute PCA")
+
+    points = points.astype(np.float64, copy=False)
+    centered = points - np.mean(points, axis=0, keepdims=True)
+    cov = np.cov(centered, rowvar=False, bias=False)
+    eigenvalues, _ = np.linalg.eigh(cov)
+    order = np.argsort(eigenvalues)[::-1]
+
+    return eigenvalues[order]
 
 
 class MorphologicalFeatures:
@@ -150,12 +168,8 @@ class MorphologicalFeatures:
         # Scale the voxel indices according to voxel dimensions
         scaled_voxel_indices *= self.spacing
 
-        # Perform PCA on the scaled indices
-        pca = PCA(n_components=3)
-        pca.fit(scaled_voxel_indices)
-
-        # Extract the eigenvalues
-        self.pca_eigenvalues = pca.explained_variance_
+        # Perform PCA on the scaled indices using the covariance eigenvalues
+        self.pca_eigenvalues = _pca_eigenvalues(scaled_voxel_indices)
 
     def calc_major_minor_least_axes_len(self):
         self.major_axis_len = 4 * np.sqrt(self.pca_eigenvalues[0])

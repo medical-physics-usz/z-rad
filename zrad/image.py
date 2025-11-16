@@ -149,11 +149,14 @@ def get_dicom_files(directory, modality):
         reader = sitk.ImageSeriesReader()
         series_IDs = reader.GetGDCMSeriesIDs(directory)
         selected_series = None
+        acquisition_number = None
         for sid in series_IDs:
             files = reader.GetGDCMSeriesFileNames(directory, sid)
             dcm = pydicom.dcmread(os.path.join(directory, files[0]), stop_before_pixels=True)
             if dcm.Modality == modality_dicom:
                 selected_series = sid
+                if hasattr(dcm, 'AcquisitionNumber'):
+                    acquisition_number = dcm.AcquisitionNumber
                 break
         if selected_series is None:
             raise DataStructureError(f"No {modality_dicom} series found for {directory}. Patient skipped")
@@ -169,7 +172,13 @@ def get_dicom_files(directory, modality):
             if ds.Modality == modality_dicom:
                 if hasattr(ds, 'ImageType') and ('LOCALIZER' in ds.ImageType or any('MIP' in entry for entry in ds.ImageType)):
                     continue
-                dicom_files_info.append({'file_path': file_path, 'ds': ds})
+                if hasattr(ds, 'AcquisitionNumber') and ds.AcquisitionNumber == acquisition_number:
+                    dicom_files_info.append({'file_path': file_path, 'ds': ds})
+                elif not hasattr(ds, 'AcquisitionNumber'):
+                    dicom_files_info.append({'file_path': file_path, 'ds': ds})
+                else:
+                    continue
+
         except InvalidDicomError:
             # File is not a valid DICOM; skip it
             continue

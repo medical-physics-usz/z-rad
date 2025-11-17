@@ -8,8 +8,16 @@ from joblib import Parallel, delayed
 from tqdm import tqdm
 
 from ._base_tab import BaseTab, load_images, load_mask
-from .toolbox_gui import CustomLabel, CustomBox, CustomTextField, CustomWarningBox, CustomCheckBox, \
-    CustomInfo, CustomInfoBox
+from .toolbox_gui import (
+    CustomBox,
+    CustomCheckBox,
+    CustomInfo,
+    CustomInfoBox,
+    CustomLabel,
+    CustomTextField,
+    CustomWarningBox,
+    ProcessingProgressDialog,
+)
 from ..exceptions import InvalidInputParametersError, DataStructureError
 from ..image import get_all_structure_names, get_dicom_files
 from ..preprocessing import Preprocessing
@@ -431,13 +439,27 @@ class PreprocessingTab(BaseTab):
 
         # Process each patient folder
         if list_of_patient_folders:
-            n_jobs = self.input_params["number_of_threads"]
-            if n_jobs == 1:
-                for patient_folder in tqdm(list_of_patient_folders, desc="Patient directories"):
-                    process_patient_folder(self.input_params, patient_folder, structure_set)
-            else:
-                with tqdm_joblib(tqdm(desc="Patient directories", total=len(list_of_patient_folders))):
-                    Parallel(n_jobs=n_jobs)(delayed(process_patient_folder)(self.input_params, patient_folder, structure_set) for patient_folder in list_of_patient_folders)
+            progress_dialog = ProcessingProgressDialog(
+                "Preprocessing Progress", len(list_of_patient_folders), self
+            )
+            progress_dialog.show()
+            try:
+                n_jobs = self.input_params["number_of_threads"]
+                if n_jobs == 1:
+                    for patient_folder in tqdm(list_of_patient_folders, desc="Patient directories"):
+                        process_patient_folder(self.input_params, patient_folder, structure_set)
+                        progress_dialog.update_progress()
+                else:
+                    with tqdm_joblib(
+                        tqdm(desc="Patient directories", total=len(list_of_patient_folders)),
+                        progress_callback=progress_dialog.update_progress,
+                    ):
+                        Parallel(n_jobs=n_jobs)(
+                            delayed(process_patient_folder)(self.input_params, patient_folder, structure_set)
+                            for patient_folder in list_of_patient_folders
+                        )
+            finally:
+                progress_dialog.finish()
         else:
             CustomWarningBox("No patients to calculate preprocess from.")
 

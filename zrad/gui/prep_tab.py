@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import sys
 from datetime import datetime
 
 import numpy as np
@@ -16,6 +17,8 @@ from ..preprocessing import Preprocessing
 from ..toolbox_logic import get_logger, close_all_loggers, tqdm_joblib
 
 logging.captureWarnings(True)
+
+IS_FROZEN = getattr(sys, 'frozen', False)
 
 
 def process_patient_folder(input_params, patient_folder, structure_set):
@@ -430,6 +433,12 @@ class PreprocessingTab(BaseTab):
                 structure_set = self.input_params["dicom_structures"]
 
         # Process each patient folder
+        if IS_FROZEN:
+            backend_hint = "threads"
+            self.logger.info("Frozen state. Set backend_hint to threads")
+        else:
+            backend_hint = "processes"
+            self.logger.info("Not frozen state. Set backend_hint to processes")
         if list_of_patient_folders:
             n_jobs = self.input_params["number_of_threads"]
             if n_jobs == 1:
@@ -437,7 +446,7 @@ class PreprocessingTab(BaseTab):
                     process_patient_folder(self.input_params, patient_folder, structure_set)
             else:
                 with tqdm_joblib(tqdm(desc="Patient directories", total=len(list_of_patient_folders))):
-                    Parallel(n_jobs=n_jobs)(delayed(process_patient_folder)(self.input_params, patient_folder, structure_set) for patient_folder in list_of_patient_folders)
+                    Parallel(n_jobs=n_jobs, prefer=backend_hint)(delayed(process_patient_folder)(self.input_params, patient_folder, structure_set) for patient_folder in list_of_patient_folders)
         else:
             CustomWarningBox("No patients to calculate preprocess from.")
 

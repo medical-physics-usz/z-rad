@@ -141,6 +141,56 @@ class Image:
 
         return dose_image
 
+def remove_duplicate_slices(dicom_files_info):
+    """
+    Remove duplicate slices with identical ImagePositionPatient (IPP).
+
+    Keeps the first occurrence of each IPP (in the order coming from
+    GetGDCMSeriesFileNames, which is already geometrically sorted).
+    """
+    cleaned = []
+    seen_ipps = set()
+    duplicates = 0
+
+    for info in dicom_files_info:
+        ds = info['ds']
+
+        ipp_raw = ds.get((0x0020, 0x0032))
+        ipp = tuple(map(float, ipp_raw)) if ipp_raw is not None else None
+
+        if ipp is None:
+            cleaned.append(info)
+            continue
+
+        if ipp in seen_ipps:
+            duplicates += 1
+            continue
+
+        seen_ipps.add(ipp)
+        cleaned.append(info)
+    if duplicates > 0:
+        warnings.warn(
+            f"Removed {duplicates} duplicate slice(s) with identical ImagePositionPatient.",
+            DataStructureWarning
+        )
+
+    return cleaned
+
+def sort_by_geometric_position(dicom_files_info):
+    """
+    Sort slices by physical position using ImageOrientationPatient + ImagePositionPatient
+    (distance along the slice normal).
+    """
+
+    def slice_distance(ds):
+        iop = np.array(ds.ImageOrientationPatient, dtype=float)
+        row = iop[:3]
+        col = iop[3:]
+        normal = np.cross(row, col)
+        ipp = np.array(ds.ImagePositionPatient, dtype=float)
+        return float(np.dot(ipp, normal))
+
+    return sorted(dicom_files_info, key=lambda x: slice_distance(x['ds']))
 
 def get_dicom_files(directory, modality):
     modality_dicom = modality_mapping(modality)
@@ -177,6 +227,10 @@ def get_dicom_files(directory, modality):
             # Handle any other unexpected exceptions
             warning_msg = f"An error occurred while processing file {file_path}: {str(e)}"
             warnings.warn(warning_msg, DataStructureWarning)
+
+    dicom_files_info = remove_duplicate_slices(dicom_files_info)
+    dicom_files_info = sort_by_geometric_position(dicom_files_info)
+
     return dicom_files_info
 
 

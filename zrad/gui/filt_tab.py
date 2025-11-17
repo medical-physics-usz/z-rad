@@ -529,7 +529,7 @@ class FilteringTab(BaseTab):
             progress_dialog = ProcessingProgressDialog(
                 "Filtering Progress", len(list_of_patient_folders), self
             )
-            progress_dialog.show()
+            progress_dialog.start()
             try:
                 n_jobs = self.input_params["number_of_threads"]
                 if n_jobs == 1:

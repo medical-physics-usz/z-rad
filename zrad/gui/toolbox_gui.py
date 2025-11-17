@@ -213,6 +213,12 @@ class ProcessingProgressDialog(QDialog):
         self.setLayout(layout)
         self.setFixedWidth(360)
 
+    def start(self):
+        self.show()
+        self.raise_()
+        self.activateWindow()
+        QApplication.processEvents()
+
     def update_progress(self, step: int = 1):
         new_value = min(self.progress_bar.value() + step, self.total_steps)
         self.progress_bar.setValue(new_value)

@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import sys
 from datetime import datetime
 
 from PyQt5.QtCore import QThread
@@ -24,6 +25,8 @@ from ..filtering import Filtering
 from ..toolbox_logic import get_logger, close_all_loggers, tqdm_joblib
 
 logging.captureWarnings(True)
+
+IS_FROZEN = getattr(sys, 'frozen', False)
 
 
 def _get_filtering(input_params):
@@ -527,6 +530,12 @@ class FilteringTab(BaseTab):
         list_of_patient_folders = self.get_patient_folders()
 
         # Process each patient folder
+        if IS_FROZEN:
+            backend_hint = "threads"
+            self.logger.info("Frozen state. Set backend_hint to threads")
+        else:
+            backend_hint = "processes"
+            self.logger.info("Not frozen state. Set backend_hint to processes")
         if list_of_patient_folders:
             progress_dialog = ProcessingProgressDialog(
                 "Filtering Progress", len(list_of_patient_folders), self
@@ -544,7 +553,7 @@ class FilteringTab(BaseTab):
                         tqdm(desc="Patient directories", total=len(list_of_patient_folders)),
                         progress_callback=progress_callback,
                     ):
-                        Parallel(n_jobs=n_jobs)(
+                        Parallel(n_jobs=n_jobs, prefer=backend_hint)(
                             delayed(process_patient_folder)(self.input_params, patient_folder)
                             for patient_folder in list_of_patient_folders
                         )

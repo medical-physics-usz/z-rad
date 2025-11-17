@@ -13,7 +13,7 @@ from PyQt5.QtWidgets import (
     QWidget,
 )
 
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QObject, QThread, pyqtSignal, pyqtSlot
 
 
 class CustomButton(QPushButton):
@@ -232,3 +232,21 @@ class ProcessingProgressDialog(QDialog):
         self.description_label.setText("Processing complete")
         QApplication.processEvents()
         self.accept()
+
+
+class ProcessingWorker(QObject):
+    progress = pyqtSignal(int)
+    finished = pyqtSignal(object)
+    error = pyqtSignal(Exception)
+
+    def __init__(self, work_fn):
+        super().__init__()
+        self.work_fn = work_fn
+
+    @pyqtSlot()
+    def run(self):
+        try:
+            result = self.work_fn(self.progress.emit)
+            self.finished.emit(result)
+        except Exception as exc:  # pragma: no cover - GUI thread will handle
+            self.error.emit(exc)

@@ -4,6 +4,7 @@ import os
 from datetime import datetime
 
 import numpy as np
+from PyQt5.QtCore import QThread
 import pandas as pd
 from joblib import Parallel, delayed
 from tqdm import tqdm
@@ -18,6 +19,7 @@ from .toolbox_gui import (
     CustomTextField,
     CustomWarningBox,
     ProcessingProgressDialog,
+    ProcessingWorker,
 )
 from ..exceptions import InvalidInputParametersError, DataStructureError
 from ..image import get_dicom_files, get_all_structure_names
@@ -358,26 +360,40 @@ class RadiomicsTab(BaseTab):
                 "Radiomics Progress", len(list_of_patient_folders), self
             )
             progress_dialog.start()
-            try:
-                n_jobs = self.input_params["number_of_threads"]
+            n_jobs = self.input_params["number_of_threads"]
+
+            def work(progress_callback):
                 if n_jobs == 1:
-                    radiomic_features_list = []
+                    radiomic_features = []
                     for patient_folder in tqdm(list_of_patient_folders, desc="Patient directories"):
-                        radiomic_features_list.append(
+                        radiomic_features.append(
                             process_patient_folder(self.input_params, patient_folder, structure_set)
                         )
-                        progress_dialog.update_progress()
+                        progress_callback(1)
                 else:
                     with tqdm_joblib(
                         tqdm(desc="Patient directories", total=len(list_of_patient_folders)),
-                        progress_callback=progress_dialog.update_progress,
+                        progress_callback=progress_callback,
                     ):
-                        radiomic_features_list = Parallel(n_jobs=n_jobs)(
+                        radiomic_features = Parallel(n_jobs=n_jobs)(
                             delayed(process_patient_folder)(self.input_params, patient_folder, structure_set)
                             for patient_folder in list_of_patient_folders
                         )
 
-                # Save features to CSV
+                return radiomic_features
+
+            worker = ProcessingWorker(work)
+            thread = QThread(self)
+
+            def cleanup():
+                progress_dialog.finish()
+                thread.quit()
+                thread.wait()
+                worker.deleteLater()
+                thread.deleteLater()
+
+            def handle_finished(radiomic_features_list):
+                cleanup()
                 if radiomic_features_list:
                     radiomic_features_list = [item for sublist in radiomic_features_list for item in sublist]
                     radiomic_features_df = pd.DataFrame(radiomic_features_list)
@@ -385,13 +401,25 @@ class RadiomicsTab(BaseTab):
                     file_path = os.path.join(self.input_params["output_directory"], 'radiomics.csv')
                     radiomic_features_df.to_csv(file_path)
                     self.logger.info(f"Radiomics saved to {file_path}.")
-            finally:
-                progress_dialog.finish()
+                self.logger.info("Radiomics finished!")
+                CustomInfoBox("Radiomics finished!").response()
+
+            def handle_error(exc):
+                cleanup()
+                self.logger.error(exc, exc_info=True)
+                CustomWarningBox(str(exc)).response()
+
+            worker.moveToThread(thread)
+            worker.progress.connect(progress_dialog.update_progress)
+            worker.finished.connect(handle_finished)
+            worker.error.connect(handle_error)
+            thread.started.connect(worker.run)
+            self._processing_thread = thread
+            self._processing_worker = worker
+            thread.start()
         else:
             CustomWarningBox("No patients to calculate radiomics from.")
-
-        self.logger.info("Radiomics finished!")
-        CustomInfoBox("Radiomics finished!").response()
+            return
 
     def _get_outlier_sigma(self):
         """

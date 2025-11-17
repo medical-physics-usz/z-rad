@@ -3,6 +3,7 @@ import logging
 import os
 from datetime import datetime
 
+from PyQt5.QtCore import QThread
 from joblib import Parallel, delayed
 from tqdm import tqdm
 
@@ -16,6 +17,7 @@ from .toolbox_gui import (
     CustomTextField,
     CustomWarningBox,
     ProcessingProgressDialog,
+    ProcessingWorker,
 )
 from ..exceptions import InvalidInputParametersError, DataStructureError
 from ..filtering import Filtering
@@ -530,28 +532,54 @@ class FilteringTab(BaseTab):
                 "Filtering Progress", len(list_of_patient_folders), self
             )
             progress_dialog.start()
-            try:
-                n_jobs = self.input_params["number_of_threads"]
+            n_jobs = self.input_params["number_of_threads"]
+
+            def work(progress_callback):
                 if n_jobs == 1:
                     for patient_folder in tqdm(list_of_patient_folders, desc="Patient directories"):
                         process_patient_folder(self.input_params, patient_folder)
-                        progress_dialog.update_progress()
+                        progress_callback(1)
                 else:
                     with tqdm_joblib(
                         tqdm(desc="Patient directories", total=len(list_of_patient_folders)),
-                        progress_callback=progress_dialog.update_progress,
+                        progress_callback=progress_callback,
                     ):
                         Parallel(n_jobs=n_jobs)(
                             delayed(process_patient_folder)(self.input_params, patient_folder)
                             for patient_folder in list_of_patient_folders
                         )
-            finally:
+
+            worker = ProcessingWorker(work)
+            thread = QThread(self)
+
+            def cleanup():
                 progress_dialog.finish()
+                thread.quit()
+                thread.wait()
+                worker.deleteLater()
+                thread.deleteLater()
+
+            def handle_finished(_result):
+                cleanup()
+                self.logger.info("Filtering finished!")
+                CustomInfoBox("Filtering finished!").response()
+
+            def handle_error(exc):
+                cleanup()
+                self.logger.error(exc, exc_info=True)
+                CustomWarningBox(str(exc)).response()
+
+            worker.moveToThread(thread)
+            worker.progress.connect(progress_dialog.update_progress)
+            worker.finished.connect(handle_finished)
+            worker.error.connect(handle_error)
+            thread.started.connect(worker.run)
+            self._processing_thread = thread
+            self._processing_worker = worker
+            thread.start()
         else:
             CustomWarningBox("No patients to filter.")
-
-        self.logger.info("Filtering finished!")
-        CustomInfoBox("Filtering finished!").response()
+            return
 
     def save_settings(self):
         """

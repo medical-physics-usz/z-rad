@@ -206,7 +206,7 @@ def validate_z_spacing(dicom_files):
     slice_thickness = [abs(slice_z_origin[i] - slice_z_origin[i + 1]) for i in range(len(slice_z_origin) - 1)]
     for i in range(len(slice_thickness) - 1):
         spacing_difference = abs((slice_thickness[i] - slice_thickness[i + 1]))
-        spacing_threshold = 2
+        spacing_threshold = 0.1
         if spacing_difference > spacing_threshold:
             error_msg = f'Inconsistent z-spacing. Absolute deviation is {spacing_difference:.3f} which is greater than {spacing_threshold:.3f} mm.'
             raise DataStructureError(error_msg)

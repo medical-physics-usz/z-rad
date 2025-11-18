@@ -181,9 +181,8 @@ def get_dicom_files(directory, modality):
             # Handle any other unexpected exceptions
             warning_msg = f"An error occurred while processing file {file_path}: {str(e)}"
             warnings.warn(warning_msg, DataStructureWarning)
-    if acquisition_numbers == [] or len(acquisition_numbers) == 1:
-        return dicom_files_info
-    else:
+
+    if len(acquisition_numbers) > 1:
         acquisition_number = max(set(acquisition_numbers), key=acquisition_numbers.count)
 
         filtered_dicom_files_info = [
@@ -195,7 +194,7 @@ def get_dicom_files(directory, modality):
         warning_msg = f"The series contains multiple acquisition numbers; the most frequent one will be taken."
         warnings.warn(warning_msg, DataStructureWarning)
 
-        return dicom_files_info
+    return dicom_files_info
 
 
 def validate_z_spacing(dicom_files):

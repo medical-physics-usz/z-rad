@@ -4,11 +4,22 @@ import os
 import sys
 from datetime import datetime
 
+from PyQt5.QtCore import QThread
 from joblib import Parallel, delayed
 from tqdm import tqdm
 
 from ._base_tab import BaseTab, load_images
-from .toolbox_gui import CustomButton, CustomLabel, CustomBox, CustomTextField, CustomWarningBox, CustomInfo, CustomInfoBox
+from .toolbox_gui import (
+    CustomBox,
+    CustomButton,
+    CustomInfo,
+    CustomInfoBox,
+    CustomLabel,
+    CustomTextField,
+    CustomWarningBox,
+    ProcessingProgressDialog,
+    ProcessingWorker,
+)
 from ..exceptions import InvalidInputParametersError, DataStructureError
 from ..filtering import Filtering
 from ..toolbox_logic import get_logger, close_all_loggers, tqdm_joblib
@@ -526,18 +537,58 @@ class FilteringTab(BaseTab):
             backend_hint = "processes"
             self.logger.info("Not frozen state. Set backend_hint to processes")
         if list_of_patient_folders:
+            progress_dialog = ProcessingProgressDialog(
+                "Filtering Progress", len(list_of_patient_folders), self
+            )
+            progress_dialog.start()
             n_jobs = self.input_params["number_of_threads"]
-            if n_jobs == 1:
-                for patient_folder in tqdm(list_of_patient_folders, desc="Patient directories"):
-                    process_patient_folder(self.input_params, patient_folder)
-            else:
-                with tqdm_joblib(tqdm(desc="Patient directories", total=len(list_of_patient_folders))):
-                    Parallel(n_jobs=n_jobs, prefer=backend_hint)(delayed(process_patient_folder)(self.input_params, patient_folder) for patient_folder in list_of_patient_folders)
+
+            def work(progress_callback):
+                if n_jobs == 1:
+                    for patient_folder in tqdm(list_of_patient_folders, desc="Patient directories"):
+                        process_patient_folder(self.input_params, patient_folder)
+                        progress_callback(1)
+                else:
+                    with tqdm_joblib(
+                        tqdm(desc="Patient directories", total=len(list_of_patient_folders)),
+                        progress_callback=progress_callback,
+                    ):
+                        Parallel(n_jobs=n_jobs, prefer=backend_hint)(
+                            delayed(process_patient_folder)(self.input_params, patient_folder)
+                            for patient_folder in list_of_patient_folders
+                        )
+
+            worker = ProcessingWorker(work)
+            thread = QThread(self)
+
+            def cleanup():
+                progress_dialog.finish()
+                thread.quit()
+                thread.wait()
+                worker.deleteLater()
+                thread.deleteLater()
+
+            def handle_finished(_result):
+                cleanup()
+                self.logger.info("Filtering finished!")
+                CustomInfoBox("Filtering finished!").response()
+
+            def handle_error(exc):
+                cleanup()
+                self.logger.error(exc, exc_info=True)
+                CustomWarningBox(str(exc)).response()
+
+            worker.moveToThread(thread)
+            worker.progress.connect(progress_dialog.update_progress)
+            worker.finished.connect(handle_finished)
+            worker.error.connect(handle_error)
+            thread.started.connect(worker.run)
+            self._processing_thread = thread
+            self._processing_worker = worker
+            thread.start()
         else:
             CustomWarningBox("No patients to filter.")
-
-        self.logger.info("Filtering finished!")
-        CustomInfoBox("Filtering finished!").response()
+            return
 
     def save_settings(self):
         """

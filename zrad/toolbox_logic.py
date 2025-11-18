@@ -228,7 +228,7 @@ def load_ibsi_phantom(chapter=1, phantom='ct_radiomics', imaging_format="dicom",
 
 
 @contextlib.contextmanager
-def tqdm_joblib(tqdm_object):
+def tqdm_joblib(tqdm_object, progress_callback=None):
     """Context manager to patch joblib to report into tqdm progress bar given as argument.
     source: https://stackoverflow.com/a/58936697/3859823
     """
@@ -238,6 +238,8 @@ def tqdm_joblib(tqdm_object):
             super().__init__(*args, **kwargs)
 
         def __call__(self, *args, **kwargs):
+            if progress_callback:
+                progress_callback(self.batch_size)
             tqdm_object.update(n=self.batch_size)
             return super().__call__(*args, **kwargs)
 

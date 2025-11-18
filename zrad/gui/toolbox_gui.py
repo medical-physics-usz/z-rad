@@ -1,5 +1,19 @@
 from PyQt5.QtGui import QFont
-from PyQt5.QtWidgets import QLineEdit, QLabel, QPushButton, QComboBox, QCheckBox, QMessageBox, QWidget
+from PyQt5.QtWidgets import (
+    QApplication,
+    QCheckBox,
+    QComboBox,
+    QDialog,
+    QLabel,
+    QLineEdit,
+    QMessageBox,
+    QPushButton,
+    QProgressBar,
+    QVBoxLayout,
+    QWidget,
+)
+
+from PyQt5.QtCore import Qt, QObject, QThread, pyqtSignal, pyqtSlot
 
 
 class CustomButton(QPushButton):
@@ -178,3 +192,61 @@ class CustomInfoBox(QMessageBox):
     def response(self) -> bool:
         get_response = self.exec_()
         return get_response == QMessageBox.Ok
+
+
+class ProcessingProgressDialog(QDialog):
+    def __init__(self, title: str, total_steps: int, parent: QWidget | None = None):
+        super().__init__(parent)
+        self.total_steps = max(total_steps, 1)
+        self.setWindowTitle(title)
+        self.setModal(True)
+        self.setWindowFlag(Qt.WindowContextHelpButtonHint, False)
+
+        self.description_label = QLabel("Processing patient folders...", self)
+        self.progress_bar = QProgressBar(self)
+        self.progress_bar.setRange(0, self.total_steps)
+        self.progress_bar.setValue(0)
+
+        layout = QVBoxLayout(self)
+        layout.addWidget(self.description_label)
+        layout.addWidget(self.progress_bar)
+        self.setLayout(layout)
+        self.setFixedWidth(360)
+
+    def start(self):
+        self.show()
+        self.raise_()
+        self.activateWindow()
+        QApplication.processEvents()
+
+    def update_progress(self, step: int = 1):
+        new_value = min(self.progress_bar.value() + step, self.total_steps)
+        self.progress_bar.setValue(new_value)
+        self.description_label.setText(
+            f"Processed {self.progress_bar.value()} of {self.total_steps} patient folders"
+        )
+        QApplication.processEvents()
+
+    def finish(self):
+        self.progress_bar.setValue(self.total_steps)
+        self.description_label.setText("Processing complete")
+        QApplication.processEvents()
+        self.accept()
+
+
+class ProcessingWorker(QObject):
+    progress = pyqtSignal(int)
+    finished = pyqtSignal(object)
+    error = pyqtSignal(Exception)
+
+    def __init__(self, work_fn):
+        super().__init__()
+        self.work_fn = work_fn
+
+    @pyqtSlot()
+    def run(self):
+        try:
+            result = self.work_fn(self.progress.emit)
+            self.finished.emit(result)
+        except Exception as exc:  # pragma: no cover - GUI thread will handle
+            self.error.emit(exc)

@@ -184,7 +184,7 @@ def get_dicom_files(directory, modality):
     if acquisition_numbers == [] or len(acquisition_numbers) == 1:
         return dicom_files_info
     else:
-        acquisition_number = most_frequent = max(set(acquisition_numbers), key=acquisition_numbers.count)
+        acquisition_number = max(set(acquisition_numbers), key=acquisition_numbers.count)
 
         filtered_dicom_files_info = [
             item for item in dicom_files_info

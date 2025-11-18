@@ -1801,58 +1801,6 @@ class GLRLM_GLSZM_GLDZM_NGLDM:
 
         self.ngldm_3D_matrix = ngldm
 
-    def calc_ngld_3d_matrix(self):
-        x, y, z = self.image.shape
-        ngldm = np.zeros((self.lvl, 27), dtype=np.int64)
-
-        # Generate valid 3D offsets (excluding (0,0,0))
-        offsets = np.array([
-            (dx, dy, dz) for dx in range(-1, 2)
-            for dy in range(-1, 2)
-            for dz in range(-1, 2)
-            if not (dx == dy == dz == 0)
-        ])
-
-        # Get valid voxel positions (ignoring NaNs)
-        valid_mask = ~np.isnan(self.image)
-
-        for lvl in range(self.lvl):
-            mask = (self.image == lvl) & valid_mask
-            lvl_i, lvl_j, lvl_k = np.where(mask)
-
-            if lvl_i.size == 0:
-                continue  # Skip if no occurrences of the level
-
-            # Compute neighbor positions using broadcasting
-            neighbor_i = lvl_i[:, None] + offsets[:, 0]
-            neighbor_j = lvl_j[:, None] + offsets[:, 1]
-            neighbor_k = lvl_k[:, None] + offsets[:, 2]
-
-            # Ensure neighbors are in bounds
-            valid_neighbors = (
-                    (0 <= neighbor_i) & (neighbor_i < x) &
-                    (0 <= neighbor_j) & (neighbor_j < y) &
-                    (0 <= neighbor_k) & (neighbor_k < z)
-            )
-
-            # Flatten and filter valid indices
-            neighbor_i = neighbor_i[valid_neighbors]
-            neighbor_j = neighbor_j[valid_neighbors]
-            neighbor_k = neighbor_k[valid_neighbors]
-
-            # Find valid neighbor mask
-            valid_neighbor_mask = mask[neighbor_i, neighbor_j, neighbor_k]
-
-            # Compute number of neighbors per voxel
-            neighbor_counts = np.sum(valid_neighbor_mask.reshape(len(lvl_i), -1), axis=1)
-
-            # Ensure counts fall within valid range before using bincount
-            if neighbor_counts.size > 0:
-                j_k = np.bincount(neighbor_counts, minlength=27)
-                ngldm[lvl, :len(j_k)] += j_k
-
-        self.ngldm_3D_matrix = ngldm
-
     def calc_ngld_2d_matrices(self):
         """
         Computes the 2D Neighboring Gray Level Dependence Matrix (NGLDM) for each slice

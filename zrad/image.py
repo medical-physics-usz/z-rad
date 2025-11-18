@@ -192,7 +192,7 @@ def get_dicom_files(directory, modality):
         ]
 
         dicom_files_info = filtered_dicom_files_info
-        warning_msg = f"The series {dicom_files_info[0]['file_path']} contains multiple acquisition numbers; the most frequent one will be taken."
+        warning_msg = f"The series contains multiple acquisition numbers; the most frequent one will be taken."
         warnings.warn(warning_msg, DataStructureWarning)
 
         return dicom_files_info

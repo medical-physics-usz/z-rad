@@ -149,20 +149,18 @@ def get_dicom_files(directory, modality):
         reader = sitk.ImageSeriesReader()
         series_IDs = reader.GetGDCMSeriesIDs(directory)
         selected_series = None
-        acquisition_number = None
         for sid in series_IDs:
             files = reader.GetGDCMSeriesFileNames(directory, sid)
             dcm = pydicom.dcmread(os.path.join(directory, files[0]), stop_before_pixels=True)
             if dcm.Modality == modality_dicom:
                 selected_series = sid
-                if hasattr(dcm, 'AcquisitionNumber'):
-                    acquisition_number = dcm.AcquisitionNumber
                 break
         if selected_series is None:
             raise DataStructureError(f"No {modality_dicom} series found for {directory}. Patient skipped")
         all_files = reader.GetGDCMSeriesFileNames(directory, selected_series)
     else:
         all_files = [os.path.join(directory, i) for i in os.listdir(directory)]
+    acquisition_numbers = []
     for file_path in all_files:
         try:
             # Try to read the DICOM file without loading pixel data
@@ -172,12 +170,9 @@ def get_dicom_files(directory, modality):
             if ds.Modality == modality_dicom:
                 if hasattr(ds, 'ImageType') and ('LOCALIZER' in ds.ImageType or any('MIP' in entry for entry in ds.ImageType)):
                     continue
-                if hasattr(ds, 'AcquisitionNumber') and ds.AcquisitionNumber == acquisition_number:
-                    dicom_files_info.append({'file_path': file_path, 'ds': ds})
-                elif not hasattr(ds, 'AcquisitionNumber') and acquisition_number is None:
-                    dicom_files_info.append({'file_path': file_path, 'ds': ds})
-                else:
-                    continue
+                if hasattr(ds, 'AcquisitionNumber'):
+                    acquisition_numbers.append(ds.AcquisitionNumber)
+                dicom_files_info.append({'file_path': file_path, 'ds': ds})
 
         except InvalidDicomError:
             # File is not a valid DICOM; skip it
@@ -186,7 +181,21 @@ def get_dicom_files(directory, modality):
             # Handle any other unexpected exceptions
             warning_msg = f"An error occurred while processing file {file_path}: {str(e)}"
             warnings.warn(warning_msg, DataStructureWarning)
-    return dicom_files_info
+    if acquisition_numbers == [] or len(acquisition_numbers) == 1:
+        return dicom_files_info
+    else:
+        acquisition_number = most_frequent = max(set(acquisition_numbers), key=acquisition_numbers.count)
+
+        filtered_dicom_files_info = [
+            item for item in dicom_files_info
+            if item['ds'].AcquisitionNumber == acquisition_number
+        ]
+
+        dicom_files_info = filtered_dicom_files_info
+        warning_msg = f"Multiple acquisition numbers in series, the most frequent acquisition numer is taken."
+        warnings.warn(warning_msg, DataStructureWarning)
+
+        return dicom_files_info
 
 
 def validate_z_spacing(dicom_files):
@@ -197,7 +206,7 @@ def validate_z_spacing(dicom_files):
     slice_thickness = [abs(slice_z_origin[i] - slice_z_origin[i + 1]) for i in range(len(slice_z_origin) - 1)]
     for i in range(len(slice_thickness) - 1):
         spacing_difference = abs((slice_thickness[i] - slice_thickness[i + 1]))
-        spacing_threshold = 0.1
+        spacing_threshold = 2
         if spacing_difference > spacing_threshold:
             error_msg = f'Inconsistent z-spacing. Absolute deviation is {spacing_difference:.3f} which is greater than {spacing_threshold:.3f} mm.'
             raise DataStructureError(error_msg)

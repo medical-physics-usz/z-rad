@@ -1,3 +1,4 @@
+import csv
 import json
 import logging
 import os
@@ -6,7 +7,6 @@ from datetime import datetime
 
 import numpy as np
 from PyQt5.QtCore import QThread
-import pandas as pd
 from joblib import Parallel, delayed
 
 from ._base_tab import BaseTab, load_images, load_mask
@@ -96,6 +96,26 @@ def process_patient_folder(input_params, patient_folder, structure_set):
             radiomic_features_list.append(radiomic_features)
 
     return radiomic_features_list
+
+
+def _write_radiomics_csv(file_path, features):
+    if not features:
+        return
+
+    fieldnames = []
+    for key in ("pat_id", "mask_id"):
+        if any(key in row for row in features):
+            fieldnames.append(key)
+
+    for row in features:
+        for key in row.keys():
+            if key not in fieldnames:
+                fieldnames.append(key)
+
+    with open(file_path, "w", newline="") as csv_file:
+        writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(features)
 
 
 class RadiomicsTab(BaseTab):
@@ -400,10 +420,8 @@ class RadiomicsTab(BaseTab):
                 cleanup()
                 if radiomic_features_list:
                     radiomic_features_list = [item for sublist in radiomic_features_list for item in sublist]
-                    radiomic_features_df = pd.DataFrame(radiomic_features_list)
-                    radiomic_features_df.set_index(['pat_id', 'mask_id'], inplace=True)
                     file_path = os.path.join(self.input_params["output_directory"], 'radiomics.csv')
-                    radiomic_features_df.to_csv(file_path)
+                    _write_radiomics_csv(file_path, radiomic_features_list)
                     self.logger.info(f"Radiomics saved to {file_path}.")
                 self.logger.info("Radiomics finished!")
                 CustomInfoBox("Radiomics finished!").response()

@@ -1,6 +1,6 @@
+import csv
 from pathlib import Path
 
-import pandas as pd
 import pytest
 
 from zrad.image import Image
@@ -10,17 +10,20 @@ from zrad.radiomics import Radiomics
 
 def ibsi_i_feature_tolerances(sheet_name):
     csv_path = Path(__file__).parent / 'data' / f'ibsi_1_reference_values_{sheet_name}.csv'
-    return pd.read_csv(csv_path)
+    with open(csv_path, newline='') as csv_file:
+        reader = csv.DictReader(csv_file)
+        return {row['tag']: row for row in reader}
 
 
 def ibsi_i_validation(ibsi_features, features, config_a=False):
-    for tag in ibsi_features['tag']:
+    for raw_tag, feature_info in ibsi_features.items():
+        tag = str(raw_tag)
         if config_a and tag == 'ih_qcod':
             continue
 
-        if str(tag) in features:
-            val = float(ibsi_features[ibsi_features['tag'] == tag]['reference value'].iloc[0])
-            tol = float(ibsi_features[ibsi_features['tag'] == tag]['tolerance'].iloc[0])
+        if tag in features:
+            val = float(feature_info['reference value'])
+            tol = float(feature_info['tolerance'])
             upper_boundary = val + tol
             lower_boundary = val - tol
 

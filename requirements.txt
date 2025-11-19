@@ -1,7 +1,6 @@
 PyQt5
 pydicom
 numpy
-pandas
 SimpleITK
 scipy
 PyWavelets

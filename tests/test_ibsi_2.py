@@ -1,7 +1,7 @@
+import csv
 from pathlib import Path
 
 import numpy as np
-import pandas as pd
 import pytest
 
 from zrad.filtering import Filtering
@@ -20,8 +20,9 @@ def _run_ph_i_case(filtering, phantom, filename, config, data_dir):
 
 def ibsi_ii_feature_tolerances(filter_id):
     csv_path = Path(__file__).parent / 'data' / 'ibsi_2_reference_values.csv'
-    df = pd.read_csv(csv_path, delimiter=';')
-    return df[df['filter_id'] == filter_id]
+    with open(csv_path, newline='') as csv_file:
+        reader = csv.DictReader(csv_file, delimiter=';')
+        return {row['feature_tag']: row for row in reader if row['filter_id'] == filter_id}
 
 
 def ibsi_ii_ph_i_validation(filtered_image, response_map, config_id):
@@ -39,11 +40,12 @@ def ibsi_ii_ph_i_validation(filtered_image, response_map, config_id):
 
 def ibsi_ii_ph_ii_validation(ibsi_features, features):
 
-    for tag in ibsi_features['feature_tag']:
+    for raw_tag, feature_info in ibsi_features.items():
+        tag = str(raw_tag)
 
-        if str(tag) in features:
-            val = float(ibsi_features[ibsi_features['feature_tag'] == tag]['consensus_value'].iloc[0])
-            tol = float(ibsi_features[ibsi_features['feature_tag'] == tag]['tolerance'].iloc[0])
+        if tag in features:
+            val = float(feature_info['consensus_value'])
+            tol = float(feature_info['tolerance'])
             upper_boundary = val + tol
             lower_boundary = val - tol
             if not (lower_boundary <= features[tag] <= upper_boundary):

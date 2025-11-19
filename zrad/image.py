@@ -246,9 +246,9 @@ def get_dicom_files(directory, modality):
         dicom_files_info = filtered_dicom_files_info
         warning_msg = f"The series contains multiple acquisition numbers; the most frequent one will be taken."
         warnings.warn(warning_msg, DataStructureWarning)
-
-    dicom_files_info = remove_duplicate_slices(dicom_files_info)
-    dicom_files_info = sort_by_geometric_position(dicom_files_info)
+    if modality_dicom in ['CT', 'PT', 'MR']:
+        dicom_files_info = remove_duplicate_slices(dicom_files_info)
+        dicom_files_info = sort_by_geometric_position(dicom_files_info)
     return dicom_files_info
 
 

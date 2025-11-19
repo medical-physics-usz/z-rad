@@ -154,9 +154,12 @@ def remove_duplicate_slices(dicom_files_info):
 
     for info in dicom_files_info:
         ds = info['ds']
+        
+        if "ImagePositionPatient" in ds:
+            ipp = tuple(map(float, ds.ImagePositionPatient))
+        else:
+            ipp = None
 
-        ipp_raw = ds.get((0x0020, 0x0032))
-        ipp = tuple(map(float, ipp_raw)) if ipp_raw is not None else None
 
         if ipp is None:
             cleaned.append(info)

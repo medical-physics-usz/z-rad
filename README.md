@@ -76,13 +76,6 @@ and neighbouring gray level dependance matrix (NGLDM) features families.
 ### Windows executable file:
 The simplest way to run Z-Rad on Windows is to start the `z-rad.exe` attached to every Z-Rad release.
 
-Executables can be also generated for Windows, MacOS, and Linux by running
-```sh
-python generate_executable.py
-```
-Creating an executable requires [PyInstaller](https://pyinstaller.readthedocs.io).
-The executable is going to be saved in *dist/* directory.
-
 ### Windows, Linux, and macOS
 For users familiar with Python programming langauage, we recommend: 
 

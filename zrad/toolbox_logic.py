@@ -228,25 +228,21 @@ def load_ibsi_phantom(chapter=1, phantom='ct_radiomics', imaging_format="dicom",
 
 
 @contextlib.contextmanager
-def tqdm_joblib(tqdm_object, progress_callback=None):
-    """Context manager to patch joblib to report into tqdm progress bar given as argument.
-    source: https://stackoverflow.com/a/58936697/3859823
-    """
+def joblib_progress(progress_callback=None):
+    """Patch joblib's completion callback so GUI progress bars stay in sync."""
 
-    class TqdmBatchCompletionCallback(joblib.parallel.BatchCompletionCallBack):
+    class ProgressBatchCompletionCallback(joblib.parallel.BatchCompletionCallBack):
         def __init__(self, *args, **kwargs):
             super().__init__(*args, **kwargs)
 
         def __call__(self, *args, **kwargs):
             if progress_callback:
                 progress_callback(self.batch_size)
-            tqdm_object.update(n=self.batch_size)
             return super().__call__(*args, **kwargs)
 
     old_batch_callback = joblib.parallel.BatchCompletionCallBack
-    joblib.parallel.BatchCompletionCallBack = TqdmBatchCompletionCallback
+    joblib.parallel.BatchCompletionCallBack = ProgressBatchCompletionCallback
     try:
-        yield tqdm_object
+        yield
     finally:
         joblib.parallel.BatchCompletionCallBack = old_batch_callback
-        tqdm_object.close()

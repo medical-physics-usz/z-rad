@@ -141,6 +141,59 @@ class Image:
 
         return dose_image
 
+def remove_duplicate_slices(dicom_files_info):
+    """
+    Remove duplicate slices with identical ImagePositionPatient (IPP).
+
+    Keeps the first occurrence of each IPP (in the order coming from
+    GetGDCMSeriesFileNames, which is already geometrically sorted).
+    """
+    cleaned = []
+    seen_ipps = set()
+    duplicates = 0
+
+    for info in dicom_files_info:
+        ds = info['ds']
+        
+        if "ImagePositionPatient" in ds:
+            ipp = tuple(map(float, ds.ImagePositionPatient))
+        else:
+            ipp = None
+
+
+        if ipp is None:
+            cleaned.append(info)
+            continue
+
+        if ipp in seen_ipps:
+            duplicates += 1
+            continue
+
+        seen_ipps.add(ipp)
+        cleaned.append(info)
+    if duplicates > 0:
+        warnings.warn(
+            f"Removed {duplicates} duplicate slice(s) with identical ImagePositionPatient.",
+            DataStructureWarning
+        )
+
+    return cleaned
+
+def sort_by_geometric_position(dicom_files_info):
+    """
+    Sort slices by physical position using ImageOrientationPatient + ImagePositionPatient
+    (distance along the slice normal).
+    """
+
+    def slice_distance(ds):
+        iop = np.array(ds.ImageOrientationPatient, dtype=float)
+        row = iop[:3]
+        col = iop[3:]
+        normal = np.cross(row, col)
+        ipp = np.array(ds.ImagePositionPatient, dtype=float)
+        return float(np.dot(ipp, normal))
+
+    return sorted(dicom_files_info, key=lambda x: slice_distance(x['ds']))
 
 def get_dicom_files(directory, modality):
     modality_dicom = modality_mapping(modality)
@@ -193,7 +246,9 @@ def get_dicom_files(directory, modality):
         dicom_files_info = filtered_dicom_files_info
         warning_msg = f"The series contains multiple acquisition numbers; the most frequent one will be taken."
         warnings.warn(warning_msg, DataStructureWarning)
-
+    if modality_dicom in ['CT', 'PT', 'MR']:
+        dicom_files_info = remove_duplicate_slices(dicom_files_info)
+        dicom_files_info = sort_by_geometric_position(dicom_files_info)
     return dicom_files_info
 
 

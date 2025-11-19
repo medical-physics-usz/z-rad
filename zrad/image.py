@@ -320,7 +320,7 @@ def apply_suv_correction(dicom_files, suv_image):
             injection_time = parse_time(ds.RadiopharmaceuticalInformationSequence[0].RadiopharmaceuticalStartTime)
             patient_weight = float(ds.PatientWeight)
             injected_dose = float(ds.RadiopharmaceuticalInformationSequence[0].RadionuclideTotalDose)
-            if injected_dose == 0:
+            if injected_dose <= 0:
                 error_msg = f"The injected PET tracer dose is zero."
                 raise DataStructureError(error_msg)
             half_life = float(ds.RadiopharmaceuticalInformationSequence[0].RadionuclideHalfLife)

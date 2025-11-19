@@ -8,4 +8,3 @@ PyWavelets
 scikit-image
 opencv-python-headless
 joblib
-tqdm

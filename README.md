@@ -40,7 +40,6 @@ addresses these issues by offering a user-friendly, IBSI-compliant, and open-sou
   - Scikit-image
   - SciPy
   - SimpleITK
-  - tqdm
 
 ### Radiomics Extraction Pathways
 <img src="https://raw.githubusercontent.com/medical-physics-usz/z-rad/master/doc/images/ZRadExtractionPathways.png" width="600" alt="Z-Rad Pathways"/>

@@ -7,7 +7,6 @@ from datetime import datetime
 import numpy as np
 from PyQt5.QtCore import QThread
 from joblib import Parallel, delayed
-from tqdm import tqdm
 
 from ._base_tab import BaseTab, load_images, load_mask
 from .toolbox_gui import (
@@ -24,7 +23,7 @@ from .toolbox_gui import (
 from ..exceptions import InvalidInputParametersError, DataStructureError
 from ..image import get_all_structure_names, get_dicom_files
 from ..preprocessing import Preprocessing
-from ..toolbox_logic import get_logger, close_all_loggers, tqdm_joblib
+from ..toolbox_logic import get_logger, close_all_loggers, joblib_progress
 
 logging.captureWarnings(True)
 
@@ -458,14 +457,11 @@ class PreprocessingTab(BaseTab):
 
             def work(progress_callback):
                 if n_jobs == 1:
-                    for patient_folder in tqdm(list_of_patient_folders, desc="Patient directories"):
+                    for patient_folder in list_of_patient_folders:
                         process_patient_folder(self.input_params, patient_folder, structure_set)
                         progress_callback(1)
                 else:
-                    with tqdm_joblib(
-                        tqdm(desc="Patient directories", total=len(list_of_patient_folders)),
-                        progress_callback=progress_callback,
-                    ):
+                    with joblib_progress(progress_callback=progress_callback):
                         Parallel(n_jobs=n_jobs, prefer=backend_hint)(
                             delayed(process_patient_folder)(self.input_params, patient_folder, structure_set)
                             for patient_folder in list_of_patient_folders

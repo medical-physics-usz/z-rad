@@ -160,6 +160,7 @@ def get_dicom_files(directory, modality):
         all_files = reader.GetGDCMSeriesFileNames(directory, selected_series)
     else:
         all_files = [os.path.join(directory, i) for i in os.listdir(directory)]
+    acquisition_numbers = []
     for file_path in all_files:
         try:
             # Try to read the DICOM file without loading pixel data
@@ -169,7 +170,10 @@ def get_dicom_files(directory, modality):
             if ds.Modality == modality_dicom:
                 if hasattr(ds, 'ImageType') and ('LOCALIZER' in ds.ImageType or any('MIP' in entry for entry in ds.ImageType)):
                     continue
+                if hasattr(ds, 'AcquisitionNumber'):
+                    acquisition_numbers.append(ds.AcquisitionNumber)
                 dicom_files_info.append({'file_path': file_path, 'ds': ds})
+
         except InvalidDicomError:
             # File is not a valid DICOM; skip it
             continue
@@ -177,6 +181,19 @@ def get_dicom_files(directory, modality):
             # Handle any other unexpected exceptions
             warning_msg = f"An error occurred while processing file {file_path}: {str(e)}"
             warnings.warn(warning_msg, DataStructureWarning)
+
+    if len(list(set(acquisition_numbers))) > 1:
+        acquisition_number = max(set(acquisition_numbers), key=acquisition_numbers.count)
+
+        filtered_dicom_files_info = [
+            item for item in dicom_files_info
+            if item['ds'].AcquisitionNumber == acquisition_number
+        ]
+
+        dicom_files_info = filtered_dicom_files_info
+        warning_msg = f"The series contains multiple acquisition numbers; the most frequent one will be taken."
+        warnings.warn(warning_msg, DataStructureWarning)
+
     return dicom_files_info
 
 

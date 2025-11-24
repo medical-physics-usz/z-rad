@@ -216,7 +216,7 @@ def get_dicom_files(directory, modality):
     acquisition_numbers = []
     slice_spacing = []
     slice_thickness = []
-    reconstruction_kernel = []
+    convolution_kernel = []
     for file_path in all_files:
         try:
             # Try to read the DICOM file without loading pixel data
@@ -230,7 +230,7 @@ def get_dicom_files(directory, modality):
                     acquisition_numbers.append(ds.AcquisitionNumber)
                     slice_spacing.append(ds.SpacingBetweenSlices)
                     slice_thickness.append(ds.SliceThickness)
-                    reconstruction_kernel.append(ds.ReconstructionKernel)
+                    convolution_kernel.append(ds.ReconstructionKernel)
                 dicom_files_info.append({'file_path': file_path, 'ds': ds})
 
         except InvalidDicomError:
@@ -242,7 +242,7 @@ def get_dicom_files(directory, modality):
             warnings.warn(warning_msg, DataStructureWarning)
 
     if (len(list(set(acquisition_numbers))) > 1 and (len(list(set(slice_spacing))) > 1
-            or len(list(set(slice_thickness))) > 1 or len(list(set(reconstruction_kernel))) > 1)):
+            or len(list(set(slice_thickness))) > 1 or len(list(set(convolution_kernel))) > 1)):
 
         acquisition_number = max(set(acquisition_numbers), key=acquisition_numbers.count)
 

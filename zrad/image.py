@@ -241,8 +241,9 @@ def get_dicom_files(directory, modality):
             pix = tuple(ds.PixelSpacing) if hasattr(ds, "PixelSpacing") else None
             thick = getattr(ds, "SliceThickness", None)
             space = getattr(ds, "SpacingBetweenSlices", None)
+            kernel = getattr(ds, "ConvolutionKernel", None)
 
-            signatures.append((pix, thick, space))
+            signatures.append((pix, thick, space, kernel))
 
         # Unique geometry keys
         unique_keys = []

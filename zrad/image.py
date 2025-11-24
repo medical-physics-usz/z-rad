@@ -214,6 +214,9 @@ def get_dicom_files(directory, modality):
     else:
         all_files = [os.path.join(directory, i) for i in os.listdir(directory)]
     acquisition_numbers = []
+    slice_spacing = []
+    slice_thickness = []
+    reconstruction_kernel = []
     for file_path in all_files:
         try:
             # Try to read the DICOM file without loading pixel data
@@ -225,6 +228,9 @@ def get_dicom_files(directory, modality):
                     continue
                 if hasattr(ds, 'AcquisitionNumber'):
                     acquisition_numbers.append(ds.AcquisitionNumber)
+                    slice_spacing.append(ds.SpacingBetweenSlices)
+                    slice_thickness.append(ds.SliceThickness)
+                    reconstruction_kernel.append(ds.ReconstructionKernel)
                 dicom_files_info.append({'file_path': file_path, 'ds': ds})
 
         except InvalidDicomError:
@@ -235,7 +241,9 @@ def get_dicom_files(directory, modality):
             warning_msg = f"An error occurred while processing file {file_path}: {str(e)}"
             warnings.warn(warning_msg, DataStructureWarning)
 
-    if len(list(set(acquisition_numbers))) > 1:
+    if (len(list(set(acquisition_numbers))) > 1 and (len(list(set(slice_spacing))) > 1
+            or len(list(set(slice_thickness))) > 1 or len(list(set(reconstruction_kernel))) > 1)):
+
         acquisition_number = max(set(acquisition_numbers), key=acquisition_numbers.count)
 
         filtered_dicom_files_info = [

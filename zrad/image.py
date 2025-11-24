@@ -215,16 +215,19 @@ def get_dicom_files(directory, modality):
         all_files = [os.path.join(directory, i) for i in os.listdir(directory)]
     for file_path in all_files:
         try:
+            # Try to read the DICOM file without loading pixel data
             ds = pydicom.dcmread(file_path, stop_before_pixels=True)
-
+            # Check if the DICOM file's Modality matches the desired modality
             if ds.Modality == modality_dicom:
                 if hasattr(ds, 'ImageType') and ('LOCALIZER' in ds.ImageType or any('MIP' in entry for entry in ds.ImageType)):
                     continue
                 dicom_files_info.append({'file_path': file_path, 'ds': ds})
 
         except InvalidDicomError:
+            # File is not a valid DICOM; skip it
             continue
         except Exception as e:
+            # Handle any other unexpected exceptions
             warning_msg = f"An error occurred while processing file {file_path}: {str(e)}"
             warnings.warn(warning_msg, DataStructureWarning)
 

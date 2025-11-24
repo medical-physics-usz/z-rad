@@ -228,9 +228,9 @@ def get_dicom_files(directory, modality):
                     continue
                 if hasattr(ds, 'AcquisitionNumber'):
                     acquisition_numbers.append(ds.AcquisitionNumber)
-                    slice_spacing.append(ds.SpacingBetweenSlices)
-                    slice_thickness.append(ds.SliceThickness)
-                    convolution_kernel.append(ds.ReconstructionKernel)
+                    slice_spacing.append(getattr(ds, "SpacingBetweenSlices", None))
+                    slice_thickness.append(getattr(ds, "SliceThickness", None))
+                    convolution_kernel.append(getattr(ds, "ReconstructionKernel", None))
                 dicom_files_info.append({'file_path': file_path, 'ds': ds})
 
         except InvalidDicomError:
@@ -241,8 +241,8 @@ def get_dicom_files(directory, modality):
             warning_msg = f"An error occurred while processing file {file_path}: {str(e)}"
             warnings.warn(warning_msg, DataStructureWarning)
 
-    if (len(list(set(acquisition_numbers))) > 1 and (len(list(set(slice_spacing))) > 1
-            or len(list(set(slice_thickness))) > 1 or len(list(set(convolution_kernel))) > 1)):
+    if (len(set(acquisition_numbers)) > 1 and (len(set(slice_spacing)) > 1
+        or len(set(slice_thickness)) > 1 or len(set(convolution_kernel)) > 1)):
 
         acquisition_number = max(set(acquisition_numbers), key=acquisition_numbers.count)
 

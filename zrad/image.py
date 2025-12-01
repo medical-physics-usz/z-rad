@@ -213,18 +213,14 @@ def get_dicom_files(directory, modality):
         all_files = reader.GetGDCMSeriesFileNames(directory, selected_series)
     else:
         all_files = [os.path.join(directory, i) for i in os.listdir(directory)]
-    acquisition_numbers = []
     for file_path in all_files:
         try:
             # Try to read the DICOM file without loading pixel data
             ds = pydicom.dcmread(file_path, stop_before_pixels=True)
-
             # Check if the DICOM file's Modality matches the desired modality
             if ds.Modality == modality_dicom:
                 if hasattr(ds, 'ImageType') and ('LOCALIZER' in ds.ImageType or any('MIP' in entry for entry in ds.ImageType)):
                     continue
-                if hasattr(ds, 'AcquisitionNumber'):
-                    acquisition_numbers.append(ds.AcquisitionNumber)
                 dicom_files_info.append({'file_path': file_path, 'ds': ds})
 
         except InvalidDicomError:
@@ -235,17 +231,51 @@ def get_dicom_files(directory, modality):
             warning_msg = f"An error occurred while processing file {file_path}: {str(e)}"
             warnings.warn(warning_msg, DataStructureWarning)
 
-    if len(list(set(acquisition_numbers))) > 1:
-        acquisition_number = max(set(acquisition_numbers), key=acquisition_numbers.count)
+    if len(dicom_files_info) > 1:
 
-        filtered_dicom_files_info = [
-            item for item in dicom_files_info
-            if item['ds'].AcquisitionNumber == acquisition_number
-        ]
+        # Build signatures
+        signatures = []
+        for item in dicom_files_info:
+            ds = item["ds"]
 
-        dicom_files_info = filtered_dicom_files_info
-        warning_msg = f"The series contains multiple acquisition numbers; the most frequent one will be taken."
-        warnings.warn(warning_msg, DataStructureWarning)
+            pix = tuple(ds.PixelSpacing) if hasattr(ds, "PixelSpacing") else None
+            thick = getattr(ds, "SliceThickness", None)
+            space = getattr(ds, "SpacingBetweenSlices", None)
+            kernel = getattr(ds, "ConvolutionKernel", None)
+
+            signatures.append((pix, thick, space, kernel))
+
+        # Unique geometry keys
+        unique_keys = []
+        for sig in signatures:
+            if sig not in unique_keys:
+                unique_keys.append(sig)
+
+        # Count how many slices fall in each geometry group
+        group_counts = []
+        for key in unique_keys:
+            count = 0
+            for sig in signatures:
+                if sig == key:
+                    count += 1
+            group_counts.append(count)
+
+        # Pick largest geometry group
+        best_key = unique_keys[group_counts.index(max(group_counts))]
+
+        # Filter slices matching that geometry
+        filtered = []
+        for item, sig in zip(dicom_files_info, signatures):
+            if sig == best_key:
+                filtered.append(item)
+
+        if len(filtered) != len(dicom_files_info):
+            warnings.warn(
+                "Series contains mixed geometries; keeping the largest consistent set.",
+                DataStructureWarning
+            )
+
+        dicom_files_info = filtered
     if modality_dicom in ['CT', 'PT', 'MR']:
         dicom_files_info = remove_duplicate_slices(dicom_files_info)
         dicom_files_info = sort_by_geometric_position(dicom_files_info)

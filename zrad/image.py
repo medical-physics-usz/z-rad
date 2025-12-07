@@ -83,8 +83,21 @@ class Image:
         sitk_reader.SetImageIO("NiftiImageIO")
         sitk_reader.SetFileName(mask_path)
         mask = sitk_reader.Execute()
+
+        ref = image.sitk_image
+
+        if mask.GetOrigin() != ref.GetOrigin() or mask.GetDirection() != ref.GetDirection():
+
+            resampler = sitk.ResampleImageFilter()
+            resampler.SetReferenceImage(ref)
+            resampler.SetInterpolator(sitk.sitkNearestNeighbor)
+            resampler.SetDefaultPixelValue(0)
+            resampler.SetTransform(sitk.Transform())
+
+            mask = resampler.Execute(mask)
+
         array = sitk.GetArrayFromImage(mask)
-        self.sitk_image = image
+        self.sitk_image = mask
         self.array = array.astype(np.float64)
         self.origin = image.origin
         self.spacing = image.spacing

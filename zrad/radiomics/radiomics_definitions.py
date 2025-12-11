@@ -603,19 +603,31 @@ class IntensityBasedStatFeatures:
 
     def calc_max_hist_gradient(self, array):  # 3.4.20
         values, counts = np.unique(array[~np.isnan(array)], return_counts=True)
-        self.max_hist_gradient = np.max(np.gradient(counts))
+        counts_gradient = np.gradient(counts)
+        if len(counts_gradient) <=1:
+            raise DataStructureError(f"Not enough bins to calculate gradient.")
+        self.max_hist_gradient = np.max(counts_gradient)
 
     def calc_max_hist_gradient_intensity(self, array):  # 3.4.21
         values, counts = np.unique(array[~np.isnan(array)], return_counts=True)
-        self.max_hist_gradient_intensity = values[np.argmax(np.gradient(counts))]
+        counts_gradient = np.gradient(counts)
+        if len(counts_gradient) <= 1:
+            raise DataStructureError(f"Not enough bins to calculate gradient.")
+        self.max_hist_gradient_intensity = values[np.argmax(counts_gradient)]
 
     def calc_min_hist_gradient(self, array):  # 3.4.22
         values, counts = np.unique(array[~np.isnan(array)], return_counts=True)
-        self.min_hist_gradient = np.min(np.gradient(counts))
+        counts_gradient = np.gradient(counts)
+        if len(counts_gradient) <= 1:
+            raise DataStructureError(f"Not enough bins to calculate gradient.")
+        self.min_hist_gradient = np.min(counts_gradient)
 
     def calc_min_hist_gradient_intensity(self, array):  # 3.4.23
         values, counts = np.unique(array[~np.isnan(array)], return_counts=True)
-        self.min_hist_gradient_intensity = values[np.argmin(np.gradient(counts))]
+        counts_gradient = np.gradient(counts)
+        if len(counts_gradient) <= 1:
+            raise DataStructureError(f"Not enough bins to calculate gradient.")
+        self.min_hist_gradient_intensity = values[np.argmin(counts_gradient)]
 
 
 class IntensityVolumeHistogramFeatures:

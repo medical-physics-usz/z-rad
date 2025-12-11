@@ -467,10 +467,6 @@ class IntensityBasedStatFeatures:
         x = np.asarray(array)
         x = x[~np.isnan(x)]
 
-        if x.size == 0:
-            self.intensity_skewness = np.nan
-            return
-
         mu = np.mean(x)
         diff = x - mu
 
@@ -490,10 +486,6 @@ class IntensityBasedStatFeatures:
     def calc_intensity_kurtosis(self, array):  # 3.3.4, 3.4.4
         x = np.asarray(array)
         x = x[~np.isnan(x)]
-
-        if x.size == 0:
-            self.intensity_kurtosis = np.nan
-            return
 
         mu = np.mean(x)
         diff = x - mu

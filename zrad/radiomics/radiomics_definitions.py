@@ -5,7 +5,7 @@ from scipy.ndimage.morphology import generate_binary_structure
 from scipy.spatial.distance import pdist, squareform
 from scipy.spatial import ConvexHull
 from scipy.special import legendre
-from scipy.stats import iqr, skew, kurtosis
+from scipy.stats import iqr
 from skimage import measure
 
 
@@ -464,10 +464,44 @@ class IntensityBasedStatFeatures:
         self.intensity_variance = np.nanstd(array) ** 2
 
     def calc_intensity_skewness(self, array):  # 3.3.3, 3.4.3
-        self.intensity_skewness = skew(array, axis=None, nan_policy='omit')
+        x = np.asarray(array)
+        x = x[~np.isnan(x)]
+
+        mu = np.mean(x)
+        diff = x - mu
+
+        # population variance
+        v2 = np.mean(diff ** 2)
+
+        if v2 == 0:
+            # IBSI rule
+            self.intensity_skewness = 0.0
+            return
+
+        m3 = np.mean(diff ** 3)
+        skew = m3 / (v2 ** 1.5)
+
+        self.intensity_skewness = skew
 
     def calc_intensity_kurtosis(self, array):  # 3.3.4, 3.4.4
-        self.intensity_kurtosis = kurtosis(array, axis=None, nan_policy='omit')
+        x = np.asarray(array)
+        x = x[~np.isnan(x)]
+
+        mu = np.mean(x)
+        diff = x - mu
+
+        # population variance
+        v2 = np.mean(diff ** 2)
+
+        if v2 == 0:
+            # IBSI rule
+            self.intensity_kurtosis = 0.0
+            return
+
+        m4 = np.mean(diff ** 4)
+        kurt = (m4 / (v2 ** 2)) - 3
+
+        self.intensity_kurtosis = kurt
 
     def calc_median_intensity(self, array):  # 3.3.5, 3.4.5
         self.median_intensity = np.nanmedian(array)

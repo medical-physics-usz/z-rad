@@ -8,6 +8,8 @@ from scipy.special import legendre
 from scipy.stats import iqr
 from skimage import measure
 
+from ..exceptions import DataStructureError
+
 
 def _pca_eigenvalues(points: np.ndarray) -> np.ndarray:
     """Return eigenvalues of the covariance matrix of ``points`` sorted descending."""
@@ -177,9 +179,13 @@ class MorphologicalFeatures:
         self.least_axis_len = 4 * np.sqrt(self.pca_eigenvalues[2])
 
     def calc_elongation(self):
+        if self.pca_eigenvalues[0] == 0:
+            raise DataStructureError(f"PCA eigenvalue is zero. ")
         self.elongation = np.sqrt(self.pca_eigenvalues[1] / self.pca_eigenvalues[0])
 
     def calc_flatness(self):
+        if self.pca_eigenvalues[0] == 0:
+            raise DataStructureError(f"PCA eigenvalue is zero. ")
         self.flatness = np.sqrt(self.pca_eigenvalues[2] / self.pca_eigenvalues[0])
 
     def calc_vol_and_area_densities_aabb(self):
@@ -204,6 +210,8 @@ class MorphologicalFeatures:
         self.area_density_aabb = self.area_mesh / aabb_surface_area
 
     def calc_vol_density_aee(self):
+        if self.major_axis_len == 0 or self.minor_axis_len == 0 or self.least_axis_len ==0:
+            raise DataStructureError(f"One of the axis is zero. ")
         self.vol_density_aee = (8 * 3 * self.vol_mesh) / (
                     4 * np.pi * self.major_axis_len * self.minor_axis_len * self.least_axis_len)
 
@@ -214,6 +222,8 @@ class MorphologicalFeatures:
 
         alpha = np.sqrt(1 - (b ** 2 / a ** 2))
         beta = np.sqrt(1 - (c ** 2 / a ** 2))
+        if alpha == 0 or beta == 0:
+            raise DataStructureError(f"Alpha or beta in area density (AEE) is zero.")
         sum_series = 0
         max_nu = 20  # Def by IBSI
         for nu in range(max_nu + 1):
@@ -264,6 +274,8 @@ class MorphologicalFeatures:
         # Create a weight matrix: weight = 1/distance for nonzero distances, 0 otherwise
         weights = np.zeros_like(distances)
         nonzero_mask = distances > 0
+        if np.any(distances[nonzero_mask] == 0):
+            raise DataStructureError(f"There is a zero distance in Moran I.")
         weights[nonzero_mask] = 1.0 / distances[nonzero_mask]
         # weights = np.where(distances > 0, 1.0 / distances, 0)
 
@@ -277,7 +289,8 @@ class MorphologicalFeatures:
 
         # Compute the denominator: sum_{k} (X_k - μ)^2
         denominator = np.sum(diff ** 2)
-
+        if denominator == 0:
+            raise DataStructureError(f"There determinator is zero in Moran I.")
         # Calculate Moran's I
         self.moran_i = (N / S0) * (numerator / denominator)
 
@@ -309,6 +322,8 @@ class MorphologicalFeatures:
         # Define weights as the inverse of distance (with 0 weight for zero distances)
         weights = np.zeros_like(distances)
         nonzero_mask = distances > 0
+        if np.any(distances[nonzero_mask] == 0):
+            raise DataStructureError(f"There is a zero distance in Geary C.")
         weights[nonzero_mask] = 1.0 / distances[nonzero_mask]
         #weights = np.where(distances > 0, 1.0 / distances, 0)
 
@@ -324,6 +339,8 @@ class MorphologicalFeatures:
         denominator = np.sum((intensities - mu) ** 2)
 
         # Compute Geary's C measure
+        if denominator == 0:
+            raise DataStructureError(f"There determinator is zero in Geary C.")
         self.geary_c = ((N - 1) / (2 * S0)) * (numerator / denominator)
 
 
@@ -394,6 +411,8 @@ class LocalIntensityFeatures:
 
         # Normalize the kernel to compute the mean intensity (i.e., spherical mean filter).
         N_s = np.sum(spherical_mask)
+        if N_s == 0:
+            raise DataStructureError(f"Ns is zero in global int. mask.")
         kernel = spherical_mask.astype(float) / N_s
 
         # Convolve the full image with the spherical mean filter.
@@ -544,7 +563,7 @@ class IntensityBasedStatFeatures:
         if denum == 0:
             self.intensity_based_variation_coef = 1_000_000
         else:
-            self.intensity_based_variation_coef = np.nanstd(array) / np.nanmean(array)
+            self.intensity_based_variation_coef = np.nanstd(array) / denum
 
     def calc_intensity_based_quartile_coef_dispersion(self, array):  # 3.3.16, 3.4.17
         p25 = np.nanpercentile(array, 25)
@@ -568,12 +587,18 @@ class IntensityBasedStatFeatures:
 
     def calc_discretised_intensity_entropy(self, array):  # 3.4.18
         values, counts = np.unique(array[~np.isnan(array)], return_counts=True)
-        p = counts / np.sum(counts)
+        sum_counts = np.sum(counts)
+        if sum_counts == 0:
+            raise DataStructureError(f"Sum of counts is zero.")
+        p = counts / sum_counts
         self.discret_intensity_entropy = (-1) * np.sum(p * np.log2(p))
 
     def calc_discretised_intensity_uniformity(self, array):  # 3.4.19
         values, counts = np.unique(array[~np.isnan(array)], return_counts=True)
-        p = counts / np.sum(counts)
+        sum_counts = np.sum(counts)
+        if sum_counts == 0:
+            raise DataStructureError(f"Sum of counts is zero. ")
+        p = counts / sum_counts
         self.discret_intensity_uniformity = np.sum(p * p)
 
     def calc_max_hist_gradient(self, array):  # 3.4.20
@@ -612,9 +637,15 @@ class IntensityVolumeHistogramFeatures:
         # Calculate fractions for each discrete intensity value.
         for idx, intensity_value in enumerate(self.intensities):
             # Calculate fractional volume (νi): fraction of values with intensity >= intensity_value
-            self.fractional_volumes[idx] = 1 - np.sum(self.valid_values < intensity_value) / len(self.valid_values)
+            len_valid_vals = len(self.valid_values)
+            if len_valid_vals == 0:
+                raise DataStructureError(f"No valid values in fractions.")
+            self.fractional_volumes[idx] = 1 - np.sum(self.valid_values < intensity_value) / len_valid_vals
             # Calculate intensity fraction (γi): relative position of intensity_value in the intensity range
-            self.intensity_fractions[idx] = (intensity_value - self.min_intensity) / (self.max_intensity - self.min_intensity)
+            intensity_diff = self.max_intensity - self.min_intensity
+            if intensity_diff == 0:
+                raise DataStructureError(f"Intensity range is zero.")
+            self.intensity_fractions[idx] = (intensity_value - self.min_intensity) / intensity_diff
 
     def calc_volume_at_intensity_fraction(self, x):
         valid_indices = np.where(self.intensity_fractions > x / 100)
@@ -845,7 +876,8 @@ class GLCM:
     def calc_correlation(self, matrix):
         i, j = np.indices(matrix.shape)
         mu_i, sigma_i = self.calc_mu_i_and_sigma_i(matrix)
-
+        if sigma_i == 0:
+            raise DataStructureError(f" Sigma_i in correlation is zero.")
         return (np.sum(matrix * i * j) - mu_i ** 2) / sigma_i ** 2
 
     def calc_cluster_tendency_shade_prominence(self, matrix, pover):
@@ -870,7 +902,8 @@ class GLCM:
                 if p_i[i] != 0 and p_i[j] != 0:
                     hxy_1 += p_i_j[i][j] * np.log2(p_i[i] * p_i[j])
         hxy_1 *= (-1)
-
+        if hx == 0:
+            raise DataStructureError(f" hx in inf. correlation 1 is zero.")
         return (hxy - hxy_1) / hx
 
     def calc_information_correlation_2(self, matrix):
@@ -947,6 +980,8 @@ class GLCM:
     def calc_norm_inv_diff(self, matrix):
         n_g = len(matrix) - 1
         i, j = np.indices(matrix.shape)
+        if n_g == 0:
+            raise DataStructureError(f" n_g in calc_norm_inv_diff is zero.")
         return np.sum(matrix / (1 + abs(i - j) / n_g))
 
     def calc_inv_diff_moment(self, p_minus):
@@ -956,11 +991,15 @@ class GLCM:
     def calc_norm_inv_diff_moment(self, p_minus):
         k = np.indices(p_minus.shape)
         n_g = len(p_minus) - 1
+        if n_g == 0:
+            raise DataStructureError(f" n_g in calc_norm_inv_diff_moment is zero.")
         return np.sum(p_minus / (1 + (k / n_g) ** 2))
 
     def calc_inv_variance(self, p_minus):
         k = np.indices(p_minus.shape)
         non_zero_mask = k != 0
+        if np.any(k[non_zero_mask] == 0):
+            raise DataStructureError(f" denominator in calc_inv_variance is zero.")
         return np.sum(p_minus[1::] / (k[non_zero_mask] ** 2))
 
     def calc_autocor(self, matrix):
@@ -974,9 +1013,14 @@ class GLCM:
         weights = []
         for i in range(number_of_slices):
             for j in range(number_of_directions):
-                glcm_slice = self.glcm_2d_matrices[i][j] / np.sum(self.glcm_2d_matrices[i][j])
+                sum_glcm_2d_matrices = np.sum(self.glcm_2d_matrices[i][j])
+                if sum_glcm_2d_matrices == 0:
+                    raise DataStructureError(f"GLCM sum in calc_2d_averaged_glcm_features is zero.")
+                glcm_slice = self.glcm_2d_matrices[i][j] / sum_glcm_2d_matrices
                 weight = 1
                 if self.slice_weight:
+                    if self.tot_no_of_roi_voxels == 0:
+                        raise DataStructureError(f" tot_no_of_roi_voxels in calc_2d_averaged_glcm_features is zero.")
                     weight = self.slice_no_of_roi_voxels[i] / self.tot_no_of_roi_voxels
                 weights.append(weight)
 
@@ -1080,9 +1124,16 @@ class GLCM:
 
         averaged_glcm = np.sum(self.glcm_2d_matrices, axis=1)
         for slice_id in range(number_of_slices):
-            glcm_slice = averaged_glcm[slice_id] / np.sum(averaged_glcm[slice_id])
+            sum_averaged_glcm = np.sum(averaged_glcm[slice_id])
+            if sum_averaged_glcm == 0:
+                raise DataStructureError(
+                    f" Denominator is zero in calc_2d_slice_merged_glcm_features.")
+            glcm_slice = averaged_glcm[slice_id] / sum_averaged_glcm
             weight = 1
             if self.slice_weight:
+                if self.tot_no_of_roi_voxels == 0:
+                    raise DataStructureError(
+                        f" Denominator is zero in calc_2d_slice_merged_glcm_features.")
                 weight = self.slice_no_of_roi_voxels[slice_id] / self.tot_no_of_roi_voxels
             weights.append(weight)
 
@@ -1181,8 +1232,11 @@ class GLCM:
 
     def calc_2_5d_merged_glcm_features(self):
         glcm = np.sum(np.sum(self.glcm_2d_matrices, axis=1), axis=0)
-
-        glcm = glcm / np.sum(glcm)
+        sum_glcm = np.sum(glcm)
+        if sum_glcm == 0:
+            raise DataStructureError(
+                f" Denominator is zero in calc_2_5d_merged_glcm_features.")
+        glcm = glcm / sum_glcm
 
         self.joint_max = np.max(glcm)
         glcm_joint_average = self.calc_joint_average(glcm)
@@ -1226,7 +1280,11 @@ class GLCM:
         averaged_glcm = np.sum(self.glcm_2d_matrices, axis=0)  # / number_of_slices
 
         for i in range(number_of_directions):
-            M_i = averaged_glcm[i] / np.sum(averaged_glcm[i])
+            sum_averaged_glcm = np.sum(averaged_glcm[i])
+            if sum_averaged_glcm == 0:
+                raise DataStructureError(
+                    f" Denominator is zero in calc_2_5d_direction_merged_glcm_features.")
+            M_i = averaged_glcm[i] / sum_averaged_glcm
             self.joint_max += np.max(M_i)
             glcm_i_joint_average = self.calc_joint_average(M_i)
             self.joint_average += glcm_i_joint_average
@@ -1263,6 +1321,9 @@ class GLCM:
             self.inf_cor_1 += self.calc_information_correlation_1(M_i)
             self.inf_cor_2 += self.calc_information_correlation_2(M_i)
 
+        if number_of_directions == 0:
+            raise DataStructureError(
+                f" number_of_directions is zero in calc_2_5d_direction_merged_glcm_features.")
         self.joint_max /= number_of_directions
         self.joint_average /= number_of_directions
         self.joint_var /= number_of_directions
@@ -1299,6 +1360,9 @@ class GLCM:
 
         for glcm_i in self.glcm_3d_matrix:
             norm = np.sum(glcm_i)
+            if norm == 0:
+                raise DataStructureError(
+                    f" Denominator is zero in calc_3d_averaged_glcm_features.")
             glcm_i = glcm_i / norm
             self.joint_max += np.max(glcm_i)
             glcm_i_joint_average = self.calc_joint_average(glcm_i)
@@ -1336,6 +1400,9 @@ class GLCM:
             self.inf_cor_1 += self.calc_information_correlation_1(glcm_i)
             self.inf_cor_2 += self.calc_information_correlation_2(glcm_i)
 
+        if nuber_of_dir_3D == 0:
+            raise DataStructureError(
+                f" nuber_of_dir_3D is zero in calc_2_5d_direction_merged_glcm_features.")
         self.joint_max /= nuber_of_dir_3D
         self.joint_average /= nuber_of_dir_3D
         self.joint_var /= nuber_of_dir_3D
@@ -1369,7 +1436,11 @@ class GLCM:
     def calc_3d_merged_glcm_features(self):
 
         M = np.sum(self.glcm_3d_matrix, axis=0)
-        M = M / np.sum(M)
+        M_sum = np.sum(M)
+        if M_sum == 0:
+            raise DataStructureError(
+                f" Denominator is zero in calc_3d_merged_glcm_features.")
+        M = M / M_sum
 
         self.joint_max = np.max(M)
         self.joint_average = self.calc_joint_average(M)
@@ -1901,14 +1972,18 @@ class GLRLM_GLSZM_GLDZM_NGLDM:
 
         Ns = np.sum(m)
         _, j = np.indices(m.shape)
-
+        if Ns == 0:
+            raise DataStructureError(
+                f" Denominator is zero in calc_short_emphasis.")
         return np.sum(m / (j + 1) ** 2) / Ns
 
     def calc_long_emphasis(self, m):
 
         Ns = np.sum(m)
         _, j = np.indices(m.shape)
-
+        if Ns == 0:
+            raise DataStructureError(
+                f" Denominator is zero in calc_long_emphasis.")
         return np.sum(m * (j + 1) ** 2) / Ns
 
     def calc_low_gr_lvl_emphasis(self, M):
@@ -1916,14 +1991,18 @@ class GLRLM_GLSZM_GLDZM_NGLDM:
         Ns = np.sum(M)
         i, _ = np.indices(M.shape)
         mask = i != 0
-
+        if Ns == 0:
+            raise DataStructureError(
+                f" Denominator is zero in calc_low_gr_lvl_emphasis.")
         return np.sum(M[mask] / (i[mask]) ** 2) / Ns
 
     def calc_high_gr_lvl_emphasis(self, m):
 
         Ns = np.sum(m)
         i, _ = np.indices(m.shape)
-
+        if Ns == 0:
+            raise DataStructureError(
+                f" Denominator is zero in calc_high_gr_lvl_emphasis.")
         return np.sum(m * i ** 2) / Ns
 
     def calc_short_low_gr_lvl_emphasis(self, M):
@@ -1931,16 +2010,21 @@ class GLRLM_GLSZM_GLDZM_NGLDM:
         Ns = np.sum(M)
         i, j = np.indices(M.shape)
         mask = i != 0
-
+        if np.any(i[mask] == 0):
+            raise DataStructureError(f" Denominator is zero in calc_short_low_gr_lvl_emphasis.")
         M_j = M[mask] / (i[mask] ** 2)
-
+        if Ns == 0:
+            raise DataStructureError(
+                f" Denominator is zero in calc_short_low_gr_lvl_emphasis.")
         return np.sum(M_j / ((j[mask] + 1) ** 2)) / Ns
 
     def calc_short_high_gr_lvl_emphasis(self, M):
 
         Ns = np.sum(M)
         i, j = np.indices(M.shape)
-
+        if Ns == 0:
+            raise DataStructureError(
+                f" Denominator is zero in calc_short_high_gr_lvl_emphasis.")
         return np.sum((i ** 2 * M) / ((j + 1)) ** 2) / Ns
 
     def calc_long_low_gr_lvl_emphasis(self, M):
@@ -1948,44 +2032,58 @@ class GLRLM_GLSZM_GLDZM_NGLDM:
         Ns = np.sum(M)
         i, j = np.indices(M.shape)
         mask = i != 0
-
+        if Ns == 0:
+            raise DataStructureError(
+                f" Denominator is zero in calc_long_low_gr_lvl_emphasis.")
         return np.sum((M[mask] * (j[mask] + 1) ** 2) / (i[mask]) ** 2) / Ns
 
     def calc_long_high_gr_lvl_emphasis(self, M):
 
         n_s = np.sum(M)
         i, j = np.indices(M.shape)
-
+        if n_s == 0:
+            raise DataStructureError(
+                f" Denominator is zero in calc_long_high_gr_lvl_emphasis.")
         return np.sum(M * (j + 1) ** 2 * i ** 2) / n_s
 
     def calc_non_uniformity(self, M):
 
         Ns = np.sum(M)
-
+        if Ns == 0:
+            raise DataStructureError(
+                f" Denominator is zero in calc_non_uniformity.")
         return np.sum(np.sum(M, axis=1) ** 2) / Ns
 
     def calc_norm_non_uniformity(self, M):
 
         Ns = np.sum(M)
-
+        if Ns == 0:
+            raise DataStructureError(
+                f" Denominator is zero in calc_norm_non_uniformity.")
         return np.sum(np.sum(M, axis=1) ** 2) / Ns ** 2
 
     def calc_length_non_uniformity(self, M):
 
         Ns = np.sum(M)
-
+        if Ns == 0:
+            raise DataStructureError(
+                f" Denominator is zero in calc_length_non_uniformity.")
         return np.sum(np.sum(M, axis=0) ** 2) / Ns
 
     def calc_norm_length_non_uniformity(self, M):
 
         Ns = np.sum(M)
-
+        if Ns == 0:
+            raise DataStructureError(
+                f" Denominator is zero in calc_norm_length_non_uniformity.")
         return np.sum(np.sum(M, axis=0) ** 2) / Ns ** 2
 
     def calc_percentage(self, M, Nv):
 
         Ns = np.sum(M)
-
+        if Nv == 0:
+            raise DataStructureError(
+                f" Denominator is zero in calc_percentage.")
         return Ns / Nv
 
     def calc_gr_lvl_var(self, M):
@@ -1993,13 +2091,18 @@ class GLRLM_GLSZM_GLDZM_NGLDM:
         Ns = np.sum(M)
         i, _ = np.indices(M.shape)
         mu = np.sum(M * i / Ns)
-
+        if Ns == 0:
+            raise DataStructureError(
+                f" Denominator is zero in calc_gr_lvl_var.")
         return np.sum((i - mu) ** 2 * (M / Ns))
 
     def calc_length_var(self, M):
 
         Ns = np.sum(M)
         _, j = np.indices(M.shape)
+        if Ns == 0:
+            raise DataStructureError(
+                f" Denominator is zero in calc_length_var.")
         mu = np.sum(M * j / Ns)
 
         return np.sum((j - mu) ** 2 * (M / Ns))
@@ -2008,14 +2111,18 @@ class GLRLM_GLSZM_GLDZM_NGLDM:
 
         Ns = np.sum(M)
         mask = M != 0
-
+        if Ns == 0:
+            raise DataStructureError(
+                f" Denominator is zero in calc_entropy.")
         return np.sum((M[mask] / Ns) * np.log2((M[mask] / Ns))) * (-1)
 
     def calc_energy(self, M):
 
         Ns = np.sum(M)
         mask = M != 0
-
+        if Ns == 0:
+            raise DataStructureError(
+                f" Denominator is zero in calc_energy.")
         return np.sum((M[mask] / Ns) ** 2)
 
     def calc_2d_averaged_glrlm_features(self):
@@ -2029,6 +2136,9 @@ class GLRLM_GLSZM_GLDZM_NGLDM:
                 M_ij = self.glrlm_2D_matrices[i][j]
                 weight = 1
                 if self.slice_weight:
+                    if self.tot_no_of_roi_voxels == 0:
+                        raise DataStructureError(
+                            f" Denominator is zero in calc_2d_averaged_glrlm_features.")
                     weight = self.no_of_roi_voxels[i] / self.tot_no_of_roi_voxels
                 weights.append(weight)
 
@@ -2095,6 +2205,9 @@ class GLRLM_GLSZM_GLDZM_NGLDM:
             M_i = averaged_M[i]
             weight = 1
             if self.slice_weight:
+                if self.tot_no_of_roi_voxels == 0:
+                    raise DataStructureError(
+                        f" Denominator is zero in calc_2d_slice_merged_glrlm_features. ")
                 weight = self.no_of_roi_voxels[i] / self.tot_no_of_roi_voxels
             weights.append(weight)
 
@@ -2110,6 +2223,9 @@ class GLRLM_GLSZM_GLDZM_NGLDM:
             self.norm_non_uniformity_list.append(self.calc_norm_non_uniformity(M_i))
             self.length_non_uniformity_list.append(self.calc_length_non_uniformity(M_i))
             self.norm_length_non_uniformity_list.append(self.calc_norm_length_non_uniformity(M_i))
+            if number_of_directions == 0:
+                raise DataStructureError(
+                    f" Denominator is zero in calc_2d_slice_merged_glrlm_features. ")
             self.percentage_list.append(
                 self.calc_percentage(M_i, self.no_of_roi_voxels[i]) * (1 / number_of_directions))
             self.gr_lvl_var_list.append(self.calc_gr_lvl_var(M_i))
@@ -2168,6 +2284,9 @@ class GLRLM_GLSZM_GLDZM_NGLDM:
         self.norm_non_uniformity = self.calc_norm_non_uniformity(glrlm)
         self.length_non_uniformity = self.calc_length_non_uniformity(glrlm)
         self.norm_length_non_uniformity = self.calc_norm_length_non_uniformity(glrlm)
+        if number_of_directions == 0:
+            raise DataStructureError(
+                f" Denominator is zero in calc_2_5d_merged_glrlm_features.")
         self.percentage = self.calc_percentage(glrlm, np.sum(self.no_of_roi_voxels)) / number_of_directions
         self.gr_lvl_var = self.calc_gr_lvl_var(glrlm)
         self.length_var = self.calc_length_var(glrlm)
@@ -2196,7 +2315,9 @@ class GLRLM_GLSZM_GLDZM_NGLDM:
             self.gr_lvl_var += self.calc_gr_lvl_var(glrlm_i)
             self.length_var += self.calc_length_var(glrlm_i)
             self.entropy += self.calc_entropy(glrlm_i)
-
+        if number_of_directions == 0:
+            raise DataStructureError(
+                f" Denominator is zero in calc_2_5d_direction_merged_glrlm_features.")
         self.short_runs_emphasis /= number_of_directions
         self.long_runs_emphasis /= number_of_directions
         self.low_grey_level_run_emphasis /= number_of_directions
@@ -2236,7 +2357,9 @@ class GLRLM_GLSZM_GLDZM_NGLDM:
             self.gr_lvl_var += self.calc_gr_lvl_var(M_i)
             self.length_var += self.calc_length_var(M_i)
             self.entropy += self.calc_entropy(M_i)
-
+        if number_of_directions == 0:
+            raise DataStructureError(
+                f" Denominator is zero in calc_3d_averaged_glrlm_features.")
         self.short_runs_emphasis /= number_of_directions
         self.long_runs_emphasis /= number_of_directions
         self.low_grey_level_run_emphasis /= number_of_directions
@@ -2257,6 +2380,9 @@ class GLRLM_GLSZM_GLDZM_NGLDM:
     def calc_3d_merged_glrlm_features(self):
 
         number_of_directions = self.glrlm_3D_matrix.shape[0]
+        if number_of_directions == 0:
+            raise DataStructureError(
+                f" Denominator is zero in calc_3d_merged_glrlm_features.")
         M = np.sum(self.glrlm_3D_matrix, axis=0)
 
         self.short_runs_emphasis = self.calc_short_emphasis(M)
@@ -2285,6 +2411,9 @@ class GLRLM_GLSZM_GLDZM_NGLDM:
             glszm_slice = self.glszm_2D_matrices[i]
             weight = 1
             if self.slice_weight:
+                if self.tot_no_of_roi_voxels == 0:
+                    raise DataStructureError(
+                        f" Denominator is zero in calc_2d_glszm_features.")
                 weight = self.no_of_roi_voxels[i] / self.tot_no_of_roi_voxels
             weights.append(weight)
 
@@ -2349,6 +2478,9 @@ class GLRLM_GLSZM_GLDZM_NGLDM:
             M = self.gldzm_2D_matrices[i]
             weight = 1
             if self.slice_weight:
+                if self.tot_no_of_roi_voxels == 0:
+                    raise DataStructureError(
+                        f" Denominator is zero in calc_2d_gldzm_features.")
                 weight = self.no_of_roi_voxels[i] / self.tot_no_of_roi_voxels
             weights.append(weight)
 
@@ -2497,6 +2629,9 @@ class GLRLM_GLSZM_GLDZM_NGLDM:
             ngldm_matrix = self.ngldm_2d_matrices[i]
             weight = 1
             if self.slice_weight:
+                if self.tot_no_of_roi_voxels == 0:
+                    raise DataStructureError(
+                        f" Denominator is zero in calc_2d_ngldm_features.")
                 weight = self.no_of_roi_voxels[i] / self.tot_no_of_roi_voxels
             weights.append(weight)
 
@@ -2727,6 +2862,9 @@ class NGTDM:
 
     def calc_contrast(self, matrix):
         n = np.sum(matrix[:, 0])
+        if n == 0:
+            raise DataStructureError(
+                f" Denominator is zero in calc_contrast.")
         n_g = np.sum(matrix[:, 0] != 0)
         s_1 = 0
         s_2 = 0
@@ -2744,7 +2882,8 @@ class NGTDM:
     def calc_busyness(self, matrix):
         n = np.sum(matrix[:, 0])
         if n == 0:
-            pass
+            raise DataStructureError(
+                f" Denominator is zero in calc_busyness.")
         num = 0
         denum = 0
         for i in range(matrix.shape[0]):
@@ -2786,6 +2925,9 @@ class NGTDM:
 
     def calc_strength(self, matrix):
         n = np.sum(matrix[:, 0])
+        if n == 0:
+            raise DataStructureError(
+                f" Denominator is zero in calc_strength.")
         num = 0
         denum = 0
         for i in range(matrix.shape[0]):
@@ -2806,6 +2948,9 @@ class NGTDM:
             ngtdm_slice = self.ngtd_2d_matrices[i]
             weight = 1
             if self.slice_weight:
+                if self.tot_no_of_roi_voxels == 0:
+                    raise DataStructureError(
+                        f" Denominator is zero in calc_2d_ngtdm_features.")
                 weight = self.slice_no_of_roi_voxels[i] / self.tot_no_of_roi_voxels
             weights.append(weight)
 

@@ -82,7 +82,7 @@ class Radiomics:
 
     def extract_features(self, image, mask, filtered_image=None):
         slice_2d = True if image.shape[2] == 1 else False
-        
+
         columns = [
             'morph_volume', 'morph_vol_approx', 'morph_area_mesh', 'morph_av', 'morph_comp_1', 'morph_comp_2',
             'morph_sph_dispr', 'morph_sphericity', 'morph_asphericity', 'morph_com', 'morph_diam', 'morph_pca_maj_axis',
@@ -173,6 +173,9 @@ class Radiomics:
         self._calc_discretized_intensity_features()
         self._calc_texture_features()
 
+        bounding_box_min, no_voxels = self._calc_bounding_box_and_voxels(self.patient_morphological_mask.array)
+        no_bins = self._calc_number_of_bins(self.patient_intensity_mask.array)
+
         # compile features
         all_features_list = [self.patient_local_intensity_features_list,
                              self.intensity_features_list, self.discr_intensity_features_list,
@@ -201,6 +204,8 @@ class Radiomics:
 
         self.features_ = dict(zip(self.new_columns, all_features_list_flat))
         self.features_ = self.features_ | self.ivh_features | self.morph_moran_i_and_geary_c_features
+        self.features_.update(
+            {'bounding_box_min': bounding_box_min, 'no_voxels': no_voxels, 'no_bins': no_bins})
 
     def _validate_mask(self, mask, aggr_dim):
         """
@@ -273,6 +278,38 @@ class Radiomics:
             mask.array = masked_array
 
         return mask
+
+    @staticmethod
+    def _calc_bounding_box_and_voxels(mask_array):
+        """
+        Calculate the smallest bounding box dimension and voxel count for a binary mask.
+        """
+        if mask_array is None:
+            return 0, 0
+
+        valid_coords = np.argwhere(mask_array > 0)
+        if valid_coords.size == 0:
+            return 0, 0
+
+        min_coords = valid_coords.min(axis=0)
+        max_coords = valid_coords.max(axis=0)
+        bbox_dims = max_coords - min_coords + 1
+
+        return int(bbox_dims.min()), int(valid_coords.shape[0])
+
+    @staticmethod
+    def _calc_number_of_bins(intensity_array):
+        """
+        Calculate the number of unique intensity bins within the ROI (ignoring NaNs).
+        """
+        if intensity_array is None:
+            return 0
+
+        valid_values = intensity_array[~np.isnan(intensity_array)]
+        if valid_values.size == 0:
+            return 0
+
+        return int(np.unique(valid_values).size)
 
     def _outlier_removal_and_intensity_truncation(self):
         if self.calc_intensity_mask:

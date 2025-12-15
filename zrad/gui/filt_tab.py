@@ -143,17 +143,20 @@ def _get_filename(input_params):
 
 
 def process_patient_folder(input_params, patient_folder):
+
+    local_params = dict(input_params)
+
     # Logger
     logger_date_time = datetime.now().strftime("%Y-%m-%d_%H%M%S")
     logger = get_logger(logger_date_time + '_Filtering')
 
     # Initialize Filtering instance
-    filtering = _get_filtering(input_params)
+    filtering = _get_filtering(local_params)
 
     logger.info(f"Filtering patient's {patient_folder} image.")
 
     try:
-        image = load_images(input_params, patient_folder)
+        image = load_images(local_params, patient_folder)
     except DataStructureError as e:
         logger.error(e)
         logger.error(f"Patient {patient_folder} could not be loaded and is skipped.")
@@ -161,8 +164,8 @@ def process_patient_folder(input_params, patient_folder):
     image_new = filtering.apply_filter(image)
 
     # Save new image
-    filename = _get_filename(input_params)
-    output_path = os.path.join(input_params["output_directory"], patient_folder, filename)
+    filename = _get_filename(local_params)
+    output_path = os.path.join(local_params["output_directory"], patient_folder, filename)
     image_new.save_as_nifti(output_path)
 
 

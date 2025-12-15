@@ -106,7 +106,7 @@ def _write_radiomics_csv(file_path, features):
         return
 
     fieldnames = []
-    for key in ("pat_id", "mask_id"):
+    for key in ("pat_id", "mask_id", "bounding_box_min", "no_voxels", "no_bins"):
         if any(key in row for row in features):
             fieldnames.append(key)
 

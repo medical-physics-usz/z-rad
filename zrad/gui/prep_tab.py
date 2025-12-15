@@ -31,75 +31,79 @@ IS_FROZEN = getattr(sys, 'frozen', False)
 
 
 def process_patient_folder(input_params, patient_folder, structure_set):
+
+    local_params = dict(input_params)
+
     """Function to process each patient folder, used for parallel processing."""
     # Logger
     logger_date_time = datetime.now().strftime("%Y-%m-%d_%H%M%S")
     logger = get_logger(logger_date_time + '_Preprocessing')
     logger.info(f"Processing patient's {patient_folder} image.")
     try:
-        image = load_images(input_params, patient_folder)
+        image = load_images(local_params, patient_folder)
     except (DataStructureError, ValueError) as e:
         logger.error(e)
         logger.error(f"Patient {patient_folder} could not be loaded and is skipped.")
         return
 
-    if input_params["just_save_as_nifti"]:
+    if local_params["just_save_as_nifti"]:
         image_new = image.copy()
     else:
         prep_image = Preprocessing(
-            input_imaging_modality=input_params["input_imaging_modality"],
-            resample_resolution=input_params["resample_resolution"],
-            resample_dimension=input_params["resample_dimension"],
-            interpolation_method=input_params["image_interpolation_method"],
+            input_imaging_modality=local_params["input_imaging_modality"],
+            resample_resolution=local_params["resample_resolution"],
+            resample_dimension=local_params["resample_dimension"],
+            interpolation_method=local_params["image_interpolation_method"],
         )
         image_new = prep_image.resample(image, image_type='image')
 
     # Save new image
-    output_path = os.path.join(input_params["output_directory"], patient_folder, 'image.nii.gz')
+    output_path = os.path.join(local_params["output_directory"], patient_folder, 'image.nii.gz')
     image_new.save_as_nifti(output_path)
 
     # Process masks
-    if input_params["input_data_type"] == 'dicom':
-        input_directory = os.path.join(input_params["input_directory"], patient_folder)
+    if local_params["input_data_type"] == 'dicom':
+        input_directory = os.path.join(local_params["input_directory"], patient_folder)
         rtstruct_paths = get_dicom_files(input_directory, modality='RTSTRUCT')
-        if len(rtstruct_paths) > 0:
-            input_params['rtstruct_path'] = rtstruct_paths[0]['file_path']
-            if input_params["use_all_structures"]:
-                structure_set = get_all_structure_names(input_params['rtstruct_path'])
+
+        if rtstruct_paths:
+            local_params['rtstruct_path'] = rtstruct_paths[0]['file_path']
+            if local_params["use_all_structures"]:
+                structure_set = get_all_structure_names(local_params['rtstruct_path'])
         else:
-            input_params['rtstruct_path'] = None
+            local_params['rtstruct_path'] = None
 
     if structure_set:
         mask_union = None
         for mask_name in structure_set:
-            mask = load_mask(input_params, patient_folder, mask_name, image)
+            mask = load_mask(local_params, patient_folder, mask_name, image)
             if mask and mask.array is not None:
                 logger.info(
                     f"Processing patient's {patient_folder} ROI: {mask_name}.")
-                if input_params["just_save_as_nifti"]:
+                if local_params["just_save_as_nifti"]:
                     mask_new = mask.copy()
                 else:
                     prep_mask = Preprocessing(
-                        input_imaging_modality=input_params["input_imaging_modality"],
-                        resample_resolution=input_params["resample_resolution"],
-                        resample_dimension=input_params["resample_dimension"],
-                        interpolation_method=input_params["mask_interpolation_method"],
-                        interpolation_threshold=input_params["mask_interpolation_threshold"]
+                        input_imaging_modality=local_params["input_imaging_modality"],
+                        resample_resolution=local_params["resample_resolution"],
+                        resample_dimension=local_params["resample_dimension"],
+                        interpolation_method=local_params["mask_interpolation_method"],
+                        interpolation_threshold=local_params["mask_interpolation_threshold"]
                     )
                     mask_new = prep_mask.resample(mask, image_type='mask')
 
                 # Save new mask
-                output_path = os.path.join(input_params["output_directory"], patient_folder, f'{mask_name}.nii.gz')
+                output_path = os.path.join(local_params["output_directory"], patient_folder, f'{mask_name}.nii.gz')
                 mask_new.save_as_nifti(output_path)
 
-                if input_params["mask_union"]:
+                if local_params["mask_union"]:
                     if mask_union:
                         mask_union.array = np.bitwise_or(mask_union.array, mask_new.array).astype(np.int16)
                     else:
                         mask_union = mask_new.copy()
 
         if mask_union:
-            output_path = os.path.join(input_params["output_directory"], patient_folder, f'mask_union.nii.gz')
+            output_path = os.path.join(local_params["output_directory"], patient_folder, f'mask_union.nii.gz')
             mask_union.save_as_nifti(output_path)
 
 

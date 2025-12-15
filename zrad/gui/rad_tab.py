@@ -31,57 +31,60 @@ logging.captureWarnings(True)
 IS_FROZEN = getattr(sys, 'frozen', False)
 
 def process_patient_folder(input_params, patient_folder, structure_set):
+
+    local_params = dict(input_params)
+
     # Logger
     logger_date_time = datetime.now().strftime("%Y-%m-%d_%H%M%S")
     logger = get_logger(logger_date_time + '_Radiomics')
 
     def is_slice_weighting():
         """Determines if slice weighting is applied based on current settings."""
-        aggr_dim = input_params["agr_strategy"].split(',')[0]
-        weighting = input_params["weighting"]
+        aggr_dim = local_params["agr_strategy"].split(',')[0]
+        weighting = local_params["weighting"]
         if aggr_dim == '2D':
             return weighting == 'Weighted Mean'
         return False
 
     def is_slice_median():
         """Determines if slice median is applied based on current settings."""
-        aggr_dim = input_params["agr_strategy"].split(',')[0]
-        weighting = input_params["weighting"]
+        aggr_dim = local_params["agr_strategy"].split(',')[0]
+        weighting = local_params["weighting"]
         if aggr_dim == '2D':
             return weighting == 'Median'
         return False
 
     # Initialize Radiomics instance
     rad_instance = Radiomics(
-        aggr_dim=input_params['aggregation_method'][0],
-        aggr_method=input_params['aggregation_method'][1],
-        intensity_range=input_params['intensity_range'],
-        outlier_range=input_params['outlier_range'],
-        number_of_bins=input_params['discretization'][1],
-        bin_size=input_params['discretization'][2],
+        aggr_dim=local_params['aggregation_method'][0],
+        aggr_method=local_params['aggregation_method'][1],
+        intensity_range=local_params['intensity_range'],
+        outlier_range=local_params['outlier_range'],
+        number_of_bins=local_params['discretization'][1],
+        bin_size=local_params['discretization'][2],
         slice_weighting=is_slice_weighting(),
         slice_median=is_slice_median(),
     )
 
     logger.info(f"Processing patient: {patient_folder}.")
     try:
-        if input_params["nifti_filtered_image_name"]:
-            image, filtered_image = load_images(input_params, patient_folder)
+        if local_params["nifti_filtered_image_name"]:
+            image, filtered_image = load_images(local_params, patient_folder)
         else:
-            image = load_images(input_params, patient_folder)
+            image = load_images(local_params, patient_folder)
             filtered_image = None
     except DataStructureError as e:
         logger.error(e)
 
-    if input_params["input_data_type"] == 'dicom':
-        input_directory = os.path.join(input_params["input_directory"], patient_folder)
-        input_params['rtstruct_path'] = get_dicom_files(input_directory, modality='RTSTRUCT')[0]['file_path']
-        if input_params["use_all_structures"]:
-            structure_set = get_all_structure_names(input_params['rtstruct_path'])
+    if local_params["input_data_type"] == 'dicom':
+        input_directory = os.path.join(local_params["input_directory"], patient_folder)
+        local_params['rtstruct_path'] = get_dicom_files(input_directory, modality='RTSTRUCT')[0]['file_path']
+        if local_params["use_all_structures"]:
+            structure_set = get_all_structure_names(local_params['rtstruct_path'])
 
     radiomic_features_list = []
     for mask_name in structure_set:
-        mask = load_mask(input_params, patient_folder, mask_name, image)
+        mask = load_mask(local_params, patient_folder, mask_name, image)
         if mask and mask.array is not None:
             logger.info(f"Processing patient: {patient_folder} with ROI: {mask_name}.")
             try:

@@ -663,7 +663,7 @@ def extract_dicom_mask(rtstruct_path, roi_name, image):
         return contour_data
 
     rt_struct = get_contour_data(rtstruct_path, roi_name)
-    if rt_struct:
+    if rt_struct and 'sequence' in rt_struct:
         mask = generate_mask_array(rt_struct['sequence'], image)
         return Image(array=mask,
                      origin=image.GetOrigin(),

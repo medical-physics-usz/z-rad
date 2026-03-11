@@ -1,5 +1,6 @@
 import copy
 import os
+import re
 import warnings
 from datetime import datetime
 
@@ -11,6 +12,12 @@ from skimage import draw
 
 from .exceptions import DataStructureWarning, DataStructureError
 
+def is_fdg(name):
+    FDG_PATTERN = re.compile(
+        r"(fdg|fluorodeoxy|fludeoxy|2[-\s]?\[?18f\]?[-\s]?fluoro)",
+        re.IGNORECASE
+    )
+    return bool(FDG_PATTERN.search(name))
 
 def parse_time(time_str):
     """
@@ -337,8 +344,12 @@ def validate_pet_dicom_tags(dicom_files):
             warnings.warn(warning_msg, DataStructureWarning)
 
         if ds.Units == 'BQML':
-            injection_time = parse_time(
-                ds.RadiopharmaceuticalInformationSequence[0].RadiopharmaceuticalStartTime)
+            try:
+                injection_time = parse_time(
+                    ds.RadiopharmaceuticalInformationSequence[0].RadiopharmaceuticalStartTime)
+            except AttributeError:
+                injection_time = parse_time(
+                    ds.RadiopharmaceuticalInformationSequence[0].RadiopharmaceuticalStartDateTime)
             half_life = float(ds.RadiopharmaceuticalInformationSequence[0].RadionuclideHalfLife)
             decay_constant = np.log(2) / half_life
 
@@ -350,7 +361,7 @@ def validate_pet_dicom_tags(dicom_files):
                                                                               day=injection_time.day)
 
                     elapsed_time = calc_elapsed_time(ds, decay_constant, acquisition_time, injection_time)
-                elif 'SIEMENS' in ds.Manufacturer.upper() or 'CPS' in ds.Manufacturer.upper():
+                elif 'SIEMENS' in ds.Manufacturer.upper() or 'CPS' in ds.Manufacturer.upper() or 'CTI' in ds.Manufacturer.upper():
                     try:
                         elapsed_time = (
                                     parse_time(ds[(0x0071, 0x1022)].value).replace(year=injection_time.year,
@@ -379,18 +390,26 @@ def validate_pet_dicom_tags(dicom_files):
 
                         elapsed_time = (acquisition_time - injection_time).total_seconds() - frame_reference_time
                 else:
-                    warning_msg = f"For patient's {image_id} image, an unknown PET scaner manufacturer is present. Z-Rad only supports Philips, Siemens, and GE."
-                    raise DataStructureError(warning_msg)
+                    acquisition_time = parse_time(ds.AcquisitionTime).replace(year=injection_time.year,
+                                                                              month=injection_time.month,
+                                                                              day=injection_time.day)
+
+                    elapsed_time = calc_elapsed_time(ds, decay_constant, acquisition_time, injection_time)
+
+                    warning_msg = f"For patient's {image_id} image, an unknown PET scaner manufacturer is present {ds.Manufacturer}. Siemens/Philips strategy is applied."
+                    warnings.warn(warning_msg, DataStructureWarning)
 
             elif ds.DecayCorrection == 'ADMIN':
                 elapsed_time = 0
+            elif ds.DecayCorrection == 'NONE':
+                elapsed_time = None
             else:
-                warning_msg = f"For patient's {image_id} image, An unsupported Decay Correction {ds.DecayCorrection} is present. Only supported are 'START' and 'ADMIN'. Patient is excluded from the analysis."
+                warning_msg = f"For patient's {image_id} image, An unsupported Decay Correction {ds.DecayCorrection} is present. Only supported are 'NONE', 'START' and 'ADMIN'. Patient is excluded from the analysis."
                 raise DataStructureError(warning_msg)
-            if elapsed_time < 0:
+            if elapsed_time is not None and elapsed_time < 0:
                 error_msg = f"For patient's {image_id} image, patient is excluded from the analysis due to the negative time difference in the decay factor."
                 raise DataStructureError(error_msg)
-            elif elapsed_time > 0 and abs(elapsed_time) < 1800 and ds.DecayCorrection != 'ADMIN':
+            elif elapsed_time is not None and elapsed_time > 0 and abs(elapsed_time) < 1800 and ds.DecayCorrection != 'ADMIN':
                 warning_msg = f"Only {abs(elapsed_time) / 60} minutes after the injection."
                 warnings.warn(warning_msg, DataStructureWarning)
         elif ds.Units == 'CNTS' and 'PHILIPS' in ds.Manufacturer.upper():
@@ -415,9 +434,18 @@ def apply_suv_correction(dicom_files, suv_image):
             return pixel_array_units
 
         def process_bqml(activity_concentration, ds):
-            injection_time = parse_time(ds.RadiopharmaceuticalInformationSequence[0].RadiopharmaceuticalStartTime)
+            try:
+                injection_time = parse_time(
+                    ds.RadiopharmaceuticalInformationSequence[0].RadiopharmaceuticalStartTime)
+            except AttributeError:
+                injection_time = parse_time(
+                    ds.RadiopharmaceuticalInformationSequence[0].RadiopharmaceuticalStartDateTime)
             patient_weight = float(ds.PatientWeight)
             injected_dose = float(ds.RadiopharmaceuticalInformationSequence[0].RadionuclideTotalDose)
+            if is_fdg(str(ds.RadiopharmaceuticalInformationSequence[0].Radiopharmaceutical)) and injected_dose < 10000:
+                injected_dose *= 1000000
+                warning_msg = f"Injected dose is {injected_dose} Bq, it is too low for FDG, assumed to be in MBq"
+                warnings.warn(warning_msg, DataStructureWarning)
             if injected_dose <= 0:
                 error_msg = f"The injected PET tracer dose is zero."
                 raise DataStructureError(error_msg)
@@ -433,7 +461,7 @@ def apply_suv_correction(dicom_files, suv_image):
 
                     elapsed_time = calc_elapsed_time(ds, decay_constant, acquisition_time, injection_time)
 
-                elif 'SIEMENS' in manufacturer or 'CPS' in manufacturer:
+                elif 'SIEMENS' in manufacturer or 'CPS' in manufacturer or 'CTI' in ds.Manufacturer.upper():
                     try:
                         elapsed_time = (
                                 parse_time(ds[(0x0071, 0x1022)].value).replace(year=injection_time.year,
@@ -462,10 +490,16 @@ def apply_suv_correction(dicom_files, suv_image):
 
                         elapsed_time = (acquisition_time - injection_time).total_seconds() - frame_reference_time
                 else:
-                    error_msg = f"Vendor {ds.Manufacturer} is not supported with BQML units!"
-                    raise DataStructureError(error_msg)
+                    acquisition_time = parse_time(ds.AcquisitionTime).replace(year=injection_time.year,
+                                                                              month=injection_time.month,
+                                                                              day=injection_time.day)
+
+                    elapsed_time = calc_elapsed_time(ds, decay_constant, acquisition_time, injection_time)
+
             elif ds.DecayCorrection == 'ADMIN':
                 elapsed_time = 0
+            elif ds.DecayCorrection == 'NONE':
+                pass
             else:
                 error_msg = f"Decay correction {ds.DecayCorrection} is not supported!"
                 raise DataStructureError(error_msg)
@@ -476,6 +510,45 @@ def apply_suv_correction(dicom_files, suv_image):
 
             return suv
 
+        def process_decay_uncorrected_bqml(activity_concentration, ds):
+            try:
+                injection_time = parse_time(
+                    ds.RadiopharmaceuticalInformationSequence[0].RadiopharmaceuticalStartTime)
+            except AttributeError:
+                injection_time = parse_time(
+                    ds.RadiopharmaceuticalInformationSequence[0].RadiopharmaceuticalStartDateTime)
+            patient_weight = float(ds.PatientWeight)
+            injected_dose = float(ds.RadiopharmaceuticalInformationSequence[0].RadionuclideTotalDose)
+            if is_fdg(str(ds.RadiopharmaceuticalInformationSequence[0].Radiopharmaceutical)) and injected_dose < 10000:
+                injected_dose *= 1000000
+            if injected_dose <= 0:
+                error_msg = f"The injected PET tracer dose is zero."
+                raise DataStructureError(error_msg)
+            half_life = float(ds.RadiopharmaceuticalInformationSequence[0].RadionuclideHalfLife)
+            decay_constant = np.log(2) / half_life
+            manufacturer = ds.Manufacturer.upper()
+
+            acquisition_time = parse_time(ds.AcquisitionTime).replace(year=injection_time.year,
+                                                                      month=injection_time.month,
+                                                                      day=injection_time.day)
+
+            if 'GE' in manufacturer:
+
+                decay_corrected_activity_concentration = activity_concentration * np.exp(
+                    decay_constant * ((acquisition_time - injection_time).total_seconds()))
+
+            else:
+
+                decay_during_frame = decay_constant * ds.ActualFrameDuration / 1000
+                avg_count_rate_time = (1 / decay_constant) * np.log(
+                    decay_during_frame / (1 - np.exp(-decay_during_frame)))
+                decay_corrected_activity_concentration = activity_concentration * np.exp(
+                    decay_constant * ((acquisition_time - injection_time).total_seconds() + avg_count_rate_time))
+
+
+            suv = decay_corrected_activity_concentration / (injected_dose / (patient_weight * 1000))
+
+            return suv
         def process_cnts(pixel_array_units, ds):
             if 'PHILIPS' in ds.Manufacturer.upper():
 
@@ -512,7 +585,10 @@ def apply_suv_correction(dicom_files, suv_image):
             else:
                 suv = process_gml(pixel_array_units)
         elif units == 'BQML':
-            suv = process_bqml(pixel_array_units, ds)
+            if ds.DecayCorrection == 'NONE':
+                suv = process_decay_uncorrected_bqml(pixel_array_units, ds)
+            else:
+                suv = process_bqml(pixel_array_units, ds)
         elif units == 'CNTS':
             suv = process_cnts(pixel_array_units, ds)
         else:

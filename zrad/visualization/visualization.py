@@ -1,5 +1,6 @@
 import os
 import sys
+import warnings
 import numpy as np
 import pyqtgraph as pg
 
@@ -337,7 +338,7 @@ class Visualization(QtWidgets.QMainWindow):
                 if self.vmax <= self.vmin:
                     self.vmax = self.vmin + 1.0
 
-        self.masks = self._load_masks_for_volume(masks)
+        self.masks = self._load_masks_for_volume(image, masks)
 
         self.current_image_index = index
         self.current_sagittal = self.nx // 2
@@ -355,11 +356,66 @@ class Visualization(QtWidgets.QMainWindow):
 
         self._update_all_views()
 
-    def _load_masks_for_volume(self, masks):
+    def _to_tuple(self, value):
+        if value is None:
+            return None
+        return tuple(np.asarray(value).tolist())
+
+    def _same_exact_shape(self, image, mask):
+        image_shape = tuple(np.asarray(image.array).shape)
+        mask_shape = tuple(np.asarray(mask.array).shape)
+        return image_shape == mask_shape
+
+    def _same_close_tuple(self, lhs, rhs, atol=1e-6):
+        lhs_tuple = self._to_tuple(lhs)
+        rhs_tuple = self._to_tuple(rhs)
+
+        if lhs_tuple is None or rhs_tuple is None:
+            return False
+
+        if len(lhs_tuple) != len(rhs_tuple):
+            return False
+
+        return bool(np.allclose(lhs_tuple, rhs_tuple, atol=atol, rtol=0.0))
+
+    def _metadata_matches_image(self, image, mask):
+        if not self._same_exact_shape(image, mask):
+            return False, (
+                f"shape mismatch: image={tuple(np.asarray(image.array).shape)} "
+                f"mask={tuple(np.asarray(mask.array).shape)}"
+            )
+
+        image_spacing = getattr(image, "spacing", None)
+        mask_spacing = getattr(mask, "spacing", None)
+        if not self._same_close_tuple(image_spacing, mask_spacing):
+            return False, f"spacing mismatch: image={image_spacing} mask={mask_spacing}"
+
+        image_origin = getattr(image, "origin", None)
+        mask_origin = getattr(mask, "origin", None)
+        if not self._same_close_tuple(image_origin, mask_origin):
+            return False, f"origin mismatch: image={image_origin} mask={mask_origin}"
+
+        image_direction = getattr(image, "direction", None)
+        mask_direction = getattr(mask, "direction", None)
+        if not self._same_close_tuple(image_direction, mask_direction):
+            return False, f"direction mismatch: image={image_direction} mask={mask_direction}"
+
+        return True, ""
+
+    def _load_masks_for_volume(self, image, masks):
         loaded_masks = []
 
         for i, mask_instance in enumerate(masks):
             mask_name, mask = next(iter(mask_instance.items()))
+
+            is_compatible, reason = self._metadata_matches_image(image, mask)
+            if not is_compatible:
+                warnings.warn(
+                    f"Skipping mask '{mask_name}' for image '{self.current_case_name}': {reason}",
+                    RuntimeWarning,
+                )
+                continue
+
             mask_bool = np.asarray(mask.array > 0, dtype=np.uint8)
             color = self.mask_colors[i % len(self.mask_colors)]
 

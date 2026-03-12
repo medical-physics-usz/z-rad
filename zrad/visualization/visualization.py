@@ -10,6 +10,8 @@ from PyQt5 import QtWidgets, QtCore, QtGui
 class SliceView(pg.GraphicsLayoutWidget):
     sigScrolled = QtCore.pyqtSignal(object, int)
     sigClicked = QtCore.pyqtSignal(object, float, float)
+    sigZoomed = QtCore.pyqtSignal(object, float, float, float)
+    sigResetView = QtCore.pyqtSignal(object)
 
     def __init__(self, title="", parent=None):
         super().__init__(parent=parent)
@@ -26,21 +28,68 @@ class SliceView(pg.GraphicsLayoutWidget):
         self.vb.setMouseEnabled(x=False, y=False)
         self.vb.enableAutoRange(x=False, y=False)
 
+        self._pan_active = False
+        self._pan_last_scene_pos = None
+
     def wheelEvent(self, ev):
         delta = ev.angleDelta().y()
         if delta == 0:
             ev.ignore()
             return
+
+        modifiers = QtWidgets.QApplication.keyboardModifiers()
+
+        if modifiers & QtCore.Qt.ControlModifier:
+            pos = self.vb.mapSceneToView(ev.pos())
+            zoom_factor = 0.8 if delta > 0 else 1.25
+            self.sigZoomed.emit(self, zoom_factor, pos.x(), pos.y())
+            ev.accept()
+            return
+
         self.sigScrolled.emit(self, 1 if delta > 0 else -1)
         ev.accept()
 
+    def mouseDoubleClickEvent(self, ev):
+        if ev.button() == QtCore.Qt.LeftButton:
+            self.sigResetView.emit(self)
+            ev.accept()
+            return
+        super().mouseDoubleClickEvent(ev)
+
     def mousePressEvent(self, ev):
+        if ev.button() == QtCore.Qt.MiddleButton:
+            self._pan_active = True
+            self._pan_last_scene_pos = ev.pos()
+            ev.accept()
+            return
+
         if ev.button() == QtCore.Qt.LeftButton:
             pos = self.vb.mapSceneToView(ev.pos())
             self.sigClicked.emit(self, pos.x(), pos.y())
             ev.accept()
             return
+
         super().mousePressEvent(ev)
+
+    def mouseMoveEvent(self, ev):
+        if self._pan_active and self._pan_last_scene_pos is not None:
+            old_view = self.vb.mapSceneToView(self._pan_last_scene_pos)
+            new_view = self.vb.mapSceneToView(ev.pos())
+            delta = old_view - new_view
+            self.vb.translateBy(x=delta.x(), y=delta.y())
+            self._pan_last_scene_pos = ev.pos()
+            ev.accept()
+            return
+
+        super().mouseMoveEvent(ev)
+
+    def mouseReleaseEvent(self, ev):
+        if ev.button() == QtCore.Qt.MiddleButton:
+            self._pan_active = False
+            self._pan_last_scene_pos = None
+            ev.accept()
+            return
+        super().mouseReleaseEvent(ev)
 
 
 class ColorLegendWidget(QtWidgets.QWidget):
@@ -96,7 +145,7 @@ class Visualization(QtWidgets.QMainWindow):
         self.current_image_index = 0
 
         self.mask_alpha = 0.35
-        self.crosshair_pen = pg.mkPen((255, 0, 0, 180), width=1)
+        self.crosshair_pen = pg.mkPen((255, 0, 0, 220), width=1)
 
         self.mask_colors = [
             (0, 255, 0),
@@ -127,9 +176,9 @@ class Visualization(QtWidgets.QMainWindow):
         self.vmin = 0.0
         self.vmax = 1.0
 
-        self.current_sagittal = 0   # x
-        self.current_coronal = 0    # y
-        self.current_axial = 0      # z
+        self.current_sagittal = 0
+        self.current_coronal = 0
+        self.current_axial = 0
 
         self._build_ui()
         self._connect_events()
@@ -205,6 +254,14 @@ class Visualization(QtWidgets.QMainWindow):
         self.cor_view.sigClicked.connect(self._on_view_clicked)
         self.axi_view.sigClicked.connect(self._on_view_clicked)
 
+        self.sag_view.sigZoomed.connect(self._on_view_zoomed)
+        self.cor_view.sigZoomed.connect(self._on_view_zoomed)
+        self.axi_view.sigZoomed.connect(self._on_view_zoomed)
+
+        self.sag_view.sigResetView.connect(self._reset_single_view)
+        self.cor_view.sigResetView.connect(self._reset_single_view)
+        self.axi_view.sigResetView.connect(self._reset_single_view)
+
         self.prev_button.clicked.connect(self._show_previous_image)
         self.next_button.clicked.connect(self._show_next_image)
         self.close_button.clicked.connect(self.close)
@@ -246,12 +303,12 @@ class Visualization(QtWidgets.QMainWindow):
         self.axi_vline = pg.InfiniteLine(angle=90, movable=False, pen=self.crosshair_pen)
         self.axi_hline = pg.InfiniteLine(angle=0, movable=False, pen=self.crosshair_pen)
 
-        self.sag_vline.setZValue(2)
-        self.sag_hline.setZValue(2)
-        self.cor_vline.setZValue(2)
-        self.cor_hline.setZValue(2)
-        self.axi_vline.setZValue(2)
-        self.axi_hline.setZValue(2)
+        for line in (
+            self.sag_vline, self.sag_hline,
+            self.cor_vline, self.cor_hline,
+            self.axi_vline, self.axi_hline,
+        ):
+            line.setZValue(10)
 
         self.sag_view.vb.addItem(self.sag_vline)
         self.sag_view.vb.addItem(self.sag_hline)
@@ -291,11 +348,8 @@ class Visualization(QtWidgets.QMainWindow):
         self._apply_item_transforms()
 
     def _apply_item_transforms(self):
-        # sagittal: displayed x=y, y=z
         self._set_item_transform(self.sag_img, self.sy, self.sz)
-        # coronal: displayed x=x, y=z
         self._set_item_transform(self.cor_img, self.sx, self.sz)
-        # axial: displayed x=x, y=y
         self._set_item_transform(self.axi_img, self.sx, self.sy)
 
         for item in self.sag_mask_items:
@@ -316,16 +370,12 @@ class Visualization(QtWidgets.QMainWindow):
         self.volume = np.asarray(image.array)
         self.current_case_name = item["image_name"]
 
-        # volume array order: (z, y, x)
         self.nz, self.ny, self.nx = self.volume.shape
-
-        # spacing order: (x, y, z)
         self.sx, self.sy, self.sz = image.spacing
 
         finite_vals = self.volume[np.isfinite(self.volume)]
 
         if finite_vals.size == 0:
-            # Fully invalid / corrupted volume: keep a harmless default window
             self.vmin = 0.0
             self.vmax = 1.0
         else:
@@ -355,6 +405,7 @@ class Visualization(QtWidgets.QMainWindow):
         self.next_button.setEnabled(self.current_image_index < len(self.image_sets) - 1)
 
         self._update_all_views()
+        QtCore.QTimer.singleShot(0, self._reset_all_view_ranges)
 
     def _to_tuple(self, value):
         if value is None:
@@ -451,15 +502,12 @@ class Visualization(QtWidgets.QMainWindow):
         return np.ascontiguousarray(arr[::-1, ::-1])
 
     def _get_sagittal_slice(self, x):
-        # base slice: (z, y)
         return self._rot180(self.volume[:, :, x])
 
     def _get_coronal_slice(self, y):
-        # base slice: (z, x)
         return self._rot180(self.volume[:, y, :])
 
     def _get_axial_slice(self, z):
-        # base slice: (y, x)
         return self._rot180(self.volume[z, :, :])
 
     def _get_sagittal_mask(self, mask, x):
@@ -471,32 +519,135 @@ class Visualization(QtWidgets.QMainWindow):
     def _get_axial_mask(self, mask, z):
         return self._rot180(mask[z, :, :])
 
-    def _set_view_extent(self, view, width_phys, height_phys):
+    def _get_view_dimensions(self, view):
+        if view is self.sag_view:
+            return self.ny * self.sy, self.nz * self.sz
+        if view is self.cor_view:
+            return self.nx * self.sx, self.nz * self.sz
+        if view is self.axi_view:
+            return self.nx * self.sx, self.ny * self.sy
+        raise ValueError("Unknown view")
+
+    def _fit_full_view_with_aspect(self, view):
+        width_phys, height_phys = self._get_view_dimensions(view)
+
+        rect = view.vb.sceneBoundingRect()
+        if rect.width() <= 1 or rect.height() <= 1:
+            view.vb.setRange(
+                xRange=(0.0, width_phys),
+                yRange=(0.0, height_phys),
+                padding=0.0,
+                disableAutoRange=True,
+            )
+            return
+
+        widget_ratio = rect.width() / rect.height()
+        data_ratio = width_phys / height_phys
+
+        if widget_ratio >= data_ratio:
+            visible_h = height_phys
+            visible_w = height_phys * widget_ratio
+        else:
+            visible_w = width_phys
+            visible_h = width_phys / widget_ratio
+
+        cx = width_phys / 2.0
+        cy = height_phys / 2.0
+
+        x0 = cx - visible_w / 2.0
+        x1 = cx + visible_w / 2.0
+        y0 = cy - visible_h / 2.0
+        y1 = cy + visible_h / 2.0
+
+        view.vb.setLimits(
+            xMin=min(0.0, x0),
+            xMax=max(width_phys, x1),
+            yMin=min(0.0, y0),
+            yMax=max(height_phys, y1),
+            minXRange=max(width_phys * 0.01, 1e-6),
+            minYRange=max(height_phys * 0.01, 1e-6),
+            maxXRange=max(visible_w, width_phys),
+            maxYRange=max(visible_h, height_phys),
+        )
+
         view.vb.setRange(
-            xRange=(0, width_phys),
-            yRange=(0, height_phys),
+            xRange=(x0, x1),
+            yRange=(y0, y1),
             padding=0.0,
             disableAutoRange=True,
         )
 
+    def _reset_all_view_ranges(self):
+        self._fit_full_view_with_aspect(self.sag_view)
+        self._fit_full_view_with_aspect(self.cor_view)
+        self._fit_full_view_with_aspect(self.axi_view)
+
+    def _reset_single_view(self, view):
+        self._fit_full_view_with_aspect(view)
+
+    def _clamp_range(self, start, end, lower, upper):
+        size = end - start
+        total = upper - lower
+
+        if size >= total:
+            return lower, upper
+
+        if start < lower:
+            end += (lower - start)
+            start = lower
+        if end > upper:
+            start -= (end - upper)
+            end = upper
+
+        start = max(lower, start)
+        end = min(upper, end)
+        return start, end
+
+    def _zoom_view(self, view, zoom_factor, center_x, center_y):
+        width_phys, height_phys = self._get_view_dimensions(view)
+
+        (x0, x1), (y0, y1) = view.vb.viewRange()
+        cur_w = max(x1 - x0, 1e-12)
+        cur_h = max(y1 - y0, 1e-12)
+
+        min_w = max(width_phys * 0.01, 1e-6)
+        min_h = max(height_phys * 0.01, 1e-6)
+
+        new_w = max(min_w, cur_w * zoom_factor)
+        new_h = max(min_h, cur_h * zoom_factor)
+
+        rel_x = (center_x - x0) / cur_w
+        rel_y = (center_y - y0) / cur_h
+        rel_x = float(np.clip(rel_x, 0.0, 1.0))
+        rel_y = float(np.clip(rel_y, 0.0, 1.0))
+
+        new_x0 = center_x - rel_x * new_w
+        new_x1 = new_x0 + new_w
+        new_y0 = center_y - rel_y * new_h
+        new_y1 = new_y0 + new_h
+
+        view.vb.setRange(
+            xRange=(new_x0, new_x1),
+            yRange=(new_y0, new_y1),
+            padding=0.0,
+            disableAutoRange=True,
+        )
+
+    def _crosshair_pos(self, reversed_index, spacing):
+        return (reversed_index + 0.5) * spacing
+
     def _update_crosshairs(self):
-        # because displayed images are rotated 180°, both display axes are reversed
+        self.sag_vline.setPos(self._crosshair_pos(self.ny - 1 - self.current_coronal, self.sy))
+        self.sag_hline.setPos(self._crosshair_pos(self.nz - 1 - self.current_axial, self.sz))
 
-        # sagittal view: display x <- reversed y, display y <- reversed z
-        self.sag_vline.setPos((self.ny - 1 - self.current_coronal) * self.sy)
-        self.sag_hline.setPos((self.nz - 1 - self.current_axial) * self.sz)
+        self.cor_vline.setPos(self._crosshair_pos(self.nx - 1 - self.current_sagittal, self.sx))
+        self.cor_hline.setPos(self._crosshair_pos(self.nz - 1 - self.current_axial, self.sz))
 
-        # coronal view: display x <- reversed x, display y <- reversed z
-        self.cor_vline.setPos((self.nx - 1 - self.current_sagittal) * self.sx)
-        self.cor_hline.setPos((self.nz - 1 - self.current_axial) * self.sz)
-
-        # axial view: display x <- reversed x, display y <- reversed y
-        self.axi_vline.setPos((self.nx - 1 - self.current_sagittal) * self.sx)
-        self.axi_hline.setPos((self.ny - 1 - self.current_coronal) * self.sy)
+        self.axi_vline.setPos(self._crosshair_pos(self.nx - 1 - self.current_sagittal, self.sx))
+        self.axi_hline.setPos(self._crosshair_pos(self.ny - 1 - self.current_coronal, self.sy))
 
     def _update_titles(self):
         prefix = f"[{self.current_image_index + 1}/{len(self.image_sets)}] {self.current_case_name}"
-
         self.sag_view.plot.setTitle(f"{prefix} | Sagittal {self.current_sagittal}", color="w")
         self.cor_view.plot.setTitle(f"{prefix} | Coronal {self.current_coronal}", color="w")
         self.axi_view.plot.setTitle(f"{prefix} | Axial {self.current_axial}", color="w")
@@ -514,7 +665,8 @@ class Visualization(QtWidgets.QMainWindow):
             f"Shape: {self.volume.shape} | "
             f"Spacing: ({self.sx:.3f}, {self.sy:.3f}, {self.sz:.3f}) mm | "
             f"Voxel: ({self.current_sagittal}, {self.current_coronal}, {self.current_axial}) | "
-            f"Intensity: {voxel_str}"
+            f"Intensity: {voxel_str} | "
+            f"Wheel=slices, Ctrl+Wheel=zoom, MiddleDrag=pan, DoubleClick=reset, R=reset all"
         )
 
     def _update_all_views(self):
@@ -549,10 +701,6 @@ class Visualization(QtWidgets.QMainWindow):
                 autoLevels=False,
             )
 
-        self._set_view_extent(self.sag_view, self.ny * self.sy, self.nz * self.sz)
-        self._set_view_extent(self.cor_view, self.nx * self.sx, self.nz * self.sz)
-        self._set_view_extent(self.axi_view, self.nx * self.sx, self.ny * self.sy)
-
         self._update_crosshairs()
         self._update_titles()
         self.statusBar().showMessage(self._build_status_text())
@@ -566,6 +714,9 @@ class Visualization(QtWidgets.QMainWindow):
             self.current_axial = self._clip_index(self.current_axial + step, self.nz - 1)
 
         self._update_all_views()
+
+    def _on_view_zoomed(self, view, zoom_factor, x_phys, y_phys):
+        self._zoom_view(view, zoom_factor, x_phys, y_phys)
 
     def _on_view_clicked(self, view, x_phys, y_phys):
         if view is self.sag_view:
@@ -589,3 +740,10 @@ class Visualization(QtWidgets.QMainWindow):
     def _show_next_image(self):
         if self.current_image_index < len(self.image_sets) - 1:
             self._load_image_set(self.current_image_index + 1)
+
+    def keyPressEvent(self, ev):
+        if ev.key() == QtCore.Qt.Key_R:
+            self._reset_all_view_ranges()
+            ev.accept()
+            return
+        super().keyPressEvent(ev)

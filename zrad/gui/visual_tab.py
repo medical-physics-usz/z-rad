@@ -81,8 +81,6 @@ def process_patient_folder(input_params, patient_folder, structure_set):
     return {"image": image, "image_name": patient_folder, "masks": masks_set}
 
 
-
-
 class VisualizationTab(BaseTab):
     def __init__(self):
         super().__init__(visual_tab=True)
@@ -283,13 +281,14 @@ class VisualizationTab(BaseTab):
             if not self.input_params.get("use_all_structures", False):
                 structure_set = self.input_params.get("dicom_structures")
 
-        # Select backend for joblib
+        # Select backend for joblib.
+        # Visualization workers return full image/mask payloads, so preferring threads
+        # avoids expensive pickling/copying of large 3D arrays back from child processes.
+        backend_hint = "threads"
         if IS_FROZEN:
-            backend_hint = "threads"
             self.logger.info("Frozen state. Set backend_hint to threads")
         else:
-            backend_hint = "processes"
-            self.logger.info("Not frozen state. Set backend_hint to processes")
+            self.logger.info("Not frozen state. Set backend_hint to threads")
 
         progress_dialog = ProcessingProgressDialog(
             "Preprocessing Progress",

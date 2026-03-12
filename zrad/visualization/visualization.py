@@ -322,13 +322,20 @@ class Visualization(QtWidgets.QMainWindow):
         self.sx, self.sy, self.sz = image.spacing
 
         finite_vals = self.volume[np.isfinite(self.volume)]
-        self.vmin = float(np.percentile(finite_vals, 1))
-        self.vmax = float(np.percentile(finite_vals, 99))
-        if not np.isfinite(self.vmin) or not np.isfinite(self.vmax) or self.vmax <= self.vmin:
-            self.vmin = float(np.min(finite_vals))
-            self.vmax = float(np.max(finite_vals))
-            if self.vmax <= self.vmin:
-                self.vmax = self.vmin + 1.0
+
+        if finite_vals.size == 0:
+            # Fully invalid / corrupted volume: keep a harmless default window
+            self.vmin = 0.0
+            self.vmax = 1.0
+        else:
+            self.vmin = float(np.percentile(finite_vals, 1))
+            self.vmax = float(np.percentile(finite_vals, 99))
+
+            if not np.isfinite(self.vmin) or not np.isfinite(self.vmax) or self.vmax <= self.vmin:
+                self.vmin = float(np.min(finite_vals))
+                self.vmax = float(np.max(finite_vals))
+                if self.vmax <= self.vmin:
+                    self.vmax = self.vmin + 1.0
 
         self.masks = self._load_masks_for_volume(masks)
 

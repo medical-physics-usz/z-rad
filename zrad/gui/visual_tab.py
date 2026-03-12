@@ -29,10 +29,9 @@ IS_FROZEN = getattr(sys, 'frozen', False)
 
 
 def process_patient_folder(input_params, patient_folder, structure_set):
-
+    """Function to process each patient folder, used for parallel processing."""
     local_params = dict(input_params)
 
-    """Function to process each patient folder, used for parallel processing."""
     # Logger
     logger_date_time = datetime.now().strftime("%Y-%m-%d_%H%M%S")
     logger = get_logger(logger_date_time + '_Visualization')
@@ -43,25 +42,40 @@ def process_patient_folder(input_params, patient_folder, structure_set):
     except (DataStructureError, ValueError) as e:
         logger.error(e)
         logger.error(f"Patient {patient_folder} could not be loaded and is skipped.")
-        return
+        return None
 
-    if local_params["input_data_type"] == 'dicom':
+    current_structure_set = structure_set
+
+    if local_params["input_data_type"] == "dicom":
         input_directory = os.path.join(local_params["input_directory"], patient_folder)
-        rtstruct_paths = get_dicom_files(input_directory, modality='RTSTRUCT')
+        rtstruct_paths = get_dicom_files(input_directory, modality="RTSTRUCT")
 
         if rtstruct_paths:
-            local_params['rtstruct_path'] = rtstruct_paths[0]['file_path']
+            local_params["rtstruct_path"] = rtstruct_paths[0]["file_path"]
             if local_params["use_all_structures"]:
-                structure_set = get_all_structure_names(local_params['rtstruct_path'])
+                current_structure_set = get_all_structure_names(local_params["rtstruct_path"])
         else:
-            local_params['rtstruct_path'] = None
+            local_params["rtstruct_path"] = None
+            if current_structure_set or local_params["use_all_structures"]:
+                logger.warning(
+                    f"Patient {patient_folder} has no RTSTRUCT file. "
+                    "Skipping structure/mask loading for this patient."
+                )
+            current_structure_set = []
+
     masks_set = []
-    if structure_set:
-        for mask_name in structure_set:
-            mask = load_mask(local_params, patient_folder, mask_name, image)
+    if current_structure_set:
+        for mask_name in current_structure_set:
+            try:
+                mask = load_mask(local_params, patient_folder, mask_name, image)
+            except (DataStructureError, ValueError, TypeError, FileNotFoundError) as e:
+                logger.error(
+                    f"Failed to load ROI '{mask_name}' for patient {patient_folder}: {e}"
+                )
+                continue
+
             if mask and mask.array is not None:
-                logger.info(
-                    f"Processing patient's {patient_folder} ROI: {mask_name}.")
+                logger.info(f"Processing patient's {patient_folder} ROI: {mask_name}.")
                 masks_set.append({mask_name: mask})
 
     return {"image": image, "image_name": patient_folder, "masks": masks_set}

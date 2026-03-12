@@ -20,6 +20,7 @@ authors = [
 
 # Dependencies
 dependencies = [
+    "pyqtgraph>=0.14.0",
     "pydicom>=3.0.0",
     "pyqt5>=5.15.11",
     "numpy>=2.1.1",

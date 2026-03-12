@@ -665,9 +665,7 @@ class Visualization(QtWidgets.QMainWindow):
             f"Shape: {self.volume.shape} | "
             f"Spacing: ({self.sx:.3f}, {self.sy:.3f}, {self.sz:.3f}) mm | "
             f"Voxel: ({self.current_sagittal}, {self.current_coronal}, {self.current_axial}) | "
-            f"Intensity: {voxel_str} | "
-            f"Wheel=slices, Ctrl+Wheel=zoom, MiddleDrag=pan, DoubleClick=reset, R=reset all"
-        )
+            f"Intensity: {voxel_str} | ")
 
     def _update_all_views(self):
         sag = self._normalize_to_u8(self._get_sagittal_slice(self.current_sagittal))

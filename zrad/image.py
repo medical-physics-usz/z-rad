@@ -312,7 +312,7 @@ def validate_ultrasound_dicom_tags(dicom_files):
 
     if 'SliceThickness' not in ds:
         raise DataStructureError(
-            'Ultrasound volume does not have slice spacing specified (SliceThickness or SpacingBetweenSlices), image excluded.'
+            'Ultrasound volume does not have slice SliceThickness specified, image excluded.'
         )
 
 def validate_z_spacing(dicom_files):

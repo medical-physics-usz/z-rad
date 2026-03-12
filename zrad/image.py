@@ -447,10 +447,18 @@ def apply_suv_correction(dicom_files, suv_image):
                     ds.RadiopharmaceuticalInformationSequence[0].RadiopharmaceuticalStartDateTime)
             patient_weight = float(ds.PatientWeight)
             injected_dose = float(ds.RadiopharmaceuticalInformationSequence[0].RadionuclideTotalDose)
-            if is_fdg(str(ds.RadiopharmaceuticalInformationSequence[0].Radiopharmaceutical)) and injected_dose < 10000:
-                injected_dose *= 1000000
-                warning_msg = f"Injected dose is {injected_dose} Bq, it is too low for FDG, assumed to be in MBq"
-                warnings.warn(warning_msg, DataStructureWarning)
+
+            def get_tracer_name(rph_item):
+                value = getattr(rph_item, "Radiopharmaceutical", None)
+                if value is None and (0x0018, 0x0031) in rph_item:
+                    value = rph_item[(0x0018, 0x0031)].value
+                return str(value) if value is not None else None
+            tracer_name = get_tracer_name(ds.RadiopharmaceuticalInformationSequence[0])
+            if tracer_name is not None:
+                if is_fdg(str(ds.RadiopharmaceuticalInformationSequence[0].Radiopharmaceutical)) and injected_dose < 10000:
+                    injected_dose *= 1000000
+                    warning_msg = f"Injected dose is {injected_dose} Bq, it is too low for FDG, assumed to be in MBq"
+                    warnings.warn(warning_msg, DataStructureWarning)
             if injected_dose <= 0:
                 error_msg = f"The injected PET tracer dose is zero."
                 raise DataStructureError(error_msg)
@@ -504,7 +512,8 @@ def apply_suv_correction(dicom_files, suv_image):
             elif ds.DecayCorrection == 'ADMIN':
                 elapsed_time = 0
             elif ds.DecayCorrection == 'NONE':
-                pass
+                error_msg = f"For decay correction 'NONE' use  process_decay_uncorrected_bqml function!"
+                raise DataStructureError(error_msg)
             else:
                 error_msg = f"Decay correction {ds.DecayCorrection} is not supported!"
                 raise DataStructureError(error_msg)

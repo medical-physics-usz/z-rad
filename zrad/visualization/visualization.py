@@ -213,6 +213,7 @@ class SliceView(pg.GraphicsLayoutWidget):
     sigClicked = QtCore.pyqtSignal(object, float, float)
     sigZoomed = QtCore.pyqtSignal(object, float, float, float)
     sigResetView = QtCore.pyqtSignal(object)
+    sigResized = QtCore.pyqtSignal(object)
 
     def __init__(self, title="", parent=None):
         super().__init__(parent=parent)
@@ -291,6 +292,10 @@ class SliceView(pg.GraphicsLayoutWidget):
             ev.accept()
             return
         super().mouseReleaseEvent(ev)
+
+    def resizeEvent(self, ev):
+        super().resizeEvent(ev)
+        self.sigResized.emit(self)
 
 
 class MaskLegendButton(QtWidgets.QToolButton):
@@ -577,6 +582,7 @@ class Visualization(QtWidgets.QMainWindow):
         self.volume = None
         self.masks = []
         self.current_case_name = ""
+        self.current_imaging_modality = None
         self.nx = self.ny = self.nz = 0
         self.sx = self.sy = self.sz = 1.0
 
@@ -591,6 +597,8 @@ class Visualization(QtWidgets.QMainWindow):
         self.current_sagittal = 0
         self.current_coronal = 0
         self.current_axial = 0
+
+        self._suspend_resize_refit = False
 
         self._build_ui()
         self._connect_events()
@@ -719,6 +727,10 @@ class Visualization(QtWidgets.QMainWindow):
         self.cor_view.sigResetView.connect(self._reset_single_view)
         self.axi_view.sigResetView.connect(self._reset_single_view)
 
+        self.sag_view.sigResized.connect(self._on_slice_view_resized)
+        self.cor_view.sigResized.connect(self._on_slice_view_resized)
+        self.axi_view.sigResized.connect(self._on_slice_view_resized)
+
         self.prev_button.clicked.connect(self._show_previous_image)
         self.next_button.clicked.connect(self._show_next_image)
         self.close_button.clicked.connect(self.close)
@@ -738,10 +750,8 @@ class Visualization(QtWidgets.QMainWindow):
         item.setZValue(1)
         return item
 
-    def _set_item_transform(self, item, x_spacing, y_spacing):
-        tr = QtGui.QTransform()
-        tr.scale(x_spacing, y_spacing)
-        item.setTransform(tr)
+    def _set_item_rect(self, item, width_phys, height_phys):
+        item.setRect(QtCore.QRectF(0.0, 0.0, float(width_phys), float(height_phys)))
 
     def _init_views(self):
         self.sag_img = self._make_gray_item()
@@ -805,20 +815,24 @@ class Visualization(QtWidgets.QMainWindow):
             self.cor_mask_items.append(cor_item)
             self.axi_mask_items.append(axi_item)
 
-        self._apply_item_transforms()
+        self._apply_item_rects()
         self._apply_mask_visibility()
 
-    def _apply_item_transforms(self):
-        self._set_item_transform(self.sag_img, self.sy, self.sz)
-        self._set_item_transform(self.cor_img, self.sx, self.sz)
-        self._set_item_transform(self.axi_img, self.sx, self.sy)
+    def _apply_item_rects(self):
+        sag_w, sag_h = self._get_view_dimensions(self.sag_view)
+        cor_w, cor_h = self._get_view_dimensions(self.cor_view)
+        axi_w, axi_h = self._get_view_dimensions(self.axi_view)
+
+        self._set_item_rect(self.sag_img, sag_w, sag_h)
+        self._set_item_rect(self.cor_img, cor_w, cor_h)
+        self._set_item_rect(self.axi_img, axi_w, axi_h)
 
         for item in self.sag_mask_items:
-            self._set_item_transform(item, self.sy, self.sz)
+            self._set_item_rect(item, sag_w, sag_h)
         for item in self.cor_mask_items:
-            self._set_item_transform(item, self.sx, self.sz)
+            self._set_item_rect(item, cor_w, cor_h)
         for item in self.axi_mask_items:
-            self._set_item_transform(item, self.sx, self.sy)
+            self._set_item_rect(item, axi_w, axi_h)
 
     def _apply_mask_visibility(self):
         for i, item in enumerate(self.sag_mask_items):
@@ -840,6 +854,7 @@ class Visualization(QtWidgets.QMainWindow):
 
         self.volume = np.asarray(image.array)
         self.current_case_name = item["image_name"]
+        self.current_imaging_modality = str(item.get("imaging_modality", "")).strip().upper()
 
         self.nz, self.ny, self.nx = self.volume.shape
         self.sx, self.sy, self.sz = image.spacing
@@ -847,24 +862,56 @@ class Visualization(QtWidgets.QMainWindow):
         finite_vals = self.volume[np.isfinite(self.volume)]
 
         if finite_vals.size == 0:
-            self.data_vmin = 0.0
-            self.data_vmax = 1.0
+            base_vmin = 0.0
+            finite_max = 1.0
+            pet_default_high = 3.0
         else:
-            self.data_vmin = float(np.percentile(finite_vals, 1))
-            self.data_vmax = float(np.percentile(finite_vals, 99))
+            base_vmin = float(np.min(finite_vals))
+            finite_max = float(np.max(finite_vals))
 
-            if (
-                not np.isfinite(self.data_vmin)
-                or not np.isfinite(self.data_vmax)
-                or self.data_vmax <= self.data_vmin
-            ):
-                self.data_vmin = float(np.min(finite_vals))
-                self.data_vmax = float(np.max(finite_vals))
-                if self.data_vmax <= self.data_vmin:
-                    self.data_vmax = self.data_vmin + 1.0
+            pet_default_high = float(np.percentile(finite_vals, 99.5))
+            if not np.isfinite(pet_default_high):
+                pet_default_high = finite_max
 
-        self.window_min = self.data_vmin
-        self.window_max = self.data_vmax
+            if finite_max <= base_vmin:
+                finite_max = base_vmin + 1.0
+
+        if self.current_imaging_modality == "CT":
+            self.window_min = -160.0
+            self.window_max = 240.0
+            self.data_vmin = min(base_vmin, self.window_min)
+            self.data_vmax = max(finite_max, self.window_max)
+
+        elif self.current_imaging_modality == "PET":
+            self.window_min = 0.0
+            self.window_max = max(4.0, pet_default_high)
+            if self.window_max <= self.window_min:
+                self.window_max = self.window_min + 1.0
+
+            self.data_vmin = min(0.0, base_vmin)
+            self.data_vmax = max(finite_max, self.window_max)
+            if self.data_vmax <= self.data_vmin:
+                self.data_vmax = self.data_vmin + 1.0
+
+        else:
+            p1 = float(np.percentile(finite_vals, 1)) if finite_vals.size else 0.0
+            p99 = float(np.percentile(finite_vals, 99)) if finite_vals.size else 1.0
+
+            if not np.isfinite(p1):
+                p1 = base_vmin
+            if not np.isfinite(p99) or p99 <= p1:
+                p99 = finite_max
+
+            self.data_vmin = base_vmin
+            self.data_vmax = finite_max
+            self.window_min = p1
+            self.window_max = p99
+
+            if self.data_vmax <= self.data_vmin:
+                self.data_vmax = self.data_vmin + 1.0
+            if self.window_max <= self.window_min:
+                self.window_max = self.window_min + 1.0
+
         self._update_window_slider_from_values()
 
         self.masks = self._load_masks_for_volume(image, masks)
@@ -883,6 +930,7 @@ class Visualization(QtWidgets.QMainWindow):
 
         self._update_all_views()
         QtCore.QTimer.singleShot(0, self._reset_all_view_ranges)
+        QtCore.QTimer.singleShot(50, self._reset_all_view_ranges)
 
     def _to_tuple(self, value):
         if value is None:
@@ -980,23 +1028,26 @@ class Visualization(QtWidgets.QMainWindow):
     def _rot180(self, arr):
         return np.ascontiguousarray(arr[::-1, ::-1])
 
+    def _flipud(self, arr):
+        return np.ascontiguousarray(arr[::-1, :])
+
     def _get_sagittal_slice(self, x):
-        return self._rot180(self.volume[:, :, x])
+        return self._flipud(self.volume[:, :, x])
 
     def _get_coronal_slice(self, y):
         return self._rot180(self.volume[:, y, :])
 
     def _get_axial_slice(self, z):
-        return self.volume[z, :, :]
+        return self.volume[z, :, ::-1]
 
     def _get_sagittal_mask(self, mask, x):
-        return self._rot180(mask[:, :, x])
+        return self._flipud(mask[:, :, x])
 
     def _get_coronal_mask(self, mask, y):
         return self._rot180(mask[:, y, :])
 
     def _get_axial_mask(self, mask, z):
-        return mask[z, :, :]
+        return mask[z, :, ::-1]
 
     def _get_view_dimensions(self, view):
         if view is self.sag_view:
@@ -1010,8 +1061,8 @@ class Visualization(QtWidgets.QMainWindow):
     def _fit_full_view_with_aspect(self, view):
         width_phys, height_phys = self._get_view_dimensions(view)
 
-        rect = view.vb.sceneBoundingRect()
-        if rect.width() <= 1 or rect.height() <= 1:
+        geom = view.vb.screenGeometry()
+        if geom.width() <= 1 or geom.height() <= 1:
             view.vb.setRange(
                 xRange=(0.0, width_phys),
                 yRange=(0.0, height_phys),
@@ -1020,8 +1071,8 @@ class Visualization(QtWidgets.QMainWindow):
             )
             return
 
-        widget_ratio = rect.width() / rect.height()
-        data_ratio = width_phys / height_phys
+        widget_ratio = float(geom.width()) / float(geom.height())
+        data_ratio = float(width_phys) / max(float(height_phys), 1e-12)
 
         if widget_ratio >= data_ratio:
             visible_h = height_phys
@@ -1038,23 +1089,30 @@ class Visualization(QtWidgets.QMainWindow):
         y0 = cy - visible_h / 2.0
         y1 = cy + visible_h / 2.0
 
-        view.vb.setLimits(
-            xMin=min(0.0, x0),
-            xMax=max(width_phys, x1),
-            yMin=min(0.0, y0),
-            yMax=max(height_phys, y1),
-            minXRange=max(width_phys * 0.01, 1e-6),
-            minYRange=max(height_phys * 0.01, 1e-6),
-            maxXRange=max(visible_w, width_phys),
-            maxYRange=max(visible_h, height_phys),
-        )
+        pad_w = max(width_phys * 0.01, 1e-6)
+        pad_h = max(height_phys * 0.01, 1e-6)
 
-        view.vb.setRange(
-            xRange=(x0, x1),
-            yRange=(y0, y1),
-            padding=0.0,
-            disableAutoRange=True,
-        )
+        self._suspend_resize_refit = True
+        try:
+            view.vb.setLimits(
+                xMin=x0 - pad_w,
+                xMax=x1 + pad_w,
+                yMin=y0 - pad_h,
+                yMax=y1 + pad_h,
+                minXRange=max(width_phys * 0.01, 1e-6),
+                minYRange=max(height_phys * 0.01, 1e-6),
+                maxXRange=max(visible_w + 2 * pad_w, width_phys + 2 * pad_w),
+                maxYRange=max(visible_h + 2 * pad_h, height_phys + 2 * pad_h),
+            )
+
+            view.vb.setRange(
+                xRange=(x0, x1),
+                yRange=(y0, y1),
+                padding=0.0,
+                disableAutoRange=True,
+            )
+        finally:
+            self._suspend_resize_refit = False
 
     def _reset_all_view_ranges(self):
         self._fit_full_view_with_aspect(self.sag_view)
@@ -1094,21 +1152,21 @@ class Visualization(QtWidgets.QMainWindow):
             disableAutoRange=True,
         )
 
-    def _crosshair_pos(self, reversed_index, spacing):
-        return (reversed_index + 0.5) * spacing
+    def _crosshair_pos(self, index_value, spacing):
+        return (index_value + 0.5) * spacing
 
     def _update_crosshairs(self):
-        self.sag_vline.setPos(self._crosshair_pos(self.ny - 1 - self.current_coronal, self.sy))
+        self.sag_vline.setPos(self._crosshair_pos(self.current_coronal, self.sy))
         self.sag_hline.setPos(self._crosshair_pos(self.nz - 1 - self.current_axial, self.sz))
 
         self.cor_vline.setPos(self._crosshair_pos(self.nx - 1 - self.current_sagittal, self.sx))
         self.cor_hline.setPos(self._crosshair_pos(self.nz - 1 - self.current_axial, self.sz))
 
         self.axi_vline.setPos(self._crosshair_pos(self.nx - 1 - self.current_sagittal, self.sx))
-        self.axi_hline.setPos(self._crosshair_pos(self.ny - 1 - self.current_coronal, self.sy))
+        self.axi_hline.setPos(self._crosshair_pos(self.current_coronal, self.sy))
 
     def _update_titles(self):
-        prefix = f"{self.current_case_name}"
+        prefix = f"{self.current_case_name if len(self.current_case_name) <= 25 else self.current_case_name[:25] + '...'}"
         self.sag_view.plot.setTitle(f"{prefix} | {self.current_sagittal}", color="w")
         self.cor_view.plot.setTitle(f"{prefix} | {self.current_coronal}", color="w")
         self.axi_view.plot.setTitle(f"{prefix} | {self.current_axial}", color="w")
@@ -1122,9 +1180,10 @@ class Visualization(QtWidgets.QMainWindow):
         voxel_str = "nan" if np.isnan(voxel_value) else f"{voxel_value:.3f}"
         visible_count = sum(1 for m in self.masks if m["visible"])
         total_count = len(self.masks)
+        modality_str = self.current_imaging_modality if self.current_imaging_modality else "N/A"
         return (
             f"Image {self.current_image_index + 1}/{len(self.image_sets)} | "
-            f"Case: {self.current_case_name} | "
+            f"Case: {self.current_case_name if len(self.current_case_name) <= 20 else self.current_case_name[:20] + '...'} | "
             f"Shape: {self.volume.shape} | "
             f"Spacing: ({self.sx:.3f}, {self.sy:.3f}, {self.sz:.3f}) mm | "
             f"Voxel: ({self.current_sagittal}, {self.current_coronal}, {self.current_axial}) | "
@@ -1208,6 +1267,7 @@ class Visualization(QtWidgets.QMainWindow):
                 autoLevels=False,
             )
 
+        self._apply_item_rects()
         self._apply_mask_visibility()
         self._update_crosshairs()
         self._update_titles()
@@ -1228,7 +1288,7 @@ class Visualization(QtWidgets.QMainWindow):
 
     def _on_view_clicked(self, view, x_phys, y_phys):
         if view is self.sag_view:
-            self.current_coronal = self._clip_index((self.ny - 1) - (x_phys / self.sy), self.ny - 1)
+            self.current_coronal = self._clip_index(x_phys / self.sy, self.ny - 1)
             self.current_axial = self._clip_index((self.nz - 1) - (y_phys / self.sz), self.nz - 1)
 
         elif view is self.cor_view:
@@ -1237,7 +1297,7 @@ class Visualization(QtWidgets.QMainWindow):
 
         elif view is self.axi_view:
             self.current_sagittal = self._clip_index((self.nx - 1) - (x_phys / self.sx), self.nx - 1)
-            self.current_coronal = self._clip_index((self.ny - 1) - (y_phys / self.sy), self.ny - 1)
+            self.current_coronal = self._clip_index(y_phys / self.sy, self.ny - 1)
 
         self._update_all_views()
 
@@ -1248,6 +1308,16 @@ class Visualization(QtWidgets.QMainWindow):
     def _show_next_image(self):
         if self.current_image_index < len(self.image_sets) - 1:
             self._load_image_set(self.current_image_index + 1)
+
+    def _on_slice_view_resized(self, view):
+        if self._suspend_resize_refit or self.volume is None:
+            return
+        QtCore.QTimer.singleShot(0, lambda v=view: self._fit_full_view_with_aspect(v))
+
+    def showEvent(self, ev):
+        super().showEvent(ev)
+        QtCore.QTimer.singleShot(0, self._reset_all_view_ranges)
+        QtCore.QTimer.singleShot(50, self._reset_all_view_ranges)
 
     def keyPressEvent(self, ev):
         if ev.key() == QtCore.Qt.Key_R:

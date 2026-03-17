@@ -43,7 +43,7 @@ def process_patient_folder(input_params, patient_folder, structure_set):
         logger.error(e)
         logger.error(f"Patient {patient_folder} could not be loaded and is skipped.")
         return None
-
+    imaging_modality = local_params['input_imaging_modality']
     current_structure_set = structure_set
 
     if local_params["input_data_type"] == "dicom":
@@ -78,7 +78,7 @@ def process_patient_folder(input_params, patient_folder, structure_set):
                 logger.info(f"Processing patient's {patient_folder} ROI: {mask_name}.")
                 masks_set.append({mask_name: mask})
 
-    return {"image": image, "image_name": patient_folder, "masks": masks_set}
+    return {"image": image, "image_name": patient_folder, "imaging_modality": imaging_modality, "masks": masks_set}
 
 
 class VisualizationTab(BaseTab):

@@ -31,6 +31,12 @@ dependencies = [
     "joblib>=1.4.2",
 ]
 
+[project.optional-dependencies]
+docs = [
+    "sphinx>=8,<9",
+    "furo>=2024.8.6",
+]
+
 # Optional project URLs, license, etc.
 keywords = ["radiomics", "feature-extraction", "python", "GUI", "API"]
 license = { text = "MIT" }

@@ -36,15 +36,3 @@ Z-Rad supports workflows based on:
 
 The GUI writes logs that document the executed processing steps and parameter
 choices. This is the primary record for troubleshooting and reproducibility.
-
-Menu Actions
-------------
-
-The application menu allows you to:
-
-* load saved input settings
-* save current settings
-* open project and contact information
-
-Use the save/load workflow when you want to repeat the same configuration across
-multiple patients or experiments.

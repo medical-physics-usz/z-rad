@@ -10,8 +10,6 @@ The Python API mirrors the main GUI workflows through three public classes:
 Minimal Example
 ---------------
 
-The snippet below shows the intended flow at a high level:
-
 .. code-block:: python
 
    from zrad.preprocessing.preprocessing import Preprocessing
@@ -62,9 +60,3 @@ that means your workflow needs to provide:
 
 For correct feature extraction, images and masks must refer to the same spatial
 frame and voxel grid.
-
-Next Steps
-----------
-
-See the dedicated pages for the parameter details of preprocessing, filtering,
-and radiomics extraction.

@@ -37,15 +37,3 @@ Windows Executable
 
 If you prefer the packaged GUI on Windows, use the ``z-rad.exe`` asset attached
 to each release.
-
-Documentation Build Environment
--------------------------------
-
-The documentation uses Sphinx with the Furo theme. To build it locally:
-
-.. code-block:: bash
-
-   pip install -r docs/requirements.txt
-   make -C docs html
-
-The generated site is written to ``docs/_build/html``.

@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "z-rad"
-version = "25.4.1-dev"
+version = "26.3.0-dev"
 description = "Z-Rad is a radiomic feature extraction software with GUI and API."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -23,16 +23,12 @@ dependencies = [
     "pydicom>=3.0.0",
     "pyqt5>=5.15.11",
     "numpy>=2.1.1",
-    "pandas>=2.2.2",
     "simpleitk>=2.4.0",
     "scipy>=1.14.1",
     "pywavelets>=1.7.0",
-    "openpyxl>=3.1.5",
     "scikit-image>=0.24.0",
-    "scikit-learn>=1.5.2",
     "opencv-python-headless>=4.10.0.84",
     "joblib>=1.4.2",
-    "tqdm>=4.66.5"
 ]
 
 # Optional project URLs, license, etc.
@@ -43,5 +39,4 @@ license = { text = "MIT" }
 # Additional setuptools configuration
 
 [tool.setuptools.packages.find]
-include = ["zrad"]
-
+include = ["zrad", "zrad.preprocessing", "zrad.filtering", "zrad.radiomics"]

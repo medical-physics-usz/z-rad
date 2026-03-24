@@ -1,27 +1,29 @@
-import os
+import csv
+from pathlib import Path
 
-import pandas as pd
 import pytest
 
 from zrad.image import Image
 from zrad.preprocessing import Preprocessing
 from zrad.radiomics import Radiomics
-from zrad.toolbox_logic import load_ibsi_phantom
 
 
 def ibsi_i_feature_tolerances(sheet_name):
-    url = 'https://ibsi.radiomics.hevs.ch/assets/IBSI-1-submission-table.xlsx'
-    return pd.read_excel(url, sheet_name=sheet_name)
+    csv_path = Path(__file__).parent / 'data' / f'ibsi_1_reference_values_{sheet_name}.csv'
+    with open(csv_path, newline='') as csv_file:
+        reader = csv.DictReader(csv_file)
+        return {row['tag']: row for row in reader}
 
 
 def ibsi_i_validation(ibsi_features, features, config_a=False):
-    for tag in ibsi_features['tag']:
+    for raw_tag, feature_info in ibsi_features.items():
+        tag = str(raw_tag)
         if config_a and tag == 'ih_qcod':
             continue
-            
-        if str(tag) in features:
-            val = float(ibsi_features[ibsi_features['tag'] == tag]['reference value'].iloc[0])
-            tol = float(ibsi_features[ibsi_features['tag'] == tag]['tolerance'].iloc[0])
+
+        if tag in features:
+            val = float(feature_info['reference value'])
+            tol = float(feature_info['tolerance'])
             upper_boundary = val + tol
             lower_boundary = val - tol
 
@@ -29,13 +31,9 @@ def ibsi_i_validation(ibsi_features, features, config_a=False):
                 pytest.fail(f"Feature {tag} out of tolerance: {features[tag]} not in range ({lower_boundary}, {upper_boundary})")
 
 @pytest.fixture()
-def dcm_ct_phantom_image():
-
-    if not os.path.isdir('tests/test_data/IBSI_I/dicom'):
-        load_ibsi_phantom(chapter=1, phantom='ct_radiomics', imaging_format="dicom", save_path='tests/test_data/IBSI_I/dicom')
-
+def dcm_ct_phantom_image(ibsi_i_data_dir):
     image = Image()
-    image.read_dicom_image(dicom_dir='tests/test_data/IBSI_I/dicom/image', modality='CT')
+    image.read_dicom_image(dicom_dir=ibsi_i_data_dir / 'dicom' / 'image', modality='CT')
     return image
 
 @pytest.fixture()
@@ -43,18 +41,14 @@ def dcm_ct_phantom_mask(dcm_ct_phantom_image):
 
     image = Image()
     image.read_dicom_mask(image=dcm_ct_phantom_image,
-                          rtstruct_path='tests/test_data/IBSI_I/dicom/mask/DCM_RS_00060.dcm',
+                          rtstruct_path='tests/data/IBSI_I/dicom/mask/DCM_RS_00060.dcm',
                           structure_name='GTV-1')
     return image
 
 @pytest.fixture()
-def nii_ct_phantom_image():
-
-    if not os.path.isdir('tests/test_data/IBSI_I/nifti'):
-        load_ibsi_phantom(chapter=1, phantom='ct_radiomics', imaging_format="nifti", save_path='tests/test_data/IBSI_I/nifti')
-
+def nii_ct_phantom_image(ibsi_i_data_dir):
     image = Image()
-    image.read_nifti_image('tests/test_data/IBSI_I/nifti/image/phantom.nii.gz')
+    image.read_nifti_image(str(ibsi_i_data_dir / 'nifti' / 'image' / 'phantom.nii.gz'))
     return image
 
 
@@ -62,7 +56,7 @@ def nii_ct_phantom_image():
 def nii_ct_phantom_mask(nii_ct_phantom_image):
 
     mask = Image()
-    mask.read_nifti_mask(image=nii_ct_phantom_image, mask_path='tests/test_data/IBSI_I/nifti/mask/mask.nii.gz')
+    mask.read_nifti_mask(image=nii_ct_phantom_image, mask_path='tests/data/IBSI_I/nifti/mask/mask.nii.gz')
     return mask
 
 
@@ -130,7 +124,7 @@ def res3d_2mm_image_spline(dcm_ct_phantom_image):
 
 @pytest.mark.integration
 def test_ibsi_i_config_a(dcm_ct_phantom_image, dcm_ct_phantom_mask):
-    ibsi_features = ibsi_i_feature_tolerances('config A')
+    ibsi_features = ibsi_i_feature_tolerances('config_A')
 
     radiomics = Radiomics(aggr_dim='2D',
                           aggr_method='AVER',
@@ -171,7 +165,7 @@ def test_ibsi_i_config_a(dcm_ct_phantom_image, dcm_ct_phantom_mask):
 
 @pytest.mark.integration
 def test_ibsi_i_config_b(res2d_2mm_image_linear, res2d_2mm_mask_linear):
-    ibsi_features = ibsi_i_feature_tolerances('config B')
+    ibsi_features = ibsi_i_feature_tolerances('config_B')
 
     radiomics = Radiomics(aggr_dim='2D',
                           aggr_method='AVER',
@@ -210,7 +204,7 @@ def test_ibsi_i_config_b(res2d_2mm_image_linear, res2d_2mm_mask_linear):
 
 @pytest.mark.integration
 def test_ibsi_i_config_c(res3d_2mm_image_linear, res3d_2mm_mask_linear):
-    ibsi_features = ibsi_i_feature_tolerances('config C')
+    ibsi_features = ibsi_i_feature_tolerances('config_C')
 
     radiomics = Radiomics(aggr_dim='3D',
                           aggr_method='AVER',
@@ -237,7 +231,7 @@ def test_ibsi_i_config_c(res3d_2mm_image_linear, res3d_2mm_mask_linear):
 
 @pytest.mark.integration
 def test_ibsi_i_config_d(res3d_2mm_image_linear, res3d_2mm_mask_linear):
-    ibsi_features = ibsi_i_feature_tolerances('config D')
+    ibsi_features = ibsi_i_feature_tolerances('config_D')
 
     radiomics = Radiomics(aggr_dim='3D',
                           aggr_method='AVER',
@@ -260,7 +254,7 @@ def test_ibsi_i_config_d(res3d_2mm_image_linear, res3d_2mm_mask_linear):
 
 @pytest.mark.integration
 def test_ibsi_i_config_e(res3d_2mm_image_spline, res3d_2mm_mask_linear):
-    ibsi_features = ibsi_i_feature_tolerances('config E')
+    ibsi_features = ibsi_i_feature_tolerances('config_E')
 
     radiomics = Radiomics(aggr_dim='3D',
                           aggr_method='AVER',

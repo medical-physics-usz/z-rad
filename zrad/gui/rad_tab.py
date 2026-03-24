@@ -1,75 +1,90 @@
+import csv
 import json
 import logging
 import os
+import sys
 from datetime import datetime
 
 import numpy as np
-import pandas as pd
+from PyQt5.QtCore import QThread
 from joblib import Parallel, delayed
-from tqdm import tqdm
 
 from ._base_tab import BaseTab, load_images, load_mask
-from .toolbox_gui import CustomLabel, CustomBox, CustomTextField, CustomCheckBox, CustomWarningBox, CustomInfo, CustomInfoBox
+from .toolbox_gui import (
+    CustomBox,
+    CustomCheckBox,
+    CustomInfo,
+    CustomInfoBox,
+    CustomLabel,
+    CustomTextField,
+    CustomWarningBox,
+    ProcessingProgressDialog,
+    ProcessingWorker,
+)
 from ..exceptions import InvalidInputParametersError, DataStructureError
 from ..image import get_dicom_files, get_all_structure_names
 from ..radiomics import Radiomics
-from ..toolbox_logic import get_logger, close_all_loggers, tqdm_joblib
+from ..toolbox_logic import get_logger, close_all_loggers, joblib_progress
 
 logging.captureWarnings(True)
 
+IS_FROZEN = getattr(sys, 'frozen', False)
 
 def process_patient_folder(input_params, patient_folder, structure_set):
+
+    local_params = dict(input_params)
+
     # Logger
     logger_date_time = datetime.now().strftime("%Y-%m-%d_%H%M%S")
     logger = get_logger(logger_date_time + '_Radiomics')
 
     def is_slice_weighting():
         """Determines if slice weighting is applied based on current settings."""
-        aggr_dim = input_params["agr_strategy"].split(',')[0]
-        weighting = input_params["weighting"]
+        aggr_dim = local_params["agr_strategy"].split(',')[0]
+        weighting = local_params["weighting"]
         if aggr_dim == '2D':
             return weighting == 'Weighted Mean'
         return False
 
     def is_slice_median():
         """Determines if slice median is applied based on current settings."""
-        aggr_dim = input_params["agr_strategy"].split(',')[0]
-        weighting = input_params["weighting"]
+        aggr_dim = local_params["agr_strategy"].split(',')[0]
+        weighting = local_params["weighting"]
         if aggr_dim == '2D':
             return weighting == 'Median'
         return False
 
     # Initialize Radiomics instance
     rad_instance = Radiomics(
-        aggr_dim=input_params['aggregation_method'][0],
-        aggr_method=input_params['aggregation_method'][1],
-        intensity_range=input_params['intensity_range'],
-        outlier_range=input_params['outlier_range'],
-        number_of_bins=input_params['discretization'][1],
-        bin_size=input_params['discretization'][2],
+        aggr_dim=local_params['aggregation_method'][0],
+        aggr_method=local_params['aggregation_method'][1],
+        intensity_range=local_params['intensity_range'],
+        outlier_range=local_params['outlier_range'],
+        number_of_bins=local_params['discretization'][1],
+        bin_size=local_params['discretization'][2],
         slice_weighting=is_slice_weighting(),
         slice_median=is_slice_median(),
     )
 
     logger.info(f"Processing patient: {patient_folder}.")
     try:
-        if input_params["nifti_filtered_image_name"]:
-            image, filtered_image = load_images(input_params, patient_folder)
+        if local_params["nifti_filtered_image_name"]:
+            image, filtered_image = load_images(local_params, patient_folder)
         else:
-            image = load_images(input_params, patient_folder)
+            image = load_images(local_params, patient_folder)
             filtered_image = None
     except DataStructureError as e:
         logger.error(e)
 
-    if input_params["input_data_type"] == 'dicom':
-        input_directory = os.path.join(input_params["input_directory"], patient_folder)
-        input_params['rtstruct_path'] = get_dicom_files(input_directory, modality='RTSTRUCT')[0]['file_path']
-        if input_params["use_all_structures"]:
-            structure_set = get_all_structure_names(input_params['rtstruct_path'])
+    if local_params["input_data_type"] == 'dicom':
+        input_directory = os.path.join(local_params["input_directory"], patient_folder)
+        local_params['rtstruct_path'] = get_dicom_files(input_directory, modality='RTSTRUCT')[0]['file_path']
+        if local_params["use_all_structures"]:
+            structure_set = get_all_structure_names(local_params['rtstruct_path'])
 
     radiomic_features_list = []
     for mask_name in structure_set:
-        mask = load_mask(input_params, patient_folder, mask_name, image)
+        mask = load_mask(local_params, patient_folder, mask_name, image)
         if mask and mask.array is not None:
             logger.info(f"Processing patient: {patient_folder} with ROI: {mask_name}.")
             try:
@@ -84,6 +99,26 @@ def process_patient_folder(input_params, patient_folder, structure_set):
             radiomic_features_list.append(radiomic_features)
 
     return radiomic_features_list
+
+
+def _write_radiomics_csv(file_path, features):
+    if not features:
+        return
+
+    fieldnames = []
+    for key in ("pat_id", "mask_id", "bounding_box_min", "no_voxels", "no_bins"):
+        if any(key in row for row in features):
+            fieldnames.append(key)
+
+    for row in features:
+        for key in row.keys():
+            if key not in fieldnames:
+                fieldnames.append(key)
+
+    with open(file_path, "w", newline="") as csv_file:
+        writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(features)
 
 
 class RadiomicsTab(BaseTab):
@@ -344,30 +379,72 @@ class RadiomicsTab(BaseTab):
                 structure_set = self.input_params["dicom_structures"]
 
         # Process each patient folder
+        if IS_FROZEN:
+            backend_hint = "threads"
+            self.logger.info("Frozen state. Set backend_hint to threads")
+        else:
+            backend_hint = "processes"
+            self.logger.info("Not frozen state. Set backend_hint to processes")
         if list_of_patient_folders:
+            progress_dialog = ProcessingProgressDialog(
+                "Radiomics Progress", len(list_of_patient_folders), self
+            )
+            progress_dialog.start()
             n_jobs = self.input_params["number_of_threads"]
-            if n_jobs == 1:
-                radiomic_features_list = []
-                for patient_folder in tqdm(list_of_patient_folders, desc="Patient directories"):
-                    radiomic_features_list.append(process_patient_folder(self.input_params, patient_folder, structure_set))
-            else:
-                with tqdm_joblib(tqdm(desc="Patient directories", total=len(list_of_patient_folders))):
-                    radiomic_features_list = Parallel(n_jobs=n_jobs)(
-                        delayed(process_patient_folder)(self.input_params, patient_folder, structure_set) for patient_folder in list_of_patient_folders)
 
-            # Save features to CSV
-            if radiomic_features_list:
-                radiomic_features_list = [item for sublist in radiomic_features_list for item in sublist]
-                radiomic_features_df = pd.DataFrame(radiomic_features_list)
-                radiomic_features_df.set_index(['pat_id', 'mask_id'], inplace=True)
-                file_path = os.path.join(self.input_params["output_directory"], 'radiomics.csv')
-                radiomic_features_df.to_csv(file_path)
-                self.logger.info(f"Radiomics saved to {file_path}.")
+            def work(progress_callback):
+                if n_jobs == 1:
+                    radiomic_features = []
+                    for patient_folder in list_of_patient_folders:
+                        radiomic_features.append(
+                            process_patient_folder(self.input_params, patient_folder, structure_set)
+                        )
+                        progress_callback(1)
+                else:
+                    with joblib_progress(progress_callback=progress_callback):
+                        radiomic_features = Parallel(n_jobs=n_jobs, prefer=backend_hint)(
+                            delayed(process_patient_folder)(self.input_params, patient_folder, structure_set)
+                            for patient_folder in list_of_patient_folders
+                        )
+
+                return radiomic_features
+
+            worker = ProcessingWorker(work)
+            thread = QThread(self)
+
+            def cleanup():
+                progress_dialog.finish()
+                thread.quit()
+                thread.wait()
+                worker.deleteLater()
+                thread.deleteLater()
+
+            def handle_finished(radiomic_features_list):
+                cleanup()
+                if radiomic_features_list:
+                    radiomic_features_list = [item for sublist in radiomic_features_list for item in sublist]
+                    file_path = os.path.join(self.input_params["output_directory"], 'radiomics.csv')
+                    _write_radiomics_csv(file_path, radiomic_features_list)
+                    self.logger.info(f"Radiomics saved to {file_path}.")
+                self.logger.info("Radiomics finished!")
+                CustomInfoBox("Radiomics finished!").response()
+
+            def handle_error(exc):
+                cleanup()
+                self.logger.error(exc, exc_info=True)
+                CustomWarningBox(str(exc)).response()
+
+            worker.moveToThread(thread)
+            worker.progress.connect(progress_dialog.update_progress)
+            worker.finished.connect(handle_finished)
+            worker.error.connect(handle_error)
+            thread.started.connect(worker.run)
+            self._processing_thread = thread
+            self._processing_worker = worker
+            thread.start()
         else:
             CustomWarningBox("No patients to calculate radiomics from.")
-
-        self.logger.info("Radiomics finished!")
-        CustomInfoBox("Radiomics finished!").response()
+            return
 
     def _get_outlier_sigma(self):
         """

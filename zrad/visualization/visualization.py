@@ -212,7 +212,7 @@ class SliceView(pg.GraphicsLayoutWidget):
     sigScrolled = QtCore.pyqtSignal(object, int)
     sigClicked = QtCore.pyqtSignal(object, float, float)
     sigZoomed = QtCore.pyqtSignal(object, float, float, float)
-    sigResetView = QtCore.pyqtSignal(object)
+    sigToggleMaximize = QtCore.pyqtSignal(object)
     sigResized = QtCore.pyqtSignal(object)
 
     def __init__(self, title="", parent=None):
@@ -223,6 +223,7 @@ class SliceView(pg.GraphicsLayoutWidget):
         self.plot.hideAxis("left")
         self.plot.hideAxis("bottom")
         self.plot.setMenuEnabled(False)
+        self.plot.hideButtons()
 
         self.vb = self.plot.getViewBox()
         self.vb.setAspectLocked(True)
@@ -253,7 +254,7 @@ class SliceView(pg.GraphicsLayoutWidget):
 
     def mouseDoubleClickEvent(self, ev):
         if ev.button() == QtCore.Qt.LeftButton:
-            self.sigResetView.emit(self)
+            self.sigToggleMaximize.emit(self)
             ev.accept()
             return
         super().mouseDoubleClickEvent(ev)
@@ -312,7 +313,7 @@ class MaskLegendButton(QtWidgets.QToolButton):
         self.setToolButtonStyle(QtCore.Qt.ToolButtonTextBesideIcon)
         self.setAutoRaise(False)
         self.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
-        self.setMinimumHeight(30)
+        self.setMinimumHeight(32)
         self.setToolTip(name)
         self.setStyleSheet(
             """
@@ -321,7 +322,7 @@ class MaskLegendButton(QtWidgets.QToolButton):
                 background-color: transparent;
                 border: 1px solid #555;
                 border-radius: 6px;
-                padding: 4px 8px;
+                padding: 5px 8px;
                 text-align: left;
             }
             QToolButton:hover {
@@ -360,7 +361,7 @@ class MaskLegendButton(QtWidgets.QToolButton):
 
     def _elided_text(self, text):
         fm = self.fontMetrics()
-        available_width = max(50, self.width() - 40)
+        available_width = max(70, self.width() - 44)
         return fm.elidedText(text, QtCore.Qt.ElideRight, available_width)
 
     def resizeEvent(self, ev):
@@ -387,6 +388,9 @@ class ColorLegendWidget(QtWidgets.QFrame):
         super().__init__(parent)
 
         self.setFrameShape(QtWidgets.QFrame.StyledPanel)
+        self.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Expanding)
+        self.setMinimumWidth(260)
+        self.setMaximumWidth(340)
         self.setStyleSheet(
             """
             QFrame {
@@ -402,6 +406,9 @@ class ColorLegendWidget(QtWidgets.QFrame):
             QScrollArea {
                 background-color: transparent;
                 border: none;
+            }
+            QScrollArea > QWidget > QWidget {
+                background-color: transparent;
             }
             QScrollBar:vertical {
                 background: #1a1a1a;
@@ -445,8 +452,8 @@ class ColorLegendWidget(QtWidgets.QFrame):
         )
 
         outer_layout = QtWidgets.QVBoxLayout(self)
-        outer_layout.setContentsMargins(8, 8, 8, 8)
-        outer_layout.setSpacing(6)
+        outer_layout.setContentsMargins(10, 10, 10, 10)
+        outer_layout.setSpacing(8)
 
         header_layout = QtWidgets.QHBoxLayout()
         header_layout.setContentsMargins(0, 0, 0, 0)
@@ -455,7 +462,7 @@ class ColorLegendWidget(QtWidgets.QFrame):
         self.title_label = QtWidgets.QLabel("Masks")
         self.hide_all_button = QtWidgets.QPushButton("Hide All Masks")
         self.hide_all_button.setCursor(QtCore.Qt.PointingHandCursor)
-        self.hide_all_button.setMinimumHeight(28)
+        self.hide_all_button.setMinimumHeight(30)
         self.hide_all_button.clicked.connect(self.toggle_all_masks)
 
         header_layout.addWidget(self.title_label)
@@ -476,11 +483,9 @@ class ColorLegendWidget(QtWidgets.QFrame):
         self.content_layout.addStretch(1)
 
         self.scroll_area.setWidget(self.scroll_content)
-        outer_layout.addWidget(self.scroll_area)
+        outer_layout.addWidget(self.scroll_area, 1)
 
         self._buttons = []
-        self.setMinimumHeight(120)
-        self.setMaximumHeight(220)
         self.hide_all_button.setEnabled(False)
         self._all_hidden = False
 
@@ -548,7 +553,7 @@ class Visualization(QtWidgets.QMainWindow):
     def __init__(self, image_sets):
         super().__init__()
         self.setWindowTitle("Z-Rad Viewer")
-        self.resize(1400, 900)
+        self.resize(1500, 900)
 
         if not image_sets:
             raise ValueError("image_sets must contain at least one image.")
@@ -599,6 +604,8 @@ class Visualization(QtWidgets.QMainWindow):
         self.current_axial = 0
 
         self._suspend_resize_refit = False
+        self._maximized_view = None
+        self._normal_stretch = [1, 1, 1]
 
         self._build_ui()
         self._connect_events()
@@ -610,21 +617,30 @@ class Visualization(QtWidgets.QMainWindow):
         central = QtWidgets.QWidget()
         self.setCentralWidget(central)
 
-        self.main_layout = QtWidgets.QVBoxLayout(central)
+        self.main_layout = QtWidgets.QHBoxLayout(central)
+        self.main_layout.setContentsMargins(10, 10, 10, 10)
+        self.main_layout.setSpacing(12)
 
-        views_layout = QtWidgets.QHBoxLayout()
-        self.main_layout.addLayout(views_layout)
+        self.legend_widget = ColorLegendWidget()
+        self.main_layout.addWidget(self.legend_widget, 0)
+
+        right_panel = QtWidgets.QWidget()
+        right_layout = QtWidgets.QVBoxLayout(right_panel)
+        right_layout.setContentsMargins(0, 0, 0, 0)
+        right_layout.setSpacing(12)
+
+        self.views_layout = QtWidgets.QHBoxLayout()
+        self.views_layout.setSpacing(10)
 
         self.sag_view = SliceView("Sagittal")
         self.cor_view = SliceView("Coronal")
         self.axi_view = SliceView("Axial")
 
-        views_layout.addWidget(self.sag_view)
-        views_layout.addWidget(self.cor_view)
-        views_layout.addWidget(self.axi_view)
+        self.views_layout.addWidget(self.sag_view, 1)
+        self.views_layout.addWidget(self.cor_view, 1)
+        self.views_layout.addWidget(self.axi_view, 1)
 
-        controls_layout = QtWidgets.QHBoxLayout()
-        controls_layout.setSpacing(12)
+        right_layout.addLayout(self.views_layout, 1)
 
         window_group = QtWidgets.QGroupBox("Windowing")
         window_group.setStyleSheet(
@@ -663,11 +679,7 @@ class Visualization(QtWidgets.QMainWindow):
         window_layout.addWidget(self.window_max_label_title)
         window_layout.addWidget(self.window_max_label)
 
-        controls_layout.addWidget(window_group, 1)
-        self.main_layout.addLayout(controls_layout)
-
-        self.legend_widget = ColorLegendWidget()
-        self.main_layout.addWidget(self.legend_widget)
+        right_layout.addWidget(window_group, 0)
 
         button_layout = QtWidgets.QHBoxLayout()
         button_layout.addStretch(1)
@@ -704,8 +716,9 @@ class Visualization(QtWidgets.QMainWindow):
         button_layout.addWidget(self.next_button)
         button_layout.addWidget(self.close_button)
 
-        self.main_layout.addLayout(button_layout)
-        self.main_layout.setStretch(0, 1)
+        right_layout.addLayout(button_layout, 0)
+
+        self.main_layout.addWidget(right_panel, 1)
 
         self.statusBar().showMessage("Ready")
         self.setStyleSheet("QMainWindow { background-color: #111; }")
@@ -723,9 +736,9 @@ class Visualization(QtWidgets.QMainWindow):
         self.cor_view.sigZoomed.connect(self._on_view_zoomed)
         self.axi_view.sigZoomed.connect(self._on_view_zoomed)
 
-        self.sag_view.sigResetView.connect(self._reset_single_view)
-        self.cor_view.sigResetView.connect(self._reset_single_view)
-        self.axi_view.sigResetView.connect(self._reset_single_view)
+        self.sag_view.sigToggleMaximize.connect(self._toggle_maximized_view)
+        self.cor_view.sigToggleMaximize.connect(self._toggle_maximized_view)
+        self.axi_view.sigToggleMaximize.connect(self._toggle_maximized_view)
 
         self.sag_view.sigResized.connect(self._on_slice_view_resized)
         self.cor_view.sigResized.connect(self._on_slice_view_resized)
@@ -786,6 +799,29 @@ class Visualization(QtWidgets.QMainWindow):
         self.cor_view.vb.addItem(self.cor_hline)
         self.axi_view.vb.addItem(self.axi_vline)
         self.axi_view.vb.addItem(self.axi_hline)
+
+    def _toggle_maximized_view(self, view):
+        all_views = [self.sag_view, self.cor_view, self.axi_view]
+
+        if self._maximized_view is view:
+            for i, v in enumerate(all_views):
+                v.setVisible(True)
+                self.views_layout.setStretch(i, self._normal_stretch[i])
+            self._maximized_view = None
+            QtCore.QTimer.singleShot(0, self._reset_all_view_ranges)
+            return
+
+        self._maximized_view = view
+        for i, v in enumerate(all_views):
+            is_target = (v is view)
+            v.setVisible(is_target)
+            self.views_layout.setStretch(i, 1 if is_target else 0)
+
+        QtCore.QTimer.singleShot(0, self._reset_single_visible_view)
+
+    def _reset_single_visible_view(self):
+        if self._maximized_view is not None:
+            self._fit_full_view_with_aspect(self._maximized_view)
 
     def _clear_mask_items(self):
         for item in self.sag_mask_items:
@@ -1115,12 +1151,13 @@ class Visualization(QtWidgets.QMainWindow):
             self._suspend_resize_refit = False
 
     def _reset_all_view_ranges(self):
+        if self._maximized_view is not None:
+            self._fit_full_view_with_aspect(self._maximized_view)
+            return
+
         self._fit_full_view_with_aspect(self.sag_view)
         self._fit_full_view_with_aspect(self.cor_view)
         self._fit_full_view_with_aspect(self.axi_view)
-
-    def _reset_single_view(self, view):
-        self._fit_full_view_with_aspect(view)
 
     def _zoom_view(self, view, zoom_factor, center_x, center_y):
         width_phys, height_phys = self._get_view_dimensions(view)
@@ -1178,16 +1215,13 @@ class Visualization(QtWidgets.QMainWindow):
     def _build_status_text(self):
         voxel_value = self._get_current_voxel_value()
         voxel_str = "nan" if np.isnan(voxel_value) else f"{voxel_value:.3f}"
-        visible_count = sum(1 for m in self.masks if m["visible"])
-        total_count = len(self.masks)
-        modality_str = self.current_imaging_modality if self.current_imaging_modality else "N/A"
         return (
             f"Image {self.current_image_index + 1}/{len(self.image_sets)} | "
             f"Case: {self.current_case_name if len(self.current_case_name) <= 20 else self.current_case_name[:20] + '...'} | "
             f"Shape: {self.volume.shape} | "
             f"Spacing: ({self.sx:.3f}, {self.sy:.3f}, {self.sz:.3f}) mm | "
             f"Voxel: ({self.current_sagittal}, {self.current_coronal}, {self.current_axial}) | "
-            f"Intensity: {voxel_str} | "
+            f"Intensity: {voxel_str}"
         )
 
     def _window_value_to_slider(self, value):
@@ -1311,6 +1345,8 @@ class Visualization(QtWidgets.QMainWindow):
 
     def _on_slice_view_resized(self, view):
         if self._suspend_resize_refit or self.volume is None:
+            return
+        if self._maximized_view is not None and view is not self._maximized_view:
             return
         QtCore.QTimer.singleShot(0, lambda v=view: self._fit_full_view_with_aspect(v))
 

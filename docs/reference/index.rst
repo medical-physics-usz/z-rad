@@ -1,10 +1,13 @@
-Reference
-=========
+API Reference
+=============
 
-The reference section is API-oriented. Start here when you need signatures,
-class members, supported parameters, and implementation-level modules.
+.. automodule:: zrad
 
 .. toctree::
    :maxdepth: 2
 
-   api/index
+   generated/zrad.preprocessing.preprocessing.Preprocessing
+   generated/zrad.filtering.filtering.Filtering
+   generated/zrad.radiomics.radiomics.Radiomics
+   generated/zrad.filtering.filtering_definitions
+   generated/zrad.radiomics.radiomics_definitions

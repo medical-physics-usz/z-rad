@@ -55,6 +55,11 @@ coverage.xml
 
 # Sphinx documentation
 docs/_build/
+docs/auto_examples/
+docs/generated/
+docs/reference/generated/
+docs/bibtex/auto
+docs/min_dependency_table.rst
 
 # PyBuilder
 target/

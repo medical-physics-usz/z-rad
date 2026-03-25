@@ -10,8 +10,8 @@ from zrad import __version__
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = 'Z-Rad'
-copyright = '2025, USZ Medical Physics'
-author = 'USZ Medical Physics'
+copyright = '2016 - 2026, USZ Department of Radiation Oncology'
+author = 'USZ Department of Radiation Oncology'
 release = __version__
 
 # -- General configuration ---------------------------------------------------
@@ -19,15 +19,17 @@ release = __version__
 
 extensions = [
     "sphinx.ext.autodoc",
+    "sphinx.ext.autosummary",
     "sphinx.ext.napoleon",
     "sphinx.ext.viewcode",
     "sphinx.ext.githubpages",
 ]
 
 templates_path = ['_templates']
-exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
+exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store', 'reference/_generate_api.rst']
 autodoc_member_order = 'bysource'
 autoclass_content = 'both'
+autosummary_generate = False
 
 
 
@@ -38,6 +40,7 @@ html_theme = 'pydata_sphinx_theme'
 html_static_path = ['_static']
 html_title = f"{project} {release}"
 html_logo = "logos/ZRadLogo.jpg"
+html_css_files = ["custom.css"]
 html_theme_options = {
     "logo": {
         "text": "Z-Rad",

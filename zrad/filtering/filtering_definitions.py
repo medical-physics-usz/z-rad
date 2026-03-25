@@ -14,6 +14,19 @@ sys.excepthook = handle_uncaught_exception
 
 
 class Mean:
+    """Mean filter for 2D slice-wise or full 3D smoothing.
+
+    Parameters
+    ----------
+    padding_type : {"constant", "nearest", "wrap", "reflect"}
+        Border handling mode used by ``scipy.ndimage.convolve``.
+    support : int
+        Size of the square or cubic averaging kernel.
+    dimensionality : {"2D", "3D"}
+        Whether smoothing is applied independently per slice or across the full
+        volume.
+    """
+
     def __init__(self, padding_type, support, dimensionality):
         close_all_loggers()
         self.filter_logger_date_time = datetime.now().strftime("%Y-%m-%d_%H%M%S")
@@ -45,6 +58,20 @@ class Mean:
                                  f"and {padding_type} padding type.")
 
     def apply(self, img):
+        """Apply the mean filter to a 2D stack or 3D volume.
+
+        Parameters
+        ----------
+        img : np.ndarray
+            Input image data. For ``dimensionality="2D"``, filtering is
+            applied independently to each axial slice of a 3D stack. For
+            ``dimensionality="3D"``, the full volume is filtered at once.
+
+        Returns
+        -------
+        np.ndarray
+            Mean-filtered image with the same shape as ``img``.
+        """
         if self.dimensionality == "2D":
             filt_mat = np.ones([self.support, self.support])
             filt_mat = filt_mat / np.prod(filt_mat.shape)
@@ -61,7 +88,24 @@ class Mean:
 
 
 class LoG:
-    """LoG"""
+    """Laplacian-of-Gaussian filter for blob and edge enhancement.
+
+    Parameters
+    ----------
+    padding_type : {"constant", "nearest", "wrap", "reflect"}
+        Border handling mode used by ``scipy.ndimage.gaussian_laplace``.
+    sigma_mm : float
+        Gaussian scale in millimeters.
+    cutoff : float
+        Truncation radius passed to SciPy in multiples of ``sigma``.
+    dimensionality : {"2D", "3D"}
+        Whether filtering is performed slice-wise or on the full volume.
+
+    Notes
+    -----
+    The physical scale is converted to pixel units at apply time using the
+    input image resolution stored in ``self.res_mm``.
+    """
 
     def __init__(self, padding_type, sigma_mm, cutoff, dimensionality):
 
@@ -104,6 +148,19 @@ class LoG:
                                  f"and {padding_type} padding type.")
 
     def apply(self, img):
+        """Apply the Laplacian-of-Gaussian filter to the input image.
+
+        Parameters
+        ----------
+        img : np.ndarray
+            Input image data. ``self.res_mm`` must be set before calling this
+            method so that ``sigma_mm`` can be converted to pixel units.
+
+        Returns
+        -------
+        np.ndarray
+            LoG response with the same shape as ``img``.
+        """
         sigma = self.sigma_mm / self.res_mm
         if self.dimensionality == "3D":
             filtered_img = ndi.gaussian_laplace(img, sigma=sigma, mode=self.padding_type, cval=self.padding_constant,
@@ -119,7 +176,21 @@ class LoG:
 
 
 class Wavelets2D:
-    """Wavelet filtering in 2D."""
+    """2D wavelet response maps evaluated slice-wise on a 3D volume.
+
+    Parameters
+    ----------
+    wavelet_type : {"db3", "db2", "coif1", "haar"}
+        Wavelet family used to derive the low- and high-pass kernels.
+    padding_type : {"constant", "nearest", "wrap", "reflect"}
+        Border handling mode used during convolution.
+    response_map : {"LL", "HL", "LH", "HH"}
+        Response sub-band to evaluate.
+    decomposition_level : {1, 2}
+        Wavelet decomposition level.
+    rotation_invariance : bool, default=False
+        If ``True``, average the response over rotated in-plane views.
+    """
 
     def __init__(self, wavelet_type, padding_type, response_map, decomposition_level, rotation_invariance=False):
 
@@ -194,6 +265,19 @@ class Wavelets2D:
         return filtered_img
 
     def apply(self, img):
+        """Apply the configured 2D wavelet response map slice-wise.
+
+        Parameters
+        ----------
+        img : np.ndarray
+            Input 3D image stack. Each slice along the last axis is filtered
+            independently, optionally with in-plane rotation averaging.
+
+        Returns
+        -------
+        np.ndarray
+            Wavelet response map with the same shape as ``img``.
+        """
         if self.decomposition_level == 1:
             x_filter = self._get_kernel(self.response_map[0])
             y_filter = self._get_kernel(self.response_map[1])
@@ -226,7 +310,22 @@ class Wavelets2D:
 
 
 class Wavelets3D:
-    """Wavelet filtering."""
+    """3D wavelet response maps for volumetric filtering.
+
+    Parameters
+    ----------
+    wavelet_type : {"db3", "db2", "coif1", "haar"}
+        Wavelet family used to derive the 1D kernels.
+    padding_type : {"constant", "nearest", "wrap", "reflect"}
+        Border handling mode used during convolution.
+    response_map : {"LLL", "LLH", "LHL", "HLL", "LHH", "HHL", "HLH", "HHH"}
+        Response sub-band to evaluate.
+    decomposition_level : {1, 2}
+        Wavelet decomposition level.
+    rotation_invariance : bool, default=False
+        If ``True``, average over flipped and permuted axis configurations to
+        obtain a pseudo rotation-invariant response.
+    """
 
     def __init__(self, wavelet_type, padding_type, response_map, decomposition_level, rotation_invariance=False):
 
@@ -305,6 +404,18 @@ class Wavelets3D:
         return filtered_img
 
     def apply(self, img):
+        """Apply the configured 3D wavelet response map to a volume.
+
+        Parameters
+        ----------
+        img : np.ndarray
+            Input 3D image volume.
+
+        Returns
+        -------
+        np.ndarray
+            Wavelet response map with the same shape as ``img``.
+        """
         if self.decomposition_level == 1:
             x_filter = self._get_kernel(self.response_map[0])
             y_filter = self._get_kernel(self.response_map[1])
@@ -367,7 +478,26 @@ class Wavelets3D:
 
 
 class Laws:
-    """Laws2"""
+    """Laws-kernel texture filtering in 2D or 3D.
+
+    Parameters
+    ----------
+    response_map : str
+        Laws kernel combination or pooled response identifier.
+    padding_type : {"constant", "nearest", "wrap", "reflect"}
+        Border handling mode used during convolution.
+    distance : int
+        Neighborhood radius used when computing the optional energy map.
+    energy_map : bool
+        Whether the raw Laws response should be converted to an energy map.
+    dimensionality : {"2D", "3D"}
+        Whether filtering is performed slice-wise or volumetrically.
+    rotation_invariance : bool, default=False
+        If ``True``, average responses over rotated or permuted kernel
+        configurations.
+    pooling : str, optional
+        Pooling strategy used for grouped response maps.
+    """
 
     def __init__(self, response_map, padding_type, distance, energy_map, dimensionality,
                  rotation_invariance=False, pooling=None):
@@ -466,6 +596,21 @@ class Laws:
         return filtered_img
 
     def apply(self, img):
+        """Apply the configured Laws filter and optional energy mapping.
+
+        Parameters
+        ----------
+        img : np.ndarray
+            Input image data. For 2D configurations the method expects a 3D
+            stack and filters each slice independently; for 3D configurations
+            it filters the full volume.
+
+        Returns
+        -------
+        np.ndarray
+            Laws response image, or the corresponding energy map when
+            ``energy_map=True``.
+        """
         final_image = None
         if self.rotation_invariance:
             response_maps = self._get_response_maps()
@@ -521,11 +666,34 @@ class Laws:
 
 
 class Gabor:
-    """
-    Gabor filter bank for 3D volumes, supporting single-θ or rotation-invariant responses.
+    """Gabor filtering for 3D volumes using 2D kernels on orthogonal planes.
 
-    This class constructs and applies 2D Gabor filters slice‑wise along any orthogonal plane
-    of a 3D image, caching filter kernels and optionally averaging over orientations and planes.
+    The filter can be applied at a single orientation or averaged across an
+    orientation bank for pseudo rotation invariance. Kernels are cached by
+    orientation and kernel size for repeated use.
+
+    Parameters
+    ----------
+    padding_type : {"reflect", "mirror", "constant", "nearest", "wrap"}
+        Border handling mode mapped to the corresponding OpenCV ``borderType``.
+    res_mm : float
+        Image resolution in millimeters per pixel.
+    sigma_mm : float
+        Standard deviation of the Gaussian envelope in millimeters.
+    lambda_mm : float
+        Wavelength of the sinusoidal carrier in millimeters.
+    gamma : float
+        Spatial aspect ratio controlling kernel ellipticity.
+    theta : float
+        Orientation angle in radians, or angular step when
+        ``rotation_invariance=True``.
+    rotation_invariance : bool, default=False
+        If ``True``, average responses across a full orientation bank.
+    orthogonal_planes : bool, default=False
+        When rotation-invariant mode is enabled, include the ``(0, 2)`` and
+        ``(1, 2)`` planes in addition to ``(0, 1)``.
+    n_stds : float, optional
+        Kernel half-width expressed as a multiple of ``sigma`` in pixels.
     """
     _PADDING_MAP = {
         'reflect': cv2.BORDER_REFLECT,

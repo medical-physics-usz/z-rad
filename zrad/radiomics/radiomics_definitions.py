@@ -31,6 +31,23 @@ def _pca_eigenvalues(points: np.ndarray) -> np.ndarray:
 
 
 class MorphologicalFeatures:
+    """Morphological and shape descriptors for a 3D region of interest.
+
+    Parameters
+    ----------
+    mask : np.ndarray
+        Binary 3D ROI mask. Nonzero voxels define the segmented structure used
+        for mesh extraction, PCA-based axes, bounding boxes, and spatial
+        autocorrelation measures.
+    spacing : sequence of float
+        Physical voxel spacing along the three image axes.
+
+    Notes
+    -----
+    The class stores intermediate geometry such as the marching-cubes mesh,
+    convex hull, and PCA eigenvalues so that multiple IBSI morphological
+    features can be computed from the same prepared ROI.
+    """
     def __init__(self,  # image,
                  mask, spacing):
 
@@ -345,6 +362,24 @@ class MorphologicalFeatures:
 
 
 class LocalIntensityFeatures:
+    """Local intensity peak features derived from the ROI and surrounding image.
+
+    Parameters
+    ----------
+    image : np.ndarray
+        Full intensity image used to evaluate spherical neighborhood means.
+    masked_image : np.ndarray
+        ROI-masked version of ``image`` where voxels outside the ROI are
+        encoded as ``NaN``.
+    spacing : sequence of float
+        Physical voxel spacing used to convert the IBSI neighborhood radius to
+        image coordinates.
+
+    Notes
+    -----
+    This class implements the local and global intensity peak features from the
+    IBSI local intensity family.
+    """
 
     def __init__(self, image, masked_image, spacing):
 
@@ -427,6 +462,15 @@ class LocalIntensityFeatures:
 
 
 class IntensityBasedStatFeatures:
+    """First-order statistics for continuous or discretized ROI intensities.
+
+    Notes
+    -----
+    The methods in this class operate on arrays passed at call time rather than
+    binding an image in the constructor. This supports reuse for both raw
+    intensities and discretized intensity histograms within the radiomics
+    workflow.
+    """
     def __init__(self):  # , image):
         # self.spacing = spacing
         # self.array_image = image
@@ -477,12 +521,15 @@ class IntensityBasedStatFeatures:
         self.min_hist_gradient_intensity = None  # .3.4.23
 
     def calc_mean_intensity(self, array):  # 3.3.1, 3.4.1
+        """Compute the mean intensity of the non-NaN values in ``array``."""
         self.mean_intensity = np.nanmean(array)
 
     def calc_intensity_variance(self, array):  # 3.3.2, 3.4.2
+        """Compute the population variance of the non-NaN values in ``array``."""
         self.intensity_variance = np.nanstd(array) ** 2
 
     def calc_intensity_skewness(self, array):  # 3.3.3, 3.4.3
+        """Compute the IBSI skewness of the non-NaN values in ``array``."""
         x = np.asarray(array)
         x = x[~np.isnan(x)]
 
@@ -503,6 +550,7 @@ class IntensityBasedStatFeatures:
         self.intensity_skewness = skew
 
     def calc_intensity_kurtosis(self, array):  # 3.3.4, 3.4.4
+        """Compute the excess kurtosis of the non-NaN values in ``array``."""
         x = np.asarray(array)
         x = x[~np.isnan(x)]
 
@@ -523,30 +571,39 @@ class IntensityBasedStatFeatures:
         self.intensity_kurtosis = kurt
 
     def calc_median_intensity(self, array):  # 3.3.5, 3.4.5
+        """Compute the median of the non-NaN values in ``array``."""
         self.median_intensity = np.nanmedian(array)
 
     def calc_min_intensity(self, array):  # 3.3.6, 3.4.6
+        """Compute the minimum of the non-NaN values in ``array``."""
         self.min_intensity = np.nanmin(array)
 
     def calc_intensity_10th_percentile(self, array):  # 3.3.7, 3.4.7
+        """Compute the 10th percentile of the non-NaN values in ``array``."""
         self.intensity_10th_percentile = np.nanpercentile(array, 10)
 
     def calc_intensity_90th_percentile(self, array):  # 3.3.8, 3.4.8
+        """Compute the 90th percentile of the non-NaN values in ``array``."""
         self.intensity_90th_percentile = np.nanpercentile(array, 90)
 
     def calc_max_intensity(self, array):  # 3.3.9, 3.4.9
+        """Compute the maximum of the non-NaN values in ``array``."""
         self.max_intensity = np.nanmax(array)
 
     def calc_intensity_iqr(self, array):  # 3.3.10, 3.4.11
+        """Compute the interquartile range of the non-NaN values in ``array``."""
         self.intensity_iqr = iqr(array, nan_policy='omit')
 
     def calc_intensity_range(self, array):  # 3.3.11, 3.4.12
+        """Compute the full intensity range of the non-NaN values in ``array``."""
         self.intensity_range = np.nanmax(array) - np.nanmin(array)
 
     def calc_intensity_based_mean_abs_deviation(self, array):  # .3.3.12, 3.4.13
+        """Compute the mean absolute deviation from the mean intensity."""
         self.intensity_based_mean_abs_deviation = np.nanmean(np.absolute(array - np.nanmean(array)))
 
     def calc_intensity_based_robust_mean_abs_deviation(self, array):  # 3.3.13, 3.4.14
+        """Compute the mean absolute deviation after trimming to the 10th-90th percentile range."""
         self.array_image_2 = array.copy()
         p10 = np.nanpercentile(self.array_image_2, 10)
         p90 = np.nanpercentile(self.array_image_2, 90)
@@ -556,9 +613,11 @@ class IntensityBasedStatFeatures:
             np.absolute(self.array_image_2 - np.nanmean(self.array_image_2)))
 
     def calc_intensity_based_median_abs_deviation(self, array):  # 3.3.14, 3.4.15
+        """Compute the mean absolute deviation from the median intensity."""
         self.intensity_based_median_abs_deviation = np.nanmean(np.absolute(array - np.nanmedian(array)))
 
     def calc_intensity_based_variation_coef(self, array):  # 3.3.15, 3.4.16
+        """Compute the coefficient of variation of the non-NaN values in ``array``."""
         denum = np.nanmean(array)
         if denum == 0:
             self.intensity_based_variation_coef = 1_000_000
@@ -566,6 +625,7 @@ class IntensityBasedStatFeatures:
             self.intensity_based_variation_coef = np.nanstd(array) / denum
 
     def calc_intensity_based_quartile_coef_dispersion(self, array):  # 3.3.16, 3.4.17
+        """Compute the quartile coefficient of dispersion for ``array``."""
         p25 = np.nanpercentile(array, 25)
         p75 = np.nanpercentile(array, 75)
         denum = (p75 + p25)
@@ -575,17 +635,21 @@ class IntensityBasedStatFeatures:
             self.intensity_based_quartile_coef_dispersion = (p75 - p25) / denum
 
     def calc_intensity_based_energy(self, array):  # 3.3.17
+        """Compute the energy as the sum of squared non-NaN intensities."""
         self.intensity_based_energy = np.nansum(array ** 2)
 
     def calc_root_mean_square_intensity(self, array):  # .3.3.18
+        """Compute the root mean square of the non-NaN intensities."""
         self.root_mean_square_intensity = np.sqrt(np.nanmean(array ** 2))
 
     def calc_discretised_intensity_mode(self, array):  # 3.4.10
+        """Compute the most frequent discretized gray level in ``array``."""
         values, counts = np.unique(array[~np.isnan(array)], return_counts=True)
         max_count_index = np.argmax(counts)
         self.intensity_hist_mode = values[max_count_index]
 
     def calc_discretised_intensity_entropy(self, array):  # 3.4.18
+        """Compute the Shannon entropy of the discretized intensity histogram."""
         values, counts = np.unique(array[~np.isnan(array)], return_counts=True)
         sum_counts = np.sum(counts)
         if sum_counts == 0:
@@ -594,6 +658,7 @@ class IntensityBasedStatFeatures:
         self.discret_intensity_entropy = (-1) * np.sum(p * np.log2(p))
 
     def calc_discretised_intensity_uniformity(self, array):  # 3.4.19
+        """Compute the histogram uniformity of discretized intensities."""
         values, counts = np.unique(array[~np.isnan(array)], return_counts=True)
         sum_counts = np.sum(counts)
         if sum_counts == 0:
@@ -602,24 +667,28 @@ class IntensityBasedStatFeatures:
         self.discret_intensity_uniformity = np.sum(p * p)
 
     def calc_max_hist_gradient(self, array):  # 3.4.20
+        """Compute the maximum gradient of the discretized intensity histogram."""
         values, counts = np.unique(array[~np.isnan(array)], return_counts=True)
         if len(counts) <= 1:
             raise DataStructureError(f"Not enough bins to calculate gradient.")
         self.max_hist_gradient = np.max(np.gradient(counts))
 
     def calc_max_hist_gradient_intensity(self, array):  # 3.4.21
+        """Return the gray level at which the histogram gradient reaches its maximum."""
         values, counts = np.unique(array[~np.isnan(array)], return_counts=True)
         if len(counts) <= 1:
             raise DataStructureError(f"Not enough bins to calculate gradient.")
         self.max_hist_gradient_intensity = values[np.argmax(np.gradient(counts))]
 
     def calc_min_hist_gradient(self, array):  # 3.4.22
+        """Compute the minimum gradient of the discretized intensity histogram."""
         values, counts = np.unique(array[~np.isnan(array)], return_counts=True)
         if len(counts) <= 1:
             raise DataStructureError(f"Not enough bins to calculate gradient.")
         self.min_hist_gradient = np.min(np.gradient(counts))
 
     def calc_min_hist_gradient_intensity(self, array):  # 3.4.23
+        """Return the gray level at which the histogram gradient reaches its minimum."""
         values, counts = np.unique(array[~np.isnan(array)], return_counts=True)
         if len(counts) <= 1:
             raise DataStructureError(f"Not enough bins to calculate gradient.")
@@ -627,6 +696,25 @@ class IntensityBasedStatFeatures:
 
 
 class IntensityVolumeHistogramFeatures:
+    """Intensity-volume histogram features computed from discretized intensities.
+
+    Parameters
+    ----------
+    array : np.ndarray
+        Input intensity array with ROI voxels retained and non-ROI voxels set
+        to ``NaN``.
+    min_intensity : int or float
+        Lower bound of the discretized intensity range.
+    max_intensity : int or float
+        Upper bound of the discretized intensity range.
+    discr : int or float, default=1
+        Discretization step used to sample the intensity-volume histogram.
+
+    Notes
+    -----
+    The constructor precomputes the fractional volume and fractional intensity
+    curves so that the IBSI IVH summary features can be queried directly.
+    """
     def __init__(self, array, min_intensity, max_intensity, discr=1):
         # Flatten array and remove NaN values
         self.min_intensity = min_intensity
@@ -670,6 +758,26 @@ class IntensityVolumeHistogramFeatures:
 
 
 class GLCM:
+    """Gray level co-occurrence matrix features for 2D, 2.5D, and 3D analyses.
+
+    Parameters
+    ----------
+    image : np.ndarray
+        Discretized ROI image with valid gray levels stored as integers and
+        voxels outside the ROI encoded as ``NaN``.
+    slice_weight : bool, default=False
+        If ``True``, aggregate slice-wise features with weights proportional to
+        the number of ROI voxels per slice.
+    slice_median : bool, default=False
+        If ``True`` and ``slice_weight`` is ``False``, use the median across
+        slice-direction feature values instead of the mean.
+
+    Notes
+    -----
+    This class builds co-occurrence matrices for the IBSI-supported 2D, 2.5D,
+    and 3D aggregation modes and stores the resulting texture features on the
+    instance.
+    """
 
     def __init__(self, image, slice_weight=False, slice_median=False):
         self.image = image
@@ -1487,6 +1595,26 @@ class GLCM:
 
 
 class GLRLM_GLSZM_GLDZM_NGLDM:
+    """Run-length, zone-size, distance-zone, and dependence-matrix features.
+
+    Parameters
+    ----------
+    image : np.ndarray
+        Discretized ROI image with integer gray levels and ``NaN`` values
+        outside the ROI.
+    slice_weight : bool, default=False
+        If ``True``, weight 2D slice aggregates by the ROI voxel count of each
+        slice.
+    slice_median : bool, default=False
+        If ``True`` and ``slice_weight`` is ``False``, aggregate 2D features by
+        the median across slices instead of the mean.
+
+    Notes
+    -----
+    The class groups several IBSI matrix families that share similar
+    post-processing formulas: GLRLM, GLSZM, GLDZM, and NGLDM. Dedicated methods
+    build the corresponding matrices and then derive the relevant feature set.
+    """
     def __init__(self, image, slice_weight=False, slice_median=False):
 
         self.image = image  # Import image as (x, y, z) array
@@ -2744,6 +2872,26 @@ class GLRLM_GLSZM_GLDZM_NGLDM:
 
 
 class NGTDM:
+    """Neighbouring gray tone difference matrix features.
+
+    Parameters
+    ----------
+    image : np.ndarray
+        Discretized ROI image with integer gray levels and ``NaN`` values
+        outside the ROI.
+    slice_weight : bool, default=False
+        If ``True``, weight slice-wise 2D features by the ROI voxel count of
+        each slice.
+    slice_median : bool, default=False
+        If ``True`` and ``slice_weight`` is ``False``, aggregate 2D features by
+        the median across slices instead of the mean.
+
+    Notes
+    -----
+    NGTDM features summarize how much each gray level differs from the local
+    neighborhood average and expose the IBSI coarseness, contrast, busyness,
+    complexity, and strength metrics.
+    """
     def __init__(self, image, slice_weight=False, slice_median=False):
 
         self.image = image  # Import image as (x, y, z) array

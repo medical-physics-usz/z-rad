@@ -13,7 +13,8 @@ material such as IBSI validation lives separately.
 Documentation Map
 -----------------
 
-* :doc:`user/index` for installation, workflows, and examples.
+* :doc:`user/index` for installation and workflow-oriented guides.
+* :doc:`examples/index` for end-to-end walkthroughs.
 * :doc:`reference/index` for API-oriented documentation.
 * :doc:`project/index` for validation and release material.
 * :doc:`developer/index` for documentation and contribution workflow.
@@ -23,6 +24,7 @@ Documentation Map
    :caption: Contents
 
    user/index
+   examples/index
    reference/index
    project/index
    developer/index

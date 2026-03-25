@@ -14,5 +14,4 @@ preprocessing, filtering, and radiomics workflows.
    preprocessing
    filtering
    radiomics
-   examples/index
    troubleshooting

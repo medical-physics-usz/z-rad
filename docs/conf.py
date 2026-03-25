@@ -34,12 +34,25 @@ autoclass_content = 'both'
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
-html_theme = 'furo'
+html_theme = 'pydata_sphinx_theme'
 html_static_path = ['_static']
 html_title = f"{project} {release}"
+html_logo = "logos/ZRadLogo.jpg"
 html_theme_options = {
-    "light_css_variables": {
-        "color-brand-primary": "#005f73",
-        "color-brand-content": "#0a9396",
+    "logo": {
+        "text": "Z-Rad",
     },
+    "navbar_start": ["navbar-logo"],
+    "navbar_center": ["navbar-nav"],
+    "navbar_end": ["theme-switcher", "navbar-icon-links"],
+    "header_links_before_dropdown": 8,
+    "show_nav_level": 1,
+    "navigation_with_keys": False,
+    "icon_links": [
+        {
+            "name": "GitHub",
+            "url": "https://github.com/medical-physics-usz/z-rad",
+            "icon": "fa-brands fa-github",
+        },
+    ],
 }

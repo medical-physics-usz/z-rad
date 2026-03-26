@@ -20,7 +20,7 @@ Main Controls
 The filtering workflow is organized around the following GUI sections. The
 numbering below matches the annotated screenshots used for this workflow.
 
-``(1)`` ``Upper workflow section``
+``(1)`` Upper workflow section
    The upper part of the filtering tab mirrors the preprocessing tab. You use
    it to select the input directory, output directory, thread count, imaging
    modality, and the folders that should be processed. Unlike preprocessing, no

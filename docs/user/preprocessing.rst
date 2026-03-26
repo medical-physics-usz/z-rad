@@ -20,7 +20,7 @@ Main Controls
 The preprocessing workflow is organized around the following GUI controls. The
 numbering below matches the annotated screenshots used for this workflow.
 
-``(1)`` ``Preprocessing`` tab
+``(1)`` ``Preprocessing tab``
    Use the top tab bar to navigate between the main parts of the application.
    This page describes the controls shown when ``Preprocessing`` is active.
 

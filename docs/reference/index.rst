@@ -17,18 +17,6 @@ Core Workflow Classes
    ~filtering.filtering.Filtering
    ~radiomics.radiomics.Radiomics
 
-Implementation Modules
-----------------------
-
-These modules contain the lower-level filter and feature-definition
-implementations used by the workflow classes above.
-
-.. autosummary::
-   :toctree: generated
-
-   ~filtering.filtering_definitions
-   ~radiomics.radiomics_definitions
-
 Data Model
 ----------
 
@@ -38,3 +26,32 @@ The image module handles reading DICOM and NIfTI data and writing NIfTI files.
    :toctree: generated
 
    ~image.Image
+
+.. toctree::
+   :hidden:
+
+   generated/zrad.filtering.filtering_definitions
+   generated/zrad.radiomics.radiomics_definitions
+
+Filtering Definition Classes
+----------------------------
+
+.. autosummary::
+   ~filtering.filtering_definitions.Mean
+   ~filtering.filtering_definitions.LoG
+   ~filtering.filtering_definitions.Laws
+   ~filtering.filtering_definitions.Gabor
+   ~filtering.filtering_definitions.Wavelets2D
+   ~filtering.filtering_definitions.Wavelets3D
+
+Radiomics Definition Classes
+----------------------------
+
+.. autosummary::
+   ~radiomics.radiomics_definitions.MorphologicalFeatures
+   ~radiomics.radiomics_definitions.LocalIntensityFeatures
+   ~radiomics.radiomics_definitions.IntensityBasedStatFeatures
+   ~radiomics.radiomics_definitions.IntensityVolumeHistogramFeatures
+   ~radiomics.radiomics_definitions.GLCM
+   ~radiomics.radiomics_definitions.GLRLM_GLSZM_GLDZM_NGLDM
+   ~radiomics.radiomics_definitions.NGTDM

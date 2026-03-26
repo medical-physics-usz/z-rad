@@ -1,5 +1,5 @@
 GUI Preprocessing
-=============
+=================
 
 Overview
 --------

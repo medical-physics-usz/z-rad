@@ -1,11 +1,22 @@
+=====
 About
 =====
 
-This section covers validation status, release-oriented material, and other
-project background that is not part of the user guide or API reference.
+Z-Rad is a radiomic feature extraction software developed in the Department of
+Radiation Oncology of University Hospital Zurich.
 
-.. toctree::
-   :maxdepth: 2
+Release Notes
+-------------
+Refers to GitHub release_notes_.
 
-   ibsi_validation
-   release_notes
+Contributors
+------------
+Refers to GitHub contributors_.
+
+Contact Us
+----------
+
+Feel free to reach out to us via email at zrad@usz.ch.
+
+.. _contributors: https://github.com/medical-physics-usz/z-rad/graphs/contributors
+.. _release_notes: https://github.com/medical-physics-usz/z-rad/releases

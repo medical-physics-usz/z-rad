@@ -1,8 +1,8 @@
-Developer Guide
-===============
+Development
+===========
 
-Developer documentation covers the contributor workflow and local documentation
-build process.
+This section covers the contributor workflow and the local documentation build
+process.
 
 .. toctree::
    :maxdepth: 2

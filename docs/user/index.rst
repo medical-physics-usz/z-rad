@@ -10,8 +10,9 @@ preprocessing, filtering, and radiomics workflows.
 
    installation
    gui_quickstart
-   api_quickstart
    preprocessing
    filtering
    radiomics
+   visualization
+   api_quickstart
    troubleshooting

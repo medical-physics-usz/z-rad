@@ -1,9 +1,8 @@
-Project
-=======
+About
+=====
 
-Project documentation covers validation status, release-oriented material, and
-other repository-specific documentation that is not part of the user guide or
-API reference.
+This section covers validation status, release-oriented material, and other
+project background that is not part of the user guide or API reference.
 
 .. toctree::
    :maxdepth: 2

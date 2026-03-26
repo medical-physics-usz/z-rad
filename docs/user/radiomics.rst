@@ -1,4 +1,4 @@
-Radiomics Extraction
+GUI Radiomics Extraction
 ====================
 
 Overview
@@ -7,6 +7,31 @@ Overview
 The ``Radiomics`` class computes morphological, intensity, histogram, and
 texture features from an image-mask pair. The extracted feature set depends on
 the aggregation dimensionality and discretization choices.
+
+.. figure:: ../images/Rad_tab.png
+   :alt: Z-Rad radiomics tab
+   :width: 900
+
+   Radiomics extraction tab in the GUI.
+
+GUI Workflow
+------------
+
+The radiomics tab combines dataset selection with the extraction-specific
+controls:
+
+* ``Data Type`` chooses DICOM or NIfTI input.
+* ``Intensity Range`` restricts analysis to a selected voxel-value interval.
+* ``Outlier Removal`` excludes intensities outside a chosen standard-deviation
+  range. This can create holes in the effective ROI and should be used
+  carefully.
+* ``Texture Aggregation Method`` defines whether texture matrices are computed
+  in 2D, 2.5D, or 3D and how slice or direction merges are handled.
+* ``Discretization`` controls whether texture features use fixed bin size or
+  fixed bin number binning.
+
+After execution, Z-Rad writes feature tables as ``.csv`` files. Each row starts
+with case and mask metadata and is followed by the extracted radiomic features.
 
 Feature Families
 ----------------
@@ -24,6 +49,11 @@ The implementation includes features from these groups:
 * NGTDM
 * NGLDM
 * optional intensity-volume histogram features
+
+In the GUI, the standard workflow exposes morphological, local intensity,
+first-order, histogram, GLCM, GLRLM, GLSZM, and GLDZM features. More specialized
+features such as intensity-volume histogram metrics and the computationally
+expensive Moran's I and Geary's C measures remain API-only.
 
 Key Parameters
 --------------
@@ -47,6 +77,24 @@ Z-Rad validates masks before extraction:
 
 These checks are important because many texture matrices are undefined or
 unstable for extremely small masks.
+
+Example
+-------
+
+.. figure:: ../images/Rad_example.png
+   :alt: Example radiomics extraction configuration
+   :width: 700
+
+   Example radiomics configuration in the GUI.
+
+The example configuration from the archive extracts radiomics from
+``phantom.nii.gz`` inside the mask ``GTV-1.nii.gz`` with:
+
+* no filtered image
+* no outlier removal
+* intensity range ``-400`` to ``400``
+* ``3D`` averaged texture aggregation
+* bin size ``32``
 
 Outputs
 -------

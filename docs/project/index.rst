@@ -2,21 +2,30 @@
 About
 =====
 
-Z-Rad is a radiomic feature extraction software developed in the Department of
-Radiation Oncology of University Hospital Zurich.
+Z-Rad is a radiomics toolkit developed in the Department of Radiation Oncology
+at University Hospital Zurich. It provides both a graphical interface and a
+Python API for preprocessing medical images, applying standardized filters, and
+extracting radiomic features from image-mask pairs.
 
-Release Notes
--------------
-Refers to GitHub release_notes_.
+Scope
+-----
 
-Contributors
-------------
-Refers to GitHub contributors_.
+Z-Rad is intended for users who need IBSI-compliant, reproducible radiomics workflows across
+interactive and scripted use cases. The project supports common medical imaging
+formats such as DICOM and NIfTI and is structured around the main workflow
+steps of preprocessing, filtering, visualization, and feature extraction.
+
+Project Resources
+-----------------
+
+The main project resources are available on GitHub:
+
+* source code: https://github.com/medical-physics-usz/z-rad
+* release notes: https://github.com/medical-physics-usz/z-rad/releases
+* contributors: https://github.com/medical-physics-usz/z-rad/graphs/contributors
 
 Contact Us
 ----------
 
-Feel free to reach out to us via email at zrad@usz.ch.
-
-.. _contributors: https://github.com/medical-physics-usz/z-rad/graphs/contributors
-.. _release_notes: https://github.com/medical-physics-usz/z-rad/releases
+For questions, feedback, or collaboration inquiries, contact
+zrad@usz.ch.

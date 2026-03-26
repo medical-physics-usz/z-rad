@@ -1,13 +1,40 @@
 API Reference
 =============
 
-.. automodule:: zrad
+This section documents the main Python API exposed by Z-Rad. The primary
+workflow is centered around preprocessing, filtering, radiomics extraction, and
+the ``Image`` data structure shared between these steps.
 
-.. toctree::
-   :maxdepth: 2
+.. currentmodule:: zrad
 
-   generated/zrad.preprocessing.preprocessing.Preprocessing
-   generated/zrad.filtering.filtering.Filtering
-   generated/zrad.radiomics.radiomics.Radiomics
-   generated/zrad.filtering.filtering_definitions
-   generated/zrad.radiomics.radiomics_definitions
+Core Workflow Classes
+---------------------
+
+.. autosummary::
+   :toctree: generated
+
+   ~preprocessing.preprocessing.Preprocessing
+   ~filtering.filtering.Filtering
+   ~radiomics.radiomics.Radiomics
+
+Implementation Modules
+----------------------
+
+These modules contain the lower-level filter and feature-definition
+implementations used by the workflow classes above.
+
+.. autosummary::
+   :toctree: generated
+
+   ~filtering.filtering_definitions
+   ~radiomics.radiomics_definitions
+
+Data Model
+----------
+
+The image module handles reading DICOM and NIfTI data and writing NIfTI files.
+
+.. autosummary::
+   :toctree: generated
+
+   ~image.Image

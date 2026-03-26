@@ -33,8 +33,9 @@ dependencies = [
 
 [project.optional-dependencies]
 docs = [
-    "sphinx>=8,<9",
+    "sphinx>=8",
     "pydata-sphinx-theme>=0.16.1",
+    "sphinx-design>=0.6",
 ]
 
 # Optional project URLs, license, etc.

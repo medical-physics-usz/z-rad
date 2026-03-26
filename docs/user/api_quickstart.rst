@@ -7,6 +7,21 @@ The Python API mirrors the main GUI workflows through three public classes:
 * ``Filtering``
 * ``Radiomics``
 
+Recommended Workflow
+--------------------
+
+The typical Python workflow is:
+
+1. Load the image and mask into ``zrad.image.Image`` objects with aligned
+   geometry.
+2. Resample them with ``Preprocessing`` so image and mask share the intended
+   voxel spacing.
+3. Apply ``Filtering`` if the experiment requires a filtered representation.
+4. Run ``Radiomics.extract_features()`` and collect ``features_`` for storage
+   in a table or downstream analysis pipeline.
+5. Keep the exact preprocessing, filtering, and discretization settings next
+   to the extracted features so the run remains reproducible.
+
 Minimal Example
 ---------------
 
@@ -60,3 +75,6 @@ that means your workflow needs to provide:
 
 For correct feature extraction, images and masks must refer to the same spatial
 frame and voxel grid.
+
+For parameter details, combine this quickstart with the dedicated user-guide
+pages and the API reference.

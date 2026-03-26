@@ -82,32 +82,4 @@ Practical Notes
 * Input configurations can be saved from the GUI and later restored for
   reproducible reruns.
 
-Example
---------
-
-.. figure:: ../images/prepr_B.png
-   :alt: Example DICOM preprocessing configuration
-   :width: 700
-
-   Example DICOM preprocessing setup.
-
-This DICOM example corresponds to:
-
-* structure ``GTV-1``
-* slice-wise 2D resampling
-* linear interpolation to ``2 x 2`` mm in-plane spacing
-* linear ROI interpolation with a threshold of ``0.5``
-
-.. figure:: ../images/prepr_E.png
-   :alt: Example NIfTI preprocessing configuration
-   :width: 700
-
-   Example NIfTI preprocessing setup.
-
-This NIfTI example corresponds to:
-
-* image ``phantom.nii.gz``
-* mask ``GTV-1.nii.gz``
-* full 3D resampling
-* B-spline image interpolation to ``2 x 2 x 2`` mm
-* linear ROI interpolation with a threshold of ``0.5``
+For a task-oriented walkthrough, see :doc:`../examples/gui_preprocessing`.

@@ -49,42 +49,6 @@ Wavelet filtering additionally requires:
 * ``decomposition_level``
 * optional rotation invariance
 
-Examples
---------
-
-.. figure:: ../images/Filtering_Res.png
-   :alt: Comparison of filtering results
-   :width: 800
-
-   Filtering results on the IBSI II phantom: unfiltered, 3D mean, 3D LoG, and
-   3D wavelet responses.
-
-The archive example compares:
-
-* no filtering
-* a 3D mean filter with reflect padding and support ``5``
-* a 3D LoG filter with reflect padding, ``1.5`` mm scale, and ``4 sigma`` cutoff
-* a 3D Daubechies 3 wavelet filter with first-level ``LLH`` response and
-  pseudo-rotational invariance
-
-.. figure:: ../images/Filt_mean.png
-   :alt: Example mean filter configuration
-   :width: 700
-
-   Example configuration for a 3D mean filter.
-
-.. figure:: ../images/Filt_LoG.png
-   :alt: Example LoG filter configuration
-   :width: 700
-
-   Example configuration for a 3D Laplacian-of-Gaussian filter.
-
-.. figure:: ../images/Filt_wavelet.png
-   :alt: Example wavelet filter configuration
-   :width: 700
-
-   Example configuration for a 3D Daubechies 3 wavelet filter.
-
 Practical Notes
 ---------------
 
@@ -96,3 +60,5 @@ Practical Notes
   resampled image if your analysis does not require a transformed image.
 * Input configurations can be saved from the GUI and loaded again for repeated
   experiments.
+
+For a task-oriented walkthrough, see :doc:`../examples/gui_filtering`.

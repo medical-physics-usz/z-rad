@@ -9,10 +9,10 @@ preprocessing, filtering, and radiomics workflows.
    :maxdepth: 2
 
    installation
+   data_structure
    gui_quickstart
    preprocessing
    filtering
    radiomics
    visualization
    api_quickstart
-   troubleshooting

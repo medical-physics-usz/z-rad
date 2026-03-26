@@ -78,27 +78,11 @@ Z-Rad validates masks before extraction:
 These checks are important because many texture matrices are undefined or
 unstable for extremely small masks.
 
-Example
--------
-
-.. figure:: ../images/Rad_example.png
-   :alt: Example radiomics extraction configuration
-   :width: 700
-
-   Example radiomics configuration in the GUI.
-
-The example configuration from the archive extracts radiomics from
-``phantom.nii.gz`` inside the mask ``GTV-1.nii.gz`` with:
-
-* no filtered image
-* no outlier removal
-* intensity range ``-400`` to ``400``
-* ``3D`` averaged texture aggregation
-* bin size ``32``
-
 Outputs
 -------
 
 After running ``extract_features()``, the results are exposed through the
 ``features_`` dictionary. Z-Rad also records metadata such as bounding-box
 origin, voxel count, and the number of bins used for discretization.
+
+For a task-oriented walkthrough, see :doc:`../examples/gui_radiomics`.

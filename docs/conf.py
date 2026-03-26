@@ -41,6 +41,7 @@ html_theme = 'pydata_sphinx_theme'
 html_static_path = ['_static']
 html_title = f"{project} {release}"
 html_logo = "logos/ZRadLogo.jpg"
+html_favicon = "logos/icon.ico"
 html_css_files = ["custom.css"]
 html_theme_options = {
     "logo": {

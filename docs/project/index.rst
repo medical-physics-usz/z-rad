@@ -20,9 +20,9 @@ Project Resources
 
 The main project resources are available on GitHub:
 
-* source code: https://github.com/medical-physics-usz/z-rad
-* release notes: https://github.com/medical-physics-usz/z-rad/releases
-* contributors: https://github.com/medical-physics-usz/z-rad/graphs/contributors
+* `Source code <https://github.com/medical-physics-usz/z-rad>`_
+* `Release notes <https://github.com/medical-physics-usz/z-rad/releases>`_
+* `Contributors <https://github.com/medical-physics-usz/z-rad/graphs/contributors>`_
 
 Contact Us
 ----------

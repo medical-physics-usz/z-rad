@@ -104,12 +104,7 @@ class Filtering:
         # Prepare array: (Z,Y,X) -> (Y,X,Z)
         arr = image.array.astype(np.float64).transpose(1, 2, 0)
         try:
-            if hasattr(self.filter, 'apply'):
-                filtered = self.filter.apply(arr)
-            elif hasattr(self.filter, 'filter'):
-                filtered = self.filter.filter(arr)
-            else:
-                raise ValueError("Filter object lacks apply/filter method")
+            filtered = self.filter.apply(arr)
         except Exception as e:
             raise ValueError(f"Error applying filter: {e}")
 

@@ -848,7 +848,7 @@ class Gabor:
     # -------------------------------------------------------------------------
     # 3.  PUBLIC WRAPPER – multiple θ and planes
     # -------------------------------------------------------------------------
-    def filter(self, img):
+    def apply(self, img):
         """
         Apply the Gabor filter to a 3D image, optionally with rotation invariance.
 

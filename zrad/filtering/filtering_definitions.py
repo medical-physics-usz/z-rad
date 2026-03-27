@@ -8,12 +8,54 @@ import numpy as np
 import pywt
 from scipy import ndimage as ndi
 
+from ..image import Image
 from ..toolbox_logic import get_logger, handle_uncaught_exception, close_all_loggers
 
 sys.excepthook = handle_uncaught_exception
 
 
-class Mean:
+class BaseFilter:
+    """Common image-oriented API for all concrete filters."""
+
+    def __init__(self, filtering_method, **filtering_params):
+        self.filtering_method = filtering_method
+        self.filtering_params = filtering_params
+        self.filter = self
+
+    def _prepare(self, image):
+        """Hook for subclasses that need image metadata before filtering."""
+
+    def _apply_array(self, img):
+        raise NotImplementedError
+
+    def apply(self, image):
+        """Apply the filter to an :class:`~zrad.image.Image` and return an image."""
+        if not isinstance(image, Image):
+            raise TypeError(f"Expected Image, got {type(image)}.")
+
+        self._prepare(image)
+
+        arr = image.array.astype(np.float64).transpose(1, 2, 0)
+        try:
+            filtered = self._apply_array(arr)
+        except Exception as e:
+            raise ValueError(f"Error applying filter: {e}")
+
+        out_arr = filtered.transpose(2, 0, 1)
+        return Image(
+            array=out_arr,
+            origin=image.origin,
+            spacing=image.spacing,
+            direction=image.direction,
+            shape=image.shape
+        )
+
+    def apply_filter(self, image):
+        """Backward-compatible alias for :meth:`apply`."""
+        return self.apply(image)
+
+
+class Mean(BaseFilter):
     """Mean filter for 2D slice-wise or full 3D smoothing.
 
     Parameters
@@ -28,6 +70,12 @@ class Mean:
     """
 
     def __init__(self, padding_type, support, dimensionality):
+        super().__init__(
+            filtering_method='Mean',
+            padding_type=padding_type,
+            support=support,
+            dimensionality=dimensionality
+        )
         close_all_loggers()
         self.filter_logger_date_time = datetime.now().strftime("%Y-%m-%d_%H%M%S")
         self.filter_logger = get_logger(self.filter_logger_date_time+"_Mean_filter")
@@ -57,7 +105,7 @@ class Mean:
         self.filter_logger.debug(f"Defined {dimensionality} mean filter with support of {support}, "
                                  f"and {padding_type} padding type.")
 
-    def apply(self, img):
+    def _apply_array(self, img):
         """Apply the mean filter to a 2D stack or 3D volume.
 
         Parameters
@@ -87,7 +135,7 @@ class Mean:
         return filtered_img
 
 
-class LoG:
+class LoG(BaseFilter):
     """Laplacian-of-Gaussian filter for blob and edge enhancement.
 
     Parameters
@@ -108,6 +156,13 @@ class LoG:
     """
 
     def __init__(self, padding_type, sigma_mm, cutoff, dimensionality):
+        super().__init__(
+            filtering_method='Laplacian of Gaussian',
+            padding_type=padding_type,
+            sigma_mm=sigma_mm,
+            cutoff=cutoff,
+            dimensionality=dimensionality
+        )
 
         close_all_loggers()
         self.filter_logger_date_time = datetime.now().strftime("%Y-%m-%d_%H%M%S")
@@ -147,7 +202,13 @@ class LoG:
         self.filter_logger.debug(f"Defined {dimensionality} LoG filter with sigma {sigma_mm}, cutoff {cutoff}, "
                                  f"and {padding_type} padding type.")
 
-    def apply(self, img):
+    def _prepare(self, image):
+        try:
+            self.res_mm = float(image.spacing[0])
+        except (AttributeError, ValueError, TypeError) as e:
+            raise ValueError(f"Invalid image spacing data: {e}")
+
+    def _apply_array(self, img):
         """Apply the Laplacian-of-Gaussian filter to the input image.
 
         Parameters
@@ -175,7 +236,7 @@ class LoG:
         return filtered_img
 
 
-class Wavelets2D:
+class Wavelets2D(BaseFilter):
     """2D wavelet response maps evaluated slice-wise on a 3D volume.
 
     Parameters
@@ -193,6 +254,15 @@ class Wavelets2D:
     """
 
     def __init__(self, wavelet_type, padding_type, response_map, decomposition_level, rotation_invariance=False):
+        super().__init__(
+            filtering_method='Wavelets',
+            wavelet_type=wavelet_type,
+            padding_type=padding_type,
+            response_map=response_map,
+            decomposition_level=decomposition_level,
+            rotation_invariance=rotation_invariance,
+            dimensionality='2D'
+        )
 
         close_all_loggers()
         self.filter_logger_date_time = datetime.now().strftime("%Y-%m-%d_%H%M%S")
@@ -264,7 +334,7 @@ class Wavelets2D:
         filtered_img = ndi.convolve1d(filtered_img, y_filter, axis=0, mode=self.padding_type)
         return filtered_img
 
-    def apply(self, img):
+    def _apply_array(self, img):
         """Apply the configured 2D wavelet response map slice-wise.
 
         Parameters
@@ -309,7 +379,7 @@ class Wavelets2D:
         return filtered_img
 
 
-class Wavelets3D:
+class Wavelets3D(BaseFilter):
     """3D wavelet response maps for volumetric filtering.
 
     Parameters
@@ -328,6 +398,15 @@ class Wavelets3D:
     """
 
     def __init__(self, wavelet_type, padding_type, response_map, decomposition_level, rotation_invariance=False):
+        super().__init__(
+            filtering_method='Wavelets',
+            wavelet_type=wavelet_type,
+            padding_type=padding_type,
+            response_map=response_map,
+            decomposition_level=decomposition_level,
+            rotation_invariance=rotation_invariance,
+            dimensionality='3D'
+        )
 
         close_all_loggers()
         self.filter_logger_date_time = datetime.now().strftime("%Y-%m-%d_%H%M%S")
@@ -403,7 +482,7 @@ class Wavelets3D:
         filtered_img = ndi.convolve1d(filtered_img, z_filter, axis=2, mode=self.padding_type)
         return filtered_img
 
-    def apply(self, img):
+    def _apply_array(self, img):
         """Apply the configured 3D wavelet response map to a volume.
 
         Parameters
@@ -477,7 +556,7 @@ class Wavelets3D:
         return filtered_img
 
 
-class Laws:
+class Laws(BaseFilter):
     """Laws-kernel texture filtering in 2D or 3D.
 
     Parameters
@@ -501,6 +580,16 @@ class Laws:
 
     def __init__(self, response_map, padding_type, distance, energy_map, dimensionality,
                  rotation_invariance=False, pooling=None):
+        super().__init__(
+            filtering_method='Laws Kernels',
+            response_map=response_map,
+            padding_type=padding_type,
+            distance=distance,
+            energy_map=energy_map,
+            dimensionality=dimensionality,
+            rotation_invariance=rotation_invariance,
+            pooling=pooling
+        )
 
         close_all_loggers()
         self.filter_logger_date_time = datetime.now().strftime("%Y-%m-%d_%H%M%S")
@@ -595,7 +684,7 @@ class Laws:
             filtered_img = None
         return filtered_img
 
-    def apply(self, img):
+    def _apply_array(self, img):
         """Apply the configured Laws filter and optional energy mapping.
 
         Parameters
@@ -665,7 +754,7 @@ class Laws:
         return energy_map
 
 
-class Gabor:
+class Gabor(BaseFilter):
     """Gabor filtering for 3D volumes using 2D kernels on orthogonal planes.
 
     The filter can be applied at a single orientation or averaged across an
@@ -742,6 +831,18 @@ class Gabor:
         ValueError
             If `padding_type` is not a recognized key.
         """
+        super().__init__(
+            filtering_method='Gabor',
+            padding_type=padding_type,
+            res_mm=res_mm,
+            sigma_mm=sigma_mm,
+            lambda_mm=lambda_mm,
+            gamma=gamma,
+            theta=theta,
+            rotation_invariance=rotation_invariance,
+            orthogonal_planes=orthogonal_planes,
+            n_stds=n_stds
+        )
 
         try:
             self._border = self._PADDING_MAP[padding_type]
@@ -848,7 +949,7 @@ class Gabor:
     # -------------------------------------------------------------------------
     # 3.  PUBLIC WRAPPER – multiple θ and planes
     # -------------------------------------------------------------------------
-    def filter(self, img):
+    def _apply_array(self, img):
         """
         Apply the Gabor filter to a 3D image, optionally with rotation invariance.
 
@@ -873,3 +974,7 @@ class Gabor:
             resp = [self._filter(img, th, pl) for th in thetas for pl in planes]
             return np.mean(resp, axis=0, dtype=np.float32)
         return self._filter(img, self.theta)
+
+    def filter(self, img):
+        """Backward-compatible alias for the array-based implementation."""
+        return self._apply_array(img)

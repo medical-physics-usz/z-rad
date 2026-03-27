@@ -4,14 +4,14 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from zrad.filtering import Filtering
+from zrad.filtering import create_filter
 from zrad.image import Image
 from zrad.preprocessing import Preprocessing
 from zrad.radiomics import Radiomics
 
 
 def _run_ph_i_case(filtering, phantom, filename, config, data_dir):
-    filtered_image = filtering.apply_filter(phantom)
+    filtered_image = filtering.apply(phantom)
     response_map = Image()
     response_map_path = data_dir / 'Ph_I' / 'response_maps' / filename
     response_map.read_nifti_image(str(response_map_path))
@@ -127,7 +127,7 @@ def test_ibsi_ii_ph_i_1(ibsi_ii_data_dir, checkerboard_phantom, impulse_phantom)
                                       '1.a.4': ['reflect', '3D', checkerboard_phantom, '1_a_4-ValidCRM.nii'],
                                       '1.b.1': ['constant', '2D', impulse_phantom, '1_b_1-ValidCRM.nii']}.items():
 
-        filtering = Filtering(filtering_method='Mean',
+        filtering = create_filter(filtering_method='Mean',
                               padding_type=params_and_images[0],
                               dimensionality=params_and_images[1],
                               support=15)
@@ -142,7 +142,7 @@ def test_ibsi_ii_ph_i_2(ibsi_ii_data_dir, checkerboard_phantom, impulse_phantom)
                                       '2.b': ['reflect', '3D', 5.0, checkerboard_phantom, '2_b-ValidCRM.nii'],
                                       '2.c': ['reflect', '2D', 5.0, checkerboard_phantom, '2_c-ValidCRM.nii']}.items():
 
-        filtering = Filtering(filtering_method='Laplacian of Gaussian',
+        filtering = create_filter(filtering_method='Laplacian of Gaussian',
                               padding_type=params_and_images[0],
                               dimensionality=params_and_images[1],
                               sigma_mm=params_and_images[2],
@@ -165,7 +165,7 @@ def test_ibsi_ii_ph_i_3(ibsi_ii_data_dir, checkerboard_phantom, impulse_phantom)
                                       '3.c.3': ['reflect', '2D', 'L5S5', True, 'max', True, 7, checkerboard_phantom, '3_c_3-ValidCRM.nii'],
                                       }.items():
 
-        filtering = Filtering(filtering_method='Laws Kernels',
+        filtering = create_filter(filtering_method='Laws Kernels',
                               padding_type=params_and_images[0],
                               dimensionality=params_and_images[1],
                               response_map=params_and_images[2],
@@ -197,7 +197,7 @@ def test_ibsi_ii_ph_i_4(
     phantom_data = {'impulse_phantom': impulse_phantom,
                     'sphere_phantom': sphere_phantom}[phantom]
 
-    filtering = Filtering(
+    filtering = create_filter(
         filtering_method='Gabor',
         padding_type=padding,
         res_mm=res_mm,
@@ -218,7 +218,7 @@ def test_ibsi_ii_ph_i_5(ibsi_ii_data_dir, impulse_phantom):
     for config, params_and_images in {'5.a.1': ['constant', 'LHL', False, impulse_phantom, '5_a_1-ValidCRM.nii'],
                                       '5.a.2': ['constant', 'LHL', True, impulse_phantom, '5_a_2-ValidCRM.nii'],
                                       }.items():
-        filtering = Filtering(filtering_method='Wavelets',
+        filtering = create_filter(filtering_method='Wavelets',
                               wavelet_type="db2",
                               dimensionality='3D',
                               padding_type=params_and_images[0],
@@ -235,7 +235,7 @@ def test_ibsi_ii_ph_i_6(ibsi_ii_data_dir, sphere_phantom):
     for config, params_and_images in {'6.a.1': ['wrap', 'HHL', False, sphere_phantom, '6_a_1-ValidCRM.nii'],
                                       '6.a.2': ['wrap', 'HHL', True, sphere_phantom, '6_a_2-ValidCRM.nii'],
                                       }.items():
-        filtering = Filtering(filtering_method='Wavelets',
+        filtering = create_filter(filtering_method='Wavelets',
                               wavelet_type="coif1",
                               dimensionality='3D',
                               padding_type=params_and_images[0],
@@ -252,7 +252,7 @@ def test_ibsi_ii_ph_i_7(ibsi_ii_data_dir, checkerboard_phantom):
     for config, params_and_images in {'7.a.1': ['reflect', 'LLL', False, checkerboard_phantom, '7_a_1-ValidCRM.nii'],
                                       '7.a.2': ['reflect', 'HHH', True, checkerboard_phantom, '7_a_2-ValidCRM.nii'],
                                       }.items():
-        filtering = Filtering(filtering_method='Wavelets',
+        filtering = create_filter(filtering_method='Wavelets',
                               wavelet_type="haar",
                               dimensionality='3D',
                               padding_type=params_and_images[0],
@@ -267,12 +267,12 @@ def test_ibsi_ii_ph_i_7(ibsi_ii_data_dir, checkerboard_phantom):
 def test_ibsi_ii_ph_ii_2a(ct_phantom_image, ct_phantom_mask):
     ibsi_features = ibsi_ii_feature_tolerances('2.A')
 
-    filtering = Filtering(filtering_method='Mean',
+    filtering = create_filter(filtering_method='Mean',
                           padding_type='reflect',
                           dimensionality='2D',
                           support=5)
 
-    filtered_image = filtering.apply_filter(ct_phantom_image)
+    filtered_image = filtering.apply(ct_phantom_image)
 
     radiomics = Radiomics(aggr_dim='2D',
                           aggr_method='AVER',
@@ -287,12 +287,12 @@ def test_ibsi_ii_ph_ii_2a(ct_phantom_image, ct_phantom_mask):
 def test_ibsi_ii_ph_ii_2b(res3d_1mm_image_spline, res3d_1mm_mask_linear):
     ibsi_features = ibsi_ii_feature_tolerances('2.B')
 
-    filtering = Filtering(filtering_method='Mean',
+    filtering = create_filter(filtering_method='Mean',
                           padding_type='reflect',
                           dimensionality='3D',
                           support=5)
 
-    filtered_image = filtering.apply_filter(res3d_1mm_image_spline)
+    filtered_image = filtering.apply(res3d_1mm_image_spline)
 
     radiomics = Radiomics(aggr_dim='2D',
                           aggr_method='AVER',
@@ -307,13 +307,13 @@ def test_ibsi_ii_ph_ii_2b(res3d_1mm_image_spline, res3d_1mm_mask_linear):
 def test_ibsi_ii_ph_ii_3a(ct_phantom_image, ct_phantom_mask):
     ibsi_features = ibsi_ii_feature_tolerances('3.A')
 
-    filtering = Filtering(filtering_method='Laplacian of Gaussian',
+    filtering = create_filter(filtering_method='Laplacian of Gaussian',
                           padding_type='reflect',
                           dimensionality='2D',
                           sigma_mm=1.5,
                           cutoff=4)
 
-    filtered_image = filtering.apply_filter(ct_phantom_image)
+    filtered_image = filtering.apply(ct_phantom_image)
 
     radiomics = Radiomics(aggr_dim='2D',
                           aggr_method='AVER',
@@ -328,13 +328,13 @@ def test_ibsi_ii_ph_ii_3a(ct_phantom_image, ct_phantom_mask):
 def test_ibsi_ii_ph_ii_3b(res3d_1mm_image_spline, res3d_1mm_mask_linear):
     ibsi_features = ibsi_ii_feature_tolerances('3.B')
 
-    filtering = Filtering(filtering_method='Laplacian of Gaussian',
+    filtering = create_filter(filtering_method='Laplacian of Gaussian',
                           padding_type='reflect',
                           dimensionality='3D',
                           sigma_mm=1.5,
                           cutoff=4)
 
-    filtered_image = filtering.apply_filter(res3d_1mm_image_spline)
+    filtered_image = filtering.apply(res3d_1mm_image_spline)
 
     radiomics = Radiomics(aggr_dim='2D',
                           aggr_method='AVER',
@@ -349,7 +349,7 @@ def test_ibsi_ii_ph_ii_3b(res3d_1mm_image_spline, res3d_1mm_mask_linear):
 def test_ibsi_ii_ph_ii_4a(ct_phantom_image, ct_phantom_mask):
     ibsi_features = ibsi_ii_feature_tolerances('4.A')
 
-    filtering = Filtering(filtering_method='Laws Kernels',
+    filtering = create_filter(filtering_method='Laws Kernels',
                           padding_type='reflect',
                           dimensionality='2D',
                           response_map='L5E5',
@@ -358,7 +358,7 @@ def test_ibsi_ii_ph_ii_4a(ct_phantom_image, ct_phantom_mask):
                           energy_map=True,
                           distance=7)
 
-    filtered_image = filtering.apply_filter(ct_phantom_image)
+    filtered_image = filtering.apply(ct_phantom_image)
 
     radiomics = Radiomics(aggr_dim='2D',
                           aggr_method='AVER',
@@ -373,7 +373,7 @@ def test_ibsi_ii_ph_ii_4a(ct_phantom_image, ct_phantom_mask):
 def test_ibsi_ii_ph_ii_4b(res3d_1mm_image_spline, res3d_1mm_mask_linear):
     ibsi_features = ibsi_ii_feature_tolerances('4.B')
 
-    filtering = Filtering(filtering_method='Laws Kernels',
+    filtering = create_filter(filtering_method='Laws Kernels',
                           response_map="L5E5E5",
                           padding_type="reflect",
                           dimensionality="3D",
@@ -382,7 +382,7 @@ def test_ibsi_ii_ph_ii_4b(res3d_1mm_image_spline, res3d_1mm_mask_linear):
                           energy_map=True,
                           distance=7)
 
-    filtered_image = filtering.apply_filter(res3d_1mm_image_spline)
+    filtered_image = filtering.apply(res3d_1mm_image_spline)
 
     radiomics = Radiomics(aggr_dim='2D',
                           aggr_method='AVER',
@@ -397,7 +397,7 @@ def test_ibsi_ii_ph_ii_4b(res3d_1mm_image_spline, res3d_1mm_mask_linear):
 def test_ibsi_ii_ph_ii_5a(ct_phantom_image, ct_phantom_mask):
     ibsi_features = ibsi_ii_feature_tolerances('5.A')
 
-    filtering = Filtering(filtering_method='Gabor',
+    filtering = create_filter(filtering_method='Gabor',
                           padding_type='reflect',
                           dimensionality='2D',
                           res_mm=0.977,
@@ -408,7 +408,7 @@ def test_ibsi_ii_ph_ii_5a(ct_phantom_image, ct_phantom_mask):
                           rotation_invariance=True,
                           orthogonal_planes=False)
 
-    filtered_image = filtering.apply_filter(ct_phantom_image)
+    filtered_image = filtering.apply(ct_phantom_image)
 
     radiomics = Radiomics(aggr_dim='2D',
                           aggr_method='AVER',
@@ -423,7 +423,7 @@ def test_ibsi_ii_ph_ii_5a(ct_phantom_image, ct_phantom_mask):
 def test_ibsi_ii_ph_ii_5b(res3d_1mm_image_spline, res3d_1mm_mask_linear):
     ibsi_features = ibsi_ii_feature_tolerances('5.B')
 
-    filtering = Filtering(filtering_method='Gabor',
+    filtering = create_filter(filtering_method='Gabor',
                           padding_type="reflect",
                           dimensionality="3D",
                           res_mm=1.0,
@@ -434,7 +434,7 @@ def test_ibsi_ii_ph_ii_5b(res3d_1mm_image_spline, res3d_1mm_mask_linear):
                           rotation_invariance=True,
                           orthogonal_planes=True)
 
-    filtered_image = filtering.apply_filter(res3d_1mm_image_spline)
+    filtered_image = filtering.apply(res3d_1mm_image_spline)
 
     radiomics = Radiomics(aggr_dim='2D',
                           aggr_method='AVER',
@@ -448,7 +448,7 @@ def test_ibsi_ii_ph_ii_5b(res3d_1mm_image_spline, res3d_1mm_mask_linear):
 def test_ibsi_ii_ph_ii_6a(ct_phantom_image, ct_phantom_mask):
     ibsi_features = ibsi_ii_feature_tolerances('6.A')
 
-    filtering = Filtering(filtering_method='Wavelets',
+    filtering = create_filter(filtering_method='Wavelets',
                           wavelet_type="db3",
                           dimensionality='2D',
                           padding_type="reflect",
@@ -456,7 +456,7 @@ def test_ibsi_ii_ph_ii_6a(ct_phantom_image, ct_phantom_mask):
                           decomposition_level=1,
                           rotation_invariance=True)
 
-    filtered_image = filtering.apply_filter(ct_phantom_image)
+    filtered_image = filtering.apply(ct_phantom_image)
 
     radiomics = Radiomics(aggr_dim='2D',
                           aggr_method='AVER',
@@ -471,7 +471,7 @@ def test_ibsi_ii_ph_ii_6a(ct_phantom_image, ct_phantom_mask):
 def test_ibsi_ii_ph_ii_6b(res3d_1mm_image_spline, res3d_1mm_mask_linear):
     ibsi_features = ibsi_ii_feature_tolerances('6.B')
 
-    filtering = Filtering(filtering_method='Wavelets',
+    filtering = create_filter(filtering_method='Wavelets',
                           wavelet_type="db3",
                           dimensionality='3D',
                           padding_type="reflect",
@@ -479,7 +479,7 @@ def test_ibsi_ii_ph_ii_6b(res3d_1mm_image_spline, res3d_1mm_mask_linear):
                           decomposition_level=1,
                           rotation_invariance=True)
 
-    filtered_image = filtering.apply_filter(res3d_1mm_image_spline)
+    filtered_image = filtering.apply(res3d_1mm_image_spline)
 
     radiomics = Radiomics(aggr_dim='2D',
                           aggr_method='AVER',
@@ -494,7 +494,7 @@ def test_ibsi_ii_ph_ii_6b(res3d_1mm_image_spline, res3d_1mm_mask_linear):
 def test_ibsi_ii_ph_ii_7a(ct_phantom_image, ct_phantom_mask):
     ibsi_features = ibsi_ii_feature_tolerances('7.A')
 
-    filtering = Filtering(filtering_method='Wavelets',
+    filtering = create_filter(filtering_method='Wavelets',
                           wavelet_type="db3",
                           dimensionality='2D',
                           padding_type="reflect",
@@ -502,7 +502,7 @@ def test_ibsi_ii_ph_ii_7a(ct_phantom_image, ct_phantom_mask):
                           decomposition_level=2,
                           rotation_invariance=True)
 
-    filtered_image = filtering.apply_filter(ct_phantom_image)
+    filtered_image = filtering.apply(ct_phantom_image)
 
     radiomics = Radiomics(aggr_dim='2D',
                           aggr_method='AVER',
@@ -517,14 +517,14 @@ def test_ibsi_ii_ph_ii_7a(ct_phantom_image, ct_phantom_mask):
 def test_ibsi_ii_ph_ii_7b(res3d_1mm_image_spline, res3d_1mm_mask_linear):
     ibsi_features = ibsi_ii_feature_tolerances('7.B')
 
-    filtering = Filtering(filtering_method='Wavelets', wavelet_type="db3",
+    filtering = create_filter(filtering_method='Wavelets', wavelet_type="db3",
                           dimensionality='3D',
                           padding_type="reflect",
                           response_map="HHH",
                           decomposition_level=2,
                           rotation_invariance=True)
 
-    filtered_image = filtering.apply_filter(res3d_1mm_image_spline)
+    filtered_image = filtering.apply(res3d_1mm_image_spline)
 
     radiomics = Radiomics(aggr_dim='2D',
                           aggr_method='AVER',

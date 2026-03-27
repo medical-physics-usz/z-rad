@@ -5,8 +5,8 @@ Overview
 --------
 
 The filtering layer applies optional image transforms before radiomics feature
-extraction. Filters are configured through the ``Filtering`` class and resolved
-to concrete implementations in ``zrad.filtering.filtering_definitions``.
+extraction. Filters are created through ``create_filter(...)`` and resolved to
+concrete implementations in the filtering package, grouped by family.
 
 .. figure:: ../images/Filt_tab.png
    :alt: Z-Rad filtering tab

@@ -14,7 +14,7 @@ Core Workflow Classes
    :toctree: generated
 
    ~preprocessing.preprocessing.Preprocessing
-   ~filtering.filtering.Filtering
+   ~filtering.factory.create_filter
    ~radiomics.radiomics.Radiomics
 
 Data Model
@@ -30,19 +30,22 @@ The image module handles reading DICOM and NIfTI data and writing NIfTI files.
 .. toctree::
    :hidden:
 
-   generated/zrad.filtering.filtering_definitions
+   generated/zrad.filtering.base
+   generated/zrad.filtering.factory
+   generated/zrad.filtering.spatial
+   generated/zrad.filtering.wavelet
    generated/zrad.radiomics.radiomics_definitions
 
 Filtering Definition Classes
 ----------------------------
 
 .. autosummary::
-   ~filtering.filtering_definitions.Mean
-   ~filtering.filtering_definitions.LoG
-   ~filtering.filtering_definitions.Laws
-   ~filtering.filtering_definitions.Gabor
-   ~filtering.filtering_definitions.Wavelets2D
-   ~filtering.filtering_definitions.Wavelets3D
+   ~filtering.spatial.Mean
+   ~filtering.spatial.LoG
+   ~filtering.spatial.Laws
+   ~filtering.spatial.Gabor
+   ~filtering.wavelet.Wavelets2D
+   ~filtering.wavelet.Wavelets3D
 
 Radiomics Definition Classes
 ----------------------------

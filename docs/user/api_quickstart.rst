@@ -29,7 +29,7 @@ Minimal Example
 .. code-block:: python
 
    from zrad.preprocessing.preprocessing import Preprocessing
-   from zrad.filtering.filtering import create_filter
+   from zrad.filtering import create_filter
    from zrad.radiomics.radiomics import Radiomics
 
    # image and mask are zrad.image.Image instances loaded by your workflow

@@ -1,4 +1,6 @@
-from .filtering_definitions import BaseFilter, Mean, LoG, Wavelets2D, Wavelets3D, Laws, Gabor
+from .base import BaseFilter
+from .spatial import Mean, LoG, Laws, Gabor
+from .wavelet import Wavelets2D, Wavelets3D
 
 
 def create_filter(filtering_method, **kwargs) -> BaseFilter:
@@ -54,7 +56,3 @@ def create_filter(filtering_method, **kwargs) -> BaseFilter:
             return Wavelets3D(**common)
         raise ValueError(f"Filter_dimension {params['dimensionality']} is not supported.")
     raise ValueError(f"Filter {filtering_method} is not supported.")
-
-
-# Backward-compatible alias for the previous public constructor.
-Filtering = create_filter

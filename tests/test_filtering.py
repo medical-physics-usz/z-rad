@@ -1,6 +1,6 @@
 import numpy as np
 import pytest
-from zrad.filtering.filtering import create_filter
+from zrad.filtering import create_filter
 from zrad.image import Image
 
 

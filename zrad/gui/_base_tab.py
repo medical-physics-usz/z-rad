@@ -143,12 +143,14 @@ class BaseTab(QWidget, ABC, metaclass=BaseTabMeta):
             item_list=["Data Type:", "DICOM", "NIfTI"]
         )
 
-        # Number of Threads ComboBox
-        no_of_threads = ['Threads:'] + [str(i+1) for i in range(cpu_count())]
-        self.number_of_threads_combo_box = CustomBox(
-            20, 140, 160, 50, self,
-            item_list=no_of_threads
-        )
+        if not self.visual_tab:
+
+            # Number of Threads ComboBox
+            no_of_threads = ['Threads:'] + [str(i+1) for i in range(cpu_count())]
+            self.number_of_threads_combo_box = CustomBox(
+                20, 140, 160, 50, self,
+                item_list=no_of_threads
+            )
 
         self.run_button = CustomButton('RUN', 600, 590, 80, 50, self, style=False)
 
@@ -417,7 +419,10 @@ class BaseTab(QWidget, ABC, metaclass=BaseTabMeta):
         self._validate_io_directories()
 
         self.input_params["input_directory"] = self.get_text_from_text_field(self.input_params["input_directory"])
-        self.input_params["number_of_threads"] = int(self.number_of_threads_combo_box.currentText())
+        if not self.visual_tab:
+            self.input_params["number_of_threads"] = int(self.number_of_threads_combo_box.currentText())
+        else:
+            self.input_params["number_of_threads"] = 1
         self.input_params["start_folder"] = self.get_text_from_text_field(self.input_params["start_folder"])
         self.input_params["stop_folder"] = self.get_text_from_text_field(self.input_params["stop_folder"])
         self.input_params["list_of_patient_folders"] = self.get_list_from_text_field(self.input_params["list_of_patient_folders"])

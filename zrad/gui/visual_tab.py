@@ -187,7 +187,6 @@ class VisualizationTab(BaseTab):
     def _validate_combo_selections(self):
         """Validate combo box selections."""
         required_selections = [
-            ('Threads:', self.number_of_threads_combo_box),
             ('Data Type:', self.input_data_type_combo_box),
             ('Imaging Modality:', self.input_imaging_mod_combo_box)
         ]
@@ -236,7 +235,7 @@ class VisualizationTab(BaseTab):
         """Collect input parameters from UI elements."""
         input_parameters = {
             'input_directory': self.load_dir_text_field.text(),
-            'number_of_threads': self.number_of_threads_combo_box.currentText(),
+            'number_of_threads': 1,
             'start_folder': self.start_folder_text_field.text(),
             'stop_folder': self.stop_folder_text_field.text(),
             'list_of_patient_folders': self.list_of_patient_folders_text_field.text(),
@@ -407,7 +406,7 @@ class VisualizationTab(BaseTab):
                 self.load_dir_text_field.setText(data.get('visual_input_directory', ''))
                 self.start_folder_text_field.setText(data.get('visual_start_folder', ''))
                 self.stop_folder_text_field.setText(data.get('visual_stop_folder', ''))
-                self.number_of_threads_combo_box.setCurrentText(data.get('visual_number_of_threads', 'Threads:'))
+                self.number_of_threads_combo_box = 1
                 self.list_of_patient_folders_text_field.setText(data.get('visual_list_of_patient_folders', ''))
                 self.input_data_type_combo_box.setCurrentText(data.get('visual_input_data_type', 'Data Type:'))
                 self.dicom_structures_text_field.setText(data.get('visual_dicom_structures', ''))

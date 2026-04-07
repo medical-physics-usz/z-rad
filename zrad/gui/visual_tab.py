@@ -1,32 +1,22 @@
 import json
 import logging
 import os
-import sys
 from datetime import datetime
-
-from PyQt5.QtCore import QThread
-from joblib import Parallel, delayed
 
 from ._base_tab import BaseTab, load_images, load_mask
 from .toolbox_gui import (
     CustomCheckBox,
     CustomInfo,
-    CustomInfoBox,
     CustomLabel,
     CustomTextField,
     CustomWarningBox,
-    ProcessingProgressDialog,
-    ProcessingWorker,
 )
 from ..exceptions import InvalidInputParametersError, DataStructureError
 from ..image import get_all_structure_names, get_dicom_files
 from ..visualization import Visualization
-from ..toolbox_logic import get_logger, close_all_loggers, joblib_progress
+from ..toolbox_logic import get_logger, close_all_loggers
 
 logging.captureWarnings(True)
-
-IS_FROZEN = getattr(sys, 'frozen', False)
-
 
 def process_patient_folder(input_params, patient_folder, structure_set):
     """Function to process each patient folder, used for parallel processing."""
@@ -250,7 +240,7 @@ class VisualizationTab(BaseTab):
         self.visual_tab = True
 
     def run_selection(self):
-        """Prepare patient data in the background and visualize the results in the main thread."""
+        """Initialize visualization with lazy per-patient loading."""
         close_all_loggers()
         self.logger_date_time = datetime.now().strftime("%Y-%m-%d_%H%M%S")
         self.logger = get_logger(self.logger_date_time + "_Preprocessing")
@@ -280,97 +270,29 @@ class VisualizationTab(BaseTab):
             if not self.input_params.get("use_all_structures", False):
                 structure_set = self.input_params.get("dicom_structures")
 
-        # Select backend for joblib.
-        # Visualization workers return full image/mask payloads, so preferring threads
-        # avoids expensive pickling/copying of large 3D arrays back from child processes.
-        backend_hint = "threads"
-        if IS_FROZEN:
-            self.logger.info("Frozen state. Set backend_hint to threads")
-        else:
-            self.logger.info("Not frozen state. Set backend_hint to threads")
+        def case_loader(patient_folder):
+            return process_patient_folder(
+                self.input_params,
+                patient_folder,
+                structure_set,
+            )
 
-        progress_dialog = ProcessingProgressDialog(
-            "Preprocessing Progress",
-            len(list_of_patient_folders),
-            self,
+        first_patient = case_loader(list_of_patient_folders[0])
+        if first_patient is None:
+            self.logger.warning("First patient could not be loaded for visualization.")
+            CustomWarningBox("First patient could not be loaded for visualization.").response()
+            return
+
+        self.logger.info("Visualization initialized with lazy loading.")
+        self.viewer = Visualization(
+            image_sets=[first_patient],
+            case_identifiers=list_of_patient_folders,
+            case_loader=case_loader,
         )
-        progress_dialog.start()
-
-        n_jobs = self.input_params["number_of_threads"]
-
-        def work(progress_callback):
-            results = []
-
-            if n_jobs == 1:
-                for patient_folder in list_of_patient_folders:
-                    result = process_patient_folder(
-                        self.input_params,
-                        patient_folder,
-                        structure_set,
-                    )
-                    if result is not None:
-                        results.append(result)
-                    progress_callback(1)
-            else:
-                with joblib_progress(progress_callback=progress_callback):
-                    parallel_results = Parallel(
-                        n_jobs=n_jobs,
-                        prefer=backend_hint,
-                    )(
-                        delayed(process_patient_folder)(
-                            self.input_params,
-                            patient_folder,
-                            structure_set,
-                        )
-                        for patient_folder in list_of_patient_folders
-                    )
-
-                results = [result for result in parallel_results if result is not None]
-
-            return results
-
-        worker = ProcessingWorker(work)
-        thread = QThread(self)
-
-        def cleanup():
-            progress_dialog.finish()
-            thread.quit()
-            thread.wait()
-            worker.deleteLater()
-            thread.deleteLater()
-            self._processing_thread = None
-            self._processing_worker = None
-
-        def handle_finished(patients_to_visualize):
-            cleanup()
-
-            if not patients_to_visualize:
-                self.logger.warning("No valid patients could be loaded for visualization.")
-                CustomWarningBox("No valid patients could be loaded for visualization.").response()
-                return
-
-            self.logger.info("Preprocessing finished successfully")
-            self.viewer = Visualization(image_sets=patients_to_visualize)
-            self.viewer.resize(1500, 900)
-            self.viewer.show()
-            self.viewer.raise_()
-            self.viewer.activateWindow()
-
-        def handle_error(exc):
-            cleanup()
-            self.logger.error(exc, exc_info=True)
-            CustomWarningBox(str(exc)).response()
-
-        worker.moveToThread(thread)
-        worker.progress.connect(progress_dialog.update_progress)
-        worker.finished.connect(handle_finished)
-        worker.error.connect(handle_error)
-        thread.started.connect(worker.run)
-
-        self._processing_thread = thread
-        self._processing_worker = worker
-
-        thread.start()
+        self.viewer.resize(1500, 900)
+        self.viewer.show()
+        self.viewer.raise_()
+        self.viewer.activateWindow()
 
     def save_settings(self):
         """

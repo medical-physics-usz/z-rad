@@ -550,7 +550,7 @@ class ColorLegendWidget(QtWidgets.QFrame):
 
 
 class Visualization(QtWidgets.QMainWindow):
-    def __init__(self, image_sets):
+    def __init__(self, image_sets, case_identifiers=None, case_loader=None):
         super().__init__()
         self.setWindowTitle("Z-Rad Viewer")
         self.resize(1500, 900)
@@ -559,6 +559,9 @@ class Visualization(QtWidgets.QMainWindow):
             raise ValueError("image_sets must contain at least one image.")
 
         self.image_sets = image_sets
+        self.case_identifiers = case_identifiers or [item.get("image_name", str(i)) for i, item in enumerate(image_sets)]
+        self.case_loader = case_loader
+        self.total_cases = len(self.case_identifiers)
         self.current_image_index = 0
 
         self.mask_alpha = 0.35
@@ -881,10 +884,33 @@ class Visualization(QtWidgets.QMainWindow):
         self.legend_widget.setVisible(len(self.masks) > 0)
 
     def _load_image_set(self, index):
-        if index < 0 or index >= len(self.image_sets):
+        if index < 0 or index >= self.total_cases:
             return
 
-        item = self.image_sets[index]
+        if self.case_loader is not None:
+            if index < len(self.image_sets) and self.image_sets[index] is not None:
+                item = self.image_sets[index]
+            else:
+                QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
+                try:
+                    case_identifier = self.case_identifiers[index]
+                    item = self.case_loader(case_identifier)
+                finally:
+                    QtWidgets.QApplication.restoreOverrideCursor()
+
+                if item is None:
+                    self.statusBar().showMessage(
+                        f"Unable to load patient '{self.case_identifiers[index]}'.",
+                        5000,
+                    )
+                    return
+
+                if index >= len(self.image_sets):
+                    self.image_sets.extend([None] * (index - len(self.image_sets) + 1))
+                self.image_sets[index] = item
+        else:
+            item = self.image_sets[index]
+
         image = item["image"]
         masks = item.get("masks", [])
 
@@ -962,7 +988,12 @@ class Visualization(QtWidgets.QMainWindow):
         self._apply_mask_visibility()
 
         self.prev_button.setEnabled(self.current_image_index > 0)
-        self.next_button.setEnabled(self.current_image_index < len(self.image_sets) - 1)
+        self.next_button.setEnabled(self.current_image_index < self.total_cases - 1)
+
+        if self.case_loader is not None:
+            for i in range(len(self.image_sets)):
+                if i != self.current_image_index:
+                    self.image_sets[i] = None
 
         self._update_all_views()
         QtCore.QTimer.singleShot(0, self._reset_all_view_ranges)
@@ -1216,7 +1247,7 @@ class Visualization(QtWidgets.QMainWindow):
         voxel_value = self._get_current_voxel_value()
         voxel_str = "nan" if np.isnan(voxel_value) else f"{voxel_value:.3f}"
         return (
-            f"Image {self.current_image_index + 1}/{len(self.image_sets)} | "
+            f"Image {self.current_image_index + 1}/{self.total_cases} | "
             f"Case: {self.current_case_name if len(self.current_case_name) <= 20 else self.current_case_name[:20] + '...'} | "
             f"Shape: {self.volume.shape} | "
             f"Spacing: ({self.sx:.3f}, {self.sy:.3f}, {self.sz:.3f}) mm | "
@@ -1340,7 +1371,7 @@ class Visualization(QtWidgets.QMainWindow):
             self._load_image_set(self.current_image_index - 1)
 
     def _show_next_image(self):
-        if self.current_image_index < len(self.image_sets) - 1:
+        if self.current_image_index < self.total_cases - 1:
             self._load_image_set(self.current_image_index + 1)
 
     def _on_slice_view_resized(self, view):

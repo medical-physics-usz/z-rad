@@ -12,13 +12,11 @@ version = "26.3.0-dev"
 description = "Z-Rad is a radiomic feature extraction software with GUI and API."
 readme = "README.md"
 requires-python = ">=3.10"
-
-# Authors
 authors = [
     { name = "Radiomics Team of Radiation Oncology Department at University Hospital Zurich", email = "zrad@usz.ch" }
 ]
-
-# Dependencies
+keywords = ["radiomics", "feature-extraction", "python", "GUI", "API"]
+license = { text = "MIT" }
 dependencies = [
     "pyqtgraph>=0.14.0",
     "pydicom>=3.0.0",
@@ -32,9 +30,12 @@ dependencies = [
     "joblib>=1.4.2",
 ]
 
-# Optional project URLs, license, etc.
-keywords = ["radiomics", "feature-extraction", "python", "GUI", "API"]
-license = { text = "MIT" }
+[project.optional-dependencies]
+docs = [
+    "sphinx>=8",
+    "pydata-sphinx-theme>=0.16.1",
+    "sphinx-design>=0.6",
+]
 
 [tool.setuptools]
 # Additional setuptools configuration

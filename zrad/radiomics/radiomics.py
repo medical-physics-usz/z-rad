@@ -12,6 +12,36 @@ sys.excepthook = handle_uncaught_exception
 
 
 class Radiomics:
+    """Extract radiomics features from an image and mask pair.
+
+    Parameters
+    ----------
+    aggr_dim : {"2D", "2.5D", "3D"}, default="3D"
+        Aggregation dimensionality used for texture and related feature groups.
+    aggr_method : {"MERG", "AVER", "SLICE_MERG", "DIR_MERG"}, default="AVER"
+        Aggregation strategy within the selected dimensionality.
+    intensity_range : sequence of 2 numbers, optional
+        Inclusive intensity truncation range applied inside the mask.
+    outlier_range : float, optional
+        Outlier cutoff used during intensity masking.
+    number_of_bins : int, optional
+        Fixed number of bins for discretization.
+    bin_size : float, optional
+        Fixed bin width for discretization.
+    calc_ivh_features : bool, default=False
+        Whether intensity-volume histogram features should be computed.
+    ivh_number_of_bins : int, optional
+        Bin count used for IVH discretization.
+    ivh_bin_size : float, optional
+        Bin width used for IVH discretization.
+    calc_morph_moran_i_and_geary_c_features : bool, default=False
+        Whether to calculate the optional Moran's I and Geary's C morphology
+        features.
+    slice_weighting : bool, default=False
+        Enable slice weighting for slice-wise aggregation modes.
+    slice_median : bool, default=False
+        Use a slice-median aggregation strategy when supported.
+    """
 
     def __init__(self,
                  aggr_dim='3D', aggr_method='AVER',
@@ -81,6 +111,23 @@ class Radiomics:
         self.patient_number = None
 
     def extract_features(self, image, mask, filtered_image=None):
+        """Run feature extraction and populate :attr:`features_`.
+
+        Parameters
+        ----------
+        image : Image
+            Input image in the original or resampled geometry.
+        mask : Image
+            Binary or label mask aligned to ``image``.
+        filtered_image : Image, optional
+            Filtered representation to use for feature extraction while keeping
+            ``image`` as the original source volume.
+
+        Notes
+        -----
+        Results are written to ``self.features_`` as a flat dictionary whose
+        keys encode feature family and aggregation mode.
+        """
         slice_2d = True if image.shape[2] == 1 else False
 
         columns = [

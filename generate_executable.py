@@ -9,7 +9,7 @@ is_windows = sys.platform.startswith('win')
 is_mac = sys.platform.startswith('darwin')
 
 # Choose icon format based on OS
-icon_path = 'doc/logos/icon.icns' if is_mac else 'doc/logos/icon.ico'
+icon_path = 'docs/logos/icon.icns' if is_mac else 'docs/logos/icon.ico'
 
 # Choose add-data separator based on OS
 add_data_sep = ';' if is_windows else ':'
@@ -24,9 +24,9 @@ PyInstaller.__main__.run([
     'main.py',
     '--onefile',
     f'--icon={icon_path}',
-    f'--add-data=doc/logos/icon.ico{add_data_sep}doc/logos',
-    f'--add-data=doc/logos/USZLogo.png{add_data_sep}doc/logos',
-    f'--add-data=doc/logos/ZRadLogo.jpg{add_data_sep}doc/logos',
+    f'--add-data=docs/logos/icon.ico{add_data_sep}docs/logos',
+    f'--add-data=docs/logos/USZLogo.png{add_data_sep}docs/logos',
+    f'--add-data=docs/logos/ZRadLogo.jpg{add_data_sep}docs/logos',
     f'--add-data={pydicom_data_dir}{add_data_sep}pydicom/data',
     '--hidden-import=pydicom.pixels.decoders.gdcm',
     '--hidden-import=pydicom.pixels.decoders.pylibjpeg',

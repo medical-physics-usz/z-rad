@@ -7,12 +7,26 @@ from .filtering_definitions import Mean, LoG, Wavelets2D, Wavelets3D, Laws, Gabo
 sys.excepthook = handle_uncaught_exception
 
 class Filtering:
+    """Create and apply one configured image filter.
+
+    Parameters
+    ----------
+    filtering_method : str
+        Name of the filter family. Supported values include ``"Mean"``,
+        ``"Laplacian of Gaussian"``, ``"Laws Kernels"``, ``"Gabor"``, and
+        ``"Wavelets"``.
+    **kwargs
+        Filter-specific parameters forwarded to the concrete filter
+        implementation in :mod:`zrad.filtering.filtering_definitions`.
+    """
+
     def __init__(self, filtering_method, **kwargs):
         self.filtering_method = filtering_method
         self.filtering_params = kwargs
         self.filter = self._get_filter(filtering_method)
 
     def _get_filter(self, filtering_method):
+        """Instantiate the concrete filter implementation for ``filtering_method``."""
         params = self.filtering_params
         if filtering_method == 'Mean':
             return Mean(
@@ -68,6 +82,18 @@ class Filtering:
             raise ValueError(f"Filter {filtering_method} is not supported.")
 
     def apply_filter(self, image):
+        """Apply the configured filter to an image.
+
+        Parameters
+        ----------
+        image : Image
+            Input image to transform.
+
+        Returns
+        -------
+        Image
+            Filtered image with preserved geometry metadata.
+        """
         # Adjust LoG resolution from image spacing
         if self.filtering_method == 'Laplacian of Gaussian':
             try:

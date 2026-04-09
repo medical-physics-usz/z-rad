@@ -1,5 +1,6 @@
 import copy
 import os
+import re
 import warnings
 from datetime import datetime
 
@@ -10,6 +11,14 @@ from pydicom.errors import InvalidDicomError
 from skimage import draw
 
 from .exceptions import DataStructureWarning, DataStructureError
+
+
+def is_fdg(name):
+    FDG_PATTERN = re.compile(
+        r"(fdg|fluorodeoxy|fludeoxy|2[-\s]?\[?18f\]?[-\s]?fluoro)",
+        re.IGNORECASE
+    )
+    return bool(FDG_PATTERN.search(name))
 
 
 def parse_time(time_str):
@@ -87,7 +96,6 @@ class Image:
         ref = image.sitk_image
 
         if mask.GetOrigin() != ref.GetOrigin() or mask.GetDirection() != ref.GetDirection():
-
             resampler = sitk.ResampleImageFilter()
             resampler.SetReferenceImage(ref)
             resampler.SetInterpolator(sitk.sitkNearestNeighbor)
@@ -154,6 +162,7 @@ class Image:
 
         return dose_image
 
+
 def remove_duplicate_slices(dicom_files_info):
     """
     Remove duplicate slices with identical ImagePositionPatient (IPP).
@@ -167,12 +176,11 @@ def remove_duplicate_slices(dicom_files_info):
 
     for info in dicom_files_info:
         ds = info['ds']
-        
+
         if "ImagePositionPatient" in ds:
             ipp = tuple(map(float, ds.ImagePositionPatient))
         else:
             ipp = None
-
 
         if ipp is None:
             cleaned.append(info)
@@ -192,6 +200,7 @@ def remove_duplicate_slices(dicom_files_info):
 
     return cleaned
 
+
 def sort_by_geometric_position(dicom_files_info):
     """
     Sort slices by physical position using ImageOrientationPatient + ImagePositionPatient
@@ -207,6 +216,7 @@ def sort_by_geometric_position(dicom_files_info):
         return float(np.dot(ipp, normal))
 
     return sorted(dicom_files_info, key=lambda x: slice_distance(x['ds']))
+
 
 def get_dicom_files(directory, modality):
     modality_dicom = modality_mapping(modality)
@@ -232,7 +242,8 @@ def get_dicom_files(directory, modality):
             ds = pydicom.dcmread(file_path, stop_before_pixels=True)
             # Check if the DICOM file's Modality matches the desired modality
             if ds.Modality == modality_dicom:
-                if hasattr(ds, 'ImageType') and ('LOCALIZER' in ds.ImageType or any('MIP' in entry for entry in ds.ImageType)):
+                if hasattr(ds, 'ImageType') and (
+                        'LOCALIZER' in ds.ImageType or any('MIP' in entry for entry in ds.ImageType)):
                     continue
                 dicom_files_info.append({'file_path': file_path, 'ds': ds})
 
@@ -337,8 +348,12 @@ def validate_pet_dicom_tags(dicom_files):
             warnings.warn(warning_msg, DataStructureWarning)
 
         if ds.Units == 'BQML':
-            injection_time = parse_time(
-                ds.RadiopharmaceuticalInformationSequence[0].RadiopharmaceuticalStartTime)
+            try:
+                injection_time = parse_time(
+                    ds.RadiopharmaceuticalInformationSequence[0].RadiopharmaceuticalStartTime)
+            except AttributeError:
+                injection_time = parse_time(
+                    ds.RadiopharmaceuticalInformationSequence[0].RadiopharmaceuticalStartDateTime)
             half_life = float(ds.RadiopharmaceuticalInformationSequence[0].RadionuclideHalfLife)
             decay_constant = np.log(2) / half_life
 
@@ -350,13 +365,13 @@ def validate_pet_dicom_tags(dicom_files):
                                                                               day=injection_time.day)
 
                     elapsed_time = calc_elapsed_time(ds, decay_constant, acquisition_time, injection_time)
-                elif 'SIEMENS' in ds.Manufacturer.upper() or 'CPS' in ds.Manufacturer.upper():
+                elif 'SIEMENS' in ds.Manufacturer.upper() or 'CPS' in ds.Manufacturer.upper() or 'CTI' in ds.Manufacturer.upper():
                     try:
                         elapsed_time = (
-                                    parse_time(ds[(0x0071, 0x1022)].value).replace(year=injection_time.year,
-                                                                                   month=injection_time.month,
-                                                                                   day=injection_time.day)
-                                    - injection_time).total_seconds()
+                                parse_time(ds[(0x0071, 0x1022)].value).replace(year=injection_time.year,
+                                                                               month=injection_time.month,
+                                                                               day=injection_time.day)
+                                - injection_time).total_seconds()
 
                     except (KeyError, TypeError):
                         acquisition_time = parse_time(ds.AcquisitionTime).replace(year=injection_time.year,
@@ -367,10 +382,10 @@ def validate_pet_dicom_tags(dicom_files):
                 elif 'GE' in ds.Manufacturer.upper():
                     try:
                         elapsed_time = (
-                                    parse_time(ds[(0x0009, 0x100d)].value).replace(year=injection_time.year,
-                                                                                   month=injection_time.month,
-                                                                                   day=injection_time.day)
-                                    - injection_time).total_seconds()
+                                parse_time(ds[(0x0009, 0x100d)].value).replace(year=injection_time.year,
+                                                                               month=injection_time.month,
+                                                                               day=injection_time.day)
+                                - injection_time).total_seconds()
                     except (KeyError, TypeError):
                         acquisition_time = parse_time(ds.AcquisitionTime).replace(year=injection_time.year,
                                                                                   month=injection_time.month,
@@ -379,22 +394,32 @@ def validate_pet_dicom_tags(dicom_files):
 
                         elapsed_time = (acquisition_time - injection_time).total_seconds() - frame_reference_time
                 else:
-                    warning_msg = f"For patient's {image_id} image, an unknown PET scaner manufacturer is present. Z-Rad only supports Philips, Siemens, and GE."
-                    raise DataStructureError(warning_msg)
+                    acquisition_time = parse_time(ds.AcquisitionTime).replace(year=injection_time.year,
+                                                                              month=injection_time.month,
+                                                                              day=injection_time.day)
+
+                    elapsed_time = calc_elapsed_time(ds, decay_constant, acquisition_time, injection_time)
+
+                    warning_msg = f"For patient's {image_id} image, an unknown PET scaner manufacturer is present {ds.Manufacturer}. Siemens/Philips strategy is applied."
+                    warnings.warn(warning_msg, DataStructureWarning)
 
             elif ds.DecayCorrection == 'ADMIN':
                 elapsed_time = 0
+            elif ds.DecayCorrection == 'NONE':
+                elapsed_time = None
             else:
-                warning_msg = f"For patient's {image_id} image, An unsupported Decay Correction {ds.DecayCorrection} is present. Only supported are 'START' and 'ADMIN'. Patient is excluded from the analysis."
+                warning_msg = f"For patient's {image_id} image, An unsupported Decay Correction {ds.DecayCorrection} is present. Only supported are 'NONE', 'START' and 'ADMIN'. Patient is excluded from the analysis."
                 raise DataStructureError(warning_msg)
-            if elapsed_time < 0:
+            if elapsed_time is not None and elapsed_time < 0:
                 error_msg = f"For patient's {image_id} image, patient is excluded from the analysis due to the negative time difference in the decay factor."
                 raise DataStructureError(error_msg)
-            elif elapsed_time > 0 and abs(elapsed_time) < 1800 and ds.DecayCorrection != 'ADMIN':
+            elif elapsed_time is not None and elapsed_time > 0 and abs(
+                    elapsed_time) < 1800 and ds.DecayCorrection != 'ADMIN':
                 warning_msg = f"Only {abs(elapsed_time) / 60} minutes after the injection."
                 warnings.warn(warning_msg, DataStructureWarning)
         elif ds.Units == 'CNTS' and 'PHILIPS' in ds.Manufacturer.upper():
-            if not (((0x7053, 0x1009) in ds and ds[(0x7053, 0x1009)].value != 0) or ((0x7053, 0x1000) in ds and ds[(0x7053, 0x1000)].value != 0)):
+            if not (((0x7053, 0x1009) in ds and ds[(0x7053, 0x1009)].value != 0) or (
+                    (0x7053, 0x1000) in ds and ds[(0x7053, 0x1000)].value != 0)):
                 error_msg = f"For patient's {image_id} image, patient is excluded, Philips scale factors not present (PET units CNTS)"
                 raise DataStructureError(error_msg)
         elif ds.Units == 'GML':
@@ -408,16 +433,32 @@ def validate_pet_dicom_tags(dicom_files):
 
 
 def apply_suv_correction(dicom_files, suv_image):
-
     def process_single_slice(dicom_file_path):
 
         def process_gml(pixel_array_units):
             return pixel_array_units
 
         def process_bqml(activity_concentration, ds):
-            injection_time = parse_time(ds.RadiopharmaceuticalInformationSequence[0].RadiopharmaceuticalStartTime)
+            try:
+                injection_time = parse_time(
+                    ds.RadiopharmaceuticalInformationSequence[0].RadiopharmaceuticalStartTime)
+            except AttributeError:
+                injection_time = parse_time(
+                    ds.RadiopharmaceuticalInformationSequence[0].RadiopharmaceuticalStartDateTime)
             patient_weight = float(ds.PatientWeight)
             injected_dose = float(ds.RadiopharmaceuticalInformationSequence[0].RadionuclideTotalDose)
+
+            def get_tracer_name(rph_item):
+                value = getattr(rph_item, "Radiopharmaceutical", None)
+                if value is None and (0x0018, 0x0031) in rph_item:
+                    value = rph_item[(0x0018, 0x0031)].value
+                return str(value) if value is not None else None
+            tracer_name = get_tracer_name(ds.RadiopharmaceuticalInformationSequence[0])
+            if tracer_name is not None:
+                if is_fdg(str(ds.RadiopharmaceuticalInformationSequence[0].Radiopharmaceutical)) and injected_dose < 10000:
+                    injected_dose *= 1000000
+                    warning_msg = f"Injected dose is {injected_dose} Bq, it is too low for FDG, assumed to be in MBq"
+                    warnings.warn(warning_msg, DataStructureWarning)
             if injected_dose <= 0:
                 error_msg = f"The injected PET tracer dose is zero."
                 raise DataStructureError(error_msg)
@@ -433,7 +474,7 @@ def apply_suv_correction(dicom_files, suv_image):
 
                     elapsed_time = calc_elapsed_time(ds, decay_constant, acquisition_time, injection_time)
 
-                elif 'SIEMENS' in manufacturer or 'CPS' in manufacturer:
+                elif 'SIEMENS' in manufacturer or 'CPS' in manufacturer or 'CTI' in ds.Manufacturer.upper():
                     try:
                         elapsed_time = (
                                 parse_time(ds[(0x0071, 0x1022)].value).replace(year=injection_time.year,
@@ -462,10 +503,17 @@ def apply_suv_correction(dicom_files, suv_image):
 
                         elapsed_time = (acquisition_time - injection_time).total_seconds() - frame_reference_time
                 else:
-                    error_msg = f"Vendor {ds.Manufacturer} is not supported with BQML units!"
-                    raise DataStructureError(error_msg)
+                    acquisition_time = parse_time(ds.AcquisitionTime).replace(year=injection_time.year,
+                                                                              month=injection_time.month,
+                                                                              day=injection_time.day)
+
+                    elapsed_time = calc_elapsed_time(ds, decay_constant, acquisition_time, injection_time)
+
             elif ds.DecayCorrection == 'ADMIN':
                 elapsed_time = 0
+            elif ds.DecayCorrection == 'NONE':
+                error_msg = f"For decay correction 'NONE' use  process_decay_uncorrected_bqml function!"
+                raise DataStructureError(error_msg)
             else:
                 error_msg = f"Decay correction {ds.DecayCorrection} is not supported!"
                 raise DataStructureError(error_msg)
@@ -473,6 +521,45 @@ def apply_suv_correction(dicom_files, suv_image):
             decay_factor = np.exp(-1 * ((np.log(2) * elapsed_time) / half_life))
             decay_corrected_dose = injected_dose * decay_factor
             suv = activity_concentration / (decay_corrected_dose / (patient_weight * 1000))
+
+            return suv
+
+        def process_decay_uncorrected_bqml(activity_concentration, ds):
+            try:
+                injection_time = parse_time(
+                    ds.RadiopharmaceuticalInformationSequence[0].RadiopharmaceuticalStartTime)
+            except AttributeError:
+                injection_time = parse_time(
+                    ds.RadiopharmaceuticalInformationSequence[0].RadiopharmaceuticalStartDateTime)
+            patient_weight = float(ds.PatientWeight)
+            injected_dose = float(ds.RadiopharmaceuticalInformationSequence[0].RadionuclideTotalDose)
+            if is_fdg(str(ds.RadiopharmaceuticalInformationSequence[0].Radiopharmaceutical)) and injected_dose < 10000:
+                injected_dose *= 1000000
+            if injected_dose <= 0:
+                error_msg = f"The injected PET tracer dose is zero."
+                raise DataStructureError(error_msg)
+            half_life = float(ds.RadiopharmaceuticalInformationSequence[0].RadionuclideHalfLife)
+            decay_constant = np.log(2) / half_life
+            manufacturer = ds.Manufacturer.upper()
+
+            acquisition_time = parse_time(ds.AcquisitionTime).replace(year=injection_time.year,
+                                                                      month=injection_time.month,
+                                                                      day=injection_time.day)
+
+            if 'GE' in manufacturer:
+
+                decay_corrected_activity_concentration = activity_concentration * np.exp(
+                    decay_constant * ((acquisition_time - injection_time).total_seconds()))
+
+            else:
+
+                decay_during_frame = decay_constant * ds.ActualFrameDuration / 1000
+                avg_count_rate_time = (1 / decay_constant) * np.log(
+                    decay_during_frame / (1 - np.exp(-decay_during_frame)))
+                decay_corrected_activity_concentration = activity_concentration * np.exp(
+                    decay_constant * ((acquisition_time - injection_time).total_seconds() + avg_count_rate_time))
+
+            suv = decay_corrected_activity_concentration / (injected_dose / (patient_weight * 1000))
 
             return suv
 
@@ -512,7 +599,10 @@ def apply_suv_correction(dicom_files, suv_image):
             else:
                 suv = process_gml(pixel_array_units)
         elif units == 'BQML':
-            suv = process_bqml(pixel_array_units, ds)
+            if ds.DecayCorrection == 'NONE':
+                suv = process_decay_uncorrected_bqml(pixel_array_units, ds)
+            else:
+                suv = process_bqml(pixel_array_units, ds)
         elif units == 'CNTS':
             suv = process_cnts(pixel_array_units, ds)
         else:
@@ -534,9 +624,11 @@ def apply_suv_correction(dicom_files, suv_image):
     intensity_image.SetDirection(np.array(suv_image.GetDirection()))
     return intensity_image
 
+
 def modality_mapping(modality):
     modality_map = {'PET': 'PT', 'CT': 'CT', 'MRI': 'MR', 'RTSTRUCT': 'RTSTRUCT', 'MG': 'MG', 'RTDOSE': 'RTDOSE'}
     return modality_map[modality]
+
 
 def process_dicom_series(dicom_files):
     reader = sitk.ImageSeriesReader()

@@ -10,6 +10,23 @@ sys.excepthook = handle_uncaught_exception
 
 
 class Preprocessing:
+    """Resample images and masks onto a target voxel grid.
+
+    Parameters
+    ----------
+    input_imaging_modality : str
+        Input modality identifier. Supported values are ``"CT"``, ``"MR"``,
+        and ``"PT"``.
+    resample_resolution : float or int
+        Target in-plane voxel spacing in millimeters. Must be positive.
+    resample_dimension : {"2D", "3D"}
+        Resampling mode. ``"2D"`` preserves the original spacing in the third
+        axis while resampling each slice in-plane. ``"3D"`` resamples all axes.
+    interpolation_method : {"Linear", "NN", "BSpline", "Gaussian"}
+        Interpolator used by SimpleITK during resampling.
+    interpolation_threshold : float, optional
+        Threshold applied after mask resampling when ``image_type="mask"``.
+    """
 
     def __init__(self, input_imaging_modality,
                  resample_resolution=None, resample_dimension=None,
@@ -28,7 +45,18 @@ class Preprocessing:
 
     @staticmethod
     def get_interpolator(interpolation_method):
-        """Returns the appropriate SimpleITK interpolator based on the method name."""
+        """Return the SimpleITK interpolator constant for a named method.
+
+        Parameters
+        ----------
+        interpolation_method : str
+            One of ``"Linear"``, ``"NN"``, ``"BSpline"``, or ``"Gaussian"``.
+
+        Returns
+        -------
+        int
+            A SimpleITK interpolation enum value.
+        """
         interpolator_mapping = {
             'Linear': sitk.sitkLinear,
             'NN': sitk.sitkNearestNeighbor,
@@ -41,7 +69,21 @@ class Preprocessing:
 
     @staticmethod
     def calculate_resampled_origin(initial_shape, initial_spacing, resulted_spacing, initial_origin, axis=0):
-        """Calculates the resampled image origin for a given axis based on spacing and shape."""
+        """Calculate the centered output origin for a single axis.
+
+        Parameters
+        ----------
+        initial_shape : sequence of int
+            Input array shape.
+        initial_spacing : sequence of float
+            Input voxel spacing.
+        resulted_spacing : sequence of float
+            Requested output spacing.
+        initial_origin : sequence of float
+            Input image origin.
+        axis : int, default=0
+            Axis for which the adjusted origin should be computed.
+        """
         n_a = float(initial_shape[axis])
         s_a = initial_spacing[axis]
         s_b = resulted_spacing[axis]
@@ -50,7 +92,20 @@ class Preprocessing:
         return x_b
 
     def resample(self, image, image_type):
-        """Resamples the given image or mask according to the specified resolution and interpolation method."""
+        """Resample an image or mask and return a new :class:`zrad.image.Image`.
+
+        Parameters
+        ----------
+        image : Image
+            Input image or mask with geometry metadata.
+        image_type : {"image", "mask"}
+            Selects the post-processing branch after interpolation.
+
+        Returns
+        -------
+        Image
+            Resampled object with updated array, origin, spacing, and shape.
+        """
 
         # Calculate output spacing
         if self.resample_dimension == '3D':
@@ -101,7 +156,7 @@ class Preprocessing:
                      direction=image.direction, shape=output_shape)
 
     def process_resampled_image(self, resampled_sitk_image):
-        """Processes resampled image according to modality-specific requirements."""
+        """Cast a resampled image according to modality-specific rules."""
         if self.input_imaging_modality == 'CT':
             resampled_sitk_image = sitk.Round(resampled_sitk_image)
             resampled_sitk_image = sitk.Cast(resampled_sitk_image, sitk.sitkInt16)
@@ -110,7 +165,7 @@ class Preprocessing:
         return resampled_sitk_image
 
     def process_resampled_mask(self, resampled_sitk_image):
-        """Processes resampled mask using thresholding."""
+        """Threshold a resampled mask back to a binary label map."""
         mask_array = sitk.GetArrayFromImage(resampled_sitk_image)
         mask_array = np.where(mask_array >= self.interpolation_threshold, 1, 0).astype(np.int16)
         return sitk.GetImageFromArray(mask_array)

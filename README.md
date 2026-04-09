@@ -1,6 +1,6 @@
 # Z-RAD
 
-<img src="https://raw.githubusercontent.com/medical-physics-usz/z-rad/master/doc/logos/ZRadLogo.jpg" width="600" alt="Z-Rad logo"/>
+<img src="https://raw.githubusercontent.com/medical-physics-usz/z-rad/master/docs/logos/ZRadLogo.jpg" width="600" alt="Z-Rad logo"/>
 
 Radiomics is the high-throughput extraction of quantitative features from medical images, 
 revolutionizing personalized medicine and enhancing clinical decision-making. 
@@ -11,7 +11,7 @@ and lack of standardization.
 addresses these issues by offering a user-friendly, IBSI-compliant, and open-source solution for radiomics analysis.
 
 ## Z-Rad Features
-<img src="https://raw.githubusercontent.com/medical-physics-usz/z-rad/master/doc/images/zrad_screenshot.png" width="600" alt="Z-Rad screenshot"/>
+<img src="https://raw.githubusercontent.com/medical-physics-usz/z-rad/master/docs/images/zrad_screenshot.png" width="600" alt="Z-Rad screenshot"/>
 
 ### User-Friendly Interface
 - **Graphical User Interface (GUI)**: Designed for medical professionals with no programming skills.
@@ -42,7 +42,7 @@ addresses these issues by offering a user-friendly, IBSI-compliant, and open-sou
   - SimpleITK
 
 ### Radiomics Extraction Pathways
-<img src="https://raw.githubusercontent.com/medical-physics-usz/z-rad/master/doc/images/ZRadExtractionPathways.png" width="600" alt="Z-Rad Pathways"/>
+<img src="https://raw.githubusercontent.com/medical-physics-usz/z-rad/master/docs/images/ZRadExtractionPathways.png" width="600" alt="Z-Rad Pathways"/>
 
 ## Graphical User Interface (GUI) and Application Programming Interface (API)
 Both GUI and API are structured into three primary classes: **Resampling**, **Filtering**, and **Radiomics**:

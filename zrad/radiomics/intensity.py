@@ -63,23 +63,14 @@ class LocalIntensityFeatures:
         roi_mask = ~np.isnan(self.array_masked_image)
         return np.max(local_means[roi_mask])
 
-    def calculate(self):
+    def calculate_local_intensity_features(self):
         return {
             'loc_peak_loc': self._calc_local_intensity_peak(),
             'loc_peak_glob': self._calc_global_intensity_peak(),
         }
 
 
-class IntensityBasedStatFeatures:
-    """First-order statistics for continuous or discretized ROI intensities.
-
-    Notes
-    -----
-    The methods in this class operate on arrays passed at call time rather than
-    binding an image in the constructor. This supports reuse for both raw
-    intensities and discretized intensity histograms within the radiomics
-    workflow.
-    """
+class _IntensityFeatureCalculator:
     @staticmethod
     def _valid_values(array):
         x = np.asarray(array)
@@ -163,50 +154,64 @@ class IntensityBasedStatFeatures:
         gradient = np.gradient(counts)
         return values, gradient
 
-    def calculate_intensity_statistics(self, array):
+
+class IntensityStatisticsFeatures(_IntensityFeatureCalculator):
+    """First-order statistics for continuous ROI intensities."""
+
+    def __init__(self, array):
+        self.array = array
+
+    def calculate_intensity_statistics_features(self):
         return {
-            'stat_mean': np.nanmean(array),
-            'stat_var': np.nanstd(array) ** 2,
-            'stat_skew': self._skewness(array),
-            'stat_kurt': self._kurtosis(array),
-            'stat_median': np.nanmedian(array),
-            'stat_min': np.nanmin(array),
-            'stat_p10': np.nanpercentile(array, 10),
-            'stat_p90': np.nanpercentile(array, 90),
-            'stat_max': np.nanmax(array),
-            'stat_iqr': iqr(array, nan_policy='omit'),
-            'stat_range': np.nanmax(array) - np.nanmin(array),
-            'stat_mad': np.nanmean(np.absolute(array - np.nanmean(array))),
-            'stat_rmad': self._robust_mean_abs_deviation(array),
-            'stat_medad': np.nanmean(np.absolute(array - np.nanmedian(array))),
-            'stat_cov': self._variation_coefficient(array),
-            'stat_qcod': self._quartile_coefficient_dispersion(array),
-            'stat_energy': np.nansum(array ** 2),
-            'stat_rms': np.sqrt(np.nanmean(array ** 2)),
+            'stat_mean': np.nanmean(self.array),
+            'stat_var': np.nanstd(self.array) ** 2,
+            'stat_skew': self._skewness(self.array),
+            'stat_kurt': self._kurtosis(self.array),
+            'stat_median': np.nanmedian(self.array),
+            'stat_min': np.nanmin(self.array),
+            'stat_p10': np.nanpercentile(self.array, 10),
+            'stat_p90': np.nanpercentile(self.array, 90),
+            'stat_max': np.nanmax(self.array),
+            'stat_iqr': iqr(self.array, nan_policy='omit'),
+            'stat_range': np.nanmax(self.array) - np.nanmin(self.array),
+            'stat_mad': np.nanmean(np.absolute(self.array - np.nanmean(self.array))),
+            'stat_rmad': self._robust_mean_abs_deviation(self.array),
+            'stat_medad': np.nanmean(np.absolute(self.array - np.nanmedian(self.array))),
+            'stat_cov': self._variation_coefficient(self.array),
+            'stat_qcod': self._quartile_coefficient_dispersion(self.array),
+            'stat_energy': np.nansum(self.array ** 2),
+            'stat_rms': np.sqrt(np.nanmean(self.array ** 2)),
         }
 
-    def calculate_histogram_statistics(self, array):
-        values, gradient = self._histogram_gradient(array)
+
+class IntensityHistogramFeatures(_IntensityFeatureCalculator):
+    """Histogram-based first-order statistics for discretized ROI intensities."""
+
+    def __init__(self, array):
+        self.array = array
+
+    def calculate_intensity_histogram_features(self):
+        values, gradient = self._histogram_gradient(self.array)
         return {
-            'ih_mean': np.nanmean(array),
-            'ih_var': np.nanstd(array) ** 2,
-            'ih_skew': self._skewness(array),
-            'ih_kurt': self._kurtosis(array),
-            'ih_median': np.nanmedian(array),
-            'ih_min': np.nanmin(array),
-            'ih_p10': np.nanpercentile(array, 10),
-            'ih_p90': np.nanpercentile(array, 90),
-            'ih_max': np.nanmax(array),
-            'ih_mode': self._histogram_mode(array),
-            'ih_iqr': iqr(array, nan_policy='omit'),
-            'ih_range': np.nanmax(array) - np.nanmin(array),
-            'ih_mad': np.nanmean(np.absolute(array - np.nanmean(array))),
-            'ih_rmad': self._robust_mean_abs_deviation(array),
-            'ih_medad': np.nanmean(np.absolute(array - np.nanmedian(array))),
-            'ih_cov': self._variation_coefficient(array),
-            'ih_qcod': self._quartile_coefficient_dispersion(array),
-            'ih_entropy': self._histogram_entropy(array),
-            'ih_uniformity': self._histogram_uniformity(array),
+            'ih_mean': np.nanmean(self.array),
+            'ih_var': np.nanstd(self.array) ** 2,
+            'ih_skew': self._skewness(self.array),
+            'ih_kurt': self._kurtosis(self.array),
+            'ih_median': np.nanmedian(self.array),
+            'ih_min': np.nanmin(self.array),
+            'ih_p10': np.nanpercentile(self.array, 10),
+            'ih_p90': np.nanpercentile(self.array, 90),
+            'ih_max': np.nanmax(self.array),
+            'ih_mode': self._histogram_mode(self.array),
+            'ih_iqr': iqr(self.array, nan_policy='omit'),
+            'ih_range': np.nanmax(self.array) - np.nanmin(self.array),
+            'ih_mad': np.nanmean(np.absolute(self.array - np.nanmean(self.array))),
+            'ih_rmad': self._robust_mean_abs_deviation(self.array),
+            'ih_medad': np.nanmean(np.absolute(self.array - np.nanmedian(self.array))),
+            'ih_cov': self._variation_coefficient(self.array),
+            'ih_qcod': self._quartile_coefficient_dispersion(self.array),
+            'ih_entropy': self._histogram_entropy(self.array),
+            'ih_uniformity': self._histogram_uniformity(self.array),
             'ih_max_grad': np.max(gradient),
             'ih_max_grad_g': values[np.argmax(gradient)],
             'ih_min_grad': np.min(gradient),
@@ -249,40 +254,37 @@ class IntensityVolumeHistogramFeatures:
         self._fractions()
 
     def _fractions(self):
-        # Calculate fractions for each discrete intensity value.
         for idx, intensity_value in enumerate(self.intensities):
-            # Calculate fractional volume (νi): fraction of values with intensity >= intensity_value
             len_valid_vals = len(self.valid_values)
             if len_valid_vals == 0:
                 raise DataStructureError(f"No valid values in fractions.")
             self.fractional_volumes[idx] = 1 - np.sum(self.valid_values < intensity_value) / len_valid_vals
-            # Calculate intensity fraction (γi): relative position of intensity_value in the intensity range
             intensity_diff = self.max_intensity - self.min_intensity
             if intensity_diff == 0:
                 raise DataStructureError(f"Intensity range is zero.")
             self.intensity_fractions[idx] = (intensity_value - self.min_intensity) / intensity_diff
 
-    def calc_volume_at_intensity_fraction(self, x):
+    def _calc_volume_at_intensity_fraction(self, x):
         valid_indices = np.where(self.intensity_fractions > x / 100)
         return np.max(self.fractional_volumes[valid_indices])
 
-    def calc_intensity_at_volume_fraction(self, x):
+    def _calc_intensity_at_volume_fraction(self, x):
         return np.min(self.intensity[self.fractional_volumes <= x / 100])
 
-    def calc_volume_fraction_diff_intensity_fractions(self):
-        return self.calc_volume_at_intensity_fraction(10) - self.calc_volume_at_intensity_fraction(90)
+    def _calc_volume_fraction_diff_intensity_fractions(self):
+        return self._calc_volume_at_intensity_fraction(10) - self._calc_volume_at_intensity_fraction(90)
 
-    def calc_intensity_fraction_diff_volume_fractions(self):
-        return self.calc_intensity_at_volume_fraction(10) - self.calc_intensity_at_volume_fraction(90)
+    def _calc_intensity_fraction_diff_volume_fractions(self):
+        return self._calc_intensity_at_volume_fraction(10) - self._calc_intensity_at_volume_fraction(90)
 
-    def calculate(self):
+    def calculate_ivh_features(self):
         return {
-            'ivh_v10': self.calc_volume_at_intensity_fraction(10),
-            'ivh_v90': self.calc_volume_at_intensity_fraction(90),
-            'ivh_i10': self.calc_intensity_at_volume_fraction(10),
-            'ivh_i90': self.calc_intensity_at_volume_fraction(90),
-            'ivh_diff_v10_v90': self.calc_volume_fraction_diff_intensity_fractions(),
-            'ivh_diff_i10_i90': self.calc_intensity_fraction_diff_volume_fractions(),
+            'ivh_v10': self._calc_volume_at_intensity_fraction(10),
+            'ivh_v90': self._calc_volume_at_intensity_fraction(90),
+            'ivh_i10': self._calc_intensity_at_volume_fraction(10),
+            'ivh_i90': self._calc_intensity_at_volume_fraction(90),
+            'ivh_diff_v10_v90': self._calc_volume_fraction_diff_intensity_fractions(),
+            'ivh_diff_i10_i90': self._calc_intensity_fraction_diff_volume_fractions(),
         }
 
 
@@ -372,7 +374,7 @@ class LocalIntensityFeatureGroup(BaseFeatureGroup):
             masks.intensity_mask.array,
             context.feature_image.spacing[::-1],
         )
-        return local.calculate()
+        return local.calculate_local_intensity_features()
 
 
 class IntensityStatisticsFeatureGroup(BaseFeatureGroup):
@@ -390,8 +392,8 @@ class IntensityStatisticsFeatureGroup(BaseFeatureGroup):
 
     def calculate(self, context, prepared_data):
         intensity = prepared_data.require_base_masks().intensity_mask.array
-        stats = IntensityBasedStatFeatures()
-        return stats.calculate_intensity_statistics(intensity)
+        stats = IntensityStatisticsFeatures(intensity)
+        return stats.calculate_intensity_statistics_features()
 
 
 class IntensityHistogramFeatureGroup(BaseFeatureGroup):
@@ -409,8 +411,8 @@ class IntensityHistogramFeatureGroup(BaseFeatureGroup):
 
     def calculate(self, context, prepared_data):
         intensity = prepared_data.require_discretized_intensity_image().array
-        stats = IntensityBasedStatFeatures()
-        return stats.calculate_histogram_statistics(intensity)
+        stats = IntensityHistogramFeatures(intensity)
+        return stats.calculate_intensity_histogram_features()
 
 
 class IVHFeatureGroup(BaseFeatureGroup):
@@ -457,7 +459,7 @@ class IVHFeatureGroup(BaseFeatureGroup):
                 np.nanmin(image.array),
                 np.nanmax(image.array),
             )
-        return ivh.calculate()
+        return ivh.calculate_ivh_features()
 
 
 def build_ivh_mask(context, intensity_mask, *, bin_number_discretize, bin_size_discretize):

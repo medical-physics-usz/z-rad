@@ -18,8 +18,10 @@ Definition Classes
    :toctree: generated
 
    ~radiomics.morphology.MorphologicalFeatures
+   ~radiomics.morphology.MorphologyCorrelationFeatures
    ~radiomics.intensity.LocalIntensityFeatures
-   ~radiomics.intensity.IntensityBasedStatFeatures
+   ~radiomics.intensity.IntensityStatisticsFeatures
+   ~radiomics.intensity.IntensityHistogramFeatures
    ~radiomics.intensity.IntensityVolumeHistogramFeatures
    ~radiomics.glcm.GLCM
    ~radiomics.glrlm.GLRLM

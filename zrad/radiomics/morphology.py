@@ -38,15 +38,11 @@ class MorphologicalFeatures:
     spacing : sequence of float
         Physical voxel spacing along the three image axes.
 
-    Notes
-    -----
-    The class stores intermediate geometry such as the marching-cubes mesh,
-    convex hull, and PCA eigenvalues so that multiple IBSI morphological
-    features can be computed from the same prepared ROI.
     """
-    def __init__(self, mask, spacing):
+    def __init__(self, mask, image_array, spacing):
         self.spacing = spacing
         self.array_mask = mask
+        self.image_array = image_array
         self.unit_vol = self.spacing[0] * self.spacing[1] * self.spacing[2]
 
     def _calc_mesh(self):
@@ -91,14 +87,14 @@ class MorphologicalFeatures:
     def _calc_asphericity(area_mesh, vol_mesh):
         return (area_mesh ** 3 / (36 * np.pi * vol_mesh ** 2)) ** (1 / 3) - 1
 
-    def _calc_centre_of_shift(self, image_array):
+    def _calc_centre_of_shift(self):
         dx, dy, dz = self.spacing
         morph_voxels = np.argwhere(self.array_mask)
         morph_voxels_scaled = morph_voxels * [dx, dy, dz]
         com_geom = np.mean(morph_voxels_scaled, axis=0)
 
-        intensity_voxels = np.argwhere(~np.isnan(image_array))
-        intensities = image_array[intensity_voxels[:, 0], intensity_voxels[:, 1], intensity_voxels[:, 2]]
+        intensity_voxels = np.argwhere(~np.isnan(self.image_array))
+        intensities = self.image_array[intensity_voxels[:, 0], intensity_voxels[:, 1], intensity_voxels[:, 2]]
         intensity_voxels_scaled = intensity_voxels * [dx, dy, dz]
         com_gl = np.average(intensity_voxels_scaled, axis=0, weights=intensities)
         return np.linalg.norm(com_geom - com_gl)
@@ -189,65 +185,10 @@ class MorphologicalFeatures:
     def _calc_area_density_ch(area_mesh, conv_hull):
         return area_mesh / conv_hull.area
 
-    @staticmethod
-    def _calc_integrated_intensity(image_array, vol_mesh):
-        return np.nanmean(image_array) * vol_mesh
+    def _calc_integrated_intensity(self, vol_mesh):
+        return np.nanmean(self.image_array) * vol_mesh
 
-    def _calc_moran_i(self, image_array):
-        indices = np.argwhere(self.array_mask)
-        scaled_indices = indices * self.spacing
-        intensities = image_array[indices[:, 0], indices[:, 1], indices[:, 2]]
-        valid = ~np.isnan(intensities)
-        if np.sum(valid) < 2:
-            return np.nan
-
-        scaled_indices = scaled_indices[valid]
-        intensities = intensities[valid]
-        n = len(intensities)
-        mu = np.mean(intensities)
-        distances = squareform(pdist(scaled_indices))
-        weights = np.zeros_like(distances)
-        nonzero_mask = distances > 0
-        if np.any(distances[nonzero_mask] == 0):
-            raise DataStructureError(f"There is a zero distance in Moran I.")
-        weights[nonzero_mask] = 1.0 / distances[nonzero_mask]
-        s0 = np.sum(weights)
-        diff = intensities - mu
-        diff_outer = np.outer(diff, diff)
-        numerator = np.sum(weights * diff_outer)
-        denominator = np.sum(diff ** 2)
-        if denominator == 0:
-            raise DataStructureError(f"There determinator is zero in Moran I.")
-        return (n / s0) * (numerator / denominator)
-
-    def _calc_geary_c(self, image_array):
-        indices = np.argwhere(self.array_mask)
-        scaled_indices = indices * self.spacing
-        intensities = image_array[indices[:, 0], indices[:, 1], indices[:, 2]]
-        valid = ~np.isnan(intensities)
-        if np.sum(valid) < 2:
-            return np.nan
-
-        scaled_indices = scaled_indices[valid]
-        intensities = intensities[valid]
-        n = len(intensities)
-        mu = np.mean(intensities)
-        distances = squareform(pdist(scaled_indices))
-        weights = np.zeros_like(distances)
-        nonzero_mask = distances > 0
-        if np.any(distances[nonzero_mask] == 0):
-            raise DataStructureError(f"There is a zero distance in Geary C.")
-        weights[nonzero_mask] = 1.0 / distances[nonzero_mask]
-        s0 = np.sum(weights)
-        diff_matrix = np.subtract.outer(intensities, intensities)
-        squared_diff = diff_matrix ** 2
-        numerator = np.sum(weights * squared_diff)
-        denominator = np.sum((intensities - mu) ** 2)
-        if denominator == 0:
-            raise DataStructureError(f"There determinator is zero in Geary C.")
-        return ((n - 1) / (2 * s0)) * (numerator / denominator)
-
-    def calculate_morphology_features(self, image_array):
+    def calculate_morphology_features(self):
         mesh_verts, mesh_faces = self._calc_mesh()
         vol_mesh, area_mesh = self._calc_vol_and_area_mesh(mesh_verts, mesh_faces)
         vol_count = self._calc_vol_count()
@@ -257,7 +198,7 @@ class MorphologicalFeatures:
         spherical_disproportion = self._calc_spherical_disproportion(area_mesh, vol_mesh)
         sphericity = self._calc_sphericity(vol_mesh, area_mesh)
         asphericity = self._calc_asphericity(area_mesh, vol_mesh)
-        centre_of_shift = self._calc_centre_of_shift(image_array)
+        centre_of_shift = self._calc_centre_of_shift()
         conv_hull = self._calc_convex_hull(mesh_verts)
         max_diameter = self._calc_max_diameter(conv_hull, mesh_verts)
         pca_eigenvalues = self._calc_pca()
@@ -269,7 +210,7 @@ class MorphologicalFeatures:
         area_density_aee = self._calc_area_density_aee(area_mesh, major_axis_len, minor_axis_len, least_axis_len)
         vol_density_ch = self._calc_vol_density_ch(vol_mesh, conv_hull)
         area_density_ch = self._calc_area_density_ch(area_mesh, conv_hull)
-        integrated_intensity = self._calc_integrated_intensity(image_array, vol_mesh)
+        integrated_intensity = self._calc_integrated_intensity(vol_mesh)
 
         values = [
             vol_mesh,
@@ -298,10 +239,71 @@ class MorphologicalFeatures:
         ]
         return dict(zip(MORPHOLOGY_FEATURE_NAMES, values))
 
-    def calculate_morphology_correlation_features(self, image_array):
+class MorphologyCorrelationFeatures:
+    """Spatial autocorrelation descriptors for a 3D region of interest."""
+
+    def __init__(self, mask, image_array, spacing):
+        self.array_mask = mask
+        self.image_array = image_array
+        self.spacing = spacing
+
+    def _valid_intensity_data(self):
+        indices = np.argwhere(self.array_mask)
+        scaled_indices = indices * self.spacing
+        intensities = self.image_array[indices[:, 0], indices[:, 1], indices[:, 2]]
+        valid = ~np.isnan(intensities)
+        if np.sum(valid) < 2:
+            return None, None
+        return scaled_indices[valid], intensities[valid]
+
+    def _calc_moran_i(self):
+        scaled_indices, intensities = self._valid_intensity_data()
+        if scaled_indices is None:
+            return np.nan
+
+        n = len(intensities)
+        mu = np.mean(intensities)
+        distances = squareform(pdist(scaled_indices))
+        weights = np.zeros_like(distances)
+        nonzero_mask = distances > 0
+        if np.any(distances[nonzero_mask] == 0):
+            raise DataStructureError(f"There is a zero distance in Moran I.")
+        weights[nonzero_mask] = 1.0 / distances[nonzero_mask]
+        s0 = np.sum(weights)
+        diff = intensities - mu
+        diff_outer = np.outer(diff, diff)
+        numerator = np.sum(weights * diff_outer)
+        denominator = np.sum(diff ** 2)
+        if denominator == 0:
+            raise DataStructureError(f"There determinator is zero in Moran I.")
+        return (n / s0) * (numerator / denominator)
+
+    def _calc_geary_c(self):
+        scaled_indices, intensities = self._valid_intensity_data()
+        if scaled_indices is None:
+            return np.nan
+
+        n = len(intensities)
+        mu = np.mean(intensities)
+        distances = squareform(pdist(scaled_indices))
+        weights = np.zeros_like(distances)
+        nonzero_mask = distances > 0
+        if np.any(distances[nonzero_mask] == 0):
+            raise DataStructureError(f"There is a zero distance in Geary C.")
+        weights[nonzero_mask] = 1.0 / distances[nonzero_mask]
+        s0 = np.sum(weights)
+        diff_matrix = np.subtract.outer(intensities, intensities)
+        squared_diff = diff_matrix ** 2
+        numerator = np.sum(weights * squared_diff)
+        denominator = np.sum((intensities - mu) ** 2)
+        if denominator == 0:
+            raise DataStructureError(f"There determinator is zero in Geary C.")
+        return ((n - 1) / (2 * s0)) * (numerator / denominator)
+
+    def calculate_morphology_correlation_features(self):
         return {
-            'morph_moran_i': self._calc_moran_i(image_array),
-            'morph_geary_c': self._calc_geary_c(image_array),
+            'morph_moran_i': self._calc_moran_i(),
+            'morph_geary_c': self._calc_geary_c(),
         }
 
 
@@ -359,9 +361,10 @@ class MorphologyFeatureGroup(BaseFeatureGroup):
         masks = prepared_data.require_base_masks()
         morphology = MorphologicalFeatures(
             masks.morphological_mask.array,
+            masks.intensity_mask.array,
             masks.morphological_mask.spacing[::-1],
         )
-        return morphology.calculate_morphology_features(masks.intensity_mask.array)
+        return morphology.calculate_morphology_features()
 
 
 class MorphologyCorrelationFeatureGroup(BaseFeatureGroup):
@@ -382,8 +385,9 @@ class MorphologyCorrelationFeatureGroup(BaseFeatureGroup):
 
     def calculate(self, context, prepared_data):
         masks = prepared_data.require_base_masks()
-        morphology = MorphologicalFeatures(
+        morphology = MorphologyCorrelationFeatures(
             masks.morphological_mask.array,
+            masks.intensity_mask.array,
             masks.morphological_mask.spacing[::-1],
         )
-        return morphology.calculate_morphology_correlation_features(masks.intensity_mask.array)
+        return morphology.calculate_morphology_correlation_features()

@@ -279,8 +279,8 @@ def test_ibsi_ii_ph_ii_2a(ct_phantom_image, ct_phantom_mask):
                           intensity_range=[-1000, 400],
                           bin_size=25)
 
-    radiomics.extract_features(image=ct_phantom_image, filtered_image=filtered_image, mask=ct_phantom_mask)
-    ibsi_ii_ph_ii_validation(ibsi_features, radiomics.features_)
+    features = radiomics.extract_features(image=ct_phantom_image, filtered_image=filtered_image, mask=ct_phantom_mask)
+    ibsi_ii_ph_ii_validation(ibsi_features, features)
 
 
 @pytest.mark.integration
@@ -299,8 +299,8 @@ def test_ibsi_ii_ph_ii_2b(res3d_1mm_image_spline, res3d_1mm_mask_linear):
                           intensity_range=[-1000, 400],
                           bin_size=25)
 
-    radiomics.extract_features(image=res3d_1mm_image_spline, filtered_image=filtered_image, mask=res3d_1mm_mask_linear)
-    ibsi_ii_ph_ii_validation(ibsi_features, radiomics.features_)
+    features = radiomics.extract_features(image=res3d_1mm_image_spline, filtered_image=filtered_image, mask=res3d_1mm_mask_linear)
+    ibsi_ii_ph_ii_validation(ibsi_features, features)
 
 
 @pytest.mark.integration
@@ -320,8 +320,8 @@ def test_ibsi_ii_ph_ii_3a(ct_phantom_image, ct_phantom_mask):
                           intensity_range=[-1000, 400],
                           bin_size=25)
 
-    radiomics.extract_features(image=ct_phantom_image, filtered_image=filtered_image, mask=ct_phantom_mask)
-    ibsi_ii_ph_ii_validation(ibsi_features, radiomics.features_)
+    features = radiomics.extract_features(image=ct_phantom_image, filtered_image=filtered_image, mask=ct_phantom_mask)
+    ibsi_ii_ph_ii_validation(ibsi_features, features)
 
 
 @pytest.mark.integration
@@ -341,8 +341,8 @@ def test_ibsi_ii_ph_ii_3b(res3d_1mm_image_spline, res3d_1mm_mask_linear):
                           intensity_range=[-1000, 400],
                           bin_size=25)
 
-    radiomics.extract_features(image=res3d_1mm_image_spline, filtered_image=filtered_image, mask=res3d_1mm_mask_linear)
-    ibsi_ii_ph_ii_validation(ibsi_features, radiomics.features_)
+    features = radiomics.extract_features(image=res3d_1mm_image_spline, filtered_image=filtered_image, mask=res3d_1mm_mask_linear)
+    ibsi_ii_ph_ii_validation(ibsi_features, features)
 
 
 @pytest.mark.integration
@@ -365,8 +365,8 @@ def test_ibsi_ii_ph_ii_4a(ct_phantom_image, ct_phantom_mask):
                           intensity_range=[-1000, 400],
                           bin_size=25)
 
-    radiomics.extract_features(image=ct_phantom_image, filtered_image=filtered_image, mask=ct_phantom_mask)
-    ibsi_ii_ph_ii_validation(ibsi_features, radiomics.features_)
+    features = radiomics.extract_features(image=ct_phantom_image, filtered_image=filtered_image, mask=ct_phantom_mask)
+    ibsi_ii_ph_ii_validation(ibsi_features, features)
 
 
 @pytest.mark.integration
@@ -389,8 +389,8 @@ def test_ibsi_ii_ph_ii_4b(res3d_1mm_image_spline, res3d_1mm_mask_linear):
                           intensity_range=[-1000, 400],
                           bin_size=25)
 
-    radiomics.extract_features(image=res3d_1mm_image_spline, filtered_image=filtered_image, mask=res3d_1mm_mask_linear)
-    ibsi_ii_ph_ii_validation(ibsi_features, radiomics.features_)
+    features = radiomics.extract_features(image=res3d_1mm_image_spline, filtered_image=filtered_image, mask=res3d_1mm_mask_linear)
+    ibsi_ii_ph_ii_validation(ibsi_features, features)
 
 # Gabor
 @pytest.mark.integration
@@ -415,8 +415,8 @@ def test_ibsi_ii_ph_ii_5a(ct_phantom_image, ct_phantom_mask):
                           intensity_range=[-1000, 400],
                           bin_size=25)
 
-    radiomics.extract_features(image=ct_phantom_image, filtered_image=filtered_image, mask=ct_phantom_mask)
-    ibsi_ii_ph_ii_validation(ibsi_features, radiomics.features_)
+    features = radiomics.extract_features(image=ct_phantom_image, filtered_image=filtered_image, mask=ct_phantom_mask)
+    ibsi_ii_ph_ii_validation(ibsi_features, features)
 
 
 @pytest.mark.integration
@@ -441,8 +441,8 @@ def test_ibsi_ii_ph_ii_5b(res3d_1mm_image_spline, res3d_1mm_mask_linear):
                           intensity_range=[-1000, 400],
                           bin_size=25)
 
-    radiomics.extract_features(image=res3d_1mm_image_spline, filtered_image=filtered_image, mask=res3d_1mm_mask_linear)
-    ibsi_ii_ph_ii_validation(ibsi_features, radiomics.features_)
+    features = radiomics.extract_features(image=res3d_1mm_image_spline, filtered_image=filtered_image, mask=res3d_1mm_mask_linear)
+    ibsi_ii_ph_ii_validation(ibsi_features, features)
 
 @pytest.mark.integration
 def test_ibsi_ii_ph_ii_6a(ct_phantom_image, ct_phantom_mask):
@@ -463,8 +463,8 @@ def test_ibsi_ii_ph_ii_6a(ct_phantom_image, ct_phantom_mask):
                           intensity_range=[-1000, 400],
                           bin_size=25)
 
-    radiomics.extract_features(image=ct_phantom_image, filtered_image=filtered_image, mask=ct_phantom_mask)
-    ibsi_ii_ph_ii_validation(ibsi_features, radiomics.features_)
+    features = radiomics.extract_features(image=ct_phantom_image, filtered_image=filtered_image, mask=ct_phantom_mask)
+    ibsi_ii_ph_ii_validation(ibsi_features, features)
 
 
 @pytest.mark.integration
@@ -486,8 +486,8 @@ def test_ibsi_ii_ph_ii_6b(res3d_1mm_image_spline, res3d_1mm_mask_linear):
                           intensity_range=[-1000, 400],
                           bin_size=25)
 
-    radiomics.extract_features(image=res3d_1mm_image_spline, filtered_image=filtered_image, mask=res3d_1mm_mask_linear)
-    ibsi_ii_ph_ii_validation(ibsi_features, radiomics.features_)
+    features = radiomics.extract_features(image=res3d_1mm_image_spline, filtered_image=filtered_image, mask=res3d_1mm_mask_linear)
+    ibsi_ii_ph_ii_validation(ibsi_features, features)
 
 
 @pytest.mark.integration
@@ -509,8 +509,8 @@ def test_ibsi_ii_ph_ii_7a(ct_phantom_image, ct_phantom_mask):
                           intensity_range=[-1000, 400],
                           bin_size=25)
 
-    radiomics.extract_features(image=ct_phantom_image, filtered_image=filtered_image, mask=ct_phantom_mask)
-    ibsi_ii_ph_ii_validation(ibsi_features, radiomics.features_)
+    features = radiomics.extract_features(image=ct_phantom_image, filtered_image=filtered_image, mask=ct_phantom_mask)
+    ibsi_ii_ph_ii_validation(ibsi_features, features)
 
 
 @pytest.mark.integration
@@ -531,5 +531,5 @@ def test_ibsi_ii_ph_ii_7b(res3d_1mm_image_spline, res3d_1mm_mask_linear):
                           intensity_range=[-1000, 400],
                           bin_size=25)
 
-    radiomics.extract_features(image=res3d_1mm_image_spline, filtered_image=filtered_image, mask=res3d_1mm_mask_linear)
-    ibsi_ii_ph_ii_validation(ibsi_features, radiomics.features_)
+    features = radiomics.extract_features(image=res3d_1mm_image_spline, filtered_image=filtered_image, mask=res3d_1mm_mask_linear)
+    ibsi_ii_ph_ii_validation(ibsi_features, features)

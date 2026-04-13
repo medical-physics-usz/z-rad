@@ -18,8 +18,10 @@ The typical Python workflow is:
 2. Resample them with ``Preprocessing`` so image and mask share the intended
    voxel spacing.
 3. Apply a configured filter if the experiment requires a filtered representation.
-4. Run ``Radiomics.extract_features()`` and collect ``features_`` for storage
+4. Run ``Radiomics.extract_features()`` and collect the returned feature dictionary for storage
    in a table or downstream analysis pipeline.
+   Use ``include_metadata=True`` if you also want summary fields such as
+   bounding-box size, voxel count, and discretized-bin count in the result.
 5. Keep the exact preprocessing, filtering, and discretization settings next
    to the extracted features so the run remains reproducible.
 
@@ -30,7 +32,7 @@ Minimal Example
 
    from zrad.preprocessing.preprocessing import Preprocessing
    from zrad.filtering import create_filter
-   from zrad.radiomics.radiomics import Radiomics
+   from zrad.radiomics import Radiomics
 
    # image and mask are zrad.image.Image instances loaded by your workflow
 
@@ -59,8 +61,11 @@ Minimal Example
        aggr_method="AVER",
        number_of_bins=32,
    )
-   rad.extract_features(filtered_image, resampled_mask)
-   features = rad.features_
+   features = rad.extract_features(
+       image=resampled_image,
+       mask=resampled_mask,
+       filtered_image=filtered_image,
+   )
 
 Data Model Expectations
 -----------------------

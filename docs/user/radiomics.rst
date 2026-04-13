@@ -110,8 +110,9 @@ The output includes metadata such as:
 * voxel count
 * number of bins used for discretization
 
-At the API level, the extracted values are also exposed through the
-``features_`` dictionary.
+At the API level, ``Radiomics.extract_features(...)`` returns the extracted
+values directly as a dictionary. Summary fields such as bounding-box size,
+voxel count, and discretized-bin count are opt-in via ``include_metadata=True``.
 
 Practical Notes
 ---------------

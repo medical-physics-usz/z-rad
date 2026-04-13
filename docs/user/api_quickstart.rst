@@ -1,10 +1,11 @@
 API Quickstart
 ==============
 
-The Python API mirrors the main GUI workflows through three public classes:
+The Python API mirrors the main GUI workflows through public preprocessing,
+filtering, and radiomics interfaces:
 
 * ``Preprocessing``
-* ``Filtering``
+* concrete filters created via ``create_filter(...)``
 * ``Radiomics``
 
 Recommended Workflow
@@ -16,7 +17,7 @@ The typical Python workflow is:
    geometry.
 2. Resample them with ``Preprocessing`` so image and mask share the intended
    voxel spacing.
-3. Apply ``Filtering`` if the experiment requires a filtered representation.
+3. Apply a configured filter if the experiment requires a filtered representation.
 4. Run ``Radiomics.extract_features()`` and collect ``features_`` for storage
    in a table or downstream analysis pipeline.
 5. Keep the exact preprocessing, filtering, and discretization settings next
@@ -28,7 +29,7 @@ Minimal Example
 .. code-block:: python
 
    from zrad.preprocessing.preprocessing import Preprocessing
-   from zrad.filtering.filtering import Filtering
+   from zrad.filtering import create_filter
    from zrad.radiomics.radiomics import Radiomics
 
    # image and mask are zrad.image.Image instances loaded by your workflow
@@ -44,14 +45,14 @@ Minimal Example
    resampled_image = prep.resample(image, image_type="image")
    resampled_mask = prep.resample(mask, image_type="mask")
 
-   filt = Filtering(
-       "Laplacian of Gaussian",
+   filt = create_filter(
+       filtering_method="Laplacian of Gaussian",
        padding_type="reflect",
        sigma_mm=1.0,
        cutoff=4.0,
        dimensionality="3D",
    )
-   filtered_image = filt.apply_filter(resampled_image)
+   filtered_image = filt.apply(resampled_image)
 
    rad = Radiomics(
        aggr_dim="3D",

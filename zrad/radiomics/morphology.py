@@ -31,22 +31,37 @@ class MorphologicalFeatures:
 
     Parameters
     ----------
-    mask : np.ndarray
-        Binary 3D ROI mask. Nonzero voxels define the segmented structure used
-        for mesh extraction, PCA-based axes, bounding boxes, and spatial
-        autocorrelation measures.
     spacing : sequence of float
         Physical voxel spacing along the three image axes.
-
     """
-    def __init__(self, mask, image_array, spacing):
+    def __init__(self, spacing):
         self.spacing = spacing
-        self.array_mask = mask
-        self.image_array = image_array
         self.unit_vol = self.spacing[0] * self.spacing[1] * self.spacing[2]
 
-    def _calc_mesh(self):
-        mesh_verts, mesh_faces, _, _ = measure.marching_cubes(self.array_mask, level=0.5)
+    def get_params(self):
+        """Return the configuration parameters of this morphology calculator.
+
+        Returns
+        -------
+        dict
+            Parameter names mapped to their configured values.
+        """
+        return {
+            'spacing': self.spacing,
+        }
+
+    def get_feature_names(self):
+        """Return the morphology feature names produced by this calculator.
+
+        Returns
+        -------
+        list of str
+            Feature names defined for the morphology family.
+        """
+        return list(MORPHOLOGY_FEATURE_NAMES)
+
+    def _calc_mesh(self, mask_array):
+        mesh_verts, mesh_faces, _, _ = measure.marching_cubes(mask_array, level=0.5)
         return mesh_verts * self.spacing, mesh_faces
 
     @staticmethod
@@ -60,8 +75,8 @@ class MorphologicalFeatures:
         area_mesh = np.linalg.norm(cross_ba_ca, axis=1).sum() / 2
         return vol_mesh, area_mesh
 
-    def _calc_vol_count(self):
-        return np.sum(self.array_mask) * self.unit_vol
+    def _calc_vol_count(self, mask_array):
+        return np.sum(mask_array) * self.unit_vol
 
     @staticmethod
     def _calc_surf_to_vol_ratio(area_mesh, vol_mesh):
@@ -87,14 +102,14 @@ class MorphologicalFeatures:
     def _calc_asphericity(area_mesh, vol_mesh):
         return (area_mesh ** 3 / (36 * np.pi * vol_mesh ** 2)) ** (1 / 3) - 1
 
-    def _calc_centre_of_shift(self):
+    def _calc_centre_of_shift(self, mask_array, image_array):
         dx, dy, dz = self.spacing
-        morph_voxels = np.argwhere(self.array_mask)
+        morph_voxels = np.argwhere(mask_array)
         morph_voxels_scaled = morph_voxels * [dx, dy, dz]
         com_geom = np.mean(morph_voxels_scaled, axis=0)
 
-        intensity_voxels = np.argwhere(~np.isnan(self.image_array))
-        intensities = self.image_array[intensity_voxels[:, 0], intensity_voxels[:, 1], intensity_voxels[:, 2]]
+        intensity_voxels = np.argwhere(~np.isnan(image_array))
+        intensities = image_array[intensity_voxels[:, 0], intensity_voxels[:, 1], intensity_voxels[:, 2]]
         intensity_voxels_scaled = intensity_voxels * [dx, dy, dz]
         com_gl = np.average(intensity_voxels_scaled, axis=0, weights=intensities)
         return np.linalg.norm(com_geom - com_gl)
@@ -110,8 +125,8 @@ class MorphologicalFeatures:
             return 0
         return np.max(pdist(hull_verts))
 
-    def _calc_pca(self):
-        voxel_indices = np.argwhere(self.array_mask == 1)
+    def _calc_pca(self, mask_array):
+        voxel_indices = np.argwhere(mask_array == 1)
         scaled_voxel_indices = voxel_indices.astype(np.float64)
         scaled_voxel_indices *= self.spacing
         return _pca_eigenvalues(scaled_voxel_indices)
@@ -136,9 +151,9 @@ class MorphologicalFeatures:
             raise DataStructureError(f"PCA eigenvalue is zero. ")
         return np.sqrt(pca_eigenvalues[2] / pca_eigenvalues[0])
 
-    def _calc_vol_and_area_densities_aabb(self, vol_mesh, area_mesh):
+    def _calc_vol_and_area_densities_aabb(self, mask_array, vol_mesh, area_mesh):
         x_dim, y_dim, z_dim = self.spacing
-        x_coords, y_coords, z_coords = np.where(self.array_mask == 1)
+        x_coords, y_coords, z_coords = np.where(mask_array == 1)
         x_min, x_max = x_coords.min(), x_coords.max()
         y_min, y_max = y_coords.min(), y_coords.max()
         z_min, z_max = z_coords.min(), z_coords.max()
@@ -185,32 +200,51 @@ class MorphologicalFeatures:
     def _calc_area_density_ch(area_mesh, conv_hull):
         return area_mesh / conv_hull.area
 
-    def _calc_integrated_intensity(self, vol_mesh):
-        return np.nanmean(self.image_array) * vol_mesh
+    @staticmethod
+    def _calc_integrated_intensity(image_array, vol_mesh):
+        return np.nanmean(image_array) * vol_mesh
 
-    def calculate_morphology_features(self):
-        mesh_verts, mesh_faces = self._calc_mesh()
+    def calculate_features(self, mask_array, image_array):
+        """Calculate morphology features for a mask and its paired intensity image.
+
+        Parameters
+        ----------
+        mask_array : numpy.ndarray
+            Binary ROI mask array.
+        image_array : numpy.ndarray
+            Intensity image aligned with ``mask_array`` where voxels outside the
+            ROI can be represented by ``NaN``.
+
+        Returns
+        -------
+        dict
+            Mapping of morphology feature names to calculated values.
+        """
+        mask_array = np.asarray(mask_array)
+        image_array = np.asarray(image_array)
+
+        mesh_verts, mesh_faces = self._calc_mesh(mask_array)
         vol_mesh, area_mesh = self._calc_vol_and_area_mesh(mesh_verts, mesh_faces)
-        vol_count = self._calc_vol_count()
+        vol_count = self._calc_vol_count(mask_array)
         surf_to_vol_ratio = self._calc_surf_to_vol_ratio(area_mesh, vol_mesh)
         compactness_1 = self._calc_compactness_1(vol_mesh, area_mesh)
         compactness_2 = self._calc_compactness_2(vol_mesh, area_mesh)
         spherical_disproportion = self._calc_spherical_disproportion(area_mesh, vol_mesh)
         sphericity = self._calc_sphericity(vol_mesh, area_mesh)
         asphericity = self._calc_asphericity(area_mesh, vol_mesh)
-        centre_of_shift = self._calc_centre_of_shift()
+        centre_of_shift = self._calc_centre_of_shift(mask_array, image_array)
         conv_hull = self._calc_convex_hull(mesh_verts)
         max_diameter = self._calc_max_diameter(conv_hull, mesh_verts)
-        pca_eigenvalues = self._calc_pca()
+        pca_eigenvalues = self._calc_pca(mask_array)
         major_axis_len, minor_axis_len, least_axis_len = self._calc_major_minor_least_axes_len(pca_eigenvalues)
         elongation = self._calc_elongation(pca_eigenvalues)
         flatness = self._calc_flatness(pca_eigenvalues)
-        vol_density_aabb, area_density_aabb = self._calc_vol_and_area_densities_aabb(vol_mesh, area_mesh)
+        vol_density_aabb, area_density_aabb = self._calc_vol_and_area_densities_aabb(mask_array, vol_mesh, area_mesh)
         vol_density_aee = self._calc_vol_density_aee(vol_mesh, major_axis_len, minor_axis_len, least_axis_len)
         area_density_aee = self._calc_area_density_aee(area_mesh, major_axis_len, minor_axis_len, least_axis_len)
         vol_density_ch = self._calc_vol_density_ch(vol_mesh, conv_hull)
         area_density_ch = self._calc_area_density_ch(area_mesh, conv_hull)
-        integrated_intensity = self._calc_integrated_intensity(vol_mesh)
+        integrated_intensity = self._calc_integrated_intensity(image_array, vol_mesh)
 
         values = [
             vol_mesh,
@@ -242,22 +276,42 @@ class MorphologicalFeatures:
 class MorphologyCorrelationFeatures:
     """Spatial autocorrelation descriptors for a 3D region of interest."""
 
-    def __init__(self, mask, image_array, spacing):
-        self.array_mask = mask
-        self.image_array = image_array
+    def __init__(self, spacing):
         self.spacing = spacing
 
-    def _valid_intensity_data(self):
-        indices = np.argwhere(self.array_mask)
+    def get_params(self):
+        """Return the configuration parameters of this morphology correlation calculator.
+
+        Returns
+        -------
+        dict
+            Parameter names mapped to their configured values.
+        """
+        return {
+            'spacing': self.spacing,
+        }
+
+    def get_feature_names(self):
+        """Return the morphology correlation feature names produced by this calculator.
+
+        Returns
+        -------
+        list of str
+            Feature names defined for the morphology correlation family.
+        """
+        return list(MORPHOLOGY_CORRELATION_FEATURE_NAMES)
+
+    def _valid_intensity_data(self, mask_array, image_array):
+        indices = np.argwhere(mask_array)
         scaled_indices = indices * self.spacing
-        intensities = self.image_array[indices[:, 0], indices[:, 1], indices[:, 2]]
+        intensities = image_array[indices[:, 0], indices[:, 1], indices[:, 2]]
         valid = ~np.isnan(intensities)
         if np.sum(valid) < 2:
             return None, None
         return scaled_indices[valid], intensities[valid]
 
-    def _calc_moran_i(self):
-        scaled_indices, intensities = self._valid_intensity_data()
+    def _calc_moran_i(self, mask_array, image_array):
+        scaled_indices, intensities = self._valid_intensity_data(mask_array, image_array)
         if scaled_indices is None:
             return np.nan
 
@@ -278,8 +332,8 @@ class MorphologyCorrelationFeatures:
             raise DataStructureError(f"There determinator is zero in Moran I.")
         return (n / s0) * (numerator / denominator)
 
-    def _calc_geary_c(self):
-        scaled_indices, intensities = self._valid_intensity_data()
+    def _calc_geary_c(self, mask_array, image_array):
+        scaled_indices, intensities = self._valid_intensity_data(mask_array, image_array)
         if scaled_indices is None:
             return np.nan
 
@@ -300,10 +354,27 @@ class MorphologyCorrelationFeatures:
             raise DataStructureError(f"There determinator is zero in Geary C.")
         return ((n - 1) / (2 * s0)) * (numerator / denominator)
 
-    def calculate_morphology_correlation_features(self):
+    def calculate_features(self, mask_array, image_array):
+        """Calculate morphology correlation features for a mask and intensity image.
+
+        Parameters
+        ----------
+        mask_array : numpy.ndarray
+            Binary ROI mask array.
+        image_array : numpy.ndarray
+            Intensity image aligned with ``mask_array`` where voxels outside the
+            ROI can be represented by ``NaN``.
+
+        Returns
+        -------
+        dict
+            Mapping of morphology correlation feature names to calculated values.
+        """
+        mask_array = np.asarray(mask_array)
+        image_array = np.asarray(image_array)
         return {
-            'morph_moran_i': self._calc_moran_i(),
-            'morph_geary_c': self._calc_geary_c(),
+            'morph_moran_i': self._calc_moran_i(mask_array, image_array),
+            'morph_geary_c': self._calc_geary_c(mask_array, image_array),
         }
 
 
@@ -360,11 +431,12 @@ class MorphologyFeatureGroup(BaseFeatureGroup):
     def calculate(self, context, prepared_data):
         masks = prepared_data.require_base_masks()
         morphology = MorphologicalFeatures(
-            masks.morphological_mask.array,
-            masks.intensity_mask.array,
             masks.morphological_mask.spacing[::-1],
         )
-        return morphology.calculate_morphology_features()
+        return morphology.calculate_features(
+            masks.morphological_mask.array,
+            masks.intensity_mask.array,
+        )
 
 
 class MorphologyCorrelationFeatureGroup(BaseFeatureGroup):
@@ -386,8 +458,9 @@ class MorphologyCorrelationFeatureGroup(BaseFeatureGroup):
     def calculate(self, context, prepared_data):
         masks = prepared_data.require_base_masks()
         morphology = MorphologyCorrelationFeatures(
-            masks.morphological_mask.array,
-            masks.intensity_mask.array,
             masks.morphological_mask.spacing[::-1],
         )
-        return morphology.calculate_morphology_correlation_features()
+        return morphology.calculate_features(
+            masks.morphological_mask.array,
+            masks.intensity_mask.array,
+        )

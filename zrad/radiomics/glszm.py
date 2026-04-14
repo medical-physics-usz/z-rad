@@ -3,7 +3,7 @@ import numpy as np
 from ..exceptions import DataStructureError
 from .base import BaseFeatureGroup
 from .texture_aggregation import format_texture_feature_names
-from .texture_base import ZoneMatrixFeatureBase, extract_texture_values
+from .texture_base import TEXTURE_ATTRIBUTE_NAMES, ZoneMatrixFeatureBase
 
 
 GLSZM_FEATURE_NAMES = (
@@ -27,24 +27,91 @@ GLSZM_FEATURE_NAMES = (
 
 
 class GLSZM(ZoneMatrixFeatureBase):
-    def calc_2d_glszm_features(self):
+    """Gray level size zone matrix features."""
+
+    def __init__(self, aggr_dim, slice_weight=False, slice_median=False):
+        super().__init__(slice_weight=slice_weight, slice_median=slice_median)
+        self.aggr_dim = aggr_dim
+
+    def get_params(self):
+        """Return the configuration parameters of this GLSZM calculator.
+
+        Returns
+        -------
+        dict
+            Parameter names mapped to their configured values.
+        """
+        return {
+            'aggr_dim': self.aggr_dim,
+            'slice_weight': self.slice_weight,
+            'slice_median': self.slice_median,
+        }
+
+    def get_feature_names(self):
+        """Return the GLSZM feature names produced by this calculator.
+
+        Returns
+        -------
+        list of str
+            Feature names defined for the GLSZM family.
+        """
+        return list(GLSZM_FEATURE_NAMES)
+
+    @staticmethod
+    def _map_feature_names(values):
+        return dict(zip(GLSZM_FEATURE_NAMES, [values[name] for name in TEXTURE_ATTRIBUTE_NAMES]))
+
+    def _calc_2d_features(self, matrices, roi_voxel_counts, total_roi_voxels):
+        feature_dicts = []
         weights = []
-        for i, matrix in enumerate(self.glszm_2D_matrices):
-            weight = 1
+        for slice_index, matrix in enumerate(matrices):
             if self.slice_weight:
-                if self.tot_no_of_roi_voxels == 0:
-                    raise DataStructureError(" Denominator is zero in calc_2d_glszm_features.")
-                weight = self.no_of_roi_voxels[i] / self.tot_no_of_roi_voxels
-            weights.append(weight)
-            self._append_feature_values(self._matrix_feature_values(matrix, self.no_of_roi_voxels[i]))
-        self._aggregate_feature_lists(weights)
+                if total_roi_voxels == 0:
+                    raise DataStructureError(' Denominator is zero in calc_2d_glszm_features.')
+                weights.append(roi_voxel_counts[slice_index] / total_roi_voxels)
+            else:
+                weights.append(1.0)
+            feature_dicts.append(self._matrix_feature_values(matrix, roi_voxel_counts[slice_index]))
+        return self._aggregate_feature_dicts(feature_dicts, None if self.slice_median else weights)
 
-    def calc_2_5d_glszm_features(self):
-        matrix = np.sum(self.glszm_2D_matrices, axis=0)
-        self._set_feature_values(self._matrix_feature_values(matrix, np.sum(self.no_of_roi_voxels)))
+    def _calc_2_5d_features(self, matrices, roi_voxel_counts):
+        matrix = np.sum(matrices, axis=0)
+        return self._matrix_feature_values(matrix, np.sum(roi_voxel_counts))
 
-    def calc_3d_glszm_features(self):
-        self._set_feature_values(self._matrix_feature_values(self.glszm_3D_matrix, self.tot_no_of_roi_voxels))
+    def _calc_3d_features(self, matrix, total_roi_voxels):
+        return self._matrix_feature_values(matrix, total_roi_voxels)
+
+    def calculate_features(self, discretized_image_array, mask_array):
+        """Calculate GLSZM features for prepared discretized intensities and a morphology mask.
+
+        Parameters
+        ----------
+        discretized_image_array : numpy.ndarray
+            Prepared discretized intensity array with voxels outside the ROI set
+            to ``NaN``.
+        mask_array : numpy.ndarray
+            Morphological ROI mask aligned with ``discretized_image_array``.
+
+        Returns
+        -------
+        dict
+            Mapping of GLSZM feature names to calculated values.
+        """
+        discretized_image_array = np.asarray(discretized_image_array)
+        mask_array = np.asarray(mask_array)
+        lvl = int(np.nanmax(discretized_image_array) + 1)
+
+        if self.aggr_dim == '3D':
+            glszm_matrix, _, total_roi_voxels = self._calc_glsz_gldz_3d_matrices(discretized_image_array, mask_array, lvl)
+            return self._map_feature_names(self._calc_3d_features(glszm_matrix, total_roi_voxels))
+
+        glszm_matrices, _, roi_voxel_counts = self._calc_glsz_gldz_2d_matrices(discretized_image_array, mask_array, lvl)
+        total_roi_voxels = np.sum(roi_voxel_counts)
+        if self.aggr_dim == '2.5D':
+            values = self._calc_2_5d_features(glszm_matrices, roi_voxel_counts)
+        else:
+            values = self._calc_2d_features(glszm_matrices, roi_voxel_counts, total_roi_voxels)
+        return self._map_feature_names(values)
 
 
 class GLSZMFeatureGroup(BaseFeatureGroup):
@@ -65,20 +132,15 @@ class GLSZMFeatureGroup(BaseFeatureGroup):
 
     def calculate(self, context, prepared_data):
         glszm = GLSZM(
-            prepared_data.require_discretized_intensity_image().array.T,
+            aggr_dim=context.aggr_dim,
             slice_weight=context.slice_weighting,
             slice_median=context.slice_median,
         )
-        morph_mask = prepared_data.require_analysis_masks().morphological_mask.array.T
-
-        if context.aggr_dim == '3D':
-            glszm.calc_glsz_gldz_3d_matrices(morph_mask)
-            glszm.calc_3d_glszm_features()
-        else:
-            glszm.calc_glsz_gldz_2d_matrices(morph_mask)
-            if context.aggr_dim == '2.5D':
-                glszm.calc_2_5d_glszm_features()
-            else:
-                glszm.calc_2d_glszm_features()
-
-        return dict(zip(self.output_names(context), extract_texture_values(glszm)))
+        feature_values = glszm.calculate_features(
+            prepared_data.require_discretized_intensity_image().array.T,
+            prepared_data.require_analysis_masks().morphological_mask.array.T,
+        )
+        return {
+            output_name: feature_values[base_name]
+            for output_name, base_name in zip(self.output_names(context), GLSZM_FEATURE_NAMES)
+        }

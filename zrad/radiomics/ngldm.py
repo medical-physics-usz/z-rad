@@ -4,7 +4,7 @@ from scipy.ndimage import convolve
 from ..exceptions import DataStructureError
 from .base import BaseFeatureGroup
 from .texture_aggregation import format_texture_feature_names
-from .texture_base import TextureFeatureBase, extract_ngldm_values
+from .texture_base import NGLDM_ATTRIBUTE_NAMES, TextureFeatureBase
 
 
 NGLDM_FEATURE_NAMES = (
@@ -29,27 +29,63 @@ NGLDM_FEATURE_NAMES = (
 
 
 class NGLDM(TextureFeatureBase):
-    def calc_ngld_3d_matrix(self):
-        ngldm = np.zeros((self.lvl, 27), dtype=np.int64)
-        valid_mask = ~np.isnan(self.image)
+    """Neighbouring gray level dependence matrix features."""
+
+    def __init__(self, aggr_dim, slice_weight=False, slice_median=False):
+        super().__init__(slice_weight=slice_weight, slice_median=slice_median)
+        self.aggr_dim = aggr_dim
+
+    def get_params(self):
+        """Return the configuration parameters of this NGLDM calculator.
+
+        Returns
+        -------
+        dict
+            Parameter names mapped to their configured values.
+        """
+        return {
+            'aggr_dim': self.aggr_dim,
+            'slice_weight': self.slice_weight,
+            'slice_median': self.slice_median,
+        }
+
+    def get_feature_names(self):
+        """Return the NGLDM feature names produced by this calculator.
+
+        Returns
+        -------
+        list of str
+            Feature names defined for the NGLDM family.
+        """
+        return list(NGLDM_FEATURE_NAMES)
+
+    @staticmethod
+    def _map_feature_names(values):
+        return dict(zip(NGLDM_FEATURE_NAMES, [values[name] for name in NGLDM_ATTRIBUTE_NAMES]))
+
+    @staticmethod
+    def _calc_3d_matrix(image, lvl):
+        ngldm = np.zeros((lvl, 27), dtype=np.int64)
+        valid_mask = ~np.isnan(image)
         kernel = np.ones((3, 3, 3), dtype=int)
         kernel[1, 1, 1] = 0
 
-        for lvl in range(self.lvl):
-            matrix = ((self.image == lvl) & valid_mask).astype(np.int64)
+        for gray_level in range(lvl):
+            matrix = ((image == gray_level) & valid_mask).astype(np.int64)
             if np.sum(matrix) == 0:
                 continue
             neighbor_counts = convolve(matrix, kernel, mode='constant', cval=0)
             counts = neighbor_counts[matrix.astype(bool)]
             if counts.size:
                 bincounts = np.bincount(counts, minlength=27)
-                ngldm[lvl, :len(bincounts)] += bincounts
+                ngldm[gray_level, :len(bincounts)] += bincounts
 
-        self.ngldm_3D_matrix = ngldm
+        return ngldm
 
-    def calc_ngld_2d_matrices(self):
-        self.ngldm_2d_matrices = []
-        self.no_of_roi_voxels = []
+    @staticmethod
+    def _calc_2d_matrices(image, lvl):
+        ngldm_2d_matrices = []
+        roi_voxel_counts = []
         offsets = [
             (-1, -1), (-1, 0), (-1, 1),
             (0, -1), (0, 1),
@@ -68,46 +104,76 @@ class NGLDM(TextureFeatureBase):
                 ]
                 neighbor_count += neighbor == center
 
-            ngldm = np.zeros((self.lvl, 9), dtype=int)
+            ngldm = np.zeros((lvl, 9), dtype=np.int64)
             valid = ~np.isnan(center)
             intensities = center[valid].astype(int)
             counts = neighbor_count[valid]
             np.add.at(ngldm, (intensities, counts), 1)
             return ngldm
 
-        for z_idx in range(self.image.shape[2]):
-            slice_ = self.image[:, :, z_idx]
-            if np.any(~np.isnan(slice_)):
-                self.no_of_roi_voxels.append(np.count_nonzero(~np.isnan(slice_)))
-                self.ngldm_2d_matrices.append(calc_ngldm_slice(slice_))
+        for z_idx in range(image.shape[2]):
+            slice_ = image[:, :, z_idx]
+            roi_voxel_count = int(np.count_nonzero(~np.isnan(slice_)))
+            if roi_voxel_count == 0:
+                continue
+            roi_voxel_counts.append(roi_voxel_count)
+            ngldm_2d_matrices.append(calc_ngldm_slice(slice_))
 
-        self.ngldm_2d_matrices = np.array(self.ngldm_2d_matrices, dtype=np.int64)
+        return np.array(ngldm_2d_matrices, dtype=np.int64), np.array(roi_voxel_counts, dtype=float)
 
-    def calc_2d_ngldm_features(self):
+    def _calc_2d_features(self, matrices, roi_voxel_counts, total_roi_voxels):
+        feature_dicts = []
         weights = []
-        for i, matrix in enumerate(self.ngldm_2d_matrices):
-            weight = 1
+        for slice_index, matrix in enumerate(matrices):
             if self.slice_weight:
-                if self.tot_no_of_roi_voxels == 0:
-                    raise DataStructureError(" Denominator is zero in calc_2d_ngldm_features.")
-                weight = self.no_of_roi_voxels[i] / self.tot_no_of_roi_voxels
-            weights.append(weight)
-            self._append_feature_values(
-                self._matrix_feature_values(matrix, self.no_of_roi_voxels[i], include_energy=True)
+                if total_roi_voxels == 0:
+                    raise DataStructureError(' Denominator is zero in calc_2d_ngldm_features.')
+                weights.append(roi_voxel_counts[slice_index] / total_roi_voxels)
+            else:
+                weights.append(1.0)
+            feature_dicts.append(
+                self._matrix_feature_values(matrix, roi_voxel_counts[slice_index], include_energy=True)
             )
-
-        self._aggregate_feature_lists(weights, include_energy=True)
-
-    def calc_2_5d_ngldm_features(self):
-        matrix = np.sum(self.ngldm_2d_matrices, axis=0)
-        self._set_feature_values(
-            self._matrix_feature_values(matrix, np.sum(self.no_of_roi_voxels), include_energy=True)
+        return self._aggregate_feature_dicts(
+            feature_dicts,
+            None if self.slice_median else weights,
+            include_energy=True,
         )
 
-    def calc_3d_ngldm_features(self):
-        self._set_feature_values(
-            self._matrix_feature_values(self.ngldm_3D_matrix, self.tot_no_of_roi_voxels, include_energy=True)
-        )
+    def _calc_2_5d_features(self, matrices, roi_voxel_counts):
+        matrix = np.sum(matrices, axis=0)
+        return self._matrix_feature_values(matrix, np.sum(roi_voxel_counts), include_energy=True)
+
+    def _calc_3d_features(self, matrix, total_roi_voxels):
+        return self._matrix_feature_values(matrix, total_roi_voxels, include_energy=True)
+
+    def calculate_features(self, discretized_image_array):
+        """Calculate NGLDM features for a prepared discretized intensity array.
+
+        Parameters
+        ----------
+        discretized_image_array : numpy.ndarray
+            Prepared discretized intensity array with voxels outside the ROI set
+            to ``NaN``.
+
+        Returns
+        -------
+        dict
+            Mapping of NGLDM feature names to calculated values.
+        """
+        discretized_image_array = np.asarray(discretized_image_array)
+        lvl = int(np.nanmax(discretized_image_array) + 1)
+        total_roi_voxels = int(np.sum(~np.isnan(discretized_image_array)))
+
+        if self.aggr_dim == '3D':
+            values = self._calc_3d_features(self._calc_3d_matrix(discretized_image_array, lvl), total_roi_voxels)
+        else:
+            matrices, roi_voxel_counts = self._calc_2d_matrices(discretized_image_array, lvl)
+            if self.aggr_dim == '2.5D':
+                values = self._calc_2_5d_features(matrices, roi_voxel_counts)
+            else:
+                values = self._calc_2d_features(matrices, roi_voxel_counts, total_roi_voxels)
+        return self._map_feature_names(values)
 
 
 class NGLDMFeatureGroup(BaseFeatureGroup):
@@ -128,18 +194,14 @@ class NGLDMFeatureGroup(BaseFeatureGroup):
 
     def calculate(self, context, prepared_data):
         ngldm = NGLDM(
-            prepared_data.require_discretized_intensity_image().array.T,
+            aggr_dim=context.aggr_dim,
             slice_weight=context.slice_weighting,
             slice_median=context.slice_median,
         )
-        if context.aggr_dim == '3D':
-            ngldm.calc_ngld_3d_matrix()
-            ngldm.calc_3d_ngldm_features()
-        elif context.aggr_dim == '2.5D':
-            ngldm.calc_ngld_2d_matrices()
-            ngldm.calc_2_5d_ngldm_features()
-        else:
-            ngldm.calc_ngld_2d_matrices()
-            ngldm.calc_2d_ngldm_features()
-
-        return dict(zip(self.output_names(context), extract_ngldm_values(ngldm)))
+        feature_values = ngldm.calculate_features(
+            prepared_data.require_discretized_intensity_image().array.T
+        )
+        return {
+            output_name: feature_values[base_name]
+            for output_name, base_name in zip(self.output_names(context), NGLDM_FEATURE_NAMES)
+        }

@@ -3,7 +3,7 @@ import numpy as np
 from ..exceptions import DataStructureError
 from .base import BaseFeatureGroup
 from .texture_aggregation import format_cm_rlm_feature_names
-from .texture_base import TextureFeatureBase, extract_texture_values
+from .texture_base import TEXTURE_ATTRIBUTE_NAMES, TextureFeatureBase
 
 
 GLRLM_FEATURE_NAMES = (
@@ -27,7 +27,44 @@ GLRLM_FEATURE_NAMES = (
 
 
 class GLRLM(TextureFeatureBase):
-    def rle_1d(self, arr, lvl, rlm):
+    """Gray level run length matrix features."""
+
+    def __init__(self, aggr_dim, aggr_method, slice_weight=False, slice_median=False):
+        super().__init__(slice_weight=slice_weight, slice_median=slice_median)
+        self.aggr_dim = aggr_dim
+        self.aggr_method = aggr_method
+
+    def get_params(self):
+        """Return the configuration parameters of this GLRLM calculator.
+
+        Returns
+        -------
+        dict
+            Parameter names mapped to their configured values.
+        """
+        return {
+            'aggr_dim': self.aggr_dim,
+            'aggr_method': self.aggr_method,
+            'slice_weight': self.slice_weight,
+            'slice_median': self.slice_median,
+        }
+
+    def get_feature_names(self):
+        """Return the GLRLM feature names produced by this calculator.
+
+        Returns
+        -------
+        list of str
+            Feature names defined for the GLRLM family.
+        """
+        return list(GLRLM_FEATURE_NAMES)
+
+    @staticmethod
+    def _map_feature_names(values):
+        return dict(zip(GLRLM_FEATURE_NAMES, [values[name] for name in TEXTURE_ATTRIBUTE_NAMES]))
+
+    @staticmethod
+    def _rle_1d(arr, lvl, rlm):
         valid_idx = np.where(~np.isnan(arr))[0]
         if valid_idx.size == 0:
             return
@@ -36,13 +73,12 @@ class GLRLM(TextureFeatureBase):
 
         for seg in segments:
             seg_vals = arr[seg]
-            n = seg_vals.size
-            if n == 0:
+            if seg_vals.size == 0:
                 continue
             diff = np.diff(seg_vals)
             run_breaks = np.where(diff != 0)[0] + 1
             run_starts = np.concatenate(([0], run_breaks))
-            run_ends = np.concatenate((run_breaks, [n]))
+            run_ends = np.concatenate((run_breaks, [seg_vals.size]))
             run_lengths = run_ends - run_starts
 
             for start, run_len in zip(run_starts, run_lengths):
@@ -50,56 +86,64 @@ class GLRLM(TextureFeatureBase):
                     gray = int(seg_vals[start])
                     rlm[gray, run_len - 1] += 1
 
-    def process_horizontal(self, z_slice, lvl):
+    @classmethod
+    def _process_horizontal(cls, z_slice, lvl):
         rows, cols = z_slice.shape
-        rlm = np.zeros((lvl, max(rows, cols)), dtype=int)
+        rlm = np.zeros((lvl, max(rows, cols)), dtype=np.int64)
         for i in range(rows):
-            self.rle_1d(z_slice[i, :], lvl, rlm)
+            cls._rle_1d(z_slice[i, :], lvl, rlm)
         return rlm
 
-    def process_vertical(self, z_slice, lvl):
+    @classmethod
+    def _process_vertical(cls, z_slice, lvl):
         rows, cols = z_slice.shape
-        rlm = np.zeros((lvl, max(rows, cols)), dtype=int)
+        rlm = np.zeros((lvl, max(rows, cols)), dtype=np.int64)
         for j in range(cols):
-            self.rle_1d(z_slice[:, j], lvl, rlm)
+            cls._rle_1d(z_slice[:, j], lvl, rlm)
         return rlm
 
-    def process_diagonal(self, z_slice, lvl):
+    @classmethod
+    def _process_diagonal(cls, z_slice, lvl):
         rows, cols = z_slice.shape
-        rlm = np.zeros((lvl, max(rows, cols)), dtype=int)
+        rlm = np.zeros((lvl, max(rows, cols)), dtype=np.int64)
         for offset in range(-rows + 1, cols):
-            self.rle_1d(np.diagonal(z_slice, offset=offset), lvl, rlm)
+            cls._rle_1d(np.diagonal(z_slice, offset=offset), lvl, rlm)
         return rlm
 
-    def process_antidiagonal(self, z_slice, lvl):
+    @classmethod
+    def _process_antidiagonal(cls, z_slice, lvl):
         rows, cols = z_slice.shape
-        rlm = np.zeros((lvl, max(rows, cols)), dtype=int)
+        rlm = np.zeros((lvl, max(rows, cols)), dtype=np.int64)
         flipped = np.fliplr(z_slice)
         for offset in range(-rows + 1, cols):
-            self.rle_1d(np.diagonal(flipped, offset=offset), lvl, rlm)
+            cls._rle_1d(np.diagonal(flipped, offset=offset), lvl, rlm)
         return rlm
 
-    def calc_glrl_2d_matrices(self):
-        direction_funcs = [
-            self.process_horizontal,
-            self.process_vertical,
-            self.process_diagonal,
-            self.process_antidiagonal,
-        ]
-
+    @classmethod
+    def _calc_2d_matrices(cls, image, lvl):
+        direction_funcs = (
+            cls._process_horizontal,
+            cls._process_vertical,
+            cls._process_diagonal,
+            cls._process_antidiagonal,
+        )
+        range_z = np.unique(np.where(~np.isnan(image))[2])
         glrlm_2d_matrices = []
-        no_of_roi_voxels = []
-        for z_slice_index in self.range_z:
-            z_slice = self.image[:, :, z_slice_index]
-            no_of_roi_voxels.append(np.count_nonzero(~np.isnan(z_slice)))
-            slice_rlms = [func(z_slice, self.lvl) for func in direction_funcs]
-            glrlm_2d_matrices.append(slice_rlms)
+        roi_voxel_counts = []
 
-        self.glrlm_2D_matrices = np.array(glrlm_2d_matrices, dtype=np.int64)
-        self.no_of_roi_voxels = no_of_roi_voxels
+        for z_slice_index in range_z:
+            z_slice = image[:, :, z_slice_index]
+            roi_voxel_count = int(np.count_nonzero(~np.isnan(z_slice)))
+            if roi_voxel_count == 0:
+                continue
+            roi_voxel_counts.append(roi_voxel_count)
+            glrlm_2d_matrices.append([func(z_slice, lvl) for func in direction_funcs])
 
-    def calc_glrl_3d_matrix(self):
-        x, y, z = self.image.shape
+        return np.array(glrlm_2d_matrices, dtype=np.int64), np.array(roi_voxel_counts, dtype=float)
+
+    @staticmethod
+    def _calc_3d_matrices(image, lvl):
+        x, y, z = image.shape
         directions = np.array([
             (0, 0, 1), (0, 1, -1), (0, 1, 0),
             (0, 1, 1), (1, -1, -1), (1, -1, 0),
@@ -109,11 +153,11 @@ class GLRLM(TextureFeatureBase):
         ])
 
         max_dim = max(x, y, z)
-        self.glrlm_3D_matrix = np.zeros((len(directions), self.lvl, max_dim), dtype=np.int64)
-        nan_mask = np.isnan(self.image)
+        glrlm_3d_matrix = np.zeros((len(directions), lvl, max_dim), dtype=np.int64)
+        nan_mask = np.isnan(image)
 
         for d_idx, (dx, dy, dz) in enumerate(directions):
-            rlm = np.zeros((self.lvl, max_dim), dtype=np.int64)
+            rlm = np.zeros((lvl, max_dim), dtype=np.int64)
             visited = np.zeros((x, y, z), dtype=bool)
             i_idx, j_idx, k_idx = np.where(~nan_mask)
 
@@ -121,13 +165,13 @@ class GLRLM(TextureFeatureBase):
                 if visited[i, j, k]:
                     continue
 
-                gr_lvl = int(self.image[i, j, k])
+                gr_lvl = int(image[i, j, k])
                 run_len = 1
                 visited[i, j, k] = True
                 new_i, new_j, new_k = i + dx, j + dy, k + dz
                 while (
                     0 <= new_i < x and 0 <= new_j < y and 0 <= new_k < z
-                    and self.image[new_i, new_j, new_k] == gr_lvl
+                    and image[new_i, new_j, new_k] == gr_lvl
                     and not visited[new_i, new_j, new_k]
                     and not nan_mask[new_i, new_j, new_k]
                 ):
@@ -139,82 +183,116 @@ class GLRLM(TextureFeatureBase):
 
                 rlm[gr_lvl, run_len - 1] += 1
 
-            self.glrlm_3D_matrix[d_idx] = rlm
+            glrlm_3d_matrix[d_idx] = rlm
 
-        self.glrlm_3D_matrix = self.glrlm_3D_matrix.astype(np.int64)
+        return glrlm_3d_matrix
 
-    def calc_2d_averaged_glrlm_features(self):
+    def _calc_2d_averaged_features(self, matrices, roi_voxel_counts, total_roi_voxels):
+        feature_dicts = []
         weights = []
-        for i in range(self.glrlm_2D_matrices.shape[0]):
-            for matrix in self.glrlm_2D_matrices[i]:
-                weight = 1
+        for slice_index in range(matrices.shape[0]):
+            for matrix in matrices[slice_index]:
                 if self.slice_weight:
-                    if self.tot_no_of_roi_voxels == 0:
-                        raise DataStructureError(" Denominator is zero in calc_2d_averaged_glrlm_features.")
-                    weight = self.no_of_roi_voxels[i] / self.tot_no_of_roi_voxels
-                weights.append(weight)
-                self._append_feature_values(self._matrix_feature_values(matrix, self.no_of_roi_voxels[i]))
+                    if total_roi_voxels == 0:
+                        raise DataStructureError(' Denominator is zero in calc_2d_averaged_glrlm_features.')
+                    weights.append(roi_voxel_counts[slice_index] / total_roi_voxels)
+                else:
+                    weights.append(1.0)
+                feature_dicts.append(self._matrix_feature_values(matrix, roi_voxel_counts[slice_index]))
+        return self._aggregate_feature_dicts(feature_dicts, None if self.slice_median else weights)
 
-        self._aggregate_feature_lists(weights)
-
-    def calc_2d_slice_merged_glrlm_features(self):
-        number_of_directions = self.glrlm_2D_matrices.shape[1]
+    def _calc_2d_slice_merged_features(self, matrices, roi_voxel_counts, total_roi_voxels):
+        number_of_directions = matrices.shape[1]
         if number_of_directions == 0:
-            raise DataStructureError(" Denominator is zero in calc_2d_slice_merged_glrlm_features. ")
-
-        averaged_matrices = np.sum(self.glrlm_2D_matrices, axis=1)
+            raise DataStructureError(' Denominator is zero in calc_2d_slice_merged_glrlm_features.')
+        averaged_matrices = np.sum(matrices, axis=1)
+        feature_dicts = []
         weights = []
-        for i, matrix in enumerate(averaged_matrices):
-            weight = 1
+        for slice_index, matrix in enumerate(averaged_matrices):
             if self.slice_weight:
-                if self.tot_no_of_roi_voxels == 0:
-                    raise DataStructureError(" Denominator is zero in calc_2d_slice_merged_glrlm_features. ")
-                weight = self.no_of_roi_voxels[i] / self.tot_no_of_roi_voxels
-            weights.append(weight)
-            self._append_feature_values(
-                self._matrix_feature_values(matrix, self.no_of_roi_voxels[i] * number_of_directions)
+                if total_roi_voxels == 0:
+                    raise DataStructureError(' Denominator is zero in calc_2d_slice_merged_glrlm_features.')
+                weights.append(roi_voxel_counts[slice_index] / total_roi_voxels)
+            else:
+                weights.append(1.0)
+            feature_dicts.append(
+                self._matrix_feature_values(matrix, roi_voxel_counts[slice_index] * number_of_directions)
             )
+        return self._aggregate_feature_dicts(feature_dicts, None if self.slice_median else weights)
 
-        self._aggregate_feature_lists(weights)
-
-    def calc_2_5d_merged_glrlm_features(self):
-        number_of_directions = self.glrlm_2D_matrices.shape[1]
+    def _calc_2_5d_merged_features(self, matrices, roi_voxel_counts):
+        number_of_directions = matrices.shape[1]
         if number_of_directions == 0:
-            raise DataStructureError(" Denominator is zero in calc_2_5d_merged_glrlm_features.")
-        matrix = np.sum(np.sum(self.glrlm_2D_matrices, axis=1), axis=0)
-        self._set_feature_values(
-            self._matrix_feature_values(matrix, np.sum(self.no_of_roi_voxels) * number_of_directions)
-        )
+            raise DataStructureError(' Denominator is zero in calc_2_5d_merged_glrlm_features.')
+        matrix = np.sum(np.sum(matrices, axis=1), axis=0)
+        return self._matrix_feature_values(matrix, np.sum(roi_voxel_counts) * number_of_directions)
 
-    def calc_2_5d_direction_merged_glrlm_features(self):
-        number_of_directions = self.glrlm_2D_matrices.shape[1]
+    def _calc_2_5d_direction_merged_features(self, matrices, roi_voxel_counts):
+        number_of_directions = matrices.shape[1]
         if number_of_directions == 0:
-            raise DataStructureError(" Denominator is zero in calc_2_5d_direction_merged_glrlm_features.")
-        averaged_glrlm = np.sum(self.glrlm_2D_matrices, axis=0)
+            raise DataStructureError(' Denominator is zero in calc_2_5d_direction_merged_glrlm_features.')
+        averaged_glrlm = np.sum(matrices, axis=0)
         values = [
-            self._matrix_feature_values(matrix, np.sum(self.no_of_roi_voxels))
+            self._matrix_feature_values(matrix, np.sum(roi_voxel_counts))
             for matrix in averaged_glrlm
         ]
-        self._set_feature_values(self._average_feature_values(values))
+        return self._mean_feature_dicts(values)
 
-    def calc_3d_averaged_glrlm_features(self):
-        number_of_directions = self.glrlm_3D_matrix.shape[0]
-        if number_of_directions == 0:
-            raise DataStructureError(" Denominator is zero in calc_3d_averaged_glrlm_features.")
+    def _calc_3d_averaged_features(self, matrices, total_roi_voxels):
+        if matrices.shape[0] == 0:
+            raise DataStructureError(' Denominator is zero in calc_3d_averaged_glrlm_features.')
         values = [
-            self._matrix_feature_values(matrix, self.tot_no_of_roi_voxels)
-            for matrix in self.glrlm_3D_matrix
+            self._matrix_feature_values(matrix, total_roi_voxels)
+            for matrix in matrices
         ]
-        self._set_feature_values(self._average_feature_values(values))
+        return self._mean_feature_dicts(values)
 
-    def calc_3d_merged_glrlm_features(self):
-        number_of_directions = self.glrlm_3D_matrix.shape[0]
+    def _calc_3d_merged_features(self, matrices, total_roi_voxels):
+        number_of_directions = matrices.shape[0]
         if number_of_directions == 0:
-            raise DataStructureError(" Denominator is zero in calc_3d_merged_glrlm_features.")
-        matrix = np.sum(self.glrlm_3D_matrix, axis=0)
-        self._set_feature_values(
-            self._matrix_feature_values(matrix, self.tot_no_of_roi_voxels * number_of_directions)
-        )
+            raise DataStructureError(' Denominator is zero in calc_3d_merged_glrlm_features.')
+        matrix = np.sum(matrices, axis=0)
+        return self._matrix_feature_values(matrix, total_roi_voxels * number_of_directions)
+
+    def calculate_features(self, discretized_image_array):
+        """Calculate GLRLM features for a prepared discretized intensity array.
+
+        Parameters
+        ----------
+        discretized_image_array : numpy.ndarray
+            Prepared discretized intensity array with ROI voxels represented by
+            integer gray levels and voxels outside the ROI set to ``NaN``.
+
+        Returns
+        -------
+        dict
+            Mapping of GLRLM feature names to calculated values.
+        """
+        discretized_image_array = np.asarray(discretized_image_array)
+        lvl = int(np.nanmax(discretized_image_array) + 1)
+        total_roi_voxels = int(np.sum(~np.isnan(discretized_image_array)))
+
+        if self.aggr_dim == '3D':
+            matrices = self._calc_3d_matrices(discretized_image_array, lvl)
+            values = (
+                self._calc_3d_averaged_features(matrices, total_roi_voxels)
+                if self.aggr_method == 'AVER'
+                else self._calc_3d_merged_features(matrices, total_roi_voxels)
+            )
+            return self._map_feature_names(values)
+
+        matrices, roi_voxel_counts = self._calc_2d_matrices(discretized_image_array, lvl)
+        if self.aggr_method == 'DIR_MERG':
+            values = self._calc_2_5d_direction_merged_features(matrices, roi_voxel_counts)
+        elif self.aggr_method == 'MERG':
+            values = self._calc_2_5d_merged_features(matrices, roi_voxel_counts)
+        elif self.aggr_method == 'AVER':
+            values = self._calc_2d_averaged_features(matrices, roi_voxel_counts, total_roi_voxels)
+        elif self.aggr_method == 'SLICE_MERG':
+            values = self._calc_2d_slice_merged_features(matrices, roi_voxel_counts, total_roi_voxels)
+        else:
+            raise DataStructureError(f'Unsupported GLRLM aggregation: aggr_dim={self.aggr_dim}, aggr_method={self.aggr_method}.')
+        return self._map_feature_names(values)
 
 
 class GLRLMFeatureGroup(BaseFeatureGroup):
@@ -235,25 +313,15 @@ class GLRLMFeatureGroup(BaseFeatureGroup):
 
     def calculate(self, context, prepared_data):
         glrlm = GLRLM(
-            prepared_data.require_discretized_intensity_image().array.T,
+            aggr_dim=context.aggr_dim,
+            aggr_method=context.aggr_method,
             slice_weight=context.slice_weighting,
             slice_median=context.slice_median,
         )
-        if context.aggr_dim == '3D':
-            glrlm.calc_glrl_3d_matrix()
-            if context.aggr_method == 'AVER':
-                glrlm.calc_3d_averaged_glrlm_features()
-            elif context.aggr_method == 'MERG':
-                glrlm.calc_3d_merged_glrlm_features()
-        else:
-            glrlm.calc_glrl_2d_matrices()
-            if context.aggr_method == 'DIR_MERG':
-                glrlm.calc_2_5d_direction_merged_glrlm_features()
-            elif context.aggr_method == 'MERG':
-                glrlm.calc_2_5d_merged_glrlm_features()
-            elif context.aggr_method == 'AVER':
-                glrlm.calc_2d_averaged_glrlm_features()
-            elif context.aggr_method == 'SLICE_MERG':
-                glrlm.calc_2d_slice_merged_glrlm_features()
-
-        return dict(zip(self.output_names(context), extract_texture_values(glrlm)))
+        feature_values = glrlm.calculate_features(
+            prepared_data.require_discretized_intensity_image().array.T
+        )
+        return {
+            output_name: feature_values[base_name]
+            for output_name, base_name in zip(self.output_names(context), GLRLM_FEATURE_NAMES)
+        }

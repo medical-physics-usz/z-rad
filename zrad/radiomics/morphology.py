@@ -205,15 +205,15 @@ class MorphologicalFeatures:
         return np.nanmean(image_array) * vol_mesh
 
     def calculate_features(self, mask_array, image_array):
-        """Calculate morphology features for a mask and its paired intensity image.
+        """Calculate morphology features for prepared mask and intensity arrays.
 
         Parameters
         ----------
         mask_array : numpy.ndarray
-            Binary ROI mask array.
+            Prepared binary ROI mask array.
         image_array : numpy.ndarray
-            Intensity image aligned with ``mask_array`` where voxels outside the
-            ROI can be represented by ``NaN``.
+            Prepared intensity image aligned with ``mask_array`` where voxels
+            outside the ROI can be represented by ``NaN``.
 
         Returns
         -------
@@ -355,15 +355,15 @@ class MorphologyCorrelationFeatures:
         return ((n - 1) / (2 * s0)) * (numerator / denominator)
 
     def calculate_features(self, mask_array, image_array):
-        """Calculate morphology correlation features for a mask and intensity image.
+        """Calculate morphology correlation features for prepared mask and intensity arrays.
 
         Parameters
         ----------
         mask_array : numpy.ndarray
-            Binary ROI mask array.
+            Prepared binary ROI mask array.
         image_array : numpy.ndarray
-            Intensity image aligned with ``mask_array`` where voxels outside the
-            ROI can be represented by ``NaN``.
+            Prepared intensity image aligned with ``mask_array`` where voxels
+            outside the ROI can be represented by ``NaN``.
 
         Returns
         -------

@@ -68,32 +68,32 @@ class GLCM:
         """
         return list(GLCM_FEATURE_NAMES)
 
-    def calculate_features(self, image):
+    def calculate_features(self, discretized_image_array):
         """Calculate GLCM features for a prepared discretized intensity array.
 
         Parameters
         ----------
-        image : numpy.ndarray
-            Discretized image array with ROI voxels represented by integer gray
-            levels and voxels outside the ROI set to ``NaN``.
+        discretized_image_array : numpy.ndarray
+            Prepared discretized intensity array with ROI voxels represented by
+            integer gray levels and voxels outside the ROI set to ``NaN``.
 
         Returns
         -------
         dict
             Mapping of GLCM feature names to calculated values.
         """
-        image = np.asarray(image)
-        lvl = int(np.nanmax(image) + 1)
-        tot_no_of_roi_voxels = int(np.sum(~np.isnan(image)))
+        discretized_image_array = np.asarray(discretized_image_array)
+        lvl = int(np.nanmax(discretized_image_array) + 1)
+        tot_no_of_roi_voxels = int(np.sum(~np.isnan(discretized_image_array)))
 
         if self.aggr_dim == '3D':
-            glcm_3d_matrices = self._calc_3d_matrices(image, lvl)
+            glcm_3d_matrices = self._calc_3d_matrices(discretized_image_array, lvl)
             if self.aggr_method == 'AVER':
                 return self._calc_3d_averaged_glcm_features(glcm_3d_matrices)
             if self.aggr_method == 'MERG':
                 return self._calc_3d_merged_glcm_features(glcm_3d_matrices)
         else:
-            glcm_2d_matrices, slice_no_of_roi_voxels = self._calc_2d_matrices(image, lvl)
+            glcm_2d_matrices, slice_no_of_roi_voxels = self._calc_2d_matrices(discretized_image_array, lvl)
             if self.aggr_method == 'DIR_MERG':
                 return self._calc_2_5d_direction_merged_glcm_features(glcm_2d_matrices)
             if self.aggr_method == 'MERG':

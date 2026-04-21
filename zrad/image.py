@@ -471,8 +471,15 @@ def apply_suv_correction(dicom_files, suv_image):
                     acquisition_time = parse_time(ds.AcquisitionTime).replace(year=injection_time.year,
                                                                               month=injection_time.month,
                                                                               day=injection_time.day)
+                    series_time = parse_time(ds.SeriesTime).replace(year=injection_time.year,
+                                                                    month=injection_time.month,
+                                                                    day=injection_time.day)
 
-                    elapsed_time = calc_elapsed_time(ds, decay_constant, acquisition_time, injection_time)
+                    if acquisition_time == series_time:
+                        elapsed_time = (acquisition_time - injection_time).total_seconds()
+
+                    else:
+                        elapsed_time = calc_elapsed_time(ds, decay_constant, acquisition_time, injection_time)
 
                 elif 'SIEMENS' in manufacturer or 'CPS' in manufacturer or 'CTI' in ds.Manufacturer.upper():
                     try:
@@ -486,8 +493,15 @@ def apply_suv_correction(dicom_files, suv_image):
                         acquisition_time = parse_time(ds.AcquisitionTime).replace(year=injection_time.year,
                                                                                   month=injection_time.month,
                                                                                   day=injection_time.day)
+                        series_time = parse_time(ds.SeriesTime).replace(year=injection_time.year,
+                                                                        month=injection_time.month,
+                                                                        day=injection_time.day)
 
-                        elapsed_time = calc_elapsed_time(ds, decay_constant, acquisition_time, injection_time)
+                        if acquisition_time == series_time:
+                            elapsed_time = (acquisition_time - injection_time).total_seconds()
+
+                        else:
+                            elapsed_time = calc_elapsed_time(ds, decay_constant, acquisition_time, injection_time)
                 elif 'GE' in manufacturer:
                     try:
                         elapsed_time = (
@@ -499,15 +513,30 @@ def apply_suv_correction(dicom_files, suv_image):
                         acquisition_time = parse_time(ds.AcquisitionTime).replace(year=injection_time.year,
                                                                                   month=injection_time.month,
                                                                                   day=injection_time.day)
-                        frame_reference_time = float(ds.FrameReferenceTime) / 1000
+                        series_time = parse_time(ds.SeriesTime).replace(year=injection_time.year,
+                                                                        month=injection_time.month,
+                                                                        day=injection_time.day)
 
-                        elapsed_time = (acquisition_time - injection_time).total_seconds() - frame_reference_time
+                        if acquisition_time == series_time:
+                            elapsed_time = (acquisition_time - injection_time).total_seconds()
+
+                        else:
+                            frame_reference_time = float(ds.FrameReferenceTime) / 1000
+
+                            elapsed_time = (acquisition_time - injection_time).total_seconds() - frame_reference_time
                 else:
                     acquisition_time = parse_time(ds.AcquisitionTime).replace(year=injection_time.year,
                                                                               month=injection_time.month,
                                                                               day=injection_time.day)
+                    series_time = parse_time(ds.SeriesTime).replace(year=injection_time.year,
+                                                                    month=injection_time.month,
+                                                                    day=injection_time.day)
 
-                    elapsed_time = calc_elapsed_time(ds, decay_constant, acquisition_time, injection_time)
+                    if acquisition_time == series_time:
+                        elapsed_time = (acquisition_time - injection_time).total_seconds()
+
+                    else:
+                        elapsed_time = calc_elapsed_time(ds, decay_constant, acquisition_time, injection_time)
 
             elif ds.DecayCorrection == 'ADMIN':
                 elapsed_time = 0

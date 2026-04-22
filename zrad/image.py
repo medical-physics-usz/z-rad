@@ -569,6 +569,8 @@ def validate_pet_dicom_tags(dicom_files):
         except (KeyError, TypeError):
             warning_msg = f"For patient's {image_id} image, patient's weight tag (0071, 1022) is not present. Patient is excluded from the analysis."
             warnings.warn(warning_msg, DataStructureWarning)
+        if pat_weight <= 0:
+            raise DataStructureError("Patient weight must be > 0.")
         if 'DECY' not in ds[(0x0028, 0x0051)].value or 'ATTN' not in ds[(0x0028, 0x0051)].value:
             warning_msg = f"For patient's {image_id} image, in DICOM tag (0028, 0051) either no 'DECY' (decay correction) or 'ATTN' (attenuation correction). Patient is excluded from the analysis."
             warnings.warn(warning_msg, DataStructureWarning)

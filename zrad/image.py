@@ -614,6 +614,23 @@ def apply_suv_correction(dicom_files, suv_image):
                 error_msg = f"Vendor {ds.Manufacturer} is not supported with CNTS units!"
                 raise DataStructureError(error_msg)
 
+        def process_decay_uncorrected_cnts(pixel_array_units, ds):
+            if 'PHILIPS' in ds.Manufacturer.upper():
+
+                if (0x7053, 0x1009) in ds and ds[(0x7053, 0x1009)].value != 0:
+                    activity_concentration_bqml = pixel_array_units * ds[(0x7053, 0x1009)].value
+                    suv = process_decay_uncorrected_bqml(activity_concentration_bqml, ds)
+
+                    return suv
+
+                else:
+                    error_msg = f"Philips-specific scaling factors not present!"
+                    raise DataStructureError(error_msg)
+
+            else:
+                error_msg = f"Vendor {ds.Manufacturer} is not supported with CNTS units!"
+                raise DataStructureError(error_msg)
+
         ds = pydicom.dcmread(dicom_file_path)
         units = ds.Units
         pixel_array_units = (ds.pixel_array * ds.RescaleSlope) + ds.RescaleIntercept
@@ -633,7 +650,10 @@ def apply_suv_correction(dicom_files, suv_image):
             else:
                 suv = process_bqml(pixel_array_units, ds)
         elif units == 'CNTS':
-            suv = process_cnts(pixel_array_units, ds)
+            if ds.DecayCorrection == 'NONE':
+                suv = process_decay_uncorrected_cnts(pixel_array_units, ds)
+            else:
+                suv = process_cnts(pixel_array_units, ds)
         else:
             error_msg = f"Units {units} are not supported!"
             raise DataStructureError(error_msg)

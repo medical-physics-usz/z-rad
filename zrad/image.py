@@ -328,6 +328,36 @@ def calc_elapsed_time(ds, decay_constant, acquisition_time, injection_time):
 
     return (acquisition_time - injection_time).total_seconds() + avg_count_rate_time - frame_reference_time
 
+def get_patient_height_cm(ds):
+    """
+    Return patient height in cm.
+
+    DICOM PatientSize (0010,1020) is defined in meters in standard DICOM,
+    but some datasets may store cm. We accept both:
+      - <= 3   -> interpreted as meters
+      - > 3    -> interpreted as cm
+    """
+    if hasattr(ds, "PatientSize") and ds.PatientSize not in [None, ""]:
+        h = float(ds.PatientSize)
+    elif (0x0010, 0x1020) in ds and ds[(0x0010, 0x1020)].value not in [None, ""]:
+        h = float(ds[(0x0010, 0x1020)].value)
+    else:
+        raise DataStructureError("Patient height tag (0010,1020) is missing.")
+
+    if h <= 0:
+        raise DataStructureError("Patient height must be > 0.")
+
+    return h * 100.0 if h <= 3 else h
+
+
+def calculate_bsa_du_bois(height_cm, weight_kg):
+    """
+    Du Bois body surface area in m^2.
+    BSA = 0.007184 * H^0.725 * W^0.425
+    """
+    if height_cm <= 0 or weight_kg <= 0:
+        raise DataStructureError("Height and weight must be > 0 to compute BSA.")
+    return 0.007184 * (height_cm ** 0.725) * (weight_kg ** 0.425)
 
 def validate_pet_dicom_tags(dicom_files):
     for dcm_file in dicom_files:
@@ -427,6 +457,27 @@ def validate_pet_dicom_tags(dicom_files):
                 if ds[0x0054, 0x1006].value != 'BW':
                     error_msg = f"For patient's {image_id} image, patient is excluded, SUV Type is not BW (GML units)"
                     raise DataStructureError(error_msg)
+
+        elif ds.Units == 'CM2ML':
+            suv_type = ds.get((0x0054, 0x1006), None)
+            if suv_type is not None and suv_type.value != 'BSA':
+                error_msg = (
+                    f"For patient's {image_id} image, patient is excluded, SUV Type "
+                    f"is not BSA (CM2ML units)"
+                )
+                raise DataStructureError(error_msg)
+
+            try:
+                patient_weight = float(ds.PatientWeight)
+                height_cm = get_patient_height_cm(ds)
+                _ = calculate_bsa_du_bois(height_cm, patient_weight)
+            except Exception as e:
+                error_msg = (
+                    f"For patient's {image_id} image, CM2ML requires valid patient "
+                    f"height and weight for Du Bois BSA calculation: {e}"
+                )
+                raise DataStructureError(error_msg)
+
         else:
             error_msg = f"For patient's {image_id} image, patient is excluded, only supported PET Units are BQML for Philips, Siemens and GE or CNTS for Philips"
             raise DataStructureError(error_msg)
@@ -437,6 +488,33 @@ def apply_suv_correction(dicom_files, suv_image):
 
         def process_gml(pixel_array_units):
             return pixel_array_units
+
+        def process_cm2ml(pixel_array_units, ds):
+            """
+            Convert SUVbsa (cm^2/ml) to SUVbw.
+
+            Given:
+              SUVbsa = Ac * BSA * 10^4 / D
+              SUVbw  = Ac * W * 1000 / D
+
+            Therefore:
+              SUVbw = SUVbsa * (W / (BSA * 10))
+            where:
+              - W is in kg
+              - BSA is in m^2
+            """
+            suv_type = ds.get((0x0054, 0x1006), None)
+            if suv_type is not None and suv_type.value != 'BSA':
+                raise DataStructureError(
+                    f"CM2ML with {suv_type.value} SUV normalization is not supported!"
+                )
+
+            patient_weight = float(ds.PatientWeight)
+            height_cm = get_patient_height_cm(ds)
+            bsa_m2 = calculate_bsa_du_bois(height_cm, patient_weight)
+
+            suv_bw = pixel_array_units * (patient_weight / (bsa_m2 * 10.0))
+            return suv_bw
 
         def process_bqml(activity_concentration, ds):
             try:
@@ -644,6 +722,9 @@ def apply_suv_correction(dicom_files, suv_image):
                     raise DataStructureError(error_msg)
             else:
                 suv = process_gml(pixel_array_units)
+
+        elif units == 'CM2ML':
+            suv = process_cm2ml(pixel_array_units, ds)
         elif units == 'BQML':
             if ds.DecayCorrection == 'NONE':
                 suv = process_decay_uncorrected_bqml(pixel_array_units, ds)

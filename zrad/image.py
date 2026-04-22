@@ -359,6 +359,202 @@ def calculate_bsa_du_bois(height_cm, weight_kg):
         raise DataStructureError("Height and weight must be > 0 to compute BSA.")
     return 0.007184 * (height_cm ** 0.725) * (weight_kg ** 0.425)
 
+def get_patient_sex(ds):
+    """
+    Return normalized patient sex: 'M', 'F', or 'O'.
+
+    DICOM PatientSex (0010,0040) may contain M, F, O, or be missing/empty.
+    """
+    sex = getattr(ds, "PatientSex", None)
+    if sex is None and (0x0010, 0x0040) in ds:
+        sex = ds[(0x0010, 0x0040)].value
+
+    if sex is None:
+        raise DataStructureError("Patient sex tag (0010,0040) is missing.")
+
+    sex = str(sex).strip().upper()
+    if sex == "":
+        raise DataStructureError("Patient sex tag (0010,0040) is empty.")
+    if sex not in {"M", "F", "O"}:
+        raise DataStructureError(
+            f"Unsupported PatientSex '{sex}'. Expected one of 'M', 'F', or 'O'."
+        )
+    return sex
+
+
+def calculate_lbm_morgan(height_cm, weight_kg, sex):
+    """
+    Lean body mass using Morgan/Sugawara-style formula.
+
+    Male:   LBM = 1.10 * W - 120 * (W / H)^2
+    Female: LBM = 1.07 * W - 148 * (W / H)^2
+    Other:  mean of male and female values
+
+    W in kg, H in cm.
+    """
+    if height_cm <= 0 or weight_kg <= 0:
+        raise DataStructureError("Height and weight must be > 0 to compute LBM.")
+
+    male_lbm = 1.10 * weight_kg - 120.0 * ((weight_kg / height_cm) ** 2)
+    female_lbm = 1.07 * weight_kg - 148.0 * ((weight_kg / height_cm) ** 2)
+
+    if sex == "M":
+        lbm = male_lbm
+    elif sex == "F":
+        lbm = female_lbm
+    elif sex == "O":
+        lbm = 0.5 * (male_lbm + female_lbm)
+    else:
+        raise DataStructureError(f"Unsupported sex '{sex}' for LBM calculation.")
+
+    if lbm <= 0:
+        raise DataStructureError(f"Computed Morgan LBM is non-positive: {lbm}.")
+    return lbm
+
+
+def calculate_lbm_james128(height_cm, weight_kg, sex):
+    """
+    Lean body mass using James/Morgan-128 formula.
+
+    Male:   LBM = 1.10 * W - 128 * (W / H)^2
+    Female: LBM = 1.07 * W - 148 * (W / H)^2
+    Other:  mean of male and female values
+
+    W in kg, H in cm.
+    """
+    if height_cm <= 0 or weight_kg <= 0:
+        raise DataStructureError("Height and weight must be > 0 to compute LBM.")
+
+    male_lbm = 1.10 * weight_kg - 128.0 * ((weight_kg / height_cm) ** 2)
+    female_lbm = 1.07 * weight_kg - 148.0 * ((weight_kg / height_cm) ** 2)
+
+    if sex == "M":
+        lbm = male_lbm
+    elif sex == "F":
+        lbm = female_lbm
+    elif sex == "O":
+        lbm = 0.5 * (male_lbm + female_lbm)
+    else:
+        raise DataStructureError(f"Unsupported sex '{sex}' for LBM calculation.")
+
+    if lbm <= 0:
+        raise DataStructureError(f"Computed James128 LBM is non-positive: {lbm}.")
+    return lbm
+
+
+def calculate_lbm_janmahasatian(height_cm, weight_kg, sex):
+    """
+    Lean body mass using Janmahasatian formula.
+
+    BMI = W / (H * 1e-2)^2
+
+    Male:   LBM = 9270 * W / (6680 + 216 * BMI)
+    Female: LBM = 9270 * W / (8780 + 244 * BMI)
+    Other:  mean of male and female values
+
+    W in kg, H in cm.
+    """
+    if height_cm <= 0 or weight_kg <= 0:
+        raise DataStructureError("Height and weight must be > 0 to compute LBM.")
+
+    height_m = height_cm * 1e-2
+    bmi = weight_kg / (height_m ** 2)
+
+    male_lbm = 9270.0 * weight_kg / (6680.0 + 216.0 * bmi)
+    female_lbm = 9270.0 * weight_kg / (8780.0 + 244.0 * bmi)
+
+    if sex == "M":
+        lbm = male_lbm
+    elif sex == "F":
+        lbm = female_lbm
+    elif sex == "O":
+        lbm = 0.5 * (male_lbm + female_lbm)
+    else:
+        raise DataStructureError(f"Unsupported sex '{sex}' for LBM calculation.")
+
+    if lbm <= 0:
+        raise DataStructureError(f"Computed Janmahasatian LBM is non-positive: {lbm}.")
+    return lbm
+
+
+def calculate_ibw(height_cm, sex):
+    """
+    Ideal body weight.
+
+    Male:   IBW = 48.0 + 1.06 * (H - 152)
+    Female: IBW = 45.5 + 0.91 * (H - 152)
+    Other:  mean of male and female values
+
+    H in cm.
+    """
+    if height_cm <= 0:
+        raise DataStructureError("Height must be > 0 to compute IBW.")
+
+    male_ibw = 48.0 + 1.06 * (height_cm - 152.0)
+    female_ibw = 45.5 + 0.91 * (height_cm - 152.0)
+
+    if sex == "M":
+        ibw = male_ibw
+    elif sex == "F":
+        ibw = female_ibw
+    elif sex == "O":
+        ibw = 0.5 * (male_ibw + female_ibw)
+    else:
+        raise DataStructureError(f"Unsupported sex '{sex}' for IBW calculation.")
+
+    if ibw <= 0:
+        raise DataStructureError(f"Computed IBW is non-positive: {ibw}.")
+    return ibw
+
+
+def get_gml_normalization_info(ds):
+    """
+    Parse GML SUV normalization metadata and compute the normalization factor.
+
+    Returns:
+        tuple[str, float]: (suv_type, factor_kg)
+
+    Supported SUV Type values:
+        - missing/empty -> 'BW'
+        - 'BW'
+        - 'LBM'          -> Morgan
+        - 'LBMJAMES128'
+        - 'LBMJANMA'
+        - 'IBW'
+    """
+    suv_type_elem = ds.get((0x0054, 0x1006), None)
+    suv_type = "BW" if suv_type_elem is None or suv_type_elem.value in [None, ""] else str(suv_type_elem.value).strip().upper()
+
+    try:
+        patient_weight = float(ds.PatientWeight)
+    except Exception:
+        raise DataStructureError("Patient weight tag is missing or invalid for GML normalization.")
+
+    if patient_weight <= 0:
+        raise DataStructureError("Patient weight must be > 0 for GML normalization.")
+
+    if suv_type == "BW":
+        return suv_type, patient_weight
+
+    height_cm = get_patient_height_cm(ds)
+    sex = get_patient_sex(ds)
+
+    if suv_type == "LBM":
+        factor = calculate_lbm_morgan(height_cm, patient_weight, sex)
+    elif suv_type == "LBMJAMES128":
+        factor = calculate_lbm_james128(height_cm, patient_weight, sex)
+    elif suv_type == "LBMJANMA":
+        factor = calculate_lbm_janmahasatian(height_cm, patient_weight, sex)
+    elif suv_type == "IBW":
+        factor = calculate_ibw(height_cm, sex)
+    else:
+        raise DataStructureError(
+            f"GML with SUV Type '{suv_type}' is not supported. "
+            f"Supported types are BW, LBM, LBMJAMES128, LBMJANMA, and IBW."
+        )
+
+    return suv_type, factor
+
 def validate_pet_dicom_tags(dicom_files):
     for dcm_file in dicom_files:
         ds = dcm_file['ds']
@@ -453,10 +649,14 @@ def validate_pet_dicom_tags(dicom_files):
                 error_msg = f"For patient's {image_id} image, patient is excluded, Philips scale factors not present (PET units CNTS)"
                 raise DataStructureError(error_msg)
         elif ds.Units == 'GML':
-            if (0x0054, 0x1006) in ds:
-                if ds[0x0054, 0x1006].value != 'BW':
-                    error_msg = f"For patient's {image_id} image, patient is excluded, SUV Type is not BW (GML units)"
-                    raise DataStructureError(error_msg)
+            try:
+                _suv_type, _factor = get_gml_normalization_info(ds)
+            except Exception as e:
+                error_msg = (
+                    f"For patient's {image_id} image, patient is excluded, "
+                    f"GML normalization is invalid: {e}"
+                )
+                raise DataStructureError(error_msg)
 
         elif ds.Units == 'CM2ML':
             suv_type = ds.get((0x0054, 0x1006), None)
@@ -486,8 +686,28 @@ def validate_pet_dicom_tags(dicom_files):
 def apply_suv_correction(dicom_files, suv_image):
     def process_single_slice(dicom_file_path):
 
-        def process_gml(pixel_array_units):
-            return pixel_array_units
+        def process_gml(pixel_array_units, ds):
+            """
+            Handle PET images stored with Units == 'GML'.
+
+            Stored values are already SUV-normalized, but not always by body weight.
+            We convert all supported GML normalizations to SUVbw.
+
+            Supported SUV Type values:
+              - missing/empty or 'BW'     -> already SUVbw
+              - 'LBM'                     -> Morgan
+              - 'LBMJAMES128'             -> James/Morgan-128
+              - 'LBMJANMA'                -> Janmahasatian
+              - 'IBW'                     -> ideal body weight
+            """
+            suv_type, factor = get_gml_normalization_info(ds)
+            patient_weight = float(ds.PatientWeight)
+
+            if suv_type == "BW":
+                return pixel_array_units
+
+            suv_bw = pixel_array_units * (patient_weight / factor)
+            return suv_bw
 
         def process_cm2ml(pixel_array_units, ds):
             """
@@ -714,15 +934,7 @@ def apply_suv_correction(dicom_files, suv_image):
         pixel_array_units = (ds.pixel_array * ds.RescaleSlope) + ds.RescaleIntercept
 
         if units == 'GML':
-            if (0x0054, 0x1006) in ds:
-                if ds[0x0054, 0x1006].value == 'BW':
-                    suv = process_gml(pixel_array_units)
-                else:
-                    error_msg = f"GML with {ds[0x0054, 0x1006].value} SUV normalizatoin is not supported!"
-                    raise DataStructureError(error_msg)
-            else:
-                suv = process_gml(pixel_array_units)
-
+            suv = process_gml(pixel_array_units, ds)
         elif units == 'CM2ML':
             suv = process_cm2ml(pixel_array_units, ds)
         elif units == 'BQML':

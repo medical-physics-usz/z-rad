@@ -833,11 +833,6 @@ def apply_suv_correction(dicom_files, suv_image):
                 manufacturer = ds.Manufacturer.upper()
                 acquisition_time = get_datetime_on_injection_day(ds.AcquisitionTime, injection_time)
 
-                # if "GE" in manufacturer:
-                #     decay_corrected_activity_concentration = activity_concentration * np.exp(
-                #         decay_constant * (acquisition_time - injection_time).total_seconds()
-                #     )
-                # else:
                 decay_during_frame = decay_constant * float(ds.ActualFrameDuration) / 1000.0
                 avg_count_rate_time = (1 / decay_constant) * np.log(
                     decay_during_frame / (1 - np.exp(-decay_during_frame))

@@ -4,11 +4,11 @@ from ..image import Image
 from .masks import RoiMasks
 
 
-class RoiExtractor:
-    """Extract ROI masks from an image and binary ROI mask."""
+class RoiMaskBuilder:
+    """Build morphological and intensity ROI masks from an image and binary ROI mask."""
 
     def get_params(self):
-        """Return ROI extraction parameters mapped to their configured values."""
+        """Return ROI mask-building parameters mapped to their configured values."""
         return {}
 
     def apply(self, image, mask):
@@ -24,11 +24,11 @@ class RoiExtractor:
         )
 
 
-class IntensityRoiExtractor:
+class IntensityRoiMaskBuilder:
     """Apply an ROI mask to an image and return an intensity image with NaNs outside the ROI."""
 
     def get_params(self):
-        """Return ROI extraction parameters mapped to their configured values."""
+        """Return ROI mask-building parameters mapped to their configured values."""
         return {}
 
     def apply(self, image, mask):

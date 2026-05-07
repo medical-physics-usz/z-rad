@@ -9,8 +9,8 @@ Preprocessing
    ~preprocessing.interpolation.Resampler
    ~preprocessing.masks.RoiMasks
    ~preprocessing.masks.RoiMaskValidator
-   ~preprocessing.roi.RoiExtractor
-   ~preprocessing.roi.IntensityRoiExtractor
+   ~preprocessing.roi.RoiMaskBuilder
+   ~preprocessing.roi.IntensityRoiMaskBuilder
    ~preprocessing.resegmentation.RangeResegmenter
    ~preprocessing.resegmentation.OutlierResegmenter
    ~preprocessing.resegmentation.Resegmenter

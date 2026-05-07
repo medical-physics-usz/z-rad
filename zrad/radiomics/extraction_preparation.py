@@ -4,7 +4,7 @@ from ..preprocessing import (
     ImageDiscretizer,
     IntensityVolumeHistogramDiscretizer,
     Resegmenter,
-    RoiExtractor,
+    RoiMaskBuilder,
     RoiMaskValidator,
 )
 from .extraction_context import PreparedExtractionData
@@ -68,7 +68,7 @@ def prepare_extraction_data(context, groups, *, include_metadata=False):
 
 def prepare_mask_set(context, validation_dim):
     validated_mask = RoiMaskValidator(validation_dim).apply(context.mask)
-    roi_masks = RoiExtractor().apply(context.feature_image, validated_mask)
+    roi_masks = RoiMaskBuilder().apply(context.feature_image, validated_mask)
     return Resegmenter(
         intensity_range=context.intensity_range,
         outlier_range=context.outlier_range,

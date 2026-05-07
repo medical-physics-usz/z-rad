@@ -113,7 +113,7 @@ class GLSZM(ZoneMatrixFeatureBase):
 
 class GLSZMFeatureGroup(BaseFeatureGroup):
     family = 'glszm'
-    requirements = frozenset({'analysis_masks', 'discretized_intensity_image'})
+    requirements = frozenset({'discretized_intensity_image'})
 
     def supports(self, context):
         return True

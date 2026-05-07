@@ -324,8 +324,6 @@ class ZoneMatrixFeatureBase(TextureFeatureBase):
     @classmethod
     def _calc_gldz_3d_matrix(cls, image, mask, lvl):
         image = np.asarray(image)
-        flattened_array = image.flatten()
-        _, counts = np.unique(flattened_array[~np.isnan(flattened_array)], return_counts=True)
         max_distance = int(np.max(image.shape))
         range_x, range_y, range_z = cls._range_indices(image)
 

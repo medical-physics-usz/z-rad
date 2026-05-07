@@ -3,7 +3,6 @@ from scipy.ndimage import convolve
 from scipy.stats import iqr
 
 from ..exceptions import DataStructureError
-from ..image import Image
 from .base import BaseFeatureGroup
 
 class LocalIntensityFeatures:
@@ -583,24 +582,3 @@ class IVHFeatureGroup(BaseFeatureGroup):
             )
         return ivh.calculate_features(image.array)
 
-
-def build_ivh_mask(context, intensity_mask, *, bin_number_discretize, bin_size_discretize):
-    ivh_mask = intensity_mask.copy()
-
-    if context.ivh_bin_size is not None:
-        if context.intensity_range is not None:
-            min_val = context.intensity_range[0]
-        else:
-            min_val = np.nanmin(ivh_mask.array)
-        ivh_mask = Image(
-            array=min_val + (bin_size_discretize(ivh_mask, min_val, context.ivh_bin_size).array - 0.5) * context.ivh_bin_size,
-            origin=ivh_mask.origin,
-            spacing=ivh_mask.spacing,
-            direction=ivh_mask.direction,
-            shape=ivh_mask.shape,
-        )
-
-    if context.ivh_number_of_bins is not None:
-        return bin_number_discretize(ivh_mask, context.ivh_number_of_bins)
-
-    return ivh_mask

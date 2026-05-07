@@ -1,12 +1,12 @@
 import pytest
 import numpy as np
 import SimpleITK as sitk
-from zrad.preprocessing import Preprocessing
+from zrad.preprocessing import Resampler
 from zrad.image import Image
 
 @pytest.mark.unit
 def test_constructor_valid_inputs():
-    preprocessing = Preprocessing(
+    preprocessing = Resampler(
         input_imaging_modality='CT',
         resample_resolution=2.0,
         resample_dimension='3D',
@@ -24,7 +24,7 @@ def test_constructor_valid_inputs():
 @pytest.mark.parametrize("invalid_resolution", [0, -1, None, "abc"])
 def test_constructor_invalid_resolution(invalid_resolution):
     with pytest.raises(ValueError) as exc_info:
-        Preprocessing(
+        Resampler(
             input_imaging_modality='CT',
             resample_resolution=invalid_resolution,
             resample_dimension='2D',
@@ -37,7 +37,7 @@ def test_constructor_invalid_resolution(invalid_resolution):
 @pytest.mark.parametrize("invalid_dimension", ["1D", "4D", None, 123])
 def test_constructor_invalid_dimension(invalid_dimension):
     with pytest.raises(ValueError) as exc_info:
-        Preprocessing(
+        Resampler(
             input_imaging_modality='CT',
             resample_resolution=2.0,
             resample_dimension=invalid_dimension,
@@ -49,17 +49,17 @@ def test_constructor_invalid_dimension(invalid_dimension):
 
 @pytest.mark.unit
 def test_get_interpolator_supported_method():
-    interpolator = Preprocessing.get_interpolator('Linear')
+    interpolator = Resampler._get_interpolator('Linear')
     assert interpolator == sitk.sitkLinear
 
-    interpolator = Preprocessing.get_interpolator('BSpline')
+    interpolator = Resampler._get_interpolator('BSpline')
     assert interpolator == sitk.sitkBSpline
 
 
 @pytest.mark.unit
 def test_get_interpolator_unsupported_method():
     with pytest.raises(ValueError) as exc_info:
-        Preprocessing.get_interpolator('SomeUnsupportedMethod')
+        Resampler._get_interpolator('SomeUnsupportedMethod')
     assert "is not supported" in str(exc_info.value)
 
 
@@ -75,7 +75,7 @@ def test_calculate_resampled_origin():
     initial_origin = (0.0, 0.0, 0.0)
     axis = 1  # Y-axis
 
-    new_origin = Preprocessing.calculate_resampled_origin(
+    new_origin = Resampler._calculate_resampled_origin(
         initial_shape, initial_spacing, resulted_spacing, initial_origin, axis
     )
 
@@ -87,7 +87,7 @@ def test_calculate_resampled_origin():
 def test_resample_image_2d():
     """
     Create a small 2D-like image (1 slice in the z-dimension) and check
-    whether the Preprocessing class resamples it as expected.
+    whether the Resampler class resamples it as expected.
     """
     # Dummy 2D data (we treat the z-dim as 1 to simulate a single slice)
     dummy_array = np.ones((1, 10, 10), dtype=np.float64)  # shape = (z, y, x)
@@ -100,7 +100,7 @@ def test_resample_image_2d():
         shape=(1, 10, 10)
     )
 
-    preprocessing = Preprocessing(
+    preprocessing = Resampler(
         input_imaging_modality='CT',
         resample_resolution=2.0,
         resample_dimension='2D',   # We'll only change x and y spacing
@@ -108,7 +108,7 @@ def test_resample_image_2d():
         interpolation_threshold=0.5
     )
 
-    resampled_image = preprocessing.resample(original_image, image_type='image')
+    resampled_image = preprocessing.apply(original_image, image_type='image')
 
     # Verify dimensions, shape, spacing have changed for x,y but not for z
     assert resampled_image.shape[0] == 1  # z dimension unchanged
@@ -143,7 +143,7 @@ def test_resample_mask_3d():
         shape=dummy_mask_array.shape
     )
 
-    preprocessing = Preprocessing(
+    preprocessing = Resampler(
         input_imaging_modality='CT',  # Modality is not as critical for masks
         resample_resolution=2.0,
         resample_dimension='3D',
@@ -151,7 +151,7 @@ def test_resample_mask_3d():
         interpolation_threshold=0.5
     )
 
-    resampled_mask = preprocessing.resample(original_mask, image_type='mask')
+    resampled_mask = preprocessing.apply(original_mask, image_type='mask')
 
     # Ensure the resampled array is in {0,1} due to the thresholding
     unique_values = np.unique(resampled_mask.array)

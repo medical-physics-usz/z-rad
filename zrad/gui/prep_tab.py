@@ -22,7 +22,7 @@ from .toolbox_gui import (
 )
 from ..exceptions import InvalidInputParametersError, DataStructureError
 from ..image import get_all_structure_names, get_dicom_files
-from ..preprocessing import Preprocessing
+from ..preprocessing import Resampler
 from ..toolbox_logic import get_logger, close_all_loggers, joblib_progress
 
 logging.captureWarnings(True)
@@ -49,13 +49,13 @@ def process_patient_folder(input_params, patient_folder, structure_set):
     if local_params["just_save_as_nifti"]:
         image_new = image.copy()
     else:
-        prep_image = Preprocessing(
+        prep_image = Resampler(
             input_imaging_modality=local_params["input_imaging_modality"],
             resample_resolution=local_params["resample_resolution"],
             resample_dimension=local_params["resample_dimension"],
             interpolation_method=local_params["image_interpolation_method"],
         )
-        image_new = prep_image.resample(image, image_type='image')
+        image_new = prep_image.apply(image, image_type='image')
 
     # Save new image
     output_path = os.path.join(local_params["output_directory"], patient_folder, 'image.nii.gz')
@@ -83,14 +83,14 @@ def process_patient_folder(input_params, patient_folder, structure_set):
                 if local_params["just_save_as_nifti"]:
                     mask_new = mask.copy()
                 else:
-                    prep_mask = Preprocessing(
+                    prep_mask = Resampler(
                         input_imaging_modality=local_params["input_imaging_modality"],
                         resample_resolution=local_params["resample_resolution"],
                         resample_dimension=local_params["resample_dimension"],
                         interpolation_method=local_params["mask_interpolation_method"],
                         interpolation_threshold=local_params["mask_interpolation_threshold"]
                     )
-                    mask_new = prep_mask.resample(mask, image_type='mask')
+                    mask_new = prep_mask.apply(mask, image_type='mask')
 
                 # Save new mask
                 output_path = os.path.join(local_params["output_directory"], patient_folder, f'{mask_name}.nii.gz')

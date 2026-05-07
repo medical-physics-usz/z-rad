@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 
 from ..image import Image
+from ..preprocessing import RoiMasks
 
 
 @dataclass(frozen=True)
@@ -33,28 +34,20 @@ class ExtractionContext:
 
 
 @dataclass
-class PreparedMaskSet:
-    """Validated morphology/intensity masks for a computation stage."""
-
-    morphological_mask: Image
-    intensity_mask: Image
-
-
-@dataclass
 class PreparedExtractionData:
     """Prepared intermediate data shared across feature groups."""
 
-    base_masks: PreparedMaskSet | None = None
-    analysis_masks: PreparedMaskSet | None = None
+    base_masks: RoiMasks | None = None
+    analysis_masks: RoiMasks | None = None
     discretized_intensity_image: Image | None = None
     ivh_intensity_image: Image | None = None
 
-    def require_base_masks(self) -> PreparedMaskSet:
+    def require_base_masks(self) -> RoiMasks:
         if self.base_masks is None:
             raise RuntimeError('Base masks were not prepared for this extraction.')
         return self.base_masks
 
-    def require_analysis_masks(self) -> PreparedMaskSet:
+    def require_analysis_masks(self) -> RoiMasks:
         if self.analysis_masks is None:
             raise RuntimeError('Analysis masks were not prepared for this extraction.')
         return self.analysis_masks

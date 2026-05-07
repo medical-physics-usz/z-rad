@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 
 from zrad.image import Image
-from zrad.preprocessing import Preprocessing
+from zrad.preprocessing import Resampler
 from zrad.radiomics import Radiomics
 
 
@@ -63,11 +63,11 @@ def nii_ct_phantom_mask(nii_ct_phantom_image):
 @pytest.fixture()
 def res2d_2mm_image_linear(nii_ct_phantom_image):
 
-    preprocessing = Preprocessing(input_imaging_modality='CT',
+    preprocessing = Resampler(input_imaging_modality='CT',
                                   resample_resolution=2,
                                   resample_dimension='2D',
                                   interpolation_method='Linear')
-    res_image = preprocessing.resample(nii_ct_phantom_image, image_type='image')
+    res_image = preprocessing.apply(nii_ct_phantom_image, image_type='image')
 
     return res_image
 
@@ -75,12 +75,12 @@ def res2d_2mm_image_linear(nii_ct_phantom_image):
 @pytest.fixture()
 def res2d_2mm_mask_linear(nii_ct_phantom_mask):
 
-    preprocessing = Preprocessing(input_imaging_modality='CT',
+    preprocessing = Resampler(input_imaging_modality='CT',
                                   resample_resolution=2,
                                   resample_dimension='2D',
                                   interpolation_method='Linear',
                                   interpolation_threshold=.5)
-    res_mask = preprocessing.resample(nii_ct_phantom_mask, image_type='mask')
+    res_mask = preprocessing.apply(nii_ct_phantom_mask, image_type='mask')
 
     return res_mask
 
@@ -88,11 +88,11 @@ def res2d_2mm_mask_linear(nii_ct_phantom_mask):
 @pytest.fixture()
 def res3d_2mm_image_linear(nii_ct_phantom_image):
 
-    preprocessing = Preprocessing(input_imaging_modality='CT',
+    preprocessing = Resampler(input_imaging_modality='CT',
                                   resample_resolution=2,
                                   resample_dimension='3D',
                                   interpolation_method='Linear')
-    res_image = preprocessing.resample(nii_ct_phantom_image, image_type='image')
+    res_image = preprocessing.apply(nii_ct_phantom_image, image_type='image')
 
     return res_image
 
@@ -100,12 +100,12 @@ def res3d_2mm_image_linear(nii_ct_phantom_image):
 @pytest.fixture()
 def res3d_2mm_mask_linear(nii_ct_phantom_mask):
 
-    preprocessing = Preprocessing(input_imaging_modality='CT',
+    preprocessing = Resampler(input_imaging_modality='CT',
                                   resample_resolution=2,
                                   resample_dimension='3D',
                                   interpolation_method='Linear',
                                   interpolation_threshold=.5)
-    res_mask = preprocessing.resample(nii_ct_phantom_mask, image_type='mask')
+    res_mask = preprocessing.apply(nii_ct_phantom_mask, image_type='mask')
 
     return res_mask
 
@@ -113,11 +113,11 @@ def res3d_2mm_mask_linear(nii_ct_phantom_mask):
 @pytest.fixture()
 def res3d_2mm_image_spline(dcm_ct_phantom_image):
 
-    preprocessing = Preprocessing(input_imaging_modality='CT',
+    preprocessing = Resampler(input_imaging_modality='CT',
                                   resample_resolution=2,
                                   resample_dimension='3D',
                                   interpolation_method='BSpline')
-    res_image = preprocessing.resample(dcm_ct_phantom_image, image_type='image')
+    res_image = preprocessing.apply(dcm_ct_phantom_image, image_type='image')
 
     return res_image
 

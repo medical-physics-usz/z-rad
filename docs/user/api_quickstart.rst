@@ -4,7 +4,7 @@ API Quickstart
 The Python API mirrors the main GUI workflows through public preprocessing,
 filtering, and radiomics interfaces:
 
-* ``Preprocessing``
+* preprocessing step classes such as ``Resampler``
 * concrete filters created via ``create_filter(...)``
 * ``Radiomics``
 
@@ -15,7 +15,7 @@ The typical Python workflow is:
 
 1. Load the image and mask into ``zrad.image.Image`` objects with aligned
    geometry.
-2. Resample them with ``Preprocessing`` so image and mask share the intended
+2. Resample them with ``Resampler`` so image and mask share the intended
    voxel spacing.
 3. Apply a configured filter if the experiment requires a filtered representation.
 4. Run ``Radiomics.extract_features()`` and collect the returned feature dictionary for storage
@@ -30,13 +30,13 @@ Minimal Example
 
 .. code-block:: python
 
-   from zrad.preprocessing.preprocessing import Preprocessing
+   from zrad.preprocessing import Resampler
    from zrad.filtering import create_filter
    from zrad.radiomics import Radiomics
 
    # image and mask are zrad.image.Image instances loaded by your workflow
 
-   prep = Preprocessing(
+   prep = Resampler(
        input_imaging_modality="CT",
        resample_resolution=1.0,
        resample_dimension="3D",
@@ -44,8 +44,8 @@ Minimal Example
        interpolation_threshold=0.5,
    )
 
-   resampled_image = prep.resample(image, image_type="image")
-   resampled_mask = prep.resample(mask, image_type="mask")
+   resampled_image = prep.apply(image, image_type="image")
+   resampled_mask = prep.apply(mask, image_type="mask")
 
    filt = create_filter(
        filtering_method="Laplacian of Gaussian",

@@ -8,6 +8,41 @@ The preprocessing tab is used to import DICOM or NIfTI data, select the masks
 to process, and resample images and segmentations onto a target voxel grid
 before filtering or radiomics extraction.
 
+Python API Steps
+----------------
+
+The Python API exposes the main image-processing steps as separate classes so
+intermediate images and masks can be inspected before feature extraction.
+
+.. code-block:: python
+
+   from zrad.preprocessing import (
+       ImageDiscretizer,
+       Resampler,
+       Resegmenter,
+       RoiExtractor,
+   )
+
+   resampler = Resampler(
+       input_imaging_modality="CT",
+       resample_resolution=1.0,
+       resample_dimension="3D",
+       interpolation_method="Linear",
+       interpolation_threshold=0.5,
+   )
+
+   resampled_image = resampler.apply(image, image_type="image")
+   resampled_mask = resampler.apply(mask, image_type="mask")
+
+   roi_masks = RoiExtractor().apply(resampled_image, resampled_mask)
+   roi_masks = Resegmenter(intensity_range=(-500, 400)).apply(
+       roi_masks,
+       reference_image=resampled_image,
+   )
+   discretized_image = ImageDiscretizer(bin_size=25, minimum=-500).apply(
+       roi_masks.intensity_mask,
+   )
+
 .. figure:: ../images/prepr_tab.png
    :alt: Z-Rad preprocessing tab
    :width: 900

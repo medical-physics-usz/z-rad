@@ -6,4 +6,15 @@ Preprocessing
 .. autosummary::
    :toctree: generated
 
-   ~preprocessing.preprocessing.Preprocessing
+   ~preprocessing.interpolation.Resampler
+   ~preprocessing.masks.RoiMasks
+   ~preprocessing.masks.RoiMaskValidator
+   ~preprocessing.roi.RoiExtractor
+   ~preprocessing.roi.IntensityRoiExtractor
+   ~preprocessing.resegmentation.RangeResegmenter
+   ~preprocessing.resegmentation.OutlierResegmenter
+   ~preprocessing.resegmentation.Resegmenter
+   ~preprocessing.discretization.FixedBinSizeDiscretizer
+   ~preprocessing.discretization.FixedBinNumberDiscretizer
+   ~preprocessing.discretization.ImageDiscretizer
+   ~preprocessing.discretization.IntensityVolumeHistogramDiscretizer

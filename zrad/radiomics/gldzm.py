@@ -102,10 +102,10 @@ class GLDZM(ZoneMatrixFeatureBase):
         lvl = int(np.nanmax(discretized_image_array) + 1)
 
         if self.aggr_dim == '3D':
-            _, gldzm_matrix, total_roi_voxels = self._calc_glsz_gldz_3d_matrices(discretized_image_array, mask_array, lvl)
+            gldzm_matrix, total_roi_voxels = self._calc_gldz_3d_matrix(discretized_image_array, mask_array, lvl)
             return self._map_feature_names(self._calc_3d_features(gldzm_matrix, total_roi_voxels))
 
-        _, gldzm_matrices, roi_voxel_counts = self._calc_glsz_gldz_2d_matrices(discretized_image_array, mask_array, lvl)
+        gldzm_matrices, roi_voxel_counts = self._calc_gldz_2d_matrices(discretized_image_array, mask_array, lvl)
         total_roi_voxels = np.sum(roi_voxel_counts)
         if self.aggr_dim == '2.5D':
             values = self._calc_2_5d_features(gldzm_matrices, roi_voxel_counts)

@@ -233,11 +233,100 @@ class ZoneMatrixFeatureBase(TextureFeatureBase):
         return np.unique(x_indices), np.unique(y_indices), np.unique(z_indices)
 
     @classmethod
-    def _calc_glsz_gldz_3d_matrices(cls, image, mask, lvl):
+    def _calc_glsz_3d_matrix(cls, image, lvl):
         image = np.asarray(image)
         flattened_array = image.flatten()
         _, counts = np.unique(flattened_array[~np.isnan(flattened_array)], return_counts=True)
         max_region_size = int(np.max(counts))
+        range_x, range_y, range_z = cls._range_indices(image)
+
+        glszm = np.zeros((lvl, max_region_size), dtype=np.int64)
+
+        def find_connected_region_3d(start, intensity, visited):
+            stack = [start]
+            size = 0
+            x_max, y_max, z_max = image.shape
+
+            while stack:
+                x, y, z = stack.pop()
+                if 0 <= x < x_max and 0 <= y < y_max and 0 <= z < z_max:
+                    if visited[x, y, z] == 0 and image[x, y, z] == intensity:
+                        visited[x, y, z] = 1
+                        size += 1
+                        for dx in [-1, 0, 1]:
+                            for dy in [-1, 0, 1]:
+                                for dz in [-1, 0, 1]:
+                                    if dx == 0 and dy == 0 and dz == 0:
+                                        continue
+                                    nx, ny, nz = x + dx, y + dy, z + dz
+                                    if 0 <= nx < x_max and 0 <= ny < y_max and 0 <= nz < z_max:
+                                        if visited[nx, ny, nz] == 0 and image[nx, ny, nz] == intensity:
+                                            stack.append((nx, ny, nz))
+
+            return size
+
+        visited = np.zeros_like(image, dtype=int)
+        for x in range_x:
+            for y in range_y:
+                for z in range_z:
+                    if visited[x, y, z] == 0 and not np.isnan(image[x, y, z]):
+                        intensity = int(image[x, y, z])
+                        size = find_connected_region_3d((x, y, z), intensity, visited)
+                        if size > 0:
+                            glszm[intensity, size - 1] += 1
+
+        return glszm, int(np.sum(~np.isnan(image)))
+
+    @classmethod
+    def _calc_glsz_2d_matrices(cls, image, lvl):
+        image = np.asarray(image)
+        _, _, range_z = cls._range_indices(image)
+        max_region_size_list = []
+        for z_idx in range_z:
+            z_slice = image[:, :, z_idx]
+            valid = ~np.isnan(z_slice)
+            if np.any(valid):
+                counts = np.bincount(z_slice[valid].astype(int))
+                if counts.size:
+                    max_region_size_list.append(counts.max())
+        max_region_size = max(max_region_size_list) if max_region_size_list else 0
+
+        glszm_matrices = []
+        roi_voxels = []
+        structure = np.ones((3, 3), dtype=int)
+
+        for z_idx in range_z:
+            z_slice = image[:, :, z_idx]
+            roi_voxel_count = int(np.sum(~np.isnan(z_slice)))
+            if roi_voxel_count == 0:
+                continue
+            roi_voxels.append(roi_voxel_count)
+            glszm = np.zeros((lvl, max_region_size), dtype=np.int64)
+
+            for intensity in range(lvl):
+                comp_mask = z_slice == intensity
+                if not np.any(comp_mask):
+                    continue
+                labeled, num_features = label(comp_mask, structure=structure)
+                if num_features == 0:
+                    continue
+                sizes = np.bincount(labeled.ravel())[1:]
+
+                unique_sizes, counts_sizes = np.unique(sizes, return_counts=True)
+                for size, count in zip(unique_sizes, counts_sizes):
+                    if size - 1 < glszm.shape[1]:
+                        glszm[intensity, size - 1] += count
+
+            glszm_matrices.append(glszm)
+
+        return np.array(glszm_matrices), np.array(roi_voxels, dtype=float)
+
+    @classmethod
+    def _calc_gldz_3d_matrix(cls, image, mask, lvl):
+        image = np.asarray(image)
+        flattened_array = image.flatten()
+        _, counts = np.unique(flattened_array[~np.isnan(flattened_array)], return_counts=True)
+        max_distance = int(np.max(image.shape))
         range_x, range_y, range_z = cls._range_indices(image)
 
         def calc_dist_map_3d(image_orig):
@@ -247,8 +336,7 @@ class ZoneMatrixFeatureBase(TextureFeatureBase):
             return distance_transform_cdt(larger_array, metric='taxicab')[1:-1, 1:-1, 1:-1].astype(float)
 
         dist_map = calc_dist_map_3d(mask)
-        glszm = np.zeros((lvl, max_region_size), dtype=np.int64)
-        gldzm = np.zeros((lvl, np.max(image.shape)), dtype=np.int64)
+        gldzm = np.zeros((lvl, max_distance), dtype=np.int64)
 
         def find_connected_region_3d(start, intensity, visited):
             stack = [start]
@@ -283,31 +371,20 @@ class ZoneMatrixFeatureBase(TextureFeatureBase):
                         intensity = int(image[x, y, z])
                         size, min_dist = find_connected_region_3d((x, y, z), intensity, visited)
                         if size > 0:
-                            glszm[intensity, size - 1] += 1
                             gldzm[intensity, int(min_dist) - 1] += 1
 
-        return glszm, gldzm, int(np.sum(~np.isnan(image)))
+        return gldzm, int(np.sum(~np.isnan(image)))
 
     @classmethod
-    def _calc_glsz_gldz_2d_matrices(cls, image, mask, lvl):
+    def _calc_gldz_2d_matrices(cls, image, mask, lvl):
         image = np.asarray(image)
         _, _, range_z = cls._range_indices(image)
-        max_region_size_list = []
-        for z_idx in range_z:
-            z_slice = image[:, :, z_idx]
-            valid = ~np.isnan(z_slice)
-            if np.any(valid):
-                counts = np.bincount(z_slice[valid].astype(int))
-                if counts.size:
-                    max_region_size_list.append(counts.max())
-        max_region_size = max(max_region_size_list) if max_region_size_list else 0
 
         def calc_dist_map_2d(image_orig):
             larger_array = np.zeros((image_orig.shape[0] + 2, image_orig.shape[1] + 2))
             larger_array[1:-1, 1:-1] = image_orig
             return distance_transform_cdt(larger_array, metric='taxicab')[1:-1, 1:-1].astype(float)
 
-        glszm_matrices = []
         gldzm_matrices = []
         roi_voxels = []
         structure = np.ones((3, 3), dtype=int)
@@ -320,7 +397,6 @@ class ZoneMatrixFeatureBase(TextureFeatureBase):
                 continue
             roi_voxels.append(roi_voxel_count)
             dist_map = calc_dist_map_2d(z_mask)
-            glszm = np.zeros((lvl, max_region_size), dtype=np.int64)
             gldzm = np.zeros((lvl, np.max(image.shape)), dtype=np.int64)
 
             for intensity in range(lvl):
@@ -330,13 +406,7 @@ class ZoneMatrixFeatureBase(TextureFeatureBase):
                 labeled, num_features = label(comp_mask, structure=structure)
                 if num_features == 0:
                     continue
-                sizes = np.bincount(labeled.ravel())[1:]
                 min_dists = minimum(dist_map, labeled, index=np.arange(1, num_features + 1))
-
-                unique_sizes, counts_sizes = np.unique(sizes, return_counts=True)
-                for size, count in zip(unique_sizes, counts_sizes):
-                    if size - 1 < glszm.shape[1]:
-                        glszm[intensity, size - 1] += count
 
                 min_dists_int = min_dists.astype(int)
                 unique_dists, counts_dists = np.unique(min_dists_int, return_counts=True)
@@ -344,7 +414,6 @@ class ZoneMatrixFeatureBase(TextureFeatureBase):
                     if dist - 1 < gldzm.shape[1]:
                         gldzm[intensity, dist - 1] += count
 
-            glszm_matrices.append(glszm)
             gldzm_matrices.append(gldzm)
 
-        return np.array(glszm_matrices), np.array(gldzm_matrices), np.array(roi_voxels, dtype=float)
+        return np.array(gldzm_matrices), np.array(roi_voxels, dtype=float)

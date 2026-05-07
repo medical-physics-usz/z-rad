@@ -81,16 +81,14 @@ class GLSZM(ZoneMatrixFeatureBase):
     def _calc_3d_features(self, matrix, total_roi_voxels):
         return self._matrix_feature_values(matrix, total_roi_voxels)
 
-    def calculate_features(self, discretized_image_array, mask_array):
-        """Calculate GLSZM features for prepared discretized intensities and a morphology mask.
+    def calculate_features(self, discretized_image_array):
+        """Calculate GLSZM features for prepared discretized intensities.
 
         Parameters
         ----------
         discretized_image_array : numpy.ndarray
             Prepared discretized intensity array with voxels outside the ROI set
             to ``NaN``.
-        mask_array : numpy.ndarray
-            Morphological ROI mask aligned with ``discretized_image_array``.
 
         Returns
         -------
@@ -98,14 +96,13 @@ class GLSZM(ZoneMatrixFeatureBase):
             Mapping of GLSZM feature names to calculated values.
         """
         discretized_image_array = np.asarray(discretized_image_array)
-        mask_array = np.asarray(mask_array)
         lvl = int(np.nanmax(discretized_image_array) + 1)
 
         if self.aggr_dim == '3D':
-            glszm_matrix, _, total_roi_voxels = self._calc_glsz_gldz_3d_matrices(discretized_image_array, mask_array, lvl)
+            glszm_matrix, total_roi_voxels = self._calc_glsz_3d_matrix(discretized_image_array, lvl)
             return self._map_feature_names(self._calc_3d_features(glszm_matrix, total_roi_voxels))
 
-        glszm_matrices, _, roi_voxel_counts = self._calc_glsz_gldz_2d_matrices(discretized_image_array, mask_array, lvl)
+        glszm_matrices, roi_voxel_counts = self._calc_glsz_2d_matrices(discretized_image_array, lvl)
         total_roi_voxels = np.sum(roi_voxel_counts)
         if self.aggr_dim == '2.5D':
             values = self._calc_2_5d_features(glszm_matrices, roi_voxel_counts)
@@ -137,8 +134,7 @@ class GLSZMFeatureGroup(BaseFeatureGroup):
             slice_median=context.slice_median,
         )
         feature_values = glszm.calculate_features(
-            prepared_data.require_discretized_intensity_image().array.T,
-            prepared_data.require_analysis_masks().morphological_mask.array.T,
+            prepared_data.require_discretized_intensity_image().array.T
         )
         return {
             output_name: feature_values[base_name]

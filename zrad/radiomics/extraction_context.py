@@ -11,6 +11,7 @@ class ExtractionContext:
     image: Image
     mask: Image
     filtered_image: Image | None
+    is_slice_2d_image: bool
     aggr_dim: str
     aggr_method: str
     intensity_range: tuple[float, float] | None
@@ -30,7 +31,7 @@ class ExtractionContext:
 
     @property
     def is_slice_2d(self) -> bool:
-        return self.image.shape[2] == 1
+        return self.is_slice_2d_image
 
 
 @dataclass

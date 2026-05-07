@@ -96,3 +96,30 @@ def test_radiomics_filtered_image_uses_original_image_for_masking():
                               'stat_medad', 'stat_cov', 'stat_qcod', 'stat_energy', 'stat_rms']
     assert features['stat_mean'] == pytest.approx(100.0)
     assert features['stat_max'] == pytest.approx(100.0)
+
+
+@pytest.mark.unit
+def test_radiomics_crop_to_roi_preserves_feature_values():
+    image_array = np.zeros((6, 6, 6), dtype=np.float64)
+    image_array[2:5, 1:4, 2:5] = np.arange(27, dtype=np.float64).reshape(3, 3, 3) + 1
+    mask_array = np.zeros_like(image_array)
+    mask_array[2:5, 1:4, 2:5] = 1
+
+    image = _make_image(image_array)
+    mask = _make_image(mask_array)
+
+    families = ['intensity_statistics', 'intensity_histogram', 'glcm']
+    uncropped = Radiomics(number_of_bins=4, crop_to_roi=False).extract_features(
+        image=image,
+        mask=mask,
+        families=families,
+    )
+    cropped = Radiomics(number_of_bins=4, crop_to_roi=True).extract_features(
+        image=image,
+        mask=mask,
+        families=families,
+    )
+
+    assert set(cropped) == set(uncropped)
+    for name, value in uncropped.items():
+        assert cropped[name] == pytest.approx(value)

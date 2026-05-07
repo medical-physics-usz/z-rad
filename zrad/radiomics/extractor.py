@@ -1,3 +1,6 @@
+import numpy as np
+
+from ..preprocessing import RoiCropper
 from .extraction_context import ExtractionContext
 from .extraction_preparation import build_extraction_metadata, prepare_extraction_data
 from .feature_registry import resolve_groups
@@ -20,6 +23,8 @@ class Radiomics:
         calc_morph_moran_i_and_geary_c_features=False,
         slice_weighting=False,
         slice_median=False,
+        crop_to_roi=False,
+        roi_crop_padding=0,
     ):
         if slice_weighting and slice_median:
             raise ValueError('Only one slice median averaging is not supported with weighting strategy.')
@@ -44,11 +49,15 @@ class Radiomics:
         self.calc_morph_moran_i_and_geary_c_features = calc_morph_moran_i_and_geary_c_features
         self.slice_weighting = slice_weighting
         self.slice_median = slice_median
+        self.crop_to_roi = crop_to_roi
+        self.roi_crop_padding = roi_crop_padding
 
     def extract_features(self, image, mask, filtered_image=None, families=None, features=None, include_metadata=False):
         """Run feature extraction and return a flat feature dictionary."""
         context = self._build_context(image=image, mask=mask, filtered_image=filtered_image)
         groups, selected_features = resolve_groups(context, families=families, features=features)
+        if self.crop_to_roi:
+            context = self._crop_context_to_roi(context, groups)
         prepared_data = prepare_extraction_data(
             context=context,
             groups=groups,
@@ -71,6 +80,7 @@ class Radiomics:
             image=image,
             mask=mask,
             filtered_image=filtered_image,
+            is_slice_2d_image=image.shape[2] == 1,
             aggr_dim=self.aggr_dim,
             aggr_method=self.aggr_method,
             intensity_range=self.intensity_range,
@@ -84,3 +94,47 @@ class Radiomics:
             slice_weighting=self.slice_weighting,
             slice_median=self.slice_median,
         )
+
+    def _crop_context_to_roi(self, context, groups):
+        cropped = RoiCropper(
+            padding=self._crop_padding(context, groups),
+        ).apply(
+            image=context.image,
+            mask=context.mask,
+            filtered_image=context.filtered_image,
+        )
+        return ExtractionContext(
+            image=cropped.image,
+            mask=cropped.mask,
+            filtered_image=cropped.filtered_image,
+            is_slice_2d_image=context.is_slice_2d,
+            aggr_dim=context.aggr_dim,
+            aggr_method=context.aggr_method,
+            intensity_range=context.intensity_range,
+            outlier_range=context.outlier_range,
+            number_of_bins=context.number_of_bins,
+            bin_size=context.bin_size,
+            calc_ivh_features=context.calc_ivh_features,
+            ivh_number_of_bins=context.ivh_number_of_bins,
+            ivh_bin_size=context.ivh_bin_size,
+            calc_morph_moran_i_and_geary_c_features=context.calc_morph_moran_i_and_geary_c_features,
+            slice_weighting=context.slice_weighting,
+            slice_median=context.slice_median,
+        )
+
+    def _crop_padding(self, context, groups):
+        padding = self.roi_crop_padding
+        if isinstance(padding, int):
+            padding = np.repeat(padding, 3)
+        else:
+            padding = np.asarray(padding, dtype=int)
+
+        if any(group.family == 'local_intensity' for group in groups):
+            local_radius_mm = 6.2
+            local_padding = np.ceil(local_radius_mm / np.asarray(context.image.spacing[::-1], dtype=float)).astype(int)
+            padding = np.maximum(padding, local_padding)
+
+        if any(group.family in {'morphology', 'morphology_correlation'} for group in groups):
+            padding = np.maximum(padding, np.ones(3, dtype=int))
+
+        return tuple(int(value) for value in padding)

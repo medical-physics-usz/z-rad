@@ -11,6 +11,7 @@ Preprocessing
    ~preprocessing.masks.RoiMaskValidator
    ~preprocessing.roi.RoiMaskBuilder
    ~preprocessing.roi.IntensityRoiMaskBuilder
+   ~preprocessing.roi.RoiCropper
    ~preprocessing.resegmentation.RangeResegmenter
    ~preprocessing.resegmentation.OutlierResegmenter
    ~preprocessing.resegmentation.Resegmenter

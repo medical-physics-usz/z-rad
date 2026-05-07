@@ -1,10 +1,7 @@
-from datetime import datetime
-
 import numpy as np
 import pywt
 from scipy import ndimage as ndi
 
-from ..toolbox_logic import get_logger, close_all_loggers
 from .base import BaseFilter
 
 
@@ -22,57 +19,36 @@ class Wavelets2D(BaseFilter):
             dimensionality='2D'
         )
 
-        close_all_loggers()
-        self.filter_logger_date_time = datetime.now().strftime("%Y-%m-%d_%H%M%S")
-        self.filter_logger = get_logger(self.filter_logger_date_time+'_Wavelets2D')
-
-        self.type = 'Wavelets'
         self.dimensionality = '2D'
 
         if padding_type in ['constant', 'nearest', 'wrap', 'reflect']:
             self.padding_type = padding_type
         else:
-            self.filter_logger.error(f"Wrong padding type '{padding_type}'. "
-                                     "Available padding types are: 'constant', 'nearest', 'wrap', and 'reflect'.")
             raise ValueError(f"Wrong padding type '{padding_type}'. "
                              "Available padding types are: 'constant', 'nearest', 'wrap', and 'reflect'.")
 
         if wavelet_type in ['db3', 'db2', 'coif1', 'haar']:
             self.wavelet_type = wavelet_type
         else:
-            self.filter_logger.error(f"Wrong wavelet type '{wavelet_type}'. "
-                                     "Available wavelet types are: 'db3', 'db2', 'coif1', 'haar'.")
             raise ValueError(f"Wrong wavelet type '{wavelet_type}'. "
                              "Available wavelet types are: 'db3', 'db2', 'coif1', 'haar'.")
 
         if decomposition_level in [1, 2]:
             self.decomposition_level = decomposition_level
         else:
-            self.filter_logger.error(f"Wrong decomposition_level' {decomposition_level}'. "
-                                     "Decomposition level should be integer. "
-                                     "Available decomposition levels are: 1 and 2.")
             raise ValueError(f"Wrong decomposition_level' {decomposition_level}'. "
                              "Decomposition level should be integer. Available decomposition levels are: 1 and 2.")
 
         if response_map in ['LL', 'HL', 'LH', 'HH']:
             self.response_map = response_map
         else:
-            self.filter_logger.error(f"Wrong response_map' {response_map}'. "
-                                     "Available response_maps are: 'LL', 'HL', 'LH', 'HH'.")
             raise ValueError(f"Wrong response_map' {response_map}'. "
                              "Available response_maps are: 'LL', 'HL', 'LH', 'HH'.")
 
         if isinstance(rotation_invariance, bool):
             self.rotation_invariance = rotation_invariance
         else:
-            self.filter_logger.error("Rotation Invariance should be "
-                                     f"True or False but '{type(rotation_invariance)}' detected.")
             raise ValueError(f"Rotation Invariance should be True or False but '{type(rotation_invariance)}' detected.")
-
-        self.filter_logger.debug(f"Defined 2D {wavelet_type} Wavelet filter with response map {response_map}, "
-                                 f"decomposition level {decomposition_level}, "
-                                 f"pseudo rotation invariance is {rotation_invariance}"
-                                 f"and {padding_type} padding type.")
 
     def _get_kernel(self, response, decomposition_level=1):
         if response == "L":
@@ -137,60 +113,38 @@ class Wavelets3D(BaseFilter):
             dimensionality='3D'
         )
 
-        close_all_loggers()
-        self.filter_logger_date_time = datetime.now().strftime("%Y-%m-%d_%H%M%S")
-        self.filter_logger = get_logger(self.filter_logger_date_time+'_Wavelets3D')
-
-        self.type = 'Wavelets'
         self.dimensionality = '3D'
 
         if padding_type in ['constant', 'nearest', 'wrap', 'reflect']:
             self.padding_type = padding_type
         else:
-            self.filter_logger.error(f"Wrong padding type '{padding_type}'. "
-                                     "Available padding types are: 'constant', 'nearest', 'wrap', and 'reflect'.")
             raise ValueError(f"Wrong padding type '{padding_type}'. "
                              "Available padding types are: 'constant', 'nearest', 'wrap', and 'reflect'.")
 
         if wavelet_type in ['db3', 'db2', 'coif1', 'haar']:
             self.wavelet_type = wavelet_type
         else:
-            self.filter_logger.error(f"Wrong wavelet type '{wavelet_type}'. "
-                                     "Available wavelet types are: 'db3', 'db2', 'coif1', 'haar'.")
             raise ValueError(f"Wrong wavelet type '{wavelet_type}'. "
                              "Available wavelet types are: 'db3', 'db2', 'coif1', 'haar'.")
 
         if decomposition_level in [1, 2]:
             self.decomposition_level = decomposition_level
         else:
-            self.filter_logger.error(f"Wrong decomposition_level' {decomposition_level}'. "
-                                     "Decomposition level should be integer. "
-                                     "Available decomposition levels are: 1 and 2.")
             raise ValueError(f"Wrong decomposition_level' {decomposition_level}'. "
                              "Decomposition level should be integer. Available decomposition levels are: 1 and 2.")
 
         if response_map in ['LLL', 'LLH', 'LHL', 'HLL', 'LHH', 'HHL', 'HLH', 'HHH']:
             self.response_map = response_map
         else:
-            self.filter_logger.error(f"Wrong response_map' {response_map}'. "
-                                     "Available response_maps are: "
-                                     "'LLL', 'LLH', 'LHL', 'HLL', 'LHH', 'HHL', 'HLH', 'HHH'.")
             raise ValueError(f"Wrong response_map' {response_map}'. "
                              "Available response_maps are: 'LLL', 'LLH', 'LHL', 'HLL', 'LHH', 'HHL', 'HLH', 'HHH'.")
 
         if isinstance(rotation_invariance, bool):
             self.rotation_invariance = rotation_invariance
         else:
-            self.filter_logger.error("Rotation Invariance should be "
-                                     f"True or False but '{type(rotation_invariance)}' detected.")
             raise ValueError(f"Rotation Invariance should be True or False but '{type(rotation_invariance)}' detected.")
 
         self.pooling = None
-
-        self.filter_logger.debug(f"Defined 3D {wavelet_type} Wavelet filter with response map {response_map}, "
-                                 f"decomposition level {decomposition_level}, "
-                                 f"pseudo rotation invariance is {rotation_invariance}"
-                                 f"and {padding_type} padding type.")
 
     def _get_kernel(self, response, decomposition_level=1):
         if response == "L":

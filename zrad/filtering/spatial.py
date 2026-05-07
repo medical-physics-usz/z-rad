@@ -1,4 +1,3 @@
-from datetime import datetime
 from functools import lru_cache
 from itertools import permutations
 
@@ -6,7 +5,6 @@ import cv2
 import numpy as np
 from scipy import ndimage as ndi
 
-from ..toolbox_logic import get_logger, close_all_loggers
 from .base import BaseFilter
 
 
@@ -20,34 +18,22 @@ class Mean(BaseFilter):
             support=support,
             dimensionality=dimensionality
         )
-        close_all_loggers()
-        self.filter_logger_date_time = datetime.now().strftime("%Y-%m-%d_%H%M%S")
-        self.filter_logger = get_logger(self.filter_logger_date_time+"_Mean_filter")
-
-        self.type = 'Mean'
 
         if dimensionality in ['2D', '3D']:
             self.dimensionality = dimensionality
         else:
-            self.filter_logger.error(f"Wrong dimensionality '{dimensionality}'. Available dimensions '2D' and '3D'.")
             raise ValueError(f"Wrong dimensionality '{dimensionality}'. Available dimensions '2D' and '3D'.")
 
         if isinstance(support, int):
             self.support = support
         else:
-            self.filter_logger.error(f"Support should be int but '{type(support)}' detected.")
             raise ValueError(f"Support should be int but '{type(support)}' detected.")
 
         if padding_type in ['constant', 'nearest', 'wrap', 'reflect']:
             self.padding_type = padding_type
         else:
-            self.filter_logger.error(f"Wrong padding type '{padding_type}'. "
-                                     "Available padding types are: 'constant', 'nearest', 'wrap', and 'reflect'.")
             raise ValueError(f"Wrong padding type '{padding_type}'. "
                              "Available padding types are: 'constant', 'nearest', 'wrap', and 'reflect'.")
-
-        self.filter_logger.debug(f"Defined {dimensionality} mean filter with support of {support}, "
-                                 f"and {padding_type} padding type.")
 
     def _apply_array(self, img):
         if self.dimensionality == "2D":
@@ -77,43 +63,29 @@ class LoG(BaseFilter):
             dimensionality=dimensionality
         )
 
-        close_all_loggers()
-        self.filter_logger_date_time = datetime.now().strftime("%Y-%m-%d_%H%M%S")
-        self.filter_logger = get_logger(self.filter_logger_date_time+'_LoG_filter')
-
-        self.type = 'Laplacian of Gaussian'
-
         if dimensionality in ['2D', '3D']:
             self.dimensionality = dimensionality
         else:
-            self.filter_logger.error(f"Wrong dimensionality '{dimensionality}'. Available dimensions '2D' and '3D'.")
             raise ValueError(f"Wrong dimensionality '{dimensionality}'. Available dimensions '2D' and '3D'.")
 
         if padding_type in ['constant', 'nearest', 'wrap', 'reflect']:
             self.padding_type = padding_type
         else:
-            self.filter_logger.error(f"Wrong padding type '{padding_type}'. "
-                                     f"Available padding types are: 'constant', 'nearest', 'wrap', and 'reflect'.")
             raise ValueError(f"Wrong padding type '{padding_type}'. "
                              f"Available padding types are: 'constant', 'nearest', 'wrap', and 'reflect'.")
 
         if isinstance(sigma_mm, (int, float)):
             self.sigma_mm = sigma_mm
         else:
-            self.filter_logger.error(f'Sigma (in mm) should be int or float but {type(sigma_mm)} detected.')
             raise ValueError(f'Sigma (in mm) should be int or float but {type(sigma_mm)} detected.')
 
         if isinstance(cutoff, (int, float)):
             self.cutoff = cutoff
         else:
-            self.filter_logger.error(f'Cutoff should be int or float but {type(cutoff)} detected.')
             raise ValueError(f'Cutoff should be int or float but {type(cutoff)} detected.')
 
         self.padding_constant = 0.0
         self.res_mm = None
-
-        self.filter_logger.debug(f"Defined {dimensionality} LoG filter with sigma {sigma_mm}, cutoff {cutoff}, "
-                                 f"and {padding_type} padding type.")
 
     def _prepare(self, image):
         try:
@@ -152,52 +124,34 @@ class Laws(BaseFilter):
             pooling=pooling
         )
 
-        close_all_loggers()
-        self.filter_logger_date_time = datetime.now().strftime("%Y-%m-%d_%H%M%S")
-        self.filter_logger = get_logger(self.filter_logger_date_time+'_Laws_kernels')
-
-        self.type = 'Laws Kernels'
-
         if dimensionality in ['2D', '3D']:
             self.dimensionality = dimensionality
         else:
-            self.filter_logger.error(f"Wrong dimensionality '{dimensionality}'. Available dimensions '2D' and '3D'.")
             raise ValueError(f"Wrong dimensionality '{dimensionality}'. Available dimensions '2D' and '3D'.")
 
         if padding_type in ['constant', 'nearest', 'wrap', 'reflect']:
             self.padding_type = padding_type
         else:
-            self.filter_logger.error(f"Wrong padding type '{padding_type}'. "
-                                     "Available padding types are: 'constant', 'nearest', 'wrap', and 'reflect'.")
             raise ValueError(f"Wrong padding type '{padding_type}'. "
                              "Available padding types are: 'constant', 'nearest', 'wrap', and 'reflect'.")
 
         if isinstance(distance, int):
             self.distance = distance
         else:
-            self.filter_logger.error(f"Distance should be 'int' but '{type(distance)}' detected.")
             raise ValueError(f"Distance should be 'int' but '{type(distance)}' detected.")
 
         if isinstance(energy_map, bool):
             self.energy_map = energy_map
         else:
-            self.filter_logger.error('Energy map can be only True or False.')
             raise ValueError('Energy map can be only True or False.')
 
         if isinstance(rotation_invariance, bool):
             self.rotation_invariance = rotation_invariance
         else:
-            self.filter_logger.error("Rotation Invariance should be "
-                                     f"True or False but '{type(rotation_invariance)}' detected.")
             raise ValueError(f"Rotation Invariance should be True or False but '{type(rotation_invariance)}' detected.")
 
         self.response_map = response_map
         self.pooling = pooling
-
-        self.filter_logger.debug(f"Defined {dimensionality} Laws Kernels filter with energy map is {energy_map}, "
-                                 f"response map {response_map}, distance {distance} "
-                                 f"pseudo rotation invariance is {rotation_invariance}, pooling {pooling},"
-                                 f"and {padding_type} padding type.")
 
     def _get_kernel(self, l_type, support):
         if l_type == "L":

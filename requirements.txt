@@ -1,4 +1,5 @@
 PyQt5
+pyqtgraph
 pydicom
 numpy
 SimpleITK

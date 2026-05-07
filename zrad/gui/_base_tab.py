@@ -121,9 +121,9 @@ def load_mask(input_params, patient_folder, structure_name, image):
 
 
 class BaseTab(QWidget, ABC, metaclass=BaseTabMeta):
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, visual_tab=False):
         super().__init__(parent)
-
+        self.visual_tab = visual_tab
         # Initialize layout and size
         self.setMinimumSize(1220, 640)
         self.layout = QVBoxLayout(self)
@@ -143,12 +143,14 @@ class BaseTab(QWidget, ABC, metaclass=BaseTabMeta):
             item_list=["Data Type:", "DICOM", "NIfTI"]
         )
 
-        # Number of Threads ComboBox
-        no_of_threads = ['Threads:'] + [str(i+1) for i in range(cpu_count())]
-        self.number_of_threads_combo_box = CustomBox(
-            20, 140, 160, 50, self,
-            item_list=no_of_threads
-        )
+        if not self.visual_tab:
+
+            # Number of Threads ComboBox
+            no_of_threads = ['Threads:'] + [str(i+1) for i in range(cpu_count())]
+            self.number_of_threads_combo_box = CustomBox(
+                20, 140, 160, 50, self,
+                item_list=no_of_threads
+            )
 
         self.run_button = CustomButton('RUN', 600, 590, 80, 50, self, style=False)
 
@@ -213,18 +215,19 @@ class BaseTab(QWidget, ABC, metaclass=BaseTabMeta):
             "E.g. 1, 5, 10, 34, ...",
             920, 140, 220, 50, self)
 
-        # Save Directory Button and Label
-        self.save_dir_button = CustomButton(
-            'Output Directory',
-            20, 220, 160, 50, self,
-            style=True)
-        self.save_dir_text_field = CustomTextField(
-            '',
-            200, 220, 1000, 50,
-            self,
-            style=True)
-        self.save_dir_text_field.setAlignment(Qt.AlignCenter)
-        self.save_dir_button.clicked.connect(lambda: self.open_directory(is_load_dir=False))
+        if not self.visual_tab:
+            # Save Directory Button and Label
+            self.save_dir_button = CustomButton(
+                'Output Directory',
+                20, 220, 160, 50, self,
+                style=True)
+            self.save_dir_text_field = CustomTextField(
+                '',
+                200, 220, 1000, 50,
+                self,
+                style=True)
+            self.save_dir_text_field.setAlignment(Qt.AlignCenter)
+            self.save_dir_button.clicked.connect(lambda: self.open_directory(is_load_dir=False))
 
     def open_directory(self, is_load_dir):
         options = QFileDialog.Options()
@@ -255,10 +258,15 @@ class BaseTab(QWidget, ABC, metaclass=BaseTabMeta):
 
     def _validate_io_directories(self):
         """Validate that necessary directories are selected."""
-        required_dirs = [
-            ('Select Load Directory!', self.load_dir_text_field.text().strip()),
-            ('Select Save Directory', self.save_dir_text_field.text().strip()),
-        ]
+        if self.visual_tab:
+            required_dirs = [
+                ('Select Load Directory!', self.load_dir_text_field.text().strip()),
+            ]
+        else:
+            required_dirs = [
+                ('Select Load Directory!', self.load_dir_text_field.text().strip()),
+                ('Select Save Directory', self.save_dir_text_field.text().strip()),
+            ]
         for warning, text in required_dirs:
             if not text:
                 warning_msg = warning
@@ -302,7 +310,8 @@ class BaseTab(QWidget, ABC, metaclass=BaseTabMeta):
 
     def get_patient_folders(self):
         input_dir = self.input_params["input_directory"]
-        output_dir = self.input_params["output_directory"]
+        if not self.visual_tab:
+            output_dir = self.input_params["output_directory"]
         start_folder = self.input_params["start_folder"]
         stop_folder = self.input_params["stop_folder"]
         list_of_patient_folders = self.input_params["list_of_patient_folders"]
@@ -322,11 +331,11 @@ class BaseTab(QWidget, ABC, metaclass=BaseTabMeta):
             warning_msg = f"Load directory '{input_dir}' does not exist."
             CustomWarningBox(warning_msg).response()
             raise InvalidInputParametersError(warning_msg)
-
-        if os.path.exists(output_dir):
-            pass
-        else:
-            os.makedirs(output_dir)
+        if not self.visual_tab:
+            if os.path.exists(output_dir):
+                pass
+            else:
+                os.makedirs(output_dir)
 
         if start_folder and stop_folder:  # Check if both are non-empty strings
             # List folders in the defined range
@@ -410,10 +419,14 @@ class BaseTab(QWidget, ABC, metaclass=BaseTabMeta):
         self._validate_io_directories()
 
         self.input_params["input_directory"] = self.get_text_from_text_field(self.input_params["input_directory"])
-        self.input_params["output_directory"] = self.get_text_from_text_field(self.input_params["output_directory"])
+        if not self.visual_tab:
+            self.input_params["number_of_threads"] = int(self.number_of_threads_combo_box.currentText())
+        else:
+            self.input_params["number_of_threads"] = 1
         self.input_params["start_folder"] = self.get_text_from_text_field(self.input_params["start_folder"])
         self.input_params["stop_folder"] = self.get_text_from_text_field(self.input_params["stop_folder"])
         self.input_params["list_of_patient_folders"] = self.get_list_from_text_field(self.input_params["list_of_patient_folders"])
         self.input_params["input_data_type"] = self._get_input_data_type()
         self.input_params["input_imaging_modality"] = self._get_input_imaging_modality()
-        self.input_params["number_of_threads"] = int(self.number_of_threads_combo_box.currentText())
+        if not self.visual_tab:
+            self.input_params["output_directory"] = self.get_text_from_text_field(self.input_params["output_directory"])

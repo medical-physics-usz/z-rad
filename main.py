@@ -11,6 +11,7 @@ from zrad import __version__
 from zrad.gui.filt_tab import FilteringTab
 from zrad.gui.prep_tab import PreprocessingTab
 from zrad.gui.rad_tab import RadiomicsTab
+from zrad.gui.visual_tab import VisualizationTab
 from zrad.gui.toolbox_gui import CustomWarningBox
 
 WINDOW_TITLE = f"Z-Rad v{__version__}"
@@ -80,7 +81,8 @@ class ZRad(QMainWindow):
         self.tabs = [
             ("Preprocessing", PreprocessingTab()),
             ("Filtering", FilteringTab()),
-            ("Radiomics", RadiomicsTab())
+            ("Radiomics", RadiomicsTab()),
+            ("Visualization", VisualizationTab())
         ]
 
         for title, tab in self.tabs:

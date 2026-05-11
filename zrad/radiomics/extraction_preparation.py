@@ -1,12 +1,7 @@
 import numpy as np
 
-from ..preprocessing import (
-    ImageDiscretizer,
-    IntensityVolumeHistogramDiscretizer,
-    Resegmenter,
-    RoiData,
-    RoiMaskValidator,
-)
+from ..preprocessing import Resegmenter, RoiData, RoiMaskValidator
+from ..preprocessing.discretization import ImageDiscretizer, IntensityVolumeHistogramDiscretizer
 from .extraction_context import PreparedExtractionData
 
 

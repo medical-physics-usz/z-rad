@@ -1,5 +1,6 @@
 import pytest
 import numpy as np
+import zrad.preprocessing as preprocessing
 from zrad.preprocessing import (
     ImageResampler,
     IntensityMaskBuilder,
@@ -36,6 +37,27 @@ def _make_image(array):
         direction=[1, 0, 0, 0, 1, 0, 0, 0, 1],
         shape=(array.shape[2], array.shape[1], array.shape[0]),
     )
+
+
+@pytest.mark.unit
+def test_preprocessing_public_api_exposes_main_steps_only():
+    assert set(preprocessing.__all__) == {
+        'ImageDiscretizer',
+        'ImageResampler',
+        'IntensityMaskBuilder',
+        'MaskResampler',
+        'Pipeline',
+        'RoiCropper',
+        'Resegmenter',
+        'RoiData',
+        'RoiMaskValidator',
+    }
+
+    assert not hasattr(preprocessing, 'RangeResegmenter')
+    assert not hasattr(preprocessing, 'OutlierResegmenter')
+    assert not hasattr(preprocessing, 'FixedBinSizeDiscretizer')
+    assert not hasattr(preprocessing, 'FixedBinNumberDiscretizer')
+    assert not hasattr(preprocessing, 'IntensityVolumeHistogramDiscretizer')
 
 @pytest.mark.unit
 def test_constructor_valid_inputs():

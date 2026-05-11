@@ -13,10 +13,5 @@ Preprocessing
    ~preprocessing.roi.RoiData
    ~preprocessing.roi.IntensityMaskBuilder
    ~preprocessing.roi.RoiCropper
-   ~preprocessing.resegmentation.RangeResegmenter
-   ~preprocessing.resegmentation.OutlierResegmenter
    ~preprocessing.resegmentation.Resegmenter
-   ~preprocessing.discretization.FixedBinSizeDiscretizer
-   ~preprocessing.discretization.FixedBinNumberDiscretizer
    ~preprocessing.discretization.ImageDiscretizer
-   ~preprocessing.discretization.IntensityVolumeHistogramDiscretizer

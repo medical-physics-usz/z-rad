@@ -32,9 +32,11 @@ Minimal Example
 
    from zrad.preprocessing import Resampler
    from zrad.filtering import create_filter
+   from zrad.image import Image
    from zrad.radiomics import Radiomics
 
-   # image and mask are zrad.image.Image instances loaded by your workflow
+   image = Image.from_nifti("path/to/image.nii.gz")
+   mask = Image.from_nifti_mask("path/to/mask.nii.gz", reference=image)
 
    prep = Resampler(
        input_imaging_modality="CT",

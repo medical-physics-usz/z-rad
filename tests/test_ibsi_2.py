@@ -12,9 +12,8 @@ from zrad.radiomics import Radiomics
 
 def _run_ph_i_case(filtering, phantom, filename, config, data_dir):
     filtered_image = filtering.apply(phantom)
-    response_map = Image()
     response_map_path = data_dir / 'Ph_I' / 'response_maps' / filename
-    response_map.read_nifti_image(str(response_map_path))
+    response_map = Image.from_nifti(str(response_map_path))
     ibsi_ii_ph_i_validation(filtered_image.array, response_map.array, config)
 
 
@@ -58,20 +57,16 @@ def ibsi_ii_ph_ii_validation(ibsi_features, features):
 
 @pytest.fixture()
 def ct_phantom_image(ibsi_i_data_dir):
-    image = Image()
-    image.read_dicom_image(dicom_dir=str(ibsi_i_data_dir / 'dicom' / 'image'), modality='CT')
-    return image
+    return Image.from_dicom(dicom_dir=str(ibsi_i_data_dir / 'dicom' / 'image'), modality='CT')
 
 
 @pytest.fixture()
 def ct_phantom_mask(ct_phantom_image, ibsi_i_data_dir):
-    mask = Image()
-    mask.read_dicom_mask(
+    return Image.from_dicom_mask(
         rtstruct_path=str(ibsi_i_data_dir / 'dicom' / 'mask' / 'DCM_RS_00060.dcm'),
         structure_name='GTV-1',
-        image=ct_phantom_image
+        reference=ct_phantom_image,
     )
-    return mask
 
 
 @pytest.fixture()
@@ -99,23 +94,17 @@ def res3d_1mm_mask_linear(ct_phantom_mask):
 
 @pytest.fixture()
 def checkerboard_phantom():
-    checkerboard = Image()
-    checkerboard.read_nifti_image('tests/data/IBSI_II/Ph_I/nifti/checkerboard/image/checkerboard.nii.gz')
-    return checkerboard
+    return Image.from_nifti('tests/data/IBSI_II/Ph_I/nifti/checkerboard/image/checkerboard.nii.gz')
 
 
 @pytest.fixture()
 def impulse_phantom():
-    impulse = Image()
-    impulse.read_nifti_image('tests/data/IBSI_II/Ph_I/nifti/impulse/image/impulse.nii.gz')
-    return impulse
+    return Image.from_nifti('tests/data/IBSI_II/Ph_I/nifti/impulse/image/impulse.nii.gz')
 
 
 @pytest.fixture()
 def sphere_phantom():
-    sphere = Image()
-    sphere.read_nifti_image('tests/data/IBSI_II/Ph_I/nifti/sphere/image/sphere.nii.gz')
-    return sphere
+    return Image.from_nifti('tests/data/IBSI_II/Ph_I/nifti/sphere/image/sphere.nii.gz')
 
 
 @pytest.mark.integration

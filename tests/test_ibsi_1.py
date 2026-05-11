@@ -32,32 +32,27 @@ def ibsi_i_validation(ibsi_features, features, config_a=False):
 
 @pytest.fixture()
 def dcm_ct_phantom_image(ibsi_i_data_dir):
-    image = Image()
-    image.read_dicom_image(dicom_dir=ibsi_i_data_dir / 'dicom' / 'image', modality='CT')
-    return image
+    return Image.from_dicom(dicom_dir=ibsi_i_data_dir / 'dicom' / 'image', modality='CT')
 
 @pytest.fixture()
 def dcm_ct_phantom_mask(dcm_ct_phantom_image):
-
-    image = Image()
-    image.read_dicom_mask(image=dcm_ct_phantom_image,
-                          rtstruct_path='tests/data/IBSI_I/dicom/mask/DCM_RS_00060.dcm',
-                          structure_name='GTV-1')
-    return image
+    return Image.from_dicom_mask(
+        reference=dcm_ct_phantom_image,
+        rtstruct_path='tests/data/IBSI_I/dicom/mask/DCM_RS_00060.dcm',
+        structure_name='GTV-1',
+    )
 
 @pytest.fixture()
 def nii_ct_phantom_image(ibsi_i_data_dir):
-    image = Image()
-    image.read_nifti_image(str(ibsi_i_data_dir / 'nifti' / 'image' / 'phantom.nii.gz'))
-    return image
+    return Image.from_nifti(str(ibsi_i_data_dir / 'nifti' / 'image' / 'phantom.nii.gz'))
 
 
 @pytest.fixture()
 def nii_ct_phantom_mask(nii_ct_phantom_image):
-
-    mask = Image()
-    mask.read_nifti_mask(image=nii_ct_phantom_image, mask_path='tests/data/IBSI_I/nifti/mask/mask.nii.gz')
-    return mask
+    return Image.from_nifti_mask(
+        reference=nii_ct_phantom_image,
+        mask_path='tests/data/IBSI_I/nifti/mask/mask.nii.gz',
+    )
 
 
 @pytest.fixture()

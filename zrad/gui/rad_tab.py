@@ -22,7 +22,7 @@ from .toolbox_gui import (
     ProcessingWorker,
 )
 from ..exceptions import InvalidInputParametersError, DataStructureError
-from ..image import get_dicom_files, get_all_structure_names
+from ..io.dicom import get_all_structure_names, get_dicom_files
 from ..radiomics import Radiomics
 from ..toolbox_logic import get_logger, close_all_loggers, joblib_progress
 

@@ -3,16 +3,21 @@ from dataclasses import dataclass
 import numpy as np
 
 from ..image import Image
-from .masks import RoiMasks
 
 
 @dataclass
-class CroppedRoiData:
-    """Images and masks cropped to the ROI bounding box."""
+class RoiData:
+    """Current image and ROI masks used for feature calculation."""
 
     image: Image
-    mask: Image
     filtered_image: Image | None = None
+    morphological_mask: Image | None = None
+    intensity_mask: Image | None = None
+
+    @property
+    def feature_image(self):
+        """Return the image used for intensity-based feature calculation."""
+        return self.filtered_image if self.filtered_image is not None else self.image
 
 
 class RoiMaskBuilder:
@@ -22,14 +27,17 @@ class RoiMaskBuilder:
         """Return ROI mask-building parameters mapped to their configured values."""
         return {}
 
-    def apply(self, image, mask):
+    def apply(self, image, mask, filtered_image=None):
         """Return morphological and intensity masks for ``image`` inside ``mask``."""
         morphological_mask = mask.copy()
         morphological_mask.array = morphological_mask.array.astype(np.int8)
 
+        feature_image = filtered_image if filtered_image is not None else image
         intensity_mask = mask.copy()
-        intensity_mask.array = np.where(mask.array > 0, image.array, np.nan)
-        return RoiMasks(
+        intensity_mask.array = np.where(mask.array > 0, feature_image.array, np.nan)
+        return RoiData(
+            image=image,
+            filtered_image=filtered_image,
             morphological_mask=morphological_mask,
             intensity_mask=intensity_mask,
         )
@@ -65,13 +73,21 @@ class RoiCropper:
             'padding': self.padding,
         }
 
-    def apply(self, image, mask, filtered_image=None):
-        """Return aligned image, mask, and optional filtered image cropped to the ROI."""
-        bbox_slices = self._bounding_box_slices(mask.array)
-        return CroppedRoiData(
-            image=self._crop_image(image, bbox_slices),
-            mask=self._crop_image(mask, bbox_slices),
-            filtered_image=None if filtered_image is None else self._crop_image(filtered_image, bbox_slices),
+    def apply(self, roi_data):
+        """Return ROI data cropped to the morphological ROI bounding box."""
+        if roi_data.morphological_mask is None or roi_data.intensity_mask is None:
+            raise ValueError("RoiCropper requires RoiData with morphological and intensity masks.")
+
+        bbox_slices = self._bounding_box_slices(roi_data.morphological_mask.array)
+        return RoiData(
+            image=self._crop_image(roi_data.image, bbox_slices),
+            filtered_image=(
+                None
+                if roi_data.filtered_image is None
+                else self._crop_image(roi_data.filtered_image, bbox_slices)
+            ),
+            morphological_mask=self._crop_image(roi_data.morphological_mask, bbox_slices),
+            intensity_mask=self._crop_image(roi_data.intensity_mask, bbox_slices),
         )
 
     def _bounding_box_slices(self, mask_array):

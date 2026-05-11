@@ -7,8 +7,8 @@ Preprocessing
    :toctree: generated
 
    ~preprocessing.interpolation.Resampler
-   ~preprocessing.masks.RoiMasks
    ~preprocessing.masks.RoiMaskValidator
+   ~preprocessing.roi.RoiData
    ~preprocessing.roi.RoiMaskBuilder
    ~preprocessing.roi.IntensityRoiMaskBuilder
    ~preprocessing.roi.RoiCropper

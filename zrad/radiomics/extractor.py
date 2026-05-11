@@ -1,6 +1,8 @@
+from dataclasses import replace
+
 import numpy as np
 
-from ..preprocessing import RoiCropper
+from ..preprocessing import RoiCropper, RoiData, RoiMaskBuilder
 from .extraction_context import ExtractionContext
 from .extraction_preparation import build_extraction_metadata, prepare_extraction_data
 from .feature_registry import resolve_groups
@@ -52,9 +54,23 @@ class Radiomics:
         self.crop_to_roi = crop_to_roi
         self.roi_crop_padding = roi_crop_padding
 
-    def extract_features(self, image, mask, filtered_image=None, families=None, features=None, include_metadata=False):
+    def extract_features(
+        self,
+        image=None,
+        mask=None,
+        filtered_image=None,
+        families=None,
+        features=None,
+        include_metadata=False,
+        roi_data=None,
+    ):
         """Run feature extraction and return a flat feature dictionary."""
-        context = self._build_context(image=image, mask=mask, filtered_image=filtered_image)
+        context = self._build_context(
+            image=image,
+            mask=mask,
+            filtered_image=filtered_image,
+            roi_data=roi_data,
+        )
         groups, selected_features = resolve_groups(context, families=families, features=features)
         if self.crop_to_roi:
             context = self._crop_context_to_roi(context, groups)
@@ -75,11 +91,22 @@ class Radiomics:
 
         return extracted
 
-    def _build_context(self, image, mask, filtered_image=None):
+    def _build_context(self, image=None, mask=None, filtered_image=None, roi_data=None):
+        if roi_data is not None:
+            if image is not None or mask is not None or filtered_image is not None:
+                raise ValueError("Pass either roi_data or image/mask inputs, not both.")
+            return self._build_context_from_roi_data(roi_data)
+
+        if image is None or mask is None:
+            raise ValueError("Either roi_data or both image and mask must be provided.")
+
         return ExtractionContext(
-            image=image,
-            mask=mask,
-            filtered_image=filtered_image,
+            roi_data=RoiMaskBuilder().apply(
+                image,
+                mask,
+                filtered_image=filtered_image,
+            ),
+            resegment_roi_data=True,
             is_slice_2d_image=image.shape[2] == 1,
             aggr_dim=self.aggr_dim,
             aggr_method=self.aggr_method,
@@ -95,31 +122,48 @@ class Radiomics:
             slice_median=self.slice_median,
         )
 
+    def _build_context_from_roi_data(self, roi_data):
+        self._validate_roi_data(roi_data)
+        return ExtractionContext(
+            roi_data=roi_data,
+            resegment_roi_data=False,
+            is_slice_2d_image=roi_data.image.shape[2] == 1,
+            aggr_dim=self.aggr_dim,
+            aggr_method=self.aggr_method,
+            intensity_range=self.intensity_range,
+            outlier_range=self.outlier_range,
+            number_of_bins=self.number_of_bins,
+            bin_size=self.bin_size,
+            calc_ivh_features=self.calc_ivh_features,
+            ivh_number_of_bins=self.ivh_number_of_bins,
+            ivh_bin_size=self.ivh_bin_size,
+            calc_morph_moran_i_and_geary_c_features=self.calc_morph_moran_i_and_geary_c_features,
+            slice_weighting=self.slice_weighting,
+            slice_median=self.slice_median,
+        )
+
+    @staticmethod
+    def _validate_roi_data(roi_data):
+        if not isinstance(roi_data, RoiData):
+            raise TypeError("roi_data must be an instance of zrad.preprocessing.RoiData.")
+        required_fields = {
+            "image": roi_data.image,
+            "morphological_mask": roi_data.morphological_mask,
+            "intensity_mask": roi_data.intensity_mask,
+        }
+        missing = [name for name, value in required_fields.items() if value is None]
+        if missing:
+            raise ValueError(f"roi_data is missing required field(s): {', '.join(missing)}.")
+
     def _crop_context_to_roi(self, context, groups):
         cropped = RoiCropper(
             padding=self._crop_padding(context, groups),
-        ).apply(
-            image=context.image,
-            mask=context.mask,
-            filtered_image=context.filtered_image,
-        )
-        return ExtractionContext(
-            image=cropped.image,
-            mask=cropped.mask,
-            filtered_image=cropped.filtered_image,
-            is_slice_2d_image=context.is_slice_2d,
-            aggr_dim=context.aggr_dim,
-            aggr_method=context.aggr_method,
-            intensity_range=context.intensity_range,
-            outlier_range=context.outlier_range,
-            number_of_bins=context.number_of_bins,
-            bin_size=context.bin_size,
-            calc_ivh_features=context.calc_ivh_features,
-            ivh_number_of_bins=context.ivh_number_of_bins,
-            ivh_bin_size=context.ivh_bin_size,
-            calc_morph_moran_i_and_geary_c_features=context.calc_morph_moran_i_and_geary_c_features,
-            slice_weighting=context.slice_weighting,
-            slice_median=context.slice_median,
+        ).apply(context.roi_data)
+        return replace(
+            context,
+            roi_data=cropped,
+            resegment_roi_data=False,
+            is_slice_2d_image=cropped.image.shape[2] == 1,
         )
 
     def _crop_padding(self, context, groups):

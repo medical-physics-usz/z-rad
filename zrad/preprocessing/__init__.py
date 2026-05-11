@@ -5,14 +5,13 @@ from .discretization import (
     IntensityVolumeHistogramDiscretizer,
 )
 from .interpolation import Resampler
-from .masks import RoiMasks, RoiMaskValidator
+from .masks import RoiMaskValidator
 from .resegmentation import OutlierResegmenter, RangeResegmenter, Resegmenter
-from .roi import CroppedRoiData, IntensityRoiMaskBuilder, RoiCropper, RoiMaskBuilder
+from .roi import IntensityRoiMaskBuilder, RoiCropper, RoiData, RoiMaskBuilder
 
 __all__ = [
     'FixedBinNumberDiscretizer',
     'FixedBinSizeDiscretizer',
-    'CroppedRoiData',
     'ImageDiscretizer',
     'IntensityRoiMaskBuilder',
     'IntensityVolumeHistogramDiscretizer',
@@ -21,7 +20,7 @@ __all__ = [
     'RoiCropper',
     'Resampler',
     'Resegmenter',
+    'RoiData',
     'RoiMaskBuilder',
     'RoiMaskValidator',
-    'RoiMasks',
 ]

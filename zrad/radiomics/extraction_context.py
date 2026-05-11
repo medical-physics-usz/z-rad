@@ -1,16 +1,15 @@
 from dataclasses import dataclass
 
 from ..image import Image
-from ..preprocessing import RoiMasks
+from ..preprocessing import RoiData
 
 
 @dataclass(frozen=True)
 class ExtractionContext:
     """Immutable extraction inputs and configuration."""
 
-    image: Image
-    mask: Image
-    filtered_image: Image | None
+    roi_data: RoiData
+    resegment_roi_data: bool
     is_slice_2d_image: bool
     aggr_dim: str
     aggr_method: str
@@ -26,8 +25,20 @@ class ExtractionContext:
     slice_median: bool
 
     @property
+    def image(self) -> Image:
+        return self.roi_data.image
+
+    @property
+    def mask(self) -> Image:
+        return self.roi_data.morphological_mask
+
+    @property
+    def filtered_image(self) -> Image | None:
+        return self.roi_data.filtered_image
+
+    @property
     def feature_image(self) -> Image:
-        return self.filtered_image if self.filtered_image is not None else self.image
+        return self.roi_data.feature_image
 
     @property
     def is_slice_2d(self) -> bool:
@@ -38,17 +49,17 @@ class ExtractionContext:
 class PreparedExtractionData:
     """Prepared intermediate data shared across feature groups."""
 
-    base_masks: RoiMasks | None = None
-    analysis_masks: RoiMasks | None = None
+    base_masks: RoiData | None = None
+    analysis_masks: RoiData | None = None
     discretized_intensity_image: Image | None = None
     ivh_intensity_image: Image | None = None
 
-    def require_base_masks(self) -> RoiMasks:
+    def require_base_masks(self) -> RoiData:
         if self.base_masks is None:
             raise RuntimeError('Base masks were not prepared for this extraction.')
         return self.base_masks
 
-    def require_analysis_masks(self) -> RoiMasks:
+    def require_analysis_masks(self) -> RoiData:
         if self.analysis_masks is None:
             raise RuntimeError('Analysis masks were not prepared for this extraction.')
         return self.analysis_masks

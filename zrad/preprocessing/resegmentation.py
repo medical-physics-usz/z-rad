@@ -1,7 +1,7 @@
 import numpy as np
 
 from ..image import Image
-from .masks import RoiMasks
+from .roi import RoiData
 
 
 class RangeResegmenter:
@@ -16,10 +16,10 @@ class RangeResegmenter:
             'intensity_range': self.intensity_range,
         }
 
-    def apply(self, roi_masks, reference_image):
+    def apply(self, roi_data, reference_image):
         """Apply range re-segmentation to the intensity mask."""
         if self.intensity_range is None:
-            return roi_masks
+            return roi_data
 
         lower, upper = self.intensity_range
         range_mask = np.where(
@@ -27,9 +27,11 @@ class RangeResegmenter:
             1,
             0,
         )
-        intensity_mask = roi_masks.intensity_mask
-        return RoiMasks(
-            morphological_mask=roi_masks.morphological_mask,
+        intensity_mask = roi_data.intensity_mask
+        return RoiData(
+            image=roi_data.image,
+            filtered_image=roi_data.filtered_image,
+            morphological_mask=roi_data.morphological_mask,
             intensity_mask=Image(
                 array=np.where((range_mask > 0) & (~np.isnan(intensity_mask.array)), intensity_mask.array, np.nan),
                 origin=intensity_mask.origin,
@@ -52,13 +54,13 @@ class OutlierResegmenter:
             'outlier_range': self.outlier_range,
         }
 
-    def apply(self, roi_masks, reference_image):
+    def apply(self, roi_data, reference_image):
         """Apply outlier re-segmentation to the intensity mask."""
         if self.outlier_range is None or not str(self.outlier_range).strip().replace('.', '').isdigit():
-            return roi_masks
+            return roi_data
 
         outlier_range = float(self.outlier_range)
-        morphological_array = roi_masks.morphological_mask.array
+        morphological_array = roi_data.morphological_mask.array
         flattened_image = np.where(morphological_array > 0, reference_image.array, np.nan).ravel()
         valid_values = flattened_image[~np.isnan(flattened_image)]
         mean = np.mean(valid_values)
@@ -69,9 +71,11 @@ class OutlierResegmenter:
             1,
             0,
         )
-        intensity_mask = roi_masks.intensity_mask
-        return RoiMasks(
-            morphological_mask=roi_masks.morphological_mask,
+        intensity_mask = roi_data.intensity_mask
+        return RoiData(
+            image=roi_data.image,
+            filtered_image=roi_data.filtered_image,
+            morphological_mask=roi_data.morphological_mask,
             intensity_mask=Image(
                 array=np.where((outlier_mask > 0) & (~np.isnan(intensity_mask.array)), intensity_mask.array, np.nan),
                 origin=intensity_mask.origin,
@@ -96,7 +100,7 @@ class Resegmenter:
             'outlier_range': self.outlier_range,
         }
 
-    def apply(self, roi_masks, reference_image):
+    def apply(self, roi_data, reference_image):
         """Return re-segmented ROI masks."""
-        roi_masks = RangeResegmenter(self.intensity_range).apply(roi_masks, reference_image)
-        return OutlierResegmenter(self.outlier_range).apply(roi_masks, reference_image)
+        roi_data = RangeResegmenter(self.intensity_range).apply(roi_data, reference_image)
+        return OutlierResegmenter(self.outlier_range).apply(roi_data, reference_image)

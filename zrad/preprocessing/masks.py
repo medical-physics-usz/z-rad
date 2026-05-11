@@ -1,17 +1,6 @@
-from dataclasses import dataclass
-
 import numpy as np
 
 from ..exceptions import DataStructureError
-from ..image import Image
-
-
-@dataclass
-class RoiMasks:
-    """Morphological and intensity masks for one ROI processing stage."""
-
-    morphological_mask: Image
-    intensity_mask: Image
 
 
 class RoiMaskValidator:

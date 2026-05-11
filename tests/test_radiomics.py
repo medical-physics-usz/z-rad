@@ -2,6 +2,7 @@ import numpy as np
 import pytest
 
 from zrad.image import Image
+from zrad.preprocessing import Resegmenter, RoiMaskBuilder
 from zrad.radiomics import Radiomics
 
 
@@ -94,6 +95,37 @@ def test_radiomics_filtered_image_uses_original_image_for_masking():
     assert list(features) == ['stat_mean', 'stat_var', 'stat_skew', 'stat_kurt', 'stat_median', 'stat_min', 'stat_p10',
                               'stat_p90', 'stat_max', 'stat_iqr', 'stat_range', 'stat_mad', 'stat_rmad',
                               'stat_medad', 'stat_cov', 'stat_qcod', 'stat_energy', 'stat_rms']
+    assert features['stat_mean'] == pytest.approx(100.0)
+    assert features['stat_max'] == pytest.approx(100.0)
+
+
+@pytest.mark.unit
+def test_radiomics_accepts_prepared_roi_data():
+    original = np.zeros((3, 3, 3), dtype=np.float64)
+    original[1, 1, 1] = 10.0
+
+    filtered = np.full((3, 3, 3), 50.0, dtype=np.float64)
+    filtered[1, 1, 1] = 100.0
+
+    image = _make_image(original)
+    filtered_image = _make_image(filtered)
+    mask = _make_image(np.ones((3, 3, 3), dtype=np.float64))
+
+    roi_data = RoiMaskBuilder().apply(
+        image=image,
+        mask=mask,
+        filtered_image=filtered_image,
+    )
+    roi_data = Resegmenter(intensity_range=[10.0, 10.0]).apply(
+        roi_data,
+        reference_image=image,
+    )
+
+    features = Radiomics().extract_features(
+        roi_data=roi_data,
+        families=['intensity_statistics'],
+    )
+
     assert features['stat_mean'] == pytest.approx(100.0)
     assert features['stat_max'] == pytest.approx(100.0)
 

@@ -4,7 +4,7 @@ from ..preprocessing import (
     ImageDiscretizer,
     IntensityVolumeHistogramDiscretizer,
     Resegmenter,
-    RoiMaskBuilder,
+    RoiData,
     RoiMaskValidator,
 )
 from .extraction_context import PreparedExtractionData
@@ -68,11 +68,28 @@ def prepare_extraction_data(context, groups, *, include_metadata=False):
 
 def prepare_mask_set(context, validation_dim):
     validated_mask = RoiMaskValidator(validation_dim).apply(context.mask)
-    roi_masks = RoiMaskBuilder().apply(context.feature_image, validated_mask)
+    roi_data = _with_validated_morphological_mask(context.roi_data, validated_mask)
+    if not context.resegment_roi_data:
+        return roi_data
     return Resegmenter(
         intensity_range=context.intensity_range,
         outlier_range=context.outlier_range,
-    ).apply(roi_masks, context.image)
+    ).apply(roi_data, context.image)
+
+
+def _with_validated_morphological_mask(roi_data, validated_mask):
+    intensity_mask = roi_data.intensity_mask.copy()
+    intensity_mask.array = np.where(
+        (validated_mask.array > 0) & (~np.isnan(intensity_mask.array)),
+        intensity_mask.array,
+        np.nan,
+    )
+    return RoiData(
+        image=roi_data.image,
+        filtered_image=roi_data.filtered_image,
+        morphological_mask=validated_mask,
+        intensity_mask=intensity_mask,
+    )
 
 
 def discretize_intensity_image(context, intensity_mask):

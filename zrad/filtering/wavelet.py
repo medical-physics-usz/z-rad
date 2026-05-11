@@ -6,7 +6,25 @@ from .base import BaseFilter
 
 
 class Wavelets2D(BaseFilter):
-    """2D wavelet response maps evaluated slice-wise on a 3D volume."""
+    """2D separable wavelet filtering evaluated slice-wise.
+
+    Each response map combines low-pass (``L``) and high-pass (``H``) wavelet
+    kernels along the two in-plane axes. The result keeps the original image
+    grid and is intended for downstream radiomics feature extraction.
+
+    Parameters
+    ----------
+    wavelet_type : {"db3", "db2", "coif1", "haar"}
+        Wavelet family used to obtain low- and high-pass filter kernels.
+    padding_type : {"constant", "nearest", "wrap", "reflect"}
+        Boundary handling mode used during convolution.
+    response_map : {"LL", "HL", "LH", "HH"}
+        Low/high-pass kernel combination for the two in-plane axes.
+    decomposition_level : {1, 2}
+        Wavelet decomposition level.
+    rotation_invariance : bool, optional
+        If true, average responses over four in-plane rotations.
+    """
 
     def __init__(self, wavelet_type, padding_type, response_map, decomposition_level, rotation_invariance=False):
         super().__init__(
@@ -100,7 +118,25 @@ class Wavelets2D(BaseFilter):
 
 
 class Wavelets3D(BaseFilter):
-    """3D wavelet response maps for volumetric filtering."""
+    """3D separable wavelet filtering for volumetric response maps.
+
+    Response maps combine low-pass (``L``) and high-pass (``H``) wavelet
+    kernels along all three axes. Rotation-invariant mode averages over axis
+    permutations and flips to reduce orientation dependence.
+
+    Parameters
+    ----------
+    wavelet_type : {"db3", "db2", "coif1", "haar"}
+        Wavelet family used to obtain low- and high-pass filter kernels.
+    padding_type : {"constant", "nearest", "wrap", "reflect"}
+        Boundary handling mode used during convolution.
+    response_map : {"LLL", "LLH", "LHL", "HLL", "LHH", "HHL", "HLH", "HHH"}
+        Low/high-pass kernel combination for the three axes.
+    decomposition_level : {1, 2}
+        Wavelet decomposition level.
+    rotation_invariance : bool, optional
+        If true, average responses over axis permutations and flips.
+    """
 
     def __init__(self, wavelet_type, padding_type, response_map, decomposition_level, rotation_invariance=False):
         super().__init__(

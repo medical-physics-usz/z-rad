@@ -35,7 +35,23 @@ GLCM_FEATURE_NAMES = (
 
 
 class GLCM:
-    """Gray level co-occurrence matrix features for 2D, 2.5D, and 3D analyses."""
+    """Gray level co-occurrence matrix features.
+
+    GLCM features summarize how often pairs of discretized grey levels occur at
+    fixed neighbour offsets. The class supports IBSI-style 2D, 2.5D, and 3D
+    directional aggregation.
+
+    Parameters
+    ----------
+    aggr_dim : {"2D", "2.5D", "3D"}
+        Spatial dimensionality used to build co-occurrence matrices.
+    aggr_method : {"MERG", "AVER", "SLICE_MERG", "DIR_MERG"}
+        Strategy used to combine matrices across directions and slices.
+    slice_weight : bool, default=False
+        Weight slice-wise averages by slice ROI voxel count.
+    slice_median : bool, default=False
+        Aggregate slice-wise values by median instead of mean.
+    """
 
     def __init__(self, aggr_dim, aggr_method, slice_weight=False, slice_median=False):
         self.aggr_dim = aggr_dim

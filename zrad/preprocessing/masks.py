@@ -4,19 +4,51 @@ from ..exceptions import DataStructureError
 
 
 class RoiMaskValidator:
-    """Validate ROI mask geometry for 2D, 2.5D, or 3D feature extraction."""
+    """Validate ROI mask geometry for 2D, 2.5D, or 3D feature extraction.
+
+    The validator enforces minimum ROI extent and voxel-count requirements
+    before feature extraction. In slice-wise modes, invalid slices are removed;
+    in 3D mode, the full volume must satisfy the checks.
+
+    Parameters
+    ----------
+    aggregation_dimension : {"2D", "2.5D", "3D", None}, optional
+        Feature aggregation mode that determines the geometric validity checks.
+        ``"3D"`` validates the full ROI volume. Other non-``None`` values are
+        treated as slice-wise modes and remove invalid slices. If ``None``, the
+        mask is copied without geometric validation.
+
+    """
 
     def __init__(self, aggregation_dimension=None):
         self.aggregation_dimension = aggregation_dimension
 
     def get_params(self):
-        """Return validation parameters mapped to their configured values."""
+        """Return validation parameters mapped to their configured values.
+
+        Returns
+        -------
+        params : dict
+            Dictionary containing ``aggregation_dimension``.
+        """
         return {
             'aggregation_dimension': self.aggregation_dimension,
         }
 
     def apply(self, mask):
-        """Validate a mask and return a validated mask copy."""
+        """Validate a mask and return a validated mask copy.
+
+        Parameters
+        ----------
+        mask : Image
+            Binary ROI mask to validate.
+
+        Returns
+        -------
+        validated_mask : Image
+            Copy of the input mask. In slice-wise modes, slices that fail the
+            minimum requirements are set to zero.
+        """
         validated_mask = mask.copy()
         if self.aggregation_dimension is None:
             return validated_mask

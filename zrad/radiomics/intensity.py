@@ -8,16 +8,15 @@ from .base import BaseFeatureGroup
 class LocalIntensityFeatures:
     """Local intensity peak features derived from the ROI and surrounding image.
 
+    Local and global intensity peaks are calculated from spherical
+    neighbourhoods around high-intensity ROI voxels. The neighbourhood radius is
+    defined in millimetres, so image spacing is required.
+
     Parameters
     ----------
     spacing : sequence of float
         Physical voxel spacing used to convert the IBSI neighborhood radius to
         image coordinates.
-
-    Notes
-    -----
-    This class implements the local and global intensity peak features from the
-    IBSI local intensity family.
     """
 
     def __init__(self, spacing):
@@ -187,7 +186,14 @@ class _IntensityFeatureCalculator:
 
 
 class IntensityStatisticsFeatures(_IntensityFeatureCalculator):
-    """First-order statistics for continuous ROI intensities."""
+    """First-order statistics for continuous ROI intensities.
+
+    This feature family summarizes non-discretized intensity values inside the
+    ROI, including location, dispersion, percentiles, energy, and robust
+    deviation measures.
+
+    This class has no constructor parameters.
+    """
 
     def get_params(self):
         """Return the configuration parameters of this intensity statistics calculator.
@@ -247,7 +253,13 @@ class IntensityStatisticsFeatures(_IntensityFeatureCalculator):
 
 
 class IntensityHistogramFeatures(_IntensityFeatureCalculator):
-    """Histogram-based first-order statistics for discretized ROI intensities."""
+    """Histogram-based first-order statistics for discretized ROI intensities.
+
+    This feature family applies first-order summary statistics to discretized
+    grey levels and adds histogram entropy, uniformity, and gradient measures.
+
+    This class has no constructor parameters.
+    """
 
     def get_params(self):
         """Return the configuration parameters of this intensity histogram calculator.
@@ -314,6 +326,10 @@ class IntensityHistogramFeatures(_IntensityFeatureCalculator):
 
 class IntensityVolumeHistogramFeatures:
     """Intensity-volume histogram features computed from discretized intensities.
+
+    IVH features quantify the relationship between intensity thresholds and the
+    fraction of ROI volume above those thresholds. They are commonly used for
+    dose or intensity-volume summaries.
 
     Parameters
     ----------
@@ -581,4 +597,3 @@ class IVHFeatureGroup(BaseFeatureGroup):
                 np.nanmax(image.array),
             )
         return ivh.calculate_features(image.array)
-

@@ -12,7 +12,13 @@ class BaseFilter:
         self.filtering_params = filtering_params
 
     def get_params(self):
-        """Return filter parameters mapped to their configured values."""
+        """Return filter parameters mapped to their configured values.
+
+        Returns
+        -------
+        params : dict
+            Constructor parameters stored by the filter instance.
+        """
         return dict(self.filtering_params)
 
     def _prepare(self, image):
@@ -22,7 +28,20 @@ class BaseFilter:
         raise NotImplementedError
 
     def apply(self, image):
-        """Apply the filter to an image or set ``RoiData.filtered_image``."""
+        """Apply the filter to an image or set ``RoiData.filtered_image``.
+
+        Parameters
+        ----------
+        image : Image or RoiData
+            Input image to filter. If ``RoiData`` is supplied, filtering is
+            applied to ``image.image`` and the result is stored as
+            ``filtered_image`` in the returned ROI data.
+
+        Returns
+        -------
+        filtered : Image or RoiData
+            Filtered image, or ROI data with ``filtered_image`` updated.
+        """
         if isinstance(image, RoiData):
             return RoiData(
                 image=image.image,

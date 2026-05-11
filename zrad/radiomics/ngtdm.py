@@ -16,7 +16,21 @@ NGTDM_FEATURE_NAMES = (
 
 
 class NGTDM:
-    """Neighbouring gray tone difference matrix features."""
+    """Neighbouring gray tone difference matrix features.
+
+    NGTDM features compare each discretized grey level with the average grey
+    level in its local neighbourhood. They quantify coarseness, contrast,
+    busyness, complexity, and strength.
+
+    Parameters
+    ----------
+    aggr_dim : {"2D", "2.5D", "3D"}
+        Spatial dimensionality used to build neighbouring difference matrices.
+    slice_weight : bool, default=False
+        Weight 2D slice-wise averages by slice ROI voxel count.
+    slice_median : bool, default=False
+        Aggregate 2D slice-wise values by median instead of mean.
+    """
 
     def __init__(self, aggr_dim, slice_weight=False, slice_median=False):
         self.aggr_dim = aggr_dim

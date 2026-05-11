@@ -10,6 +10,19 @@ def create_filter(filtering_method, **kwargs) -> BaseFilter:
     recommended Python API. This helper is intended for dynamic workflows where
     the filter family is selected by name, for example from GUI controls or
     saved configuration files.
+
+    Parameters
+    ----------
+    filtering_method : {"Mean", "Laplacian of Gaussian", "Laws Kernels", "Gabor", "Wavelets"}
+        Filter family to instantiate.
+    **kwargs
+        Constructor parameters for the selected filter. For wavelets, include
+        ``dimensionality`` to choose between ``Wavelets2D`` and ``Wavelets3D``.
+
+    Returns
+    -------
+    filter : BaseFilter
+        Configured concrete filter instance.
     """
     params = kwargs
     if filtering_method == 'Mean':

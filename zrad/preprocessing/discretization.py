@@ -5,21 +5,53 @@ from ..image import Image
 
 
 class FixedBinSizeDiscretizer:
-    """Discretize intensities using a fixed bin size."""
+    """Discretize intensities using a fixed bin size.
+
+    Fixed-bin-size discretization maps finite intensities to integer grey
+    levels using bins of constant physical intensity width. This is commonly
+    used before texture feature calculation.
+
+    Parameters
+    ----------
+    bin_size : float
+        Width of each discretization bin in image intensity units.
+    minimum : float or None, optional
+        Intensity value used as the lower discretization anchor. If ``None``,
+        the minimum finite value in the input image is used.
+
+    """
 
     def __init__(self, bin_size, minimum=None):
         self.bin_size = bin_size
         self.minimum = minimum
 
     def get_params(self):
-        """Return discretization parameters mapped to their configured values."""
+        """Return discretization parameters mapped to their configured values.
+
+        Returns
+        -------
+        params : dict
+            Dictionary containing ``bin_size`` and ``minimum``.
+        """
         return {
             'bin_size': self.bin_size,
             'minimum': self.minimum,
         }
 
     def apply(self, image):
-        """Return a discretized image."""
+        """Return a discretized image.
+
+        Parameters
+        ----------
+        image : Image
+            Image with finite or ``NaN`` intensity values.
+
+        Returns
+        -------
+        image : Image
+            Image whose finite intensities are replaced by fixed-bin-size grey
+            levels.
+        """
         minimum = np.nanmin(image.array) if self.minimum is None else self.minimum
         return Image(
             array=np.floor((image.array - minimum) / self.bin_size) + 1,
@@ -31,19 +63,48 @@ class FixedBinSizeDiscretizer:
 
 
 class FixedBinNumberDiscretizer:
-    """Discretize intensities using a fixed number of bins."""
+    """Discretize intensities using a fixed number of bins.
+
+    Fixed-bin-number discretization spans the finite intensity range with a
+    configured number of grey levels. The maximum input intensity is assigned to
+    the last bin.
+
+    Parameters
+    ----------
+    number_of_bins : int
+        Number of bins used to discretize the finite image intensities.
+
+    """
 
     def __init__(self, number_of_bins):
         self.number_of_bins = number_of_bins
 
     def get_params(self):
-        """Return discretization parameters mapped to their configured values."""
+        """Return discretization parameters mapped to their configured values.
+
+        Returns
+        -------
+        params : dict
+            Dictionary containing ``number_of_bins``.
+        """
         return {
             'number_of_bins': self.number_of_bins,
         }
 
     def apply(self, image):
-        """Return a discretized image."""
+        """Return a discretized image.
+
+        Parameters
+        ----------
+        image : Image
+            Image with finite or ``NaN`` intensity values.
+
+        Returns
+        -------
+        image : Image
+            Image whose finite intensities are replaced by fixed-bin-number grey
+            levels.
+        """
         minimum = np.nanmin(image.array)
         maximum = np.nanmax(image.array)
         return Image(
@@ -60,7 +121,28 @@ class FixedBinNumberDiscretizer:
 
 
 class IntensityVolumeHistogramDiscretizer:
-    """Prepare an intensity image for intensity-volume histogram calculation."""
+    """Prepare an intensity image for intensity-volume histogram calculation.
+
+    This helper applies the discretization pathway used before
+    intensity-volume histogram features. Fixed-bin-size discretization converts
+    bins to their centre intensities before optional fixed-bin-number
+    discretization.
+
+    Parameters
+    ----------
+    number_of_bins : int or None, optional
+        Number of bins used for fixed-bin-number discretization. If ``None``,
+        this step is skipped.
+    bin_size : float or None, optional
+        Width of each fixed-size intensity bin. If supplied, fixed-bin-size
+        discretization is applied before optional fixed-bin-number
+        discretization.
+    minimum : float or None, optional
+        Intensity value used as the lower anchor for fixed-bin-size
+        discretization. If ``None``, the minimum finite value in the input
+        image is used.
+
+    """
 
     def __init__(self, number_of_bins=None, bin_size=None, minimum=None):
         self.number_of_bins = number_of_bins
@@ -68,7 +150,14 @@ class IntensityVolumeHistogramDiscretizer:
         self.minimum = minimum
 
     def get_params(self):
-        """Return discretization parameters mapped to their configured values."""
+        """Return discretization parameters mapped to their configured values.
+
+        Returns
+        -------
+        params : dict
+            Dictionary containing ``number_of_bins``, ``bin_size``, and
+            ``minimum``.
+        """
         return {
             'number_of_bins': self.number_of_bins,
             'bin_size': self.bin_size,
@@ -76,7 +165,19 @@ class IntensityVolumeHistogramDiscretizer:
         }
 
     def apply(self, image):
-        """Return an IVH-prepared image."""
+        """Return an IVH-prepared image.
+
+        Parameters
+        ----------
+        image : Image
+            Intensity image to prepare for IVH feature calculation.
+
+        Returns
+        -------
+        image : Image
+            Image transformed according to the configured IVH discretization
+            pathway.
+        """
         result = image.copy()
         if self.bin_size is not None:
             minimum = np.nanmin(result.array) if self.minimum is None else self.minimum
@@ -94,7 +195,27 @@ class IntensityVolumeHistogramDiscretizer:
 
 
 class ImageDiscretizer:
-    """Choose fixed-bin-size or fixed-bin-number discretization from configuration."""
+    """Choose fixed-bin-size or fixed-bin-number discretization from configuration.
+
+    This convenience wrapper applies fixed-bin-size discretization, fixed-bin-
+    number discretization, both in that order, or neither when no discretization
+    parameters are configured.
+
+    Parameters
+    ----------
+    number_of_bins : int or None, optional
+        Number of bins used for fixed-bin-number discretization. If ``None``,
+        this step is skipped.
+    bin_size : float or None, optional
+        Width of each fixed-size intensity bin. If supplied, fixed-bin-size
+        discretization is applied before optional fixed-bin-number
+        discretization.
+    minimum : float or None, optional
+        Intensity value used as the lower anchor for fixed-bin-size
+        discretization. If ``None``, the minimum finite value in the input
+        image is used.
+
+    """
 
     def __init__(self, number_of_bins=None, bin_size=None, minimum=None):
         self.number_of_bins = number_of_bins
@@ -102,7 +223,14 @@ class ImageDiscretizer:
         self.minimum = minimum
 
     def get_params(self):
-        """Return discretization parameters mapped to their configured values."""
+        """Return discretization parameters mapped to their configured values.
+
+        Returns
+        -------
+        params : dict
+            Dictionary containing ``number_of_bins``, ``bin_size``, and
+            ``minimum``.
+        """
         return {
             'number_of_bins': self.number_of_bins,
             'bin_size': self.bin_size,
@@ -110,7 +238,19 @@ class ImageDiscretizer:
         }
 
     def apply(self, image):
-        """Return a discretized image, or a copy when no discretization is configured."""
+        """Return a discretized image, or a copy when no discretization is configured.
+
+        Parameters
+        ----------
+        image : Image
+            Image with finite or ``NaN`` intensity values.
+
+        Returns
+        -------
+        image : Image
+            Discretized image, or a copy of the input image when no
+            discretization parameters are configured.
+        """
         result = image.copy()
         if self.bin_size is not None:
             result = FixedBinSizeDiscretizer(self.bin_size, self.minimum).apply(result)

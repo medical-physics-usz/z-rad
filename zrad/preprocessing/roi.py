@@ -7,7 +7,28 @@ from ..image import Image
 
 @dataclass
 class RoiData:
-    """Current image and ROI masks used for feature calculation."""
+    """Current image and ROI masks used for feature calculation.
+
+    ``RoiData`` groups the image and ROI representations that move through a
+    preprocessing pipeline. The morphological mask defines the anatomical ROI;
+    the intensity mask stores feature-image values inside that ROI and ``NaN``
+    outside it.
+
+    Parameters
+    ----------
+    image : Image
+        Original image used as the spatial reference for ROI processing.
+    filtered_image : Image, optional
+        Filtered image used for intensity-based feature calculation. If this is
+        ``None``, ``image`` is used as the feature image.
+    morphological_mask : Image, optional
+        Binary ROI mask used for morphology-based feature calculation and as
+        the base mask for intensity ROI construction.
+    intensity_mask : Image, optional
+        Image containing feature-image intensities inside the ROI and ``NaN``
+        outside it. This mask is used by intensity-based feature families.
+
+    """
 
     image: Image
     filtered_image: Image | None = None
@@ -16,21 +37,35 @@ class RoiData:
 
     @property
     def feature_image(self):
-        """Return the image used for intensity-based feature calculation."""
+        """Return the image used for intensity-based feature calculation.
+
+        Returns
+        -------
+        image : Image
+            ``filtered_image`` when present; otherwise the original ``image``.
+        """
         return self.filtered_image if self.filtered_image is not None else self.image
 
 
 class IntensityMaskBuilder:
     """Build the intensity ROI image used by intensity-based feature families.
 
-    The builder keeps the morphological mask binary, selects the current feature
-    image from ``RoiData.filtered_image`` when present and otherwise
-    ``RoiData.image``, and writes an ``intensity_mask`` image whose voxels
-    outside the morphological ROI are set to ``NaN``.
+    The builder keeps the morphological mask binary, selects the current
+    feature image, and writes an ``intensity_mask`` whose voxels outside the ROI
+    are set to ``NaN``. This mirrors the IBSI distinction between morphology
+    and intensity masks.
+
+    This class has no constructor parameters.
     """
 
     def get_params(self):
-        """Return intensity-mask-building parameters mapped to their configured values."""
+        """Return intensity-mask-building parameters.
+
+        Returns
+        -------
+        params : dict
+            Empty dictionary because this class has no constructor parameters.
+        """
         return {}
 
     def apply(self, roi_data):
@@ -68,19 +103,50 @@ class IntensityMaskBuilder:
 
 
 class RoiCropper:
-    """Crop aligned images and masks to the ROI bounding box."""
+    """Crop aligned images and masks to the ROI bounding box.
+
+    Cropping reduces the working image domain to the non-zero morphological ROI
+    plus optional padding. Image geometry metadata is updated so the cropped
+    image remains located correctly in physical space.
+
+    Parameters
+    ----------
+    padding : int or sequence of int, optional
+        Number of voxels to keep around the ROI bounding box. A single integer
+        applies the same padding to all array axes. A sequence must contain one
+        value per array axis in ``(z, y, x)`` order. The default is ``0``.
+
+    """
 
     def __init__(self, padding=0):
         self.padding = padding
 
     def get_params(self):
-        """Return ROI cropping parameters mapped to their configured values."""
+        """Return ROI cropping parameters mapped to their configured values.
+
+        Returns
+        -------
+        params : dict
+            Dictionary containing ``padding``.
+        """
         return {
             'padding': self.padding,
         }
 
     def apply(self, roi_data):
-        """Return ROI data cropped to the morphological ROI bounding box."""
+        """Return ROI data cropped to the morphological ROI bounding box.
+
+        Parameters
+        ----------
+        roi_data : RoiData
+            ROI data with ``morphological_mask`` and ``intensity_mask``.
+
+        Returns
+        -------
+        roi_data : RoiData
+            New ROI data with all available images cropped to the same bounding
+            box.
+        """
         if roi_data.morphological_mask is None or roi_data.intensity_mask is None:
             raise ValueError("RoiCropper requires RoiData with morphological and intensity masks.")
 

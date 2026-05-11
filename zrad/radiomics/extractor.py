@@ -5,7 +5,39 @@ from .feature_registry import resolve_groups
 
 
 class Radiomics:
-    """Extract radiomics features from an image and mask pair."""
+    """Extract radiomics features from an image and ROI mask.
+
+    This workflow class prepares ROI masks, optional re-segmentation,
+    discretization, and IBSI-style feature aggregation before calculating the
+    selected feature families.
+
+    Parameters
+    ----------
+    aggr_dim : {"2D", "2.5D", "3D"}, default="3D"
+        Spatial aggregation dimensionality for texture features.
+    aggr_method : {"MERG", "AVER", "SLICE_MERG", "DIR_MERG"}, default="AVER"
+        Texture aggregation strategy across directions and slices.
+    intensity_range : tuple[float, float] or None, optional
+        Absolute intensity limits used for range re-segmentation.
+    outlier_range : float, str, or None, optional
+        Standard-deviation multiplier used for outlier re-segmentation.
+    number_of_bins : int or None, optional
+        Number of bins for fixed-bin-number discretization.
+    bin_size : float or None, optional
+        Bin width for fixed-bin-size discretization.
+    calc_ivh_features : bool, default=False
+        If true, include intensity-volume histogram features.
+    ivh_number_of_bins : int or None, optional
+        Number of bins for IVH discretization.
+    ivh_bin_size : float or None, optional
+        Bin width for IVH discretization.
+    calc_morph_moran_i_and_geary_c_features : bool, default=False
+        If true, include morphology correlation features.
+    slice_weighting : bool, default=False
+        Weight 2D slice-wise texture averages by slice ROI size.
+    slice_median : bool, default=False
+        Aggregate 2D slice-wise texture values by median instead of mean.
+    """
 
     def __init__(
         self,

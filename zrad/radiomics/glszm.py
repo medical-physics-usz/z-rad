@@ -27,7 +27,21 @@ GLSZM_FEATURE_NAMES = (
 
 
 class GLSZM(ZoneMatrixFeatureBase):
-    """Gray level size zone matrix features."""
+    """Gray level size zone matrix features.
+
+    GLSZM features describe connected zones of equal discretized grey level and
+    their sizes. They quantify small versus large zones and low- versus
+    high-grey-level zone patterns.
+
+    Parameters
+    ----------
+    aggr_dim : {"2D", "2.5D", "3D"}
+        Spatial dimensionality used to define connected zones.
+    slice_weight : bool, default=False
+        Weight 2D slice-wise averages by slice ROI voxel count.
+    slice_median : bool, default=False
+        Aggregate 2D slice-wise values by median instead of mean.
+    """
 
     def __init__(self, aggr_dim, slice_weight=False, slice_median=False):
         super().__init__(slice_weight=slice_weight, slice_median=slice_median)

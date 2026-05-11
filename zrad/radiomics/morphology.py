@@ -29,10 +29,15 @@ def _pca_eigenvalues(points: np.ndarray) -> np.ndarray:
 class MorphologicalFeatures:
     """Morphological and shape descriptors for a 3D region of interest.
 
+    Features describe ROI volume, surface area, compactness, principal axes,
+    convex-hull density, and related shape measures. Calculations use physical
+    voxel spacing so outputs are expressed in image-world units where
+    applicable.
+
     Parameters
     ----------
     spacing : sequence of float
-        Physical voxel spacing along the three image axes.
+        Physical voxel spacing along the three array axes.
     """
     def __init__(self, spacing):
         self.spacing = spacing
@@ -274,7 +279,17 @@ class MorphologicalFeatures:
         return dict(zip(MORPHOLOGY_FEATURE_NAMES, values))
 
 class MorphologyCorrelationFeatures:
-    """Spatial autocorrelation descriptors for a 3D region of interest."""
+    """Spatial autocorrelation descriptors for a 3D region of interest.
+
+    Moran's I and Geary's C summarize how intensity values vary with physical
+    distance between ROI voxels. They are optional morphology-related features
+    and require both a morphology mask and aligned intensity image.
+
+    Parameters
+    ----------
+    spacing : sequence of float
+        Physical voxel spacing along the three array axes.
+    """
 
     def __init__(self, spacing):
         self.spacing = spacing

@@ -29,7 +29,21 @@ NGLDM_FEATURE_NAMES = (
 
 
 class NGLDM(TextureFeatureBase):
-    """Neighbouring gray level dependence matrix features."""
+    """Neighbouring gray level dependence matrix features.
+
+    NGLDM features count neighbouring voxels that depend on the centre voxel's
+    discretized grey level. They describe local homogeneity, dependence counts,
+    and grey-level emphasis patterns.
+
+    Parameters
+    ----------
+    aggr_dim : {"2D", "2.5D", "3D"}
+        Spatial dimensionality used to count neighbouring dependencies.
+    slice_weight : bool, default=False
+        Weight 2D slice-wise averages by slice ROI voxel count.
+    slice_median : bool, default=False
+        Aggregate 2D slice-wise values by median instead of mean.
+    """
 
     def __init__(self, aggr_dim, slice_weight=False, slice_median=False):
         super().__init__(slice_weight=slice_weight, slice_median=slice_median)

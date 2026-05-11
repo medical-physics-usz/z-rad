@@ -27,7 +27,23 @@ GLRLM_FEATURE_NAMES = (
 
 
 class GLRLM(TextureFeatureBase):
-    """Gray level run length matrix features."""
+    """Gray level run length matrix features.
+
+    GLRLM features describe contiguous runs of equal discretized grey level
+    along predefined directions. They capture coarse versus fine texture and
+    low- versus high-grey-level run patterns.
+
+    Parameters
+    ----------
+    aggr_dim : {"2D", "2.5D", "3D"}
+        Spatial dimensionality used to build run length matrices.
+    aggr_method : {"MERG", "AVER", "SLICE_MERG", "DIR_MERG"}
+        Strategy used to combine matrices across directions and slices.
+    slice_weight : bool, default=False
+        Weight slice-wise averages by slice ROI voxel count.
+    slice_median : bool, default=False
+        Aggregate slice-wise values by median instead of mean.
+    """
 
     def __init__(self, aggr_dim, aggr_method, slice_weight=False, slice_median=False):
         super().__init__(slice_weight=slice_weight, slice_median=slice_median)

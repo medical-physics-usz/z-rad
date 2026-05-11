@@ -5,19 +5,51 @@ from .roi import RoiData
 
 
 class RangeResegmenter:
-    """Remove ROI voxels outside a configured intensity range."""
+    """Remove ROI voxels outside a configured intensity range.
+
+    Range re-segmentation restricts the intensity ROI to voxels whose original
+    image intensities lie within user-defined absolute bounds. Excluded voxels
+    are represented as ``NaN`` in the intensity mask.
+
+    Parameters
+    ----------
+    intensity_range : tuple[float, float] or None
+        Inclusive lower and upper intensity limits as ``(lower, upper)``. Voxels
+        outside this range are removed from ``RoiData.intensity_mask`` by
+        replacing them with ``NaN``. If ``None``, range re-segmentation is
+        skipped.
+
+    """
 
     def __init__(self, intensity_range):
         self.intensity_range = intensity_range
 
     def get_params(self):
-        """Return re-segmentation parameters mapped to their configured values."""
+        """Return re-segmentation parameters mapped to their configured values.
+
+        Returns
+        -------
+        params : dict
+            Dictionary containing ``intensity_range``.
+        """
         return {
             'intensity_range': self.intensity_range,
         }
 
     def apply(self, roi_data):
-        """Apply range re-segmentation to the intensity mask."""
+        """Apply range re-segmentation to the intensity mask.
+
+        Parameters
+        ----------
+        roi_data : RoiData
+            ROI data with an existing ``intensity_mask``.
+
+        Returns
+        -------
+        roi_data : RoiData
+            ROI data with voxels outside ``intensity_range`` removed from the
+            intensity mask.
+        """
         if self.intensity_range is None:
             return roi_data
 
@@ -43,19 +75,50 @@ class RangeResegmenter:
 
 
 class OutlierResegmenter:
-    """Remove ROI voxels outside a mean-centered standard-deviation range."""
+    """Remove ROI voxels outside a mean-centered standard-deviation range.
+
+    Outlier re-segmentation excludes voxels whose original image intensity is
+    outside a symmetric interval around the ROI mean. The interval width is
+    controlled by a standard-deviation multiplier.
+
+    Parameters
+    ----------
+    outlier_range : float, str, or None
+        Number of standard deviations around the ROI mean to retain. Values
+        outside ``mean +/- outlier_range * std`` are removed from
+        ``RoiData.intensity_mask`` by replacing them with ``NaN``. If ``None``
+        or a non-numeric string is supplied, outlier re-segmentation is skipped.
+
+    """
 
     def __init__(self, outlier_range):
         self.outlier_range = outlier_range
 
     def get_params(self):
-        """Return re-segmentation parameters mapped to their configured values."""
+        """Return re-segmentation parameters mapped to their configured values.
+
+        Returns
+        -------
+        params : dict
+            Dictionary containing ``outlier_range``.
+        """
         return {
             'outlier_range': self.outlier_range,
         }
 
     def apply(self, roi_data):
-        """Apply outlier re-segmentation to the intensity mask."""
+        """Apply outlier re-segmentation to the intensity mask.
+
+        Parameters
+        ----------
+        roi_data : RoiData
+            ROI data with ``morphological_mask`` and ``intensity_mask``.
+
+        Returns
+        -------
+        roi_data : RoiData
+            ROI data with statistical outliers removed from the intensity mask.
+        """
         if self.outlier_range is None or not str(self.outlier_range).strip().replace('.', '').isdigit():
             return roi_data
 
@@ -94,6 +157,17 @@ class Resegmenter:
     criteria on ``RoiData.image`` and applies them to the existing
     ``RoiData.intensity_mask``. If both criteria are configured, range
     re-segmentation is applied first and outlier re-segmentation second.
+
+    Parameters
+    ----------
+    intensity_range : tuple[float, float] or None, optional
+        Inclusive lower and upper intensity limits as ``(lower, upper)``. If
+        ``None``, range re-segmentation is skipped.
+    outlier_range : float, str, or None, optional
+        Number of standard deviations around the ROI mean to retain. If
+        ``None`` or a non-numeric string is supplied, outlier re-segmentation is
+        skipped.
+
     """
 
     def __init__(self, intensity_range=None, outlier_range=None):
@@ -101,7 +175,13 @@ class Resegmenter:
         self.outlier_range = outlier_range
 
     def get_params(self):
-        """Return re-segmentation parameters mapped to their configured values."""
+        """Return re-segmentation parameters mapped to their configured values.
+
+        Returns
+        -------
+        params : dict
+            Dictionary containing ``intensity_range`` and ``outlier_range``.
+        """
         return {
             'intensity_range': self.intensity_range,
             'outlier_range': self.outlier_range,

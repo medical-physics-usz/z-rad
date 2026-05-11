@@ -63,7 +63,29 @@ def _calculate_resampled_origin(initial_shape, initial_spacing, resulted_spacing
 
 
 class ImageResampler:
-    """Resample an image or ``RoiData.image`` onto a target voxel grid."""
+    """Resample an image or ``RoiData.image`` onto a target voxel grid.
+
+    Image resampling standardizes voxel spacing before downstream processing.
+    Intensities are interpolated on a grid with the requested physical
+    resolution while preserving image orientation and updating the origin.
+
+    Parameters
+    ----------
+    resolution : float or sequence of float
+        Target voxel spacing in millimetres. A single positive value is applied
+        to all three axes. A sequence must contain three positive values in
+        ``(x, y, z)`` order.
+    method : str, optional
+        Interpolation method used for image intensities. Supported values are
+        ``"linear"``, ``"nearest_neighbor"``, ``"bspline"``, and
+        ``"gaussian"`` including common aliases such as ``"trilinear"`` and
+        ``"nn"``. The default is ``"linear"``.
+    intensity_rounding : {None, "nearest_integer"}, optional
+        Optional post-processing for resampled intensities. Use
+        ``"nearest_integer"`` to round values to the nearest integer and cast
+        them to ``int16``. The default keeps floating-point intensities.
+
+    """
 
     def __init__(self, resolution, method='linear', intensity_rounding=None):
         self.resolution = tuple(_normalize_resolution(resolution))
@@ -71,7 +93,14 @@ class ImageResampler:
         self.intensity_rounding = intensity_rounding
 
     def get_params(self):
-        """Return image-resampling parameters mapped to their configured values."""
+        """Return image-resampling parameters mapped to their configured values.
+
+        Returns
+        -------
+        params : dict
+            Dictionary containing ``resolution``, ``method``, and
+            ``intensity_rounding``.
+        """
         return {
             'resolution': self.resolution,
             'method': self.method,
@@ -79,7 +108,19 @@ class ImageResampler:
         }
 
     def apply(self, data):
-        """Return a resampled image or ROI data with a resampled image."""
+        """Return a resampled image or ROI data with a resampled image.
+
+        Parameters
+        ----------
+        data : Image or RoiData
+            Image to resample. If ``RoiData`` is supplied, only ``data.image``
+            is resampled and the intensity mask is cleared.
+
+        Returns
+        -------
+        resampled : Image or RoiData
+            Resampled image, or ROI data with a resampled ``image`` field.
+        """
         if isinstance(data, RoiData):
             return RoiData(
                 image=self._resample(data.image),
@@ -106,7 +147,29 @@ class ImageResampler:
 
 
 class MaskResampler:
-    """Resample a mask or ``RoiData.morphological_mask`` onto a target voxel grid."""
+    """Resample a mask or ``RoiData.morphological_mask`` onto a target voxel grid.
+
+    Mask resampling aligns ROI geometry with the analysis grid. The interpolated
+    mask is thresholded back to a binary image, which supports partial-volume
+    handling when non-nearest interpolation is used.
+
+    Parameters
+    ----------
+    resolution : float or sequence of float
+        Target voxel spacing in millimetres. A single positive value is applied
+        to all three axes. A sequence must contain three positive values in
+        ``(x, y, z)`` order.
+    method : str, optional
+        Interpolation method used before thresholding the mask. Supported
+        values are ``"nearest_neighbor"``, ``"linear"``, ``"bspline"``, and
+        ``"gaussian"`` including common aliases. The default is
+        ``"nearest_neighbor"``.
+    partial_volume_threshold : float, optional
+        Threshold applied after interpolation. Voxels greater than or equal to
+        this value are assigned to the ROI; all other voxels are set to zero.
+        If ``None`` is supplied, ``0.5`` is used.
+
+    """
 
     def __init__(self, resolution, method='nearest_neighbor', partial_volume_threshold=0.5):
         self.resolution = tuple(_normalize_resolution(resolution))
@@ -114,7 +177,14 @@ class MaskResampler:
         self.partial_volume_threshold = 0.5 if partial_volume_threshold is None else partial_volume_threshold
 
     def get_params(self):
-        """Return mask-resampling parameters mapped to their configured values."""
+        """Return mask-resampling parameters mapped to their configured values.
+
+        Returns
+        -------
+        params : dict
+            Dictionary containing ``resolution``, ``method``, and
+            ``partial_volume_threshold``.
+        """
         return {
             'resolution': self.resolution,
             'method': self.method,
@@ -122,7 +192,21 @@ class MaskResampler:
         }
 
     def apply(self, data):
-        """Return a resampled mask or ROI data with a resampled morphological mask."""
+        """Return a resampled mask or ROI data with a resampled morphological mask.
+
+        Parameters
+        ----------
+        data : Image or RoiData
+            Mask image to resample. If ``RoiData`` is supplied,
+            ``morphological_mask`` is resampled and ``intensity_mask`` is
+            cleared.
+
+        Returns
+        -------
+        resampled : Image or RoiData
+            Binary resampled mask, or ROI data with a resampled
+            ``morphological_mask``.
+        """
         if isinstance(data, RoiData):
             if data.morphological_mask is None:
                 raise ValueError("MaskResampler requires RoiData.morphological_mask.")

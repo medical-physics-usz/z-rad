@@ -9,7 +9,21 @@ from .base import BaseFilter
 
 
 class Mean(BaseFilter):
-    """Mean filter for 2D slice-wise or full 3D smoothing."""
+    """Mean filter for local intensity smoothing.
+
+    The filter replaces each voxel by the average intensity in a square 2D or
+    cubic 3D neighbourhood. Use it as a simple low-pass filter before feature
+    extraction when local noise reduction is desired.
+
+    Parameters
+    ----------
+    padding_type : {"constant", "nearest", "wrap", "reflect"}
+        Boundary handling mode used during convolution.
+    support : int
+        Kernel side length in voxels.
+    dimensionality : {"2D", "3D"}
+        Apply the filter slice-wise in 2D or volumetrically in 3D.
+    """
 
     def __init__(self, padding_type, support, dimensionality):
         super().__init__(
@@ -52,7 +66,23 @@ class Mean(BaseFilter):
 
 
 class LoG(BaseFilter):
-    """Laplacian-of-Gaussian filter for blob and edge enhancement."""
+    """Laplacian-of-Gaussian filter for blob and edge enhancement.
+
+    The image is Gaussian-smoothed at a physical scale and then transformed
+    with the Laplacian operator. This highlights intensity transitions and
+    blob-like structures at the configured scale.
+
+    Parameters
+    ----------
+    padding_type : {"constant", "nearest", "wrap", "reflect"}
+        Boundary handling mode used during convolution.
+    sigma_mm : float
+        Gaussian standard deviation in millimetres.
+    cutoff : float
+        Kernel truncation radius in standard deviations.
+    dimensionality : {"2D", "3D"}
+        Apply the filter slice-wise in 2D or volumetrically in 3D.
+    """
 
     def __init__(self, padding_type, sigma_mm, cutoff, dimensionality):
         super().__init__(
@@ -109,7 +139,30 @@ class LoG(BaseFilter):
 
 
 class Laws(BaseFilter):
-    """Laws-kernel texture filtering in 2D or 3D."""
+    """Laws-kernel texture filtering in 2D or 3D.
+
+    Laws filters combine separable 1D kernels such as level, edge, spot, wave,
+    and ripple operators to form texture response maps. Optional energy maps
+    summarize absolute responses in a local neighbourhood.
+
+    Parameters
+    ----------
+    response_map : str
+        Kernel combination, for example ``"L5E5"`` in 2D or ``"L5E5S5"`` in
+        3D. Supported kernel letters are ``L``, ``E``, ``S``, ``W``, and ``R``.
+    padding_type : {"constant", "nearest", "wrap", "reflect"}
+        Boundary handling mode used during convolution.
+    distance : int
+        Radius of the local averaging window used when ``energy_map`` is true.
+    energy_map : bool
+        If true, return a local mean absolute response map.
+    dimensionality : {"2D", "3D"}
+        Apply 2D or 3D Laws filtering.
+    rotation_invariance : bool, optional
+        If true, combine responses over axis permutations and flips.
+    pooling : {"avg", "max", None}, optional
+        Pooling rule for rotation-invariant responses.
+    """
 
     def __init__(self, response_map, padding_type, distance, energy_map, dimensionality,
                  rotation_invariance=False, pooling=None):
@@ -254,7 +307,36 @@ class Laws(BaseFilter):
 
 
 class Gabor(BaseFilter):
-    """Gabor filtering for 3D volumes using 2D kernels on orthogonal planes."""
+    """Gabor filtering with complex 2D kernels.
+
+    Gabor filters measure oriented, frequency-selective texture. The
+    implementation applies real and imaginary kernels slice-wise, returns their
+    magnitude, and can average responses over orientations and orthogonal
+    planes.
+
+    Parameters
+    ----------
+    padding_type : {"constant", "nearest", "reflect", "mirror", "wrap"}
+        Boundary handling mode used by OpenCV.
+    res_mm : float
+        Voxel spacing in millimetres used to convert physical scales to pixels.
+    sigma_mm : float
+        Gaussian envelope standard deviation in millimetres.
+    lambda_mm : float
+        Sinusoidal wavelength in millimetres.
+    gamma : float
+        Spatial aspect ratio of the Gabor kernel.
+    theta : float
+        Orientation angle in radians, or angular step when
+        ``rotation_invariance`` is true.
+    rotation_invariance : bool, optional
+        If true, average responses over orientations from 0 to ``2*pi``.
+    orthogonal_planes : bool, optional
+        If true, also evaluate the three orthogonal slice planes.
+    n_stds : float or None, optional
+        Kernel size in standard deviations. If ``None``, seven standard
+        deviations are used.
+    """
 
     _PADDING_MAP = {
         'reflect': cv2.BORDER_REFLECT,

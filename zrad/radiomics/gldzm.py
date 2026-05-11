@@ -27,7 +27,21 @@ GLDZM_FEATURE_NAMES = (
 
 
 class GLDZM(ZoneMatrixFeatureBase):
-    """Gray level distance zone matrix features."""
+    """Gray level distance zone matrix features.
+
+    GLDZM features describe connected grey-level zones together with their
+    distance from the ROI border. They summarize how grey-level zones are
+    distributed from boundary-adjacent to deeper ROI regions.
+
+    Parameters
+    ----------
+    aggr_dim : {"2D", "2.5D", "3D"}
+        Spatial dimensionality used to define zones and border distances.
+    slice_weight : bool, default=False
+        Weight 2D slice-wise averages by slice ROI voxel count.
+    slice_median : bool, default=False
+        Aggregate 2D slice-wise values by median instead of mean.
+    """
 
     def __init__(self, aggr_dim, slice_weight=False, slice_median=False):
         super().__init__(slice_weight=slice_weight, slice_median=slice_median)

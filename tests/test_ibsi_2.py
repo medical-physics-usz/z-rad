@@ -6,7 +6,7 @@ import pytest
 
 from zrad.filtering import create_filter
 from zrad.image import Image
-from zrad.preprocessing import Resampler
+from zrad.preprocessing import ImageResampler, MaskResampler
 from zrad.radiomics import Radiomics
 
 
@@ -71,23 +71,24 @@ def ct_phantom_mask(ct_phantom_image, ibsi_i_data_dir):
 
 @pytest.fixture()
 def res3d_1mm_image_spline(ct_phantom_image):
-    preprocessing = Resampler(input_imaging_modality='CT',
-                                  resample_resolution=1,
-                                  resample_dimension='3D',
-                                  interpolation_method='BSpline')
-    res_image = preprocessing.apply(ct_phantom_image, image_type='image')
+    preprocessing = ImageResampler(
+        resolution=(1, 1, 1),
+        method='BSpline',
+        intensity_rounding='nearest_integer',
+    )
+    res_image = preprocessing.apply(ct_phantom_image)
 
     return res_image
 
 
 @pytest.fixture()
 def res3d_1mm_mask_linear(ct_phantom_mask):
-    preprocessing = Resampler(input_imaging_modality='CT',
-                                  resample_resolution=1,
-                                  resample_dimension='3D',
-                                  interpolation_method='Linear',
-                                  interpolation_threshold=.5)
-    res_mask = preprocessing.apply(ct_phantom_mask, image_type='mask')
+    preprocessing = MaskResampler(
+        resolution=(1, 1, 1),
+        method='Linear',
+        partial_volume_threshold=.5,
+    )
+    res_mask = preprocessing.apply(ct_phantom_mask)
 
     return res_mask
 

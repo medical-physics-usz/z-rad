@@ -33,7 +33,6 @@ Minimal Example
    from zrad.filtering import create_filter
    from zrad.image import Image
    from zrad.preprocessing import (
-       ImageFilter,
        ImageResampler,
        IntensityMaskBuilder,
        MaskResampler,
@@ -71,7 +70,7 @@ Minimal Example
            method="trilinear",
            partial_volume_threshold=0.5,
        )),
-       ("filter", ImageFilter(filt)),
+       ("filter", filt),
        ("intensity_mask_builder", IntensityMaskBuilder()),
        ("resegmenter", Resegmenter(
            intensity_range=(-500, 400),

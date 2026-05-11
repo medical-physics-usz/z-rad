@@ -7,14 +7,11 @@ Preprocessing
    :toctree: generated
 
    ~preprocessing.pipeline.Pipeline
-   ~preprocessing.pipeline.ImageFilter
-   ~preprocessing.interpolation.Resampler
    ~preprocessing.interpolation.ImageResampler
    ~preprocessing.interpolation.MaskResampler
    ~preprocessing.masks.RoiMaskValidator
    ~preprocessing.roi.RoiData
    ~preprocessing.roi.IntensityMaskBuilder
-   ~preprocessing.roi.IntensityRoiMaskBuilder
    ~preprocessing.roi.RoiCropper
    ~preprocessing.resegmentation.RangeResegmenter
    ~preprocessing.resegmentation.OutlierResegmenter

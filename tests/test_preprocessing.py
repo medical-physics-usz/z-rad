@@ -1,13 +1,10 @@
 import pytest
 import numpy as np
-import SimpleITK as sitk
 from zrad.preprocessing import (
-    ImageFilter,
     ImageResampler,
     IntensityMaskBuilder,
     MaskResampler,
     Pipeline,
-    Resampler,
     RoiCropper,
     RoiData,
 )
@@ -19,6 +16,13 @@ class AddOneFilter:
         return {}
 
     def apply(self, image):
+        if isinstance(image, RoiData):
+            return RoiData(
+                image=image.image,
+                filtered_image=self.apply(image.image),
+                morphological_mask=image.morphological_mask,
+                intensity_mask=None,
+            )
         filtered = image.copy()
         filtered.array = filtered.array + 1
         return filtered
@@ -35,88 +39,43 @@ def _make_image(array):
 
 @pytest.mark.unit
 def test_constructor_valid_inputs():
-    preprocessing = Resampler(
-        input_imaging_modality='CT',
-        resample_resolution=2.0,
-        resample_dimension='3D',
-        interpolation_method='Linear',
-        interpolation_threshold=0.5
+    image_resampler = ImageResampler(
+        resolution=(2.0, 2.0, 2.0),
+        method='linear',
+        intensity_rounding='nearest_integer',
     )
-    assert preprocessing.input_imaging_modality == 'CT'
-    assert preprocessing.resample_resolution == 2.0
-    assert preprocessing.resample_dimension == '3D'
-    assert preprocessing.interpolation_method == 'Linear'
-    assert preprocessing.interpolation_threshold == 0.5
+    mask_resampler = MaskResampler(
+        resolution=(2.0, 2.0, 2.0),
+        method='trilinear',
+        partial_volume_threshold=0.5,
+    )
+    assert image_resampler.resolution == (2.0, 2.0, 2.0)
+    assert image_resampler.method == 'linear'
+    assert image_resampler.intensity_rounding == 'nearest_integer'
+    assert mask_resampler.partial_volume_threshold == 0.5
 
 
 @pytest.mark.unit
 @pytest.mark.parametrize("invalid_resolution", [0, -1, None, "abc"])
 def test_constructor_invalid_resolution(invalid_resolution):
     with pytest.raises(ValueError) as exc_info:
-        Resampler(
-            input_imaging_modality='CT',
-            resample_resolution=invalid_resolution,
-            resample_dimension='2D',
-            interpolation_method='Linear'
-        )
-    assert "must be a positive int or float" in str(exc_info.value)
-
-
-@pytest.mark.unit
-@pytest.mark.parametrize("invalid_dimension", ["1D", "4D", None, 123])
-def test_constructor_invalid_dimension(invalid_dimension):
-    with pytest.raises(ValueError) as exc_info:
-        Resampler(
-            input_imaging_modality='CT',
-            resample_resolution=2.0,
-            resample_dimension=invalid_dimension,
-            interpolation_method='Linear'
-        )
-    assert "Resample dimension" in str(exc_info.value)
-    assert "is not '2D' or '3D'." in str(exc_info.value)
-
-
-@pytest.mark.unit
-def test_get_interpolator_supported_method():
-    interpolator = Resampler._get_interpolator('Linear')
-    assert interpolator == sitk.sitkLinear
-
-    interpolator = Resampler._get_interpolator('BSpline')
-    assert interpolator == sitk.sitkBSpline
+        ImageResampler(resolution=invalid_resolution, method='linear')
+    assert "Resolution" in str(exc_info.value)
 
 
 @pytest.mark.unit
 def test_get_interpolator_unsupported_method():
+    image = _make_image(np.ones((3, 3, 3), dtype=np.float64))
     with pytest.raises(ValueError) as exc_info:
-        Resampler._get_interpolator('SomeUnsupportedMethod')
+        ImageResampler(resolution=(1.0, 1.0, 1.0), method='SomeUnsupportedMethod').apply(image)
     assert "is not supported" in str(exc_info.value)
-
-
-@pytest.mark.unit
-def test_calculate_resampled_origin():
-    """
-    Test that calculate_resampled_origin returns a float representing
-    the new origin on a given axis.
-    """
-    initial_shape = (100, 100, 50)
-    initial_spacing = (1.0, 1.0, 1.5)
-    resulted_spacing = (2.0, 2.0, 1.5)
-    initial_origin = (0.0, 0.0, 0.0)
-    axis = 1  # Y-axis
-
-    new_origin = Resampler._calculate_resampled_origin(
-        initial_shape, initial_spacing, resulted_spacing, initial_origin, axis
-    )
-
-    # Basic sanity check: new origin should be within some reasonable range.
-    assert isinstance(new_origin, float)
 
 
 @pytest.mark.unit
 def test_resample_image_2d():
     """
     Create a small 2D-like image (1 slice in the z-dimension) and check
-    whether the Resampler class resamples it as expected.
+    whether the ImageResampler class resamples it as expected.
     """
     # Dummy 2D data (we treat the z-dim as 1 to simulate a single slice)
     dummy_array = np.ones((1, 10, 10), dtype=np.float64)  # shape = (z, y, x)
@@ -129,15 +88,13 @@ def test_resample_image_2d():
         shape=(1, 10, 10)
     )
 
-    preprocessing = Resampler(
-        input_imaging_modality='CT',
-        resample_resolution=2.0,
-        resample_dimension='2D',   # We'll only change x and y spacing
-        interpolation_method='Linear',
-        interpolation_threshold=0.5
+    preprocessing = ImageResampler(
+        resolution=(2.0, 2.0, original_image.spacing[2]),
+        method='linear',
+        intensity_rounding='nearest_integer',
     )
 
-    resampled_image = preprocessing.apply(original_image, image_type='image')
+    resampled_image = preprocessing.apply(original_image)
 
     # Verify dimensions, shape, spacing have changed for x,y but not for z
     assert resampled_image.shape[0] == 1  # z dimension unchanged
@@ -172,15 +129,13 @@ def test_resample_mask_3d():
         shape=dummy_mask_array.shape
     )
 
-    preprocessing = Resampler(
-        input_imaging_modality='CT',  # Modality is not as critical for masks
-        resample_resolution=2.0,
-        resample_dimension='3D',
-        interpolation_method='Linear',
-        interpolation_threshold=0.5
+    preprocessing = MaskResampler(
+        resolution=(2.0, 2.0, 2.0),
+        method='linear',
+        partial_volume_threshold=0.5,
     )
 
-    resampled_mask = preprocessing.apply(original_mask, image_type='mask')
+    resampled_mask = preprocessing.apply(original_mask)
 
     # Ensure the resampled array is in {0,1} due to the thresholding
     unique_values = np.unique(resampled_mask.array)
@@ -196,7 +151,7 @@ def test_pipeline_transforms_roi_data():
     pipeline = Pipeline([
         ("image_resampler", ImageResampler(resolution=(1.0, 1.0, 1.0), method="linear")),
         ("mask_resampler", MaskResampler(resolution=(1.0, 1.0, 1.0), method="trilinear")),
-        ("filter", ImageFilter(AddOneFilter())),
+        ("filter", AddOneFilter()),
         ("intensity_mask_builder", IntensityMaskBuilder()),
         ("cropper", RoiCropper()),
     ])

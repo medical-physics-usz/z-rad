@@ -18,22 +18,26 @@ intermediate images and masks can be inspected before feature extraction.
 
    from zrad.preprocessing import (
        ImageDiscretizer,
-       Resampler,
+       ImageResampler,
+       MaskResampler,
        Resegmenter,
        IntensityMaskBuilder,
        RoiData,
    )
 
-   resampler = Resampler(
-       input_imaging_modality="CT",
-       resample_resolution=1.0,
-       resample_dimension="3D",
-       interpolation_method="Linear",
-       interpolation_threshold=0.5,
+   image_resampler = ImageResampler(
+       resolution=(1.0, 1.0, 1.0),
+       method="linear",
+       intensity_rounding="nearest_integer",
+   )
+   mask_resampler = MaskResampler(
+       resolution=(1.0, 1.0, 1.0),
+       method="linear",
+       partial_volume_threshold=0.5,
    )
 
-   resampled_image = resampler.apply(image, image_type="image")
-   resampled_mask = resampler.apply(mask, image_type="mask")
+   resampled_image = image_resampler.apply(image)
+   resampled_mask = mask_resampler.apply(mask)
 
    roi_data = IntensityMaskBuilder().apply(RoiData(
        image=resampled_image,
@@ -45,6 +49,20 @@ intermediate images and masks can be inspected before feature extraction.
    discretized_image = ImageDiscretizer(bin_size=25, minimum=-500).apply(
        roi_data.intensity_mask,
    )
+
+Pipeline Contract
+-----------------
+
+The optional preprocessing pipeline operates on ``RoiData``. Each step receives
+the current ``RoiData`` and returns an updated ``RoiData``:
+
+* ``ImageResampler`` updates ``roi_data.image``.
+* ``MaskResampler`` updates ``roi_data.morphological_mask``.
+* Filters created with ``create_filter(...)`` update ``roi_data.filtered_image``.
+* ``IntensityMaskBuilder`` updates ``roi_data.intensity_mask`` from
+  ``roi_data.filtered_image`` if present, otherwise from ``roi_data.image``.
+* ``Resegmenter`` updates ``roi_data.intensity_mask``.
+* ``RoiCropper`` crops all present images and masks.
 
 .. figure:: ../images/prepr_tab.png
    :alt: Z-Rad preprocessing tab

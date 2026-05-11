@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 
 from zrad.image import Image
-from zrad.preprocessing import Resampler
+from zrad.preprocessing import ImageResampler, MaskResampler
 from zrad.radiomics import Radiomics
 
 
@@ -55,14 +55,21 @@ def nii_ct_phantom_mask(nii_ct_phantom_image):
     )
 
 
+def _resolution(image, value, dimension):
+    if dimension == '2D':
+        return (value, value, image.spacing[2])
+    return (value, value, value)
+
+
 @pytest.fixture()
 def res2d_2mm_image_linear(nii_ct_phantom_image):
 
-    preprocessing = Resampler(input_imaging_modality='CT',
-                                  resample_resolution=2,
-                                  resample_dimension='2D',
-                                  interpolation_method='Linear')
-    res_image = preprocessing.apply(nii_ct_phantom_image, image_type='image')
+    preprocessing = ImageResampler(
+        resolution=_resolution(nii_ct_phantom_image, 2, '2D'),
+        method='Linear',
+        intensity_rounding='nearest_integer',
+    )
+    res_image = preprocessing.apply(nii_ct_phantom_image)
 
     return res_image
 
@@ -70,12 +77,12 @@ def res2d_2mm_image_linear(nii_ct_phantom_image):
 @pytest.fixture()
 def res2d_2mm_mask_linear(nii_ct_phantom_mask):
 
-    preprocessing = Resampler(input_imaging_modality='CT',
-                                  resample_resolution=2,
-                                  resample_dimension='2D',
-                                  interpolation_method='Linear',
-                                  interpolation_threshold=.5)
-    res_mask = preprocessing.apply(nii_ct_phantom_mask, image_type='mask')
+    preprocessing = MaskResampler(
+        resolution=_resolution(nii_ct_phantom_mask, 2, '2D'),
+        method='Linear',
+        partial_volume_threshold=.5,
+    )
+    res_mask = preprocessing.apply(nii_ct_phantom_mask)
 
     return res_mask
 
@@ -83,11 +90,12 @@ def res2d_2mm_mask_linear(nii_ct_phantom_mask):
 @pytest.fixture()
 def res3d_2mm_image_linear(nii_ct_phantom_image):
 
-    preprocessing = Resampler(input_imaging_modality='CT',
-                                  resample_resolution=2,
-                                  resample_dimension='3D',
-                                  interpolation_method='Linear')
-    res_image = preprocessing.apply(nii_ct_phantom_image, image_type='image')
+    preprocessing = ImageResampler(
+        resolution=_resolution(nii_ct_phantom_image, 2, '3D'),
+        method='Linear',
+        intensity_rounding='nearest_integer',
+    )
+    res_image = preprocessing.apply(nii_ct_phantom_image)
 
     return res_image
 
@@ -95,12 +103,12 @@ def res3d_2mm_image_linear(nii_ct_phantom_image):
 @pytest.fixture()
 def res3d_2mm_mask_linear(nii_ct_phantom_mask):
 
-    preprocessing = Resampler(input_imaging_modality='CT',
-                                  resample_resolution=2,
-                                  resample_dimension='3D',
-                                  interpolation_method='Linear',
-                                  interpolation_threshold=.5)
-    res_mask = preprocessing.apply(nii_ct_phantom_mask, image_type='mask')
+    preprocessing = MaskResampler(
+        resolution=_resolution(nii_ct_phantom_mask, 2, '3D'),
+        method='Linear',
+        partial_volume_threshold=.5,
+    )
+    res_mask = preprocessing.apply(nii_ct_phantom_mask)
 
     return res_mask
 
@@ -108,11 +116,12 @@ def res3d_2mm_mask_linear(nii_ct_phantom_mask):
 @pytest.fixture()
 def res3d_2mm_image_spline(dcm_ct_phantom_image):
 
-    preprocessing = Resampler(input_imaging_modality='CT',
-                                  resample_resolution=2,
-                                  resample_dimension='3D',
-                                  interpolation_method='BSpline')
-    res_image = preprocessing.apply(dcm_ct_phantom_image, image_type='image')
+    preprocessing = ImageResampler(
+        resolution=_resolution(dcm_ct_phantom_image, 2, '3D'),
+        method='BSpline',
+        intensity_rounding='nearest_integer',
+    )
+    res_image = preprocessing.apply(dcm_ct_phantom_image)
 
     return res_image
 

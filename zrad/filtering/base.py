@@ -1,6 +1,7 @@
 import numpy as np
 
 from ..image import Image
+from ..preprocessing.roi import RoiData
 
 
 class BaseFilter:
@@ -21,9 +22,16 @@ class BaseFilter:
         raise NotImplementedError
 
     def apply(self, image):
-        """Apply the filter to an :class:`~zrad.image.Image` and return an image."""
+        """Apply the filter to an image or set ``RoiData.filtered_image``."""
+        if isinstance(image, RoiData):
+            return RoiData(
+                image=image.image,
+                filtered_image=self.apply(image.image),
+                morphological_mask=image.morphological_mask,
+                intensity_mask=None,
+            )
         if not isinstance(image, Image):
-            raise TypeError(f"Expected Image, got {type(image)}.")
+            raise TypeError(f"Expected Image or RoiData, got {type(image)}.")
 
         self._prepare(image)
 

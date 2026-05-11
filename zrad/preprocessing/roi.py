@@ -46,24 +46,6 @@ class IntensityMaskBuilder:
         )
 
 
-class IntensityRoiMaskBuilder:
-    """Apply an ROI mask to an image and return an intensity image with NaNs outside the ROI."""
-
-    def get_params(self):
-        """Return ROI mask-building parameters mapped to their configured values."""
-        return {}
-
-    def apply(self, image, mask):
-        """Return a copy of ``image`` with voxels outside ``mask`` set to ``NaN``."""
-        return Image(
-            array=np.where(mask.array > 0, image.array, np.nan),
-            origin=image.origin,
-            spacing=image.spacing,
-            direction=image.direction,
-            shape=image.shape,
-        )
-
-
 class RoiCropper:
     """Crop aligned images and masks to the ROI bounding box."""
 

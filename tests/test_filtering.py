@@ -1,20 +1,29 @@
 import numpy as np
 import pytest
-from zrad.filtering import create_filter
+from zrad.filtering import Mean, create_filter
 from zrad.image import Image
 
 
 @pytest.mark.unit
-def test_filtering_constructor_valid_mean():
-    # A basic valid constructor for a Mean filter
-    flt = create_filter(
-        filtering_method='Mean',
+def test_concrete_filter_constructor_valid_mean():
+    flt = Mean(
         padding_type='constant',
         support=3,
         dimensionality='2D'
     )
     assert flt.filtering_method == 'Mean'
     assert flt.get_params()['support'] == 3
+
+
+@pytest.mark.unit
+def test_factory_creates_mean_from_config_parameters():
+    flt = create_filter(
+        filtering_method='Mean',
+        padding_type='constant',
+        support=3,
+        dimensionality='2D'
+    )
+    assert isinstance(flt, Mean)
 
 
 @pytest.mark.unit

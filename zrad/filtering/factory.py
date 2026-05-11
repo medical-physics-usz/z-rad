@@ -4,7 +4,13 @@ from .wavelet import Wavelets2D, Wavelets3D
 
 
 def create_filter(filtering_method, **kwargs) -> BaseFilter:
-    """Create one configured filter instance."""
+    """Create a filter from GUI or configuration-style parameters.
+
+    Direct use of concrete filter classes such as ``Mean`` or ``LoG`` is the
+    recommended Python API. This helper is intended for dynamic workflows where
+    the filter family is selected by name, for example from GUI controls or
+    saved configuration files.
+    """
     params = kwargs
     if filtering_method == 'Mean':
         return Mean(

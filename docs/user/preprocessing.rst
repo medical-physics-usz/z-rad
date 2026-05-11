@@ -58,7 +58,7 @@ the current ``RoiData`` and returns an updated ``RoiData``:
 
 * ``ImageResampler`` updates ``roi_data.image``.
 * ``MaskResampler`` updates ``roi_data.morphological_mask``.
-* Filters created with ``create_filter(...)`` update ``roi_data.filtered_image``.
+* Concrete filters update ``roi_data.filtered_image``.
 * ``IntensityMaskBuilder`` updates ``roi_data.intensity_mask`` from
   ``roi_data.filtered_image`` if present, otherwise from ``roi_data.image``.
 * ``Resegmenter`` updates ``roi_data.intensity_mask``.

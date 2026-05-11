@@ -3,14 +3,6 @@ Filtering
 
 .. currentmodule:: zrad
 
-Factory
--------
-
-.. autosummary::
-   :toctree: generated
-
-   ~filtering.factory.create_filter
-
 Filter Classes
 --------------
 
@@ -23,3 +15,11 @@ Filter Classes
    ~filtering.spatial.Gabor
    ~filtering.wavelet.Wavelets2D
    ~filtering.wavelet.Wavelets3D
+
+Configuration Factory
+---------------------
+
+.. autosummary::
+   :toctree: generated
+
+   ~filtering.factory.create_filter

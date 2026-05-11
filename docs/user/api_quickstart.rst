@@ -5,7 +5,7 @@ The Python API mirrors the main GUI workflows through public preprocessing,
 filtering, and radiomics interfaces:
 
 * preprocessing step classes such as ``ImageResampler`` and ``MaskResampler``
-* concrete filters created via ``create_filter(...)``
+* concrete filters such as ``Mean``, ``LoG``, ``Gabor``, ``Laws``, and wavelets
 * ``Radiomics``
 
 Recommended Workflow
@@ -35,7 +35,7 @@ through preprocessing.
 
 .. code-block:: python
 
-   from zrad.filtering import create_filter
+   from zrad.filtering import Mean
    from zrad.image import Image
    from zrad.preprocessing import (
        ImageResampler,
@@ -56,8 +56,7 @@ through preprocessing.
        morphological_mask=mask,
    )
 
-   image_filter = create_filter(
-       filtering_method="Mean",
+   image_filter = Mean(
        padding_type="reflect",
        support=3,
        dimensionality="3D",

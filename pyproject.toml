@@ -41,4 +41,4 @@ docs = [
 # Additional setuptools configuration
 
 [tool.setuptools.packages.find]
-include = ["zrad", "zrad.preprocessing", "zrad.filtering", "zrad.radiomics"]
+include = ["zrad", "zrad.*"]

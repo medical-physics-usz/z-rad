@@ -7,7 +7,7 @@ from .discretization import (
 from .interpolation import Resampler
 from .masks import RoiMaskValidator
 from .resegmentation import OutlierResegmenter, RangeResegmenter, Resegmenter
-from .roi import IntensityRoiMaskBuilder, RoiCropper, RoiData, RoiMaskBuilder
+from .roi import IntensityRoiMaskBuilder, RoiCropper, RoiData, RoiDataBuilder
 
 __all__ = [
     'FixedBinNumberDiscretizer',
@@ -21,6 +21,6 @@ __all__ = [
     'Resampler',
     'Resegmenter',
     'RoiData',
-    'RoiMaskBuilder',
+    'RoiDataBuilder',
     'RoiMaskValidator',
 ]

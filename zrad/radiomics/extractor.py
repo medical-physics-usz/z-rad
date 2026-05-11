@@ -1,8 +1,4 @@
-from dataclasses import replace
-
-import numpy as np
-
-from ..preprocessing import RoiCropper, RoiData, RoiMaskBuilder
+from ..preprocessing import RoiData, RoiDataBuilder
 from .extraction_context import ExtractionContext
 from .extraction_preparation import build_extraction_metadata, prepare_extraction_data
 from .feature_registry import resolve_groups
@@ -25,8 +21,6 @@ class Radiomics:
         calc_morph_moran_i_and_geary_c_features=False,
         slice_weighting=False,
         slice_median=False,
-        crop_to_roi=False,
-        roi_crop_padding=0,
     ):
         if slice_weighting and slice_median:
             raise ValueError('Only one slice median averaging is not supported with weighting strategy.')
@@ -51,8 +45,6 @@ class Radiomics:
         self.calc_morph_moran_i_and_geary_c_features = calc_morph_moran_i_and_geary_c_features
         self.slice_weighting = slice_weighting
         self.slice_median = slice_median
-        self.crop_to_roi = crop_to_roi
-        self.roi_crop_padding = roi_crop_padding
 
     def extract_features(
         self,
@@ -72,8 +64,6 @@ class Radiomics:
             roi_data=roi_data,
         )
         groups, selected_features = resolve_groups(context, families=families, features=features)
-        if self.crop_to_roi:
-            context = self._crop_context_to_roi(context, groups)
         prepared_data = prepare_extraction_data(
             context=context,
             groups=groups,
@@ -101,7 +91,7 @@ class Radiomics:
             raise ValueError("Either roi_data or both image and mask must be provided.")
 
         return ExtractionContext(
-            roi_data=RoiMaskBuilder().apply(
+            roi_data=RoiDataBuilder().apply(
                 image,
                 mask,
                 filtered_image=filtered_image,
@@ -154,31 +144,3 @@ class Radiomics:
         missing = [name for name, value in required_fields.items() if value is None]
         if missing:
             raise ValueError(f"roi_data is missing required field(s): {', '.join(missing)}.")
-
-    def _crop_context_to_roi(self, context, groups):
-        cropped = RoiCropper(
-            padding=self._crop_padding(context, groups),
-        ).apply(context.roi_data)
-        return replace(
-            context,
-            roi_data=cropped,
-            resegment_roi_data=False,
-            is_slice_2d_image=cropped.image.shape[2] == 1,
-        )
-
-    def _crop_padding(self, context, groups):
-        padding = self.roi_crop_padding
-        if isinstance(padding, int):
-            padding = np.repeat(padding, 3)
-        else:
-            padding = np.asarray(padding, dtype=int)
-
-        if any(group.family == 'local_intensity' for group in groups):
-            local_radius_mm = 6.2
-            local_padding = np.ceil(local_radius_mm / np.asarray(context.image.spacing[::-1], dtype=float)).astype(int)
-            padding = np.maximum(padding, local_padding)
-
-        if any(group.family in {'morphology', 'morphology_correlation'} for group in groups):
-            padding = np.maximum(padding, np.ones(3, dtype=int))
-
-        return tuple(int(value) for value in padding)

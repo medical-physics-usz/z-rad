@@ -16,14 +16,14 @@ class RangeResegmenter:
             'intensity_range': self.intensity_range,
         }
 
-    def apply(self, roi_data, reference_image):
+    def apply(self, roi_data):
         """Apply range re-segmentation to the intensity mask."""
         if self.intensity_range is None:
             return roi_data
 
         lower, upper = self.intensity_range
         range_mask = np.where(
-            (reference_image.array <= upper) & (reference_image.array >= lower),
+            (roi_data.image.array <= upper) & (roi_data.image.array >= lower),
             1,
             0,
         )
@@ -54,20 +54,20 @@ class OutlierResegmenter:
             'outlier_range': self.outlier_range,
         }
 
-    def apply(self, roi_data, reference_image):
+    def apply(self, roi_data):
         """Apply outlier re-segmentation to the intensity mask."""
         if self.outlier_range is None or not str(self.outlier_range).strip().replace('.', '').isdigit():
             return roi_data
 
         outlier_range = float(self.outlier_range)
         morphological_array = roi_data.morphological_mask.array
-        flattened_image = np.where(morphological_array > 0, reference_image.array, np.nan).ravel()
+        flattened_image = np.where(morphological_array > 0, roi_data.image.array, np.nan).ravel()
         valid_values = flattened_image[~np.isnan(flattened_image)]
         mean = np.mean(valid_values)
         std = np.std(valid_values)
         outlier_mask = np.where(
-            (reference_image.array <= mean + outlier_range * std)
-            & (reference_image.array >= mean - outlier_range * std),
+            (roi_data.image.array <= mean + outlier_range * std)
+            & (roi_data.image.array >= mean - outlier_range * std),
             1,
             0,
         )
@@ -100,7 +100,7 @@ class Resegmenter:
             'outlier_range': self.outlier_range,
         }
 
-    def apply(self, roi_data, reference_image):
+    def apply(self, roi_data):
         """Return re-segmented ROI masks."""
-        roi_data = RangeResegmenter(self.intensity_range).apply(roi_data, reference_image)
-        return OutlierResegmenter(self.outlier_range).apply(roi_data, reference_image)
+        roi_data = RangeResegmenter(self.intensity_range).apply(roi_data)
+        return OutlierResegmenter(self.outlier_range).apply(roi_data)

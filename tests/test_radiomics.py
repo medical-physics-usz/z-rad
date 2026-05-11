@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 
 from zrad.image import Image
-from zrad.preprocessing import Resegmenter, RoiMaskBuilder
+from zrad.preprocessing import Resegmenter, RoiCropper, RoiDataBuilder
 from zrad.radiomics import Radiomics
 
 
@@ -111,15 +111,12 @@ def test_radiomics_accepts_prepared_roi_data():
     filtered_image = _make_image(filtered)
     mask = _make_image(np.ones((3, 3, 3), dtype=np.float64))
 
-    roi_data = RoiMaskBuilder().apply(
+    roi_data = RoiDataBuilder().apply(
         image=image,
         mask=mask,
         filtered_image=filtered_image,
     )
-    roi_data = Resegmenter(intensity_range=[10.0, 10.0]).apply(
-        roi_data,
-        reference_image=image,
-    )
+    roi_data = Resegmenter(intensity_range=[10.0, 10.0]).apply(roi_data)
 
     features = Radiomics().extract_features(
         roi_data=roi_data,
@@ -131,7 +128,7 @@ def test_radiomics_accepts_prepared_roi_data():
 
 
 @pytest.mark.unit
-def test_radiomics_crop_to_roi_preserves_feature_values():
+def test_explicit_roi_cropping_preserves_feature_values():
     image_array = np.zeros((6, 6, 6), dtype=np.float64)
     image_array[2:5, 1:4, 2:5] = np.arange(27, dtype=np.float64).reshape(3, 3, 3) + 1
     mask_array = np.zeros_like(image_array)
@@ -141,14 +138,18 @@ def test_radiomics_crop_to_roi_preserves_feature_values():
     mask = _make_image(mask_array)
 
     families = ['intensity_statistics', 'intensity_histogram', 'glcm']
-    uncropped = Radiomics(number_of_bins=4, crop_to_roi=False).extract_features(
+    uncropped = Radiomics(number_of_bins=4).extract_features(
         image=image,
         mask=mask,
         families=families,
     )
-    cropped = Radiomics(number_of_bins=4, crop_to_roi=True).extract_features(
+    roi_data = RoiDataBuilder().apply(
         image=image,
         mask=mask,
+    )
+    roi_data = RoiCropper().apply(roi_data)
+    cropped = Radiomics(number_of_bins=4).extract_features(
+        roi_data=roi_data,
         families=families,
     )
 

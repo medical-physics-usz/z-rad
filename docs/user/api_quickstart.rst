@@ -30,7 +30,7 @@ Minimal Example
 
 .. code-block:: python
 
-   from zrad.preprocessing import Resampler, Resegmenter, RoiMaskBuilder
+   from zrad.preprocessing import Resampler, Resegmenter, RoiDataBuilder
    from zrad.filtering import create_filter
    from zrad.image import Image
    from zrad.radiomics import Radiomics
@@ -58,7 +58,7 @@ Minimal Example
    )
    filtered_image = filt.apply(resampled_image)
 
-   roi_data = RoiMaskBuilder().apply(
+   roi_data = RoiDataBuilder().apply(
        image=resampled_image,
        mask=resampled_mask,
        filtered_image=filtered_image,
@@ -68,7 +68,6 @@ Minimal Example
        outlier_range=3.0,
    ).apply(
        roi_data,
-       reference_image=resampled_image,
    )
 
    rad = Radiomics(

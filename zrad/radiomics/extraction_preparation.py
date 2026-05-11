@@ -74,7 +74,7 @@ def prepare_mask_set(context, validation_dim):
     return Resegmenter(
         intensity_range=context.intensity_range,
         outlier_range=context.outlier_range,
-    ).apply(roi_data, context.image)
+    ).apply(roi_data)
 
 
 def _with_validated_morphological_mask(roi_data, validated_mask):

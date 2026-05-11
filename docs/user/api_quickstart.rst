@@ -4,7 +4,7 @@ API Quickstart
 The Python API mirrors the main GUI workflows through public preprocessing,
 filtering, and radiomics interfaces:
 
-* preprocessing step classes such as ``Resampler``
+* preprocessing step classes such as ``ImageResampler`` and ``MaskResampler``
 * concrete filters created via ``create_filter(...)``
 * ``Radiomics``
 
@@ -15,7 +15,7 @@ The typical Python workflow is:
 
 1. Load the image and mask into ``zrad.image.Image`` objects with aligned
    geometry.
-2. Resample them with ``Resampler`` so image and mask share the intended
+2. Resample them so image and mask share the intended
    voxel spacing.
 3. Apply a configured filter if the experiment requires a filtered representation.
 4. Run ``Radiomics.extract_features()`` and collect the returned feature dictionary for storage
@@ -30,24 +30,22 @@ Minimal Example
 
 .. code-block:: python
 
-   from zrad.preprocessing import Resampler, Resegmenter, RoiDataBuilder
    from zrad.filtering import create_filter
    from zrad.image import Image
+   from zrad.preprocessing import (
+       ImageFilter,
+       ImageResampler,
+       IntensityMaskBuilder,
+       MaskResampler,
+       Pipeline,
+       Resegmenter,
+       RoiCropper,
+       RoiData,
+   )
    from zrad.radiomics import Radiomics
 
    image = Image.from_nifti("path/to/image.nii.gz")
    mask = Image.from_nifti_mask("path/to/mask.nii.gz", reference=image)
-
-   prep = Resampler(
-       input_imaging_modality="CT",
-       resample_resolution=1.0,
-       resample_dimension="3D",
-       interpolation_method="Linear",
-       interpolation_threshold=0.5,
-   )
-
-   resampled_image = prep.apply(image, image_type="image")
-   resampled_mask = prep.apply(mask, image_type="mask")
 
    filt = create_filter(
        filtering_method="Laplacian of Gaussian",
@@ -56,19 +54,33 @@ Minimal Example
        cutoff=4.0,
        dimensionality="3D",
    )
-   filtered_image = filt.apply(resampled_image)
 
-   roi_data = RoiDataBuilder().apply(
-       image=resampled_image,
-       mask=resampled_mask,
-       filtered_image=filtered_image,
+   roi_data = RoiData(
+       image=image,
+       morphological_mask=mask,
    )
-   roi_data = Resegmenter(
-       intensity_range=(-500, 400),
-       outlier_range=3.0,
-   ).apply(
-       roi_data,
-   )
+
+   pipeline = Pipeline([
+       ("image_resampler", ImageResampler(
+           resolution=(2.0, 2.0, 2.0),
+           method="tricubic_spline",
+           intensity_rounding="nearest_integer",
+       )),
+       ("mask_resampler", MaskResampler(
+           resolution=(2.0, 2.0, 2.0),
+           method="trilinear",
+           partial_volume_threshold=0.5,
+       )),
+       ("filter", ImageFilter(filt)),
+       ("intensity_mask_builder", IntensityMaskBuilder()),
+       ("resegmenter", Resegmenter(
+           intensity_range=(-500, 400),
+           outlier_range=3.0,
+       )),
+       ("cropper", RoiCropper(padding=1)),
+   ])
+
+   roi_data = pipeline.apply(roi_data)
 
    rad = Radiomics(
        aggr_dim="3D",

@@ -20,24 +20,27 @@ class RoiData:
         return self.filtered_image if self.filtered_image is not None else self.image
 
 
-class RoiDataBuilder:
-    """Build ROI data from an image, optional filtered image, and binary ROI mask."""
+class IntensityMaskBuilder:
+    """Build or update the ROI intensity mask from the current feature image."""
 
     def get_params(self):
-        """Return ROI data-building parameters mapped to their configured values."""
+        """Return intensity-mask-building parameters mapped to their configured values."""
         return {}
 
-    def apply(self, image, mask, filtered_image=None):
-        """Return ROI data with morphological and intensity masks."""
-        morphological_mask = mask.copy()
+    def apply(self, roi_data):
+        """Return ROI data with ``intensity_mask`` built from the feature image."""
+        if roi_data.morphological_mask is None:
+            raise ValueError("IntensityMaskBuilder requires RoiData.morphological_mask.")
+
+        morphological_mask = roi_data.morphological_mask.copy()
         morphological_mask.array = morphological_mask.array.astype(np.int8)
 
-        feature_image = filtered_image if filtered_image is not None else image
-        intensity_mask = mask.copy()
-        intensity_mask.array = np.where(mask.array > 0, feature_image.array, np.nan)
+        feature_image = roi_data.feature_image
+        intensity_mask = morphological_mask.copy()
+        intensity_mask.array = np.where(morphological_mask.array > 0, feature_image.array, np.nan)
         return RoiData(
-            image=image,
-            filtered_image=filtered_image,
+            image=roi_data.image,
+            filtered_image=roi_data.filtered_image,
             morphological_mask=morphological_mask,
             intensity_mask=intensity_mask,
         )

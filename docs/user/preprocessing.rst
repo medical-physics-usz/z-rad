@@ -20,7 +20,8 @@ intermediate images and masks can be inspected before feature extraction.
        ImageDiscretizer,
        Resampler,
        Resegmenter,
-       RoiDataBuilder,
+       IntensityMaskBuilder,
+       RoiData,
    )
 
    resampler = Resampler(
@@ -34,7 +35,10 @@ intermediate images and masks can be inspected before feature extraction.
    resampled_image = resampler.apply(image, image_type="image")
    resampled_mask = resampler.apply(mask, image_type="mask")
 
-   roi_data = RoiDataBuilder().apply(resampled_image, resampled_mask)
+   roi_data = IntensityMaskBuilder().apply(RoiData(
+       image=resampled_image,
+       morphological_mask=resampled_mask,
+   ))
    roi_data = Resegmenter(intensity_range=(-500, 400)).apply(
        roi_data,
    )

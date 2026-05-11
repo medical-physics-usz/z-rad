@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 
 from zrad.image import Image
-from zrad.preprocessing import Resegmenter, RoiCropper, RoiDataBuilder
+from zrad.preprocessing import IntensityMaskBuilder, Resegmenter, RoiCropper, RoiData
 from zrad.radiomics import Radiomics
 
 
@@ -111,11 +111,11 @@ def test_radiomics_accepts_prepared_roi_data():
     filtered_image = _make_image(filtered)
     mask = _make_image(np.ones((3, 3, 3), dtype=np.float64))
 
-    roi_data = RoiDataBuilder().apply(
+    roi_data = IntensityMaskBuilder().apply(RoiData(
         image=image,
-        mask=mask,
         filtered_image=filtered_image,
-    )
+        morphological_mask=mask,
+    ))
     roi_data = Resegmenter(intensity_range=[10.0, 10.0]).apply(roi_data)
 
     features = Radiomics().extract_features(
@@ -143,10 +143,10 @@ def test_explicit_roi_cropping_preserves_feature_values():
         mask=mask,
         families=families,
     )
-    roi_data = RoiDataBuilder().apply(
+    roi_data = IntensityMaskBuilder().apply(RoiData(
         image=image,
-        mask=mask,
-    )
+        morphological_mask=mask,
+    ))
     roi_data = RoiCropper().apply(roi_data)
     cropped = Radiomics(number_of_bins=4).extract_features(
         roi_data=roi_data,

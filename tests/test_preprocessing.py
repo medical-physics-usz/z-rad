@@ -1,8 +1,37 @@
 import pytest
 import numpy as np
 import SimpleITK as sitk
-from zrad.preprocessing import Resampler
+from zrad.preprocessing import (
+    ImageFilter,
+    ImageResampler,
+    IntensityMaskBuilder,
+    MaskResampler,
+    Pipeline,
+    Resampler,
+    RoiCropper,
+    RoiData,
+)
 from zrad.image import Image
+
+
+class AddOneFilter:
+    def get_params(self):
+        return {}
+
+    def apply(self, image):
+        filtered = image.copy()
+        filtered.array = filtered.array + 1
+        return filtered
+
+
+def _make_image(array):
+    return Image(
+        array=np.asarray(array, dtype=np.float64),
+        origin=[0.0, 0.0, 0.0],
+        spacing=[1.0, 1.0, 1.0],
+        direction=[1, 0, 0, 0, 1, 0, 0, 0, 1],
+        shape=(array.shape[2], array.shape[1], array.shape[0]),
+    )
 
 @pytest.mark.unit
 def test_constructor_valid_inputs():
@@ -156,3 +185,38 @@ def test_resample_mask_3d():
     # Ensure the resampled array is in {0,1} due to the thresholding
     unique_values = np.unique(resampled_mask.array)
     assert all(val in [0, 1] for val in unique_values), "Mask should only have 0 or 1 after thresholding"
+
+
+@pytest.mark.unit
+def test_pipeline_transforms_roi_data():
+    image = _make_image(np.ones((3, 3, 3), dtype=np.float64))
+    mask = _make_image(np.ones((3, 3, 3), dtype=np.float64))
+    roi_data = RoiData(image=image, morphological_mask=mask)
+
+    pipeline = Pipeline([
+        ("image_resampler", ImageResampler(resolution=(1.0, 1.0, 1.0), method="linear")),
+        ("mask_resampler", MaskResampler(resolution=(1.0, 1.0, 1.0), method="trilinear")),
+        ("filter", ImageFilter(AddOneFilter())),
+        ("intensity_mask_builder", IntensityMaskBuilder()),
+        ("cropper", RoiCropper()),
+    ])
+
+    result = pipeline.apply(roi_data)
+
+    assert isinstance(result, RoiData)
+    assert result.filtered_image is not None
+    assert result.intensity_mask is not None
+    assert np.all(result.intensity_mask.array == 2)
+
+
+@pytest.mark.unit
+def test_image_and_mask_resamplers_accept_images_directly():
+    image = _make_image(np.ones((3, 3, 3), dtype=np.float64))
+    mask = _make_image(np.ones((3, 3, 3), dtype=np.float64))
+
+    resampled_image = ImageResampler(resolution=(1.0, 1.0, 1.0), method="tricubic_spline").apply(image)
+    resampled_mask = MaskResampler(resolution=(1.0, 1.0, 1.0), method="trilinear").apply(mask)
+
+    assert isinstance(resampled_image, Image)
+    assert isinstance(resampled_mask, Image)
+    assert set(np.unique(resampled_mask.array)) <= {0, 1}

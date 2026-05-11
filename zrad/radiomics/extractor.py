@@ -1,4 +1,4 @@
-from ..preprocessing import RoiData, RoiDataBuilder
+from ..preprocessing import IntensityMaskBuilder, RoiData
 from .extraction_context import ExtractionContext
 from .extraction_preparation import build_extraction_metadata, prepare_extraction_data
 from .feature_registry import resolve_groups
@@ -91,11 +91,11 @@ class Radiomics:
             raise ValueError("Either roi_data or both image and mask must be provided.")
 
         return ExtractionContext(
-            roi_data=RoiDataBuilder().apply(
-                image,
-                mask,
+            roi_data=IntensityMaskBuilder().apply(RoiData(
+                image=image,
                 filtered_image=filtered_image,
-            ),
+                morphological_mask=mask,
+            )),
             resegment_roi_data=True,
             is_slice_2d_image=image.shape[2] == 1,
             aggr_dim=self.aggr_dim,

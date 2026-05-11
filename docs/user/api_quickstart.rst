@@ -25,8 +25,13 @@ The typical Python workflow is:
 5. Keep the exact preprocessing, filtering, and discretization settings next
    to the extracted features so the run remains reproducible.
 
-Minimal Example
----------------
+Canonical Full Pipeline Example
+-------------------------------
+
+This example shows the recommended explicit workflow from loading an image and
+mask to extracting features. The intermediate ``RoiData`` object carries the
+current image, optional filtered image, morphological mask, and intensity mask
+through preprocessing.
 
 .. code-block:: python
 
@@ -46,17 +51,16 @@ Minimal Example
    image = Image.from_nifti("path/to/image.nii.gz")
    mask = Image.from_nifti_mask("path/to/mask.nii.gz", reference=image)
 
-   filt = create_filter(
-       filtering_method="Laplacian of Gaussian",
-       padding_type="reflect",
-       sigma_mm=1.0,
-       cutoff=4.0,
-       dimensionality="3D",
-   )
-
    roi_data = RoiData(
        image=image,
        morphological_mask=mask,
+   )
+
+   image_filter = create_filter(
+       filtering_method="Mean",
+       padding_type="reflect",
+       support=3,
+       dimensionality="3D",
    )
 
    pipeline = Pipeline([
@@ -70,7 +74,7 @@ Minimal Example
            method="trilinear",
            partial_volume_threshold=0.5,
        )),
-       ("filter", filt),
+       ("filter", image_filter),
        ("intensity_mask_builder", IntensityMaskBuilder()),
        ("resegmenter", Resegmenter(
            intensity_range=(-500, 400),
@@ -88,6 +92,7 @@ Minimal Example
    )
    features = rad.extract_features(
        roi_data=roi_data,
+       families=["morphology", "intensity_statistics", "glcm"],
    )
 
 Data Model Expectations

@@ -21,14 +21,35 @@ class RoiData:
 
 
 class IntensityMaskBuilder:
-    """Build or update the ROI intensity mask from the current feature image."""
+    """Build the intensity ROI image used by intensity-based feature families.
+
+    The builder keeps the morphological mask binary, selects the current feature
+    image from ``RoiData.filtered_image`` when present and otherwise
+    ``RoiData.image``, and writes an ``intensity_mask`` image whose voxels
+    outside the morphological ROI are set to ``NaN``.
+    """
 
     def get_params(self):
         """Return intensity-mask-building parameters mapped to their configured values."""
         return {}
 
     def apply(self, roi_data):
-        """Return ROI data with ``intensity_mask`` built from the feature image."""
+        """Return ROI data with ``intensity_mask`` built from the feature image.
+
+        Parameters
+        ----------
+        roi_data : RoiData
+            ROI data containing ``image`` and ``morphological_mask``. If
+            ``filtered_image`` is present, its voxel values are used inside the
+            intensity ROI.
+
+        Returns
+        -------
+        roi_data : RoiData
+            New ROI data with a binary ``morphological_mask`` and an
+            ``intensity_mask`` image containing feature-image values inside the
+            ROI and ``NaN`` outside it.
+        """
         if roi_data.morphological_mask is None:
             raise ValueError("IntensityMaskBuilder requires RoiData.morphological_mask.")
 

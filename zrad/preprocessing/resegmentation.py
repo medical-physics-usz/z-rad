@@ -87,7 +87,14 @@ class OutlierResegmenter:
 
 
 class Resegmenter:
-    """Apply range and outlier re-segmentation in sequence."""
+    """Apply range and outlier re-segmentation to ``RoiData.intensity_mask``.
+
+    Re-segmentation removes voxels from the intensity ROI by replacing excluded
+    voxels with ``NaN``. The current implementation evaluates range and outlier
+    criteria on ``RoiData.image`` and applies them to the existing
+    ``RoiData.intensity_mask``. If both criteria are configured, range
+    re-segmentation is applied first and outlier re-segmentation second.
+    """
 
     def __init__(self, intensity_range=None, outlier_range=None):
         self.intensity_range = intensity_range
@@ -101,6 +108,20 @@ class Resegmenter:
         }
 
     def apply(self, roi_data):
-        """Return re-segmented ROI masks."""
+        """Return ROI data with an updated intensity mask.
+
+        Parameters
+        ----------
+        roi_data : RoiData
+            ROI data containing ``image``, ``morphological_mask``, and
+            ``intensity_mask``. The intensity mask is usually created with
+            ``IntensityMaskBuilder`` before re-segmentation.
+
+        Returns
+        -------
+        roi_data : RoiData
+            New ROI data with ``intensity_mask`` updated by the configured
+            range and outlier criteria.
+        """
         roi_data = RangeResegmenter(self.intensity_range).apply(roi_data)
         return OutlierResegmenter(self.outlier_range).apply(roi_data)

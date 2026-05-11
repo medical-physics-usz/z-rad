@@ -56,7 +56,36 @@ class Radiomics:
         include_metadata=False,
         roi_data=None,
     ):
-        """Run feature extraction and return a flat feature dictionary."""
+        """Run radiomics feature extraction.
+
+        Parameters
+        ----------
+        image : Image, optional
+            Original image used when ``roi_data`` is not provided.
+        mask : Image, optional
+            Morphological ROI mask used when ``roi_data`` is not provided.
+        filtered_image : Image, optional
+            Filtered image used for intensity-based feature calculation when
+            ``roi_data`` is not provided.
+        families : list of str, optional
+            Feature families to extract. If omitted, all registered families are
+            extracted.
+        features : list of str, optional
+            Individual feature names to extract. Names may come from one or
+            more feature families.
+        include_metadata : bool, default=False
+            If ``True``, append extraction metadata to the returned dictionary.
+        roi_data : RoiData, optional
+            Preprocessed ROI data. When this is provided, it must contain
+            ``image``, ``morphological_mask``, and ``intensity_mask``. Passing
+            ``roi_data`` disables the automatic intensity-mask building and
+            re-segmentation path used for ``image``/``mask`` inputs.
+
+        Returns
+        -------
+        features : dict
+            Flat dictionary mapping feature names to calculated values.
+        """
         context = self._build_context(
             image=image,
             mask=mask,

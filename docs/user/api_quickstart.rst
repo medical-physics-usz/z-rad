@@ -43,7 +43,7 @@ through preprocessing.
    from zrad.preprocessing import (
        ImageResampler,
        IntensityMaskBuilder,
-       IVHIntensityPreparer,
+       IVHIntensityDiscretizer,
        MaskResampler,
        Pipeline,
        Resegmenter,
@@ -84,10 +84,8 @@ through preprocessing.
            intensity_range=(-500, 400),
            outlier_range=3.0,
        )),
-       ("ivh_preparer", IVHIntensityPreparer(
+       ("ivh_discretizer", IVHIntensityDiscretizer(
            method="direct",
-           minimum=-500,
-           maximum=400,
        )),
        ("texture_discretizer", TextureDiscretizer(
            number_of_bins=32,

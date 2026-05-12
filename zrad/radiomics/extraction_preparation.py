@@ -46,10 +46,7 @@ def prepare_extraction_data(context, groups, *, include_metadata=False):
     ivh_discretization_step = 1
     if 'ivh_intensity_image' in required:
         ivh_intensity_image = analysis_masks.ivh_intensity_image
-        ivh_axis = analysis_masks.ivh_axis
-        ivh_min_intensity = ivh_axis.minimum
-        ivh_max_intensity = ivh_axis.maximum
-        ivh_discretization_step = ivh_axis.step
+        ivh_min_intensity, ivh_max_intensity, ivh_discretization_step = _derive_ivh_parameters(analysis_masks)
 
     return PreparedExtractionData(
         base_masks=base_masks,
@@ -86,8 +83,41 @@ def _with_validated_morphological_mask(roi_data, validated_mask):
         intensity_mask=apply_validated_mask(roi_data.intensity_mask),
         texture_discretized_image=apply_validated_mask(roi_data.texture_discretized_image),
         ivh_intensity_image=apply_validated_mask(roi_data.ivh_intensity_image),
-        ivh_axis=roi_data.ivh_axis,
+        intensity_range=roi_data.intensity_range,
+        ivh_discretization_method=roi_data.ivh_discretization_method,
+        ivh_discretization_step=roi_data.ivh_discretization_step,
     )
+
+
+def _derive_ivh_parameters(roi_data):
+    method = roi_data.ivh_discretization_method
+    step = roi_data.ivh_discretization_step
+    if roi_data.ivh_intensity_image is None or method is None or step is None:
+        raise RuntimeError('IVH intensity image and metadata were not prepared for this extraction.')
+
+    valid_values = roi_data.ivh_intensity_image.array[~np.isnan(roi_data.ivh_intensity_image.array)]
+    if valid_values.size == 0:
+        raise RuntimeError('IVH intensity image contains no valid values.')
+
+    if method == 'fixed_bin_number':
+        return np.nanmin(valid_values), np.nanmax(valid_values), step
+
+    observed_min = np.nanmin(valid_values)
+    observed_max = np.nanmax(valid_values)
+    if roi_data.intensity_range is None:
+        return observed_min, observed_max, step
+
+    lower, upper = roi_data.intensity_range
+    if method == 'fixed_bin_size':
+        minimum = lower + 0.5 * step
+        maximum = observed_max if not np.isfinite(upper) else upper - 0.5 * step
+        return minimum, maximum, step
+
+    if method == 'direct':
+        maximum = observed_max if not np.isfinite(upper) else upper
+        return lower, maximum, step
+
+    raise RuntimeError(f"Unsupported IVH discretization method: {method}.")
 
 
 def build_extraction_metadata(prepared_data):

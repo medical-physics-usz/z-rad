@@ -6,7 +6,7 @@ import pytest
 from zrad.image import Image
 from zrad.preprocessing import (
     ImageResampler,
-    IVHIntensityPreparer,
+    IVHIntensityDiscretizer,
     IntensityMaskBuilder,
     MaskResampler,
     Resegmenter,
@@ -92,15 +92,12 @@ def _prepare_roi_data(
         roi_data = TextureDiscretizer(
             number_of_bins=number_of_bins,
             bin_size=bin_size,
-            minimum=None if intensity_range is None or bin_size is None else intensity_range[0],
         ).apply(roi_data)
     if ivh_method is not None:
-        roi_data = IVHIntensityPreparer(
+        roi_data = IVHIntensityDiscretizer(
             method=ivh_method,
             number_of_bins=ivh_number_of_bins,
             bin_size=ivh_bin_size,
-            minimum=None if intensity_range is None else intensity_range[0],
-            maximum=None if intensity_range is None else intensity_range[1],
         ).apply(roi_data)
     return roi_data
 

@@ -97,11 +97,6 @@ def process_patient_folder(input_params, patient_folder, structure_set):
                 roi_data = TextureDiscretizer(
                     number_of_bins=local_params['discretization'][1],
                     bin_size=local_params['discretization'][2],
-                    minimum=(
-                        None
-                        if local_params['intensity_range'] is None
-                        else local_params['intensity_range'][0]
-                    ),
                 ).apply(roi_data)
                 radiomic_features = rad_instance.extract_features(
                     roi_data=roi_data,

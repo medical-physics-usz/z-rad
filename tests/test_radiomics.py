@@ -4,8 +4,7 @@ import pytest
 from zrad.image import Image
 from zrad.preprocessing import (
     IntensityMaskBuilder,
-    IVHAxis,
-    IVHIntensityPreparer,
+    IVHIntensityDiscretizer,
     Resegmenter,
     RoiCropper,
     RoiData,
@@ -143,20 +142,19 @@ def test_radiomics_metadata_is_opt_in():
 
 
 @pytest.mark.unit
-def test_ivh_features_use_prepared_image_and_axis():
+def test_ivh_features_use_prepared_image_and_metadata():
     image = _make_image(np.array([[[2.0, 4.0, 8.0], [2.0, 4.0, 8.0], [2.0, 4.0, 8.0]],
                                   [[2.0, 4.0, 8.0], [2.0, 4.0, 8.0], [2.0, 4.0, 8.0]],
                                   [[2.0, 4.0, 8.0], [2.0, 4.0, 8.0], [2.0, 4.0, 8.0]]]))
     mask = _make_image(np.ones((3, 3, 3), dtype=np.float64))
-    roi_data = IVHIntensityPreparer(
-        method='direct',
-        minimum=0.0,
-        maximum=10.0,
-    ).apply(_roi_data(image, mask))
+    roi_data = Resegmenter(intensity_range=(0.0, 10.0)).apply(_roi_data(image, mask))
+    roi_data = IVHIntensityDiscretizer(method='direct').apply(roi_data)
 
     features = Radiomics().extract_features(roi_data=roi_data, families=['ivh'])
 
-    assert roi_data.ivh_axis == IVHAxis(minimum=0.0, maximum=10.0, step=1)
+    assert roi_data.intensity_range == (0.0, 10.0)
+    assert roi_data.ivh_discretization_method == 'direct'
+    assert roi_data.ivh_discretization_step == 1
     assert set(features) == {'ivh_v10', 'ivh_v90', 'ivh_i10', 'ivh_i90',
                              'ivh_diff_v10_v90', 'ivh_diff_i10_i90'}
 

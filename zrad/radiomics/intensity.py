@@ -560,7 +560,11 @@ class IVHFeatureGroup(BaseFeatureGroup):
     requirements = frozenset({'analysis_masks', 'ivh_intensity_image'})
 
     def supports(self, context):
-        return context.roi_data.ivh_intensity_image is not None and context.roi_data.ivh_axis is not None
+        return (
+            context.roi_data.ivh_intensity_image is not None
+            and context.roi_data.ivh_discretization_method is not None
+            and context.roi_data.ivh_discretization_step is not None
+        )
 
     def default_enabled(self, context):
         return self.supports(context)
@@ -573,7 +577,7 @@ class IVHFeatureGroup(BaseFeatureGroup):
 
     def calculate(self, context, prepared_data):
         image = prepared_data.require_ivh_intensity_image()
-        min_intensity, max_intensity, discretization_step = prepared_data.require_ivh_axis()
+        min_intensity, max_intensity, discretization_step = prepared_data.require_ivh_parameters()
         ivh = IntensityVolumeHistogramFeatures(
             min_intensity,
             max_intensity,

@@ -4,6 +4,21 @@ from ..image import Image
 from .roi import RoiData
 
 
+def _normalize_intensity_range(intensity_range):
+    if intensity_range is None:
+        return None
+    if (
+        not isinstance(intensity_range, (list, tuple))
+        or len(intensity_range) != 2
+        or not all(isinstance(value, (int, float)) and not isinstance(value, bool) for value in intensity_range)
+    ):
+        raise ValueError("intensity_range must be a two-value numeric sequence.")
+    lower, upper = (float(value) for value in intensity_range)
+    if not np.isfinite(lower) or np.isnan(upper) or lower > upper:
+        raise ValueError("intensity_range must have a finite lower bound and lower <= upper.")
+    return lower, upper
+
+
 class RangeResegmenter:
     """Remove ROI voxels outside a configured intensity range.
 
@@ -23,17 +38,7 @@ class RangeResegmenter:
     """
 
     def __init__(self, intensity_range):
-        if intensity_range is not None:
-            if (
-                not isinstance(intensity_range, (list, tuple))
-                or len(intensity_range) != 2
-                or not all(isinstance(value, (int, float)) and not isinstance(value, bool) for value in intensity_range)
-            ):
-                raise ValueError("intensity_range must be a two-value numeric sequence.")
-            lower, upper = intensity_range
-            if not np.isfinite(lower) or np.isnan(upper) or lower > upper:
-                raise ValueError("intensity_range must have a finite lower bound and lower <= upper.")
-        self.intensity_range = intensity_range
+        self.intensity_range = _normalize_intensity_range(intensity_range)
 
     def get_params(self):
         """Return re-segmentation parameters mapped to their configured values.
@@ -82,6 +87,7 @@ class RangeResegmenter:
                 direction=intensity_mask.direction,
                 shape=intensity_mask.shape,
             ),
+            intensity_range=self.intensity_range,
         )
 
 
@@ -163,6 +169,7 @@ class OutlierResegmenter:
                 direction=intensity_mask.direction,
                 shape=intensity_mask.shape,
             ),
+            intensity_range=roi_data.intensity_range,
         )
 
 
@@ -188,7 +195,7 @@ class Resegmenter:
     """
 
     def __init__(self, intensity_range=None, outlier_range=None):
-        self.intensity_range = intensity_range
+        self.intensity_range = _normalize_intensity_range(intensity_range)
         self.outlier_range = outlier_range
 
     def get_params(self):

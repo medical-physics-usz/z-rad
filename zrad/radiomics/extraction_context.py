@@ -68,7 +68,7 @@ class PreparedExtractionData:
             raise RuntimeError('IVH intensity image was not prepared for this extraction.')
         return self.ivh_intensity_image
 
-    def require_ivh_axis(self):
+    def require_ivh_parameters(self):
         if self.ivh_min_intensity is None or self.ivh_max_intensity is None:
             raise RuntimeError('IVH intensity range was not prepared for this extraction.')
         return self.ivh_min_intensity, self.ivh_max_intensity, self.ivh_discretization_step

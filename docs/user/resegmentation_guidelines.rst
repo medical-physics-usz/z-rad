@@ -87,8 +87,10 @@ applies the range first, then calculates ``mu`` and ``sigma`` from the
 remaining valid intensity-mask voxels.
 
 In the Python pipeline, run re-segmentation before ``TextureDiscretizer`` or
-``IVHIntensityPreparer``. Re-segmentation changes the valid intensity
-population and therefore clears any prepared texture or IVH images.
+``IVHIntensityDiscretizer``. Re-segmentation changes the valid intensity
+population and therefore clears any prepared texture or IVH images. When an
+``intensity_range`` is configured, its bounds are stored on ``RoiData`` and
+reused by fixed-bin-size texture and IVH discretization.
 
 This method is data-driven. The accepted range can differ between patients or
 lesions. It is not the same as using a fixed physical range.

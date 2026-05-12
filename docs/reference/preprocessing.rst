@@ -10,10 +10,9 @@ Preprocessing
    ~preprocessing.interpolation.ImageResampler
    ~preprocessing.interpolation.MaskResampler
    ~preprocessing.masks.RoiMaskValidator
-   ~preprocessing.roi.IVHAxis
    ~preprocessing.roi.RoiData
    ~preprocessing.roi.IntensityMaskBuilder
    ~preprocessing.roi.RoiCropper
    ~preprocessing.resegmentation.Resegmenter
    ~preprocessing.discretization.TextureDiscretizer
-   ~preprocessing.discretization.IVHIntensityPreparer
+   ~preprocessing.discretization.IVHIntensityDiscretizer

@@ -66,7 +66,7 @@ def _extract_filtered_features(image, filtered_image, mask, aggr_dim='2D', aggr_
         morphological_mask=mask,
     ))
     roi_data = Resegmenter(intensity_range=[-1000, 400]).apply(roi_data)
-    roi_data = TextureDiscretizer(bin_size=25, minimum=-1000).apply(roi_data)
+    roi_data = TextureDiscretizer(bin_size=25).apply(roi_data)
     return Radiomics(
         aggr_dim=aggr_dim,
         aggr_method=aggr_method,

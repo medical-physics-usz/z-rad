@@ -6,8 +6,7 @@ from zrad.preprocessing.resegmentation import OutlierResegmenter, RangeResegment
 from zrad.preprocessing import (
     ImageResampler,
     IntensityMaskBuilder,
-    IVHAxis,
-    IVHIntensityPreparer,
+    IVHIntensityDiscretizer,
     MaskResampler,
     Pipeline,
     RoiCropper,
@@ -47,8 +46,7 @@ def _make_image(array):
 @pytest.mark.unit
 def test_preprocessing_public_api_exposes_main_steps_only():
     assert set(preprocessing.__all__) == {
-        'IVHAxis',
-        'IVHIntensityPreparer',
+        'IVHIntensityDiscretizer',
         'ImageResampler',
         'IntensityMaskBuilder',
         'MaskResampler',
@@ -89,7 +87,6 @@ def test_texture_discretizer_requires_exactly_one_method(kwargs):
         ({"number_of_bins": 1.5}, "positive integer"),
         ({"bin_size": 0}, "positive number"),
         ({"bin_size": -1}, "positive number"),
-        ({"bin_size": 1, "minimum": np.inf}, "finite number"),
     ],
 )
 def test_texture_discretizer_validates_method_parameters(kwargs, message):
@@ -102,8 +99,20 @@ def test_texture_discretizer_applies_fixed_bin_size_to_roi_data():
     image = _make_image(np.array([[[0.0, 25.0, 50.0]]]))
     mask = _make_image(np.ones((1, 1, 3), dtype=np.float64))
     roi_data = IntensityMaskBuilder().apply(RoiData(image=image, morphological_mask=mask))
-    discretized = TextureDiscretizer(bin_size=25, minimum=0).apply(roi_data)
+    roi_data = Resegmenter(intensity_range=(0.0, 50.0)).apply(roi_data)
+    discretized = TextureDiscretizer(bin_size=25).apply(roi_data)
     np.testing.assert_array_equal(discretized.texture_discretized_image.array, np.array([[[1.0, 2.0, 3.0]]]))
+    assert discretized.intensity_range == (0.0, 50.0)
+
+
+@pytest.mark.unit
+def test_texture_discretizer_fixed_bin_size_requires_resegmentation_range():
+    image = _make_image(np.array([[[0.0, 25.0, 50.0]]]))
+    mask = _make_image(np.ones((1, 1, 3), dtype=np.float64))
+    roi_data = IntensityMaskBuilder().apply(RoiData(image=image, morphological_mask=mask))
+
+    with pytest.raises(ValueError, match="intensity_range"):
+        TextureDiscretizer(bin_size=25).apply(roi_data)
 
 
 @pytest.mark.unit
@@ -144,55 +153,66 @@ def test_ivh_discretizer_requires_exactly_one_method(kwargs):
         ({"method": "direct", "number_of_bins": 4}, "direct IVH"),
         ({"method": "fixed_bin_number"}, "requires number_of_bins"),
         ({"method": "fixed_bin_number", "number_of_bins": 4, "bin_size": 1}, "bin_size"),
-        ({"method": "fixed_bin_size", "bin_size": 1}, "minimum"),
-        ({"method": "fixed_bin_size", "number_of_bins": 4, "bin_size": 1, "minimum": 0}, "number_of_bins"),
+        ({"method": "fixed_bin_size", "number_of_bins": 4, "bin_size": 1}, "number_of_bins"),
         ({"method": "unsupported"}, "method"),
     ],
 )
-def test_ivh_intensity_preparer_validates_methods(kwargs, message):
+def test_ivh_intensity_discretizer_validates_methods(kwargs, message):
     with pytest.raises(ValueError, match=message):
-        IVHIntensityPreparer(**kwargs)
+        IVHIntensityDiscretizer(**kwargs)
 
 
 @pytest.mark.unit
-def test_ivh_intensity_preparer_direct_writes_image_and_axis():
+def test_ivh_intensity_discretizer_direct_writes_image_and_metadata():
     image = _make_image(np.array([[[2.0, 4.0, 8.0]]]))
     mask = _make_image(np.ones((1, 1, 3), dtype=np.float64))
     roi_data = IntensityMaskBuilder().apply(RoiData(image=image, morphological_mask=mask))
 
-    prepared = IVHIntensityPreparer(method='direct', minimum=0.0, maximum=10.0).apply(roi_data)
+    prepared = IVHIntensityDiscretizer(method='direct').apply(roi_data)
 
     np.testing.assert_array_equal(prepared.ivh_intensity_image.array, image.array)
-    assert prepared.ivh_axis == IVHAxis(minimum=0.0, maximum=10.0, step=1)
+    assert prepared.ivh_discretization_method == 'direct'
+    assert prepared.ivh_discretization_step == 1
 
 
 @pytest.mark.unit
-def test_ivh_intensity_preparer_fixed_bin_size_uses_bin_centres():
+def test_ivh_intensity_discretizer_fixed_bin_size_uses_bin_centres():
+    image = _make_image(np.array([[[0.0, 1.0, 2.0]]]))
+    mask = _make_image(np.ones((1, 1, 3), dtype=np.float64))
+    roi_data = IntensityMaskBuilder().apply(RoiData(image=image, morphological_mask=mask))
+    roi_data = Resegmenter(intensity_range=(0.0, 3.0)).apply(roi_data)
+
+    prepared = IVHIntensityDiscretizer(
+        method='fixed_bin_size',
+        bin_size=1.0,
+    ).apply(roi_data)
+
+    np.testing.assert_array_equal(prepared.ivh_intensity_image.array, np.array([[[0.5, 1.5, 2.5]]]))
+    assert prepared.ivh_discretization_method == 'fixed_bin_size'
+    assert prepared.ivh_discretization_step == 1.0
+
+
+@pytest.mark.unit
+def test_ivh_intensity_discretizer_fixed_bin_size_requires_resegmentation_range():
     image = _make_image(np.array([[[0.0, 1.0, 2.0]]]))
     mask = _make_image(np.ones((1, 1, 3), dtype=np.float64))
     roi_data = IntensityMaskBuilder().apply(RoiData(image=image, morphological_mask=mask))
 
-    prepared = IVHIntensityPreparer(
-        method='fixed_bin_size',
-        bin_size=1.0,
-        minimum=0.0,
-        maximum=3.0,
-    ).apply(roi_data)
-
-    np.testing.assert_array_equal(prepared.ivh_intensity_image.array, np.array([[[0.5, 1.5, 2.5]]]))
-    assert prepared.ivh_axis == IVHAxis(minimum=0.5, maximum=2.5, step=1.0)
+    with pytest.raises(ValueError, match="intensity_range"):
+        IVHIntensityDiscretizer(method='fixed_bin_size', bin_size=1.0).apply(roi_data)
 
 
 @pytest.mark.unit
-def test_ivh_intensity_preparer_fixed_bin_number_writes_discrete_axis():
+def test_ivh_intensity_discretizer_fixed_bin_number_writes_metadata():
     image = _make_image(np.array([[[0.0, 10.0, 20.0, 30.0]]]))
     mask = _make_image(np.ones((1, 1, 4), dtype=np.float64))
     roi_data = IntensityMaskBuilder().apply(RoiData(image=image, morphological_mask=mask))
 
-    prepared = IVHIntensityPreparer(method='fixed_bin_number', number_of_bins=3).apply(roi_data)
+    prepared = IVHIntensityDiscretizer(method='fixed_bin_number', number_of_bins=3).apply(roi_data)
 
     np.testing.assert_array_equal(prepared.ivh_intensity_image.array, np.array([[[1.0, 2.0, 3.0, 3.0]]]))
-    assert prepared.ivh_axis == IVHAxis(minimum=1.0, maximum=3.0, step=1)
+    assert prepared.ivh_discretization_method == 'fixed_bin_number'
+    assert prepared.ivh_discretization_step == 1
 
 
 @pytest.mark.unit
@@ -234,13 +254,33 @@ def test_resegmenter_clears_prepared_texture_and_ivh_fields():
     mask = _make_image(np.ones((1, 1, 3), dtype=np.float64))
     roi_data = IntensityMaskBuilder().apply(RoiData(image=image, morphological_mask=mask))
     roi_data = TextureDiscretizer(number_of_bins=2).apply(roi_data)
-    roi_data = IVHIntensityPreparer(method='direct').apply(roi_data)
+    roi_data = IVHIntensityDiscretizer(method='direct').apply(roi_data)
 
     resegmented = Resegmenter(intensity_range=(0.0, 2.0)).apply(roi_data)
 
     assert resegmented.texture_discretized_image is None
     assert resegmented.ivh_intensity_image is None
-    assert resegmented.ivh_axis is None
+    assert resegmented.ivh_discretization_method is None
+    assert resegmented.ivh_discretization_step is None
+    assert resegmented.intensity_range == (0.0, 2.0)
+
+
+@pytest.mark.unit
+def test_intensity_mask_builder_clears_range_and_prepared_fields():
+    image = _make_image(np.array([[[0.0, 1.0, 2.0]]]))
+    mask = _make_image(np.ones((1, 1, 3), dtype=np.float64))
+    roi_data = IntensityMaskBuilder().apply(RoiData(image=image, morphological_mask=mask))
+    roi_data = Resegmenter(intensity_range=(0.0, 2.0)).apply(roi_data)
+    roi_data = TextureDiscretizer(number_of_bins=2).apply(roi_data)
+    roi_data = IVHIntensityDiscretizer(method='direct').apply(roi_data)
+
+    rebuilt = IntensityMaskBuilder().apply(roi_data)
+
+    assert rebuilt.intensity_range is None
+    assert rebuilt.texture_discretized_image is None
+    assert rebuilt.ivh_intensity_image is None
+    assert rebuilt.ivh_discretization_method is None
+    assert rebuilt.ivh_discretization_step is None
 
 
 @pytest.mark.unit
@@ -250,15 +290,18 @@ def test_roi_cropper_crops_prepared_texture_and_ivh_images():
     mask_array[1:, 1:, 1:] = 1
     mask = _make_image(mask_array)
     roi_data = IntensityMaskBuilder().apply(RoiData(image=image, morphological_mask=mask))
+    roi_data = Resegmenter(intensity_range=(0.0, 26.0)).apply(roi_data)
     roi_data = TextureDiscretizer(number_of_bins=4).apply(roi_data)
-    roi_data = IVHIntensityPreparer(method='direct').apply(roi_data)
+    roi_data = IVHIntensityDiscretizer(method='direct').apply(roi_data)
 
     cropped = RoiCropper().apply(roi_data)
 
     assert cropped.intensity_mask.array.shape == (2, 2, 2)
     assert cropped.texture_discretized_image.array.shape == (2, 2, 2)
     assert cropped.ivh_intensity_image.array.shape == (2, 2, 2)
-    assert cropped.ivh_axis == roi_data.ivh_axis
+    assert cropped.intensity_range == roi_data.intensity_range
+    assert cropped.ivh_discretization_method == roi_data.ivh_discretization_method
+    assert cropped.ivh_discretization_step == roi_data.ivh_discretization_step
 
 @pytest.mark.unit
 def test_constructor_valid_inputs():

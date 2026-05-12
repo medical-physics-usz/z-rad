@@ -6,32 +6,14 @@ from ..image import Image
 
 
 @dataclass
-class IVHAxis:
-    """Intensity axis used for intensity-volume histogram features.
-
-    Parameters
-    ----------
-    minimum : float
-        Lower bound of the IVH intensity axis.
-    maximum : float
-        Upper bound of the IVH intensity axis.
-    step : float
-        Intensity interval used to sample the IVH curve.
-    """
-
-    minimum: float
-    maximum: float
-    step: float
-
-
-@dataclass
 class RoiData:
     """Current image and ROI masks used for feature calculation.
 
     ``RoiData`` groups the image and ROI representations that move through a
     preprocessing pipeline. The morphological mask defines the anatomical ROI;
     the intensity mask stores feature-image values inside that ROI and ``NaN``
-    outside it.
+    outside it. Derived discretization fields are cleared by preprocessing
+    steps that change the image, mask, or valid intensity population.
 
     Parameters
     ----------
@@ -46,23 +28,29 @@ class RoiData:
     intensity_mask : Image, optional
         Image containing feature-image intensities inside the ROI and ``NaN``
         outside it. This mask is used by intensity-based feature families.
+    intensity_range : tuple[float, float], optional
+        Absolute re-segmentation range applied to ``intensity_mask``. The lower
+        bound is reused as the fixed-bin-size discretization anchor.
     texture_discretized_image : Image, optional
         Discretized intensity image used by intensity histogram and texture
         feature families.
     ivh_intensity_image : Image, optional
         Intensity image prepared for intensity-volume histogram features.
-    ivh_axis : IVHAxis, optional
-        Intensity-axis metadata for ``ivh_intensity_image``.
-
+    ivh_discretization_method : str, optional
+        IVH preparation method used for ``ivh_intensity_image``.
+    ivh_discretization_step : float, optional
+        Intensity interval used to sample IVH features.
     """
 
     image: Image
     filtered_image: Image | None = None
     morphological_mask: Image | None = None
     intensity_mask: Image | None = None
+    intensity_range: tuple[float, float] | None = None
     texture_discretized_image: Image | None = None
     ivh_intensity_image: Image | None = None
-    ivh_axis: IVHAxis | None = None
+    ivh_discretization_method: str | None = None
+    ivh_discretization_step: float | None = None
 
     @property
     def feature_image(self):
@@ -137,8 +125,8 @@ class RoiCropper:
     Cropping reduces the working image domain to the non-zero morphological ROI
     plus optional padding. Image geometry metadata is updated so the cropped
     image remains located correctly in physical space. Prepared texture and IVH
-    images are cropped with the same bounding box, and ``ivh_axis`` is
-    preserved.
+    images are cropped with the same bounding box, and re-segmentation and IVH
+    metadata are preserved.
 
     Parameters
     ----------
@@ -191,6 +179,7 @@ class RoiCropper:
             ),
             morphological_mask=self._crop_image(roi_data.morphological_mask, bbox_slices),
             intensity_mask=self._crop_image(roi_data.intensity_mask, bbox_slices),
+            intensity_range=roi_data.intensity_range,
             texture_discretized_image=(
                 None
                 if roi_data.texture_discretized_image is None
@@ -201,7 +190,8 @@ class RoiCropper:
                 if roi_data.ivh_intensity_image is None
                 else self._crop_image(roi_data.ivh_intensity_image, bbox_slices)
             ),
-            ivh_axis=roi_data.ivh_axis,
+            ivh_discretization_method=roi_data.ivh_discretization_method,
+            ivh_discretization_step=roi_data.ivh_discretization_step,
         )
 
     def _bounding_box_slices(self, mask_array):

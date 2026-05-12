@@ -135,8 +135,8 @@ Practical Notes
   available through the API only.
 * API users should prepare ``RoiData.texture_discretized_image`` before
   requesting histogram or texture families.
-* API users should prepare both ``RoiData.ivh_intensity_image`` and
-  ``RoiData.ivh_axis`` before requesting IVH features.
+* API users should prepare ``RoiData.ivh_intensity_image`` with
+  ``IVHIntensityDiscretizer`` before requesting IVH features.
 * If you extract features from a filtered NIfTI image, the GUI expects both the
   original NIfTI image and the filtered NIfTI image to be provided.
 

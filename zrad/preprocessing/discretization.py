@@ -142,7 +142,9 @@ class IntensityVolumeHistogramDiscretizer:
     This helper applies the discretization pathway used before
     intensity-volume histogram features. Exactly one IVH discretization method
     must be configured. Fixed-bin-size discretization converts bins to their
-    centre intensities.
+    centre intensities. Direct IVH, where retained intensities are used without
+    IVH-specific discretization, is handled by the radiomics preparation
+    workflow rather than this helper.
 
     Parameters
     ----------

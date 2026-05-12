@@ -53,6 +53,9 @@ class PreparedExtractionData:
     analysis_masks: RoiData | None = None
     discretized_intensity_image: Image | None = None
     ivh_intensity_image: Image | None = None
+    ivh_min_intensity: float | None = None
+    ivh_max_intensity: float | None = None
+    ivh_discretization_step: float = 1
 
     def require_base_masks(self) -> RoiData:
         if self.base_masks is None:
@@ -73,3 +76,8 @@ class PreparedExtractionData:
         if self.ivh_intensity_image is None:
             raise RuntimeError('IVH intensity image was not prepared for this extraction.')
         return self.ivh_intensity_image
+
+    def require_ivh_axis(self):
+        if self.ivh_min_intensity is None or self.ivh_max_intensity is None:
+            raise RuntimeError('IVH intensity range was not prepared for this extraction.')
+        return self.ivh_min_intensity, self.ivh_max_intensity, self.ivh_discretization_step

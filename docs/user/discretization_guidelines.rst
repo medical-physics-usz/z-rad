@@ -20,10 +20,9 @@ important because some texture feature definitions do not allow grey level
 Feature Families
 ----------------
 
-These feature families require discretization:
+These feature families require grey-level discretization:
 
 * intensity histogram features
-* intensity-volume histogram features
 * GLCM
 * GLRLM
 * GLSZM
@@ -39,7 +38,8 @@ These feature families do not require discretization:
 
 Intensity-volume histogram features need special care. IVH features are based
 on a cumulative intensity-volume curve. This curve should use a fine and
-ordered intensity axis. See `IVH-Specific Discretization`_ for details.
+ordered intensity axis, which may be direct retained intensities, fixed bin
+size, or fixed bin number. See `IVH-Specific Discretization`_ for details.
 
 Fixed Bin Number
 ----------------
@@ -227,6 +227,7 @@ For CT IVH features:
 * use HU values directly
 * use a physically justified re-segmentation range
 * use an IVH interval of ``1`` HU
+* Z-Rad uses the re-segmentation range as the direct IVH range when available
 * report the exact re-segmentation range
 
 Example:

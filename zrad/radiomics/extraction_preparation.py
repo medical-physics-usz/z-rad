@@ -45,14 +45,25 @@ def prepare_extraction_data(context, groups, *, include_metadata=False):
         )
 
     ivh_intensity_image = None
+    ivh_min_intensity = None
+    ivh_max_intensity = None
+    ivh_discretization_step = 1
     if 'ivh_intensity_image' in required:
-        ivh_intensity_image = discretize_ivh_intensity_image(context, analysis_masks.intensity_mask)
+        (
+            ivh_intensity_image,
+            ivh_min_intensity,
+            ivh_max_intensity,
+            ivh_discretization_step,
+        ) = prepare_ivh_intensity_image(context, analysis_masks.intensity_mask)
 
     return PreparedExtractionData(
         base_masks=base_masks,
         analysis_masks=analysis_masks,
         discretized_intensity_image=discretized_intensity_image,
         ivh_intensity_image=ivh_intensity_image,
+        ivh_min_intensity=ivh_min_intensity,
+        ivh_max_intensity=ivh_max_intensity,
+        ivh_discretization_step=ivh_discretization_step,
     )
 
 
@@ -91,17 +102,42 @@ def discretize_intensity_image(context, intensity_mask):
     ).apply(intensity_mask)
 
 
-def discretize_ivh_intensity_image(context, intensity_mask):
-    """Return the image used for IVH features."""
+def prepare_ivh_intensity_image(context, intensity_mask):
+    """Return the image and axis settings used for IVH features."""
     if context.ivh_number_of_bins is None and context.ivh_bin_size is None:
-        return intensity_mask.copy()
+        if context.intensity_range is not None:
+            min_intensity = context.intensity_range[0]
+            max_intensity = (
+                context.intensity_range[1]
+                if np.isfinite(context.intensity_range[1])
+                else np.nanmax(intensity_mask.array)
+            )
+        else:
+            min_intensity = np.nanmin(intensity_mask.array)
+            max_intensity = np.nanmax(intensity_mask.array)
+        return intensity_mask.copy(), min_intensity, max_intensity, 1
 
     minimum = context.intensity_range[0] if context.intensity_range is not None else None
-    return IntensityVolumeHistogramDiscretizer(
+    ivh_intensity_image = IntensityVolumeHistogramDiscretizer(
         number_of_bins=context.ivh_number_of_bins,
         bin_size=context.ivh_bin_size,
         minimum=minimum,
     ).apply(intensity_mask)
+    if context.ivh_number_of_bins is not None:
+        return (
+            ivh_intensity_image,
+            np.nanmin(ivh_intensity_image.array),
+            np.nanmax(ivh_intensity_image.array),
+            1,
+        )
+
+    min_intensity = np.nanmin(ivh_intensity_image.array)
+    max_intensity = np.nanmax(ivh_intensity_image.array)
+    if context.intensity_range is not None:
+        min_intensity = context.intensity_range[0] + 0.5 * context.ivh_bin_size
+        if np.isfinite(context.intensity_range[1]):
+            max_intensity = context.intensity_range[1] - 0.5 * context.ivh_bin_size
+    return ivh_intensity_image, min_intensity, max_intensity, context.ivh_bin_size
 
 
 def build_extraction_metadata(prepared_data):

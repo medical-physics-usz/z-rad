@@ -573,27 +573,10 @@ class IVHFeatureGroup(BaseFeatureGroup):
 
     def calculate(self, context, prepared_data):
         image = prepared_data.require_ivh_intensity_image()
-
-        if context.ivh_number_of_bins is not None:
-            ivh = IntensityVolumeHistogramFeatures(
-                np.nanmin(image.array),
-                np.nanmax(image.array),
-            )
-        elif context.ivh_bin_size is not None:
-            if context.intensity_range is not None:
-                min_val = context.intensity_range[0] + 0.5 * context.ivh_bin_size
-                max_val = context.intensity_range[1] - 0.5 * context.ivh_bin_size
-            else:
-                min_val = np.nanmin(image.array) + 0.5 * context.ivh_bin_size
-                max_val = np.nanmax(image.array) - 0.5 * context.ivh_bin_size
-            ivh = IntensityVolumeHistogramFeatures(
-                min_val,
-                max_val,
-                context.ivh_bin_size,
-            )
-        else:
-            ivh = IntensityVolumeHistogramFeatures(
-                np.nanmin(image.array),
-                np.nanmax(image.array),
-            )
+        min_intensity, max_intensity, discretization_step = prepared_data.require_ivh_axis()
+        ivh = IntensityVolumeHistogramFeatures(
+            min_intensity,
+            max_intensity,
+            discretization_step,
+        )
         return ivh.calculate_features(image.array)

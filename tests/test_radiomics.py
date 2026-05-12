@@ -1,9 +1,12 @@
+from types import SimpleNamespace
+
 import numpy as np
 import pytest
 
 from zrad.image import Image
 from zrad.preprocessing import IntensityMaskBuilder, Resegmenter, RoiCropper, RoiData
 from zrad.radiomics import Radiomics
+from zrad.radiomics.extraction_preparation import prepare_ivh_intensity_image
 
 
 def _make_image(array):
@@ -90,6 +93,40 @@ def test_radiomics_metadata_is_opt_in():
 def test_radiomics_validates_resegmentation_and_discretization(kwargs, message):
     with pytest.raises(ValueError, match=message):
         Radiomics(**kwargs)
+
+
+@pytest.mark.unit
+def test_direct_ivh_uses_intensity_range_as_axis_when_available():
+    intensity_mask = _make_image(np.array([[[2.0, 4.0, 8.0]]]))
+    context = SimpleNamespace(
+        intensity_range=(0.0, 10.0),
+        ivh_number_of_bins=None,
+        ivh_bin_size=None,
+    )
+
+    image, min_intensity, max_intensity, step = prepare_ivh_intensity_image(context, intensity_mask)
+
+    np.testing.assert_array_equal(image.array, intensity_mask.array)
+    assert min_intensity == 0.0
+    assert max_intensity == 10.0
+    assert step == 1
+
+
+@pytest.mark.unit
+def test_direct_ivh_without_intensity_range_uses_observed_axis():
+    intensity_mask = _make_image(np.array([[[2.0, 4.0, 8.0]]]))
+    context = SimpleNamespace(
+        intensity_range=None,
+        ivh_number_of_bins=None,
+        ivh_bin_size=None,
+    )
+
+    image, min_intensity, max_intensity, step = prepare_ivh_intensity_image(context, intensity_mask)
+
+    np.testing.assert_array_equal(image.array, intensity_mask.array)
+    assert min_intensity == 2.0
+    assert max_intensity == 8.0
+    assert step == 1
 
 
 @pytest.mark.unit

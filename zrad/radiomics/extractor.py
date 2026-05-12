@@ -32,7 +32,10 @@ class Radiomics:
         ``number_of_bins`` and requires ``intensity_range`` so its lower bound
         can be used as a stable bin origin.
     calc_ivh_features : bool, default=False
-        If true, include intensity-volume histogram features.
+        If true, include intensity-volume histogram features. When no
+        IVH-specific discretization is supplied, IVH uses retained intensity
+        values directly and uses ``intensity_range`` as the IVH range when
+        available.
     ivh_number_of_bins : int or None, optional
         Number of bins for IVH discretization. Mutually exclusive with
         ``ivh_bin_size``. If neither IVH discretization parameter is supplied,

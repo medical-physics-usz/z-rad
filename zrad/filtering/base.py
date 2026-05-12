@@ -35,7 +35,8 @@ class BaseFilter:
         image : Image or RoiData
             Input image to filter. If ``RoiData`` is supplied, filtering is
             applied to ``image.image`` and the result is stored as
-            ``filtered_image`` in the returned ROI data.
+            ``filtered_image`` in the returned ROI data. Existing intensity,
+            texture, and IVH prepared fields are cleared.
 
         Returns
         -------

@@ -86,6 +86,10 @@ When range re-segmentation and outlier filtering are both configured, Z-Rad
 applies the range first, then calculates ``mu`` and ``sigma`` from the
 remaining valid intensity-mask voxels.
 
+In the Python pipeline, run re-segmentation before ``TextureDiscretizer`` or
+``IVHIntensityPreparer``. Re-segmentation changes the valid intensity
+population and therefore clears any prepared texture or IVH images.
+
 This method is data-driven. The accepted range can differ between patients or
 lesions. It is not the same as using a fixed physical range.
 

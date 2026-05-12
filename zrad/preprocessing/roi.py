@@ -6,6 +6,25 @@ from ..image import Image
 
 
 @dataclass
+class IVHAxis:
+    """Intensity axis used for intensity-volume histogram features.
+
+    Parameters
+    ----------
+    minimum : float
+        Lower bound of the IVH intensity axis.
+    maximum : float
+        Upper bound of the IVH intensity axis.
+    step : float
+        Intensity interval used to sample the IVH curve.
+    """
+
+    minimum: float
+    maximum: float
+    step: float
+
+
+@dataclass
 class RoiData:
     """Current image and ROI masks used for feature calculation.
 
@@ -27,6 +46,13 @@ class RoiData:
     intensity_mask : Image, optional
         Image containing feature-image intensities inside the ROI and ``NaN``
         outside it. This mask is used by intensity-based feature families.
+    texture_discretized_image : Image, optional
+        Discretized intensity image used by intensity histogram and texture
+        feature families.
+    ivh_intensity_image : Image, optional
+        Intensity image prepared for intensity-volume histogram features.
+    ivh_axis : IVHAxis, optional
+        Intensity-axis metadata for ``ivh_intensity_image``.
 
     """
 
@@ -34,6 +60,9 @@ class RoiData:
     filtered_image: Image | None = None
     morphological_mask: Image | None = None
     intensity_mask: Image | None = None
+    texture_discretized_image: Image | None = None
+    ivh_intensity_image: Image | None = None
+    ivh_axis: IVHAxis | None = None
 
     @property
     def feature_image(self):
@@ -51,9 +80,9 @@ class IntensityMaskBuilder:
     """Build the intensity ROI image used by intensity-based feature families.
 
     The builder keeps the morphological mask binary, selects the current
-    feature image, and writes an ``intensity_mask`` whose voxels outside the ROI
-    are set to ``NaN``. This mirrors the IBSI distinction between morphology
-    and intensity masks.
+    feature image, writes an ``intensity_mask`` whose voxels outside the ROI
+    are set to ``NaN``, and clears any prepared texture or IVH images. This
+    mirrors the IBSI distinction between morphology and intensity masks.
 
     This class has no constructor parameters.
     """
@@ -107,7 +136,9 @@ class RoiCropper:
 
     Cropping reduces the working image domain to the non-zero morphological ROI
     plus optional padding. Image geometry metadata is updated so the cropped
-    image remains located correctly in physical space.
+    image remains located correctly in physical space. Prepared texture and IVH
+    images are cropped with the same bounding box, and ``ivh_axis`` is
+    preserved.
 
     Parameters
     ----------
@@ -160,6 +191,17 @@ class RoiCropper:
             ),
             morphological_mask=self._crop_image(roi_data.morphological_mask, bbox_slices),
             intensity_mask=self._crop_image(roi_data.intensity_mask, bbox_slices),
+            texture_discretized_image=(
+                None
+                if roi_data.texture_discretized_image is None
+                else self._crop_image(roi_data.texture_discretized_image, bbox_slices)
+            ),
+            ivh_intensity_image=(
+                None
+                if roi_data.ivh_intensity_image is None
+                else self._crop_image(roi_data.ivh_intensity_image, bbox_slices)
+            ),
+            ivh_axis=roi_data.ivh_axis,
         )
 
     def _bounding_box_slices(self, mask_array):

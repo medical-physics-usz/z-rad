@@ -462,7 +462,7 @@ class MorphologyCorrelationFeatureGroup(BaseFeatureGroup):
         return not context.is_slice_2d
 
     def default_enabled(self, context):
-        return self.supports(context) and context.calc_morph_moran_i_and_geary_c_features
+        return False
 
     def output_names(self, context):
         return MORPHOLOGY_CORRELATION_FEATURE_NAMES

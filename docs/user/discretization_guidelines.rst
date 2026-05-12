@@ -104,8 +104,9 @@ For fixed bin size discretization, the lower bin origin should ideally be fixed
 across all samples. A common choice is the lower bound of the re-segmentation
 range.
 
-In Z-Rad's high-level ``Radiomics`` workflow, fixed bin size therefore requires
-an ``intensity_range``. Its lower bound is used as the bin origin. Use fixed bin
+In Z-Rad's Python API, fixed bin size texture discretization is prepared with
+``TextureDiscretizer`` and requires an explicit ``minimum`` lower anchor. A
+common choice is the lower bound of the re-segmentation range. Use fixed bin
 number when no stable lower bound is available.
 
 Examples:
@@ -222,24 +223,23 @@ The recommended IVH strategy depends on the image intensity type.
      - Use fixed bin number discretization.
      - ``N_g = 1000``
 
-In the Python API, choose this explicitly with ``ivh_method``:
-``"direct"``, ``"fixed_bin_size"``, or ``"fixed_bin_number"``. If
-``ivh_method`` is omitted, Z-Rad infers the legacy behavior from
-``ivh_bin_size`` or ``ivh_number_of_bins``; new analyses should set
-``ivh_method`` explicitly.
+In the Python API, prepare IVH explicitly with ``IVHIntensityPreparer``. Choose
+``method="direct"``, ``method="fixed_bin_size"``, or
+``method="fixed_bin_number"``. This writes both ``RoiData.ivh_intensity_image``
+and ``RoiData.ivh_axis``.
 
 For CT IVH features:
 
 * use HU values directly
 * use a physically justified re-segmentation range
 * use an IVH interval of ``1`` HU
-* Z-Rad uses the re-segmentation range as the direct IVH range when available
+* pass the re-segmentation range bounds as ``minimum`` and ``maximum``
 * report the exact re-segmentation range
 
 Example:
 
 * re-segmentation range: ``[-500, 400]`` HU
-* ``ivh_method="direct"``
+* ``IVHIntensityPreparer(method="direct", minimum=-500, maximum=400)``
 * IVH range: ``[-500, 400]`` HU
 * IVH interval: ``1`` HU
 
@@ -253,14 +253,14 @@ For PET IVH features:
 Example:
 
 * re-segmentation range: ``[0, 20]`` SUV
-* ``ivh_method="fixed_bin_size"``
+* ``IVHIntensityPreparer(method="fixed_bin_size", bin_size=0.1, minimum=0, maximum=20)``
 * IVH bin width: ``0.1`` SUV
 * IVH axis after bin-centre conversion: ``0.05, 0.15, 0.25, ..., 19.95`` SUV
 
 For MRI or other arbitrary units:
 
 * use fixed bin number discretization with ``N_g = 1000``
-* set ``ivh_method="fixed_bin_number"``
+* set ``IVHIntensityPreparer(method="fixed_bin_number", number_of_bins=1000)``
 * avoid fixed bin size unless intensities have been standardized or calibrated
 * construct the IVH over the discretized range ``[1, 1000]``
 

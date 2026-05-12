@@ -1,12 +1,17 @@
-from types import SimpleNamespace
-
 import numpy as np
 import pytest
 
 from zrad.image import Image
-from zrad.preprocessing import IntensityMaskBuilder, Resegmenter, RoiCropper, RoiData
+from zrad.preprocessing import (
+    IntensityMaskBuilder,
+    IVHAxis,
+    IVHIntensityPreparer,
+    Resegmenter,
+    RoiCropper,
+    RoiData,
+    TextureDiscretizer,
+)
 from zrad.radiomics import Radiomics
-from zrad.radiomics.extraction_preparation import prepare_ivh_intensity_image
 
 
 def _make_image(array):
@@ -19,16 +24,41 @@ def _make_image(array):
     )
 
 
+def _roi_data(image, mask, filtered_image=None):
+    return IntensityMaskBuilder().apply(RoiData(
+        image=image,
+        filtered_image=filtered_image,
+        morphological_mask=mask,
+    ))
+
+
 @pytest.mark.unit
-def test_radiomics_extract_features_returns_dict():
+def test_radiomics_extract_features_returns_dict_from_roi_data():
     image = _make_image(np.arange(27, dtype=np.float64).reshape(3, 3, 3))
     mask = _make_image(np.ones((3, 3, 3), dtype=np.float64))
 
-    radiomics = Radiomics()
-    features = radiomics.extract_features(image=image, mask=mask, families=['local_intensity'])
+    features = Radiomics().extract_features(
+        roi_data=_roi_data(image, mask),
+        families=['local_intensity'],
+    )
 
     assert isinstance(features, dict)
     assert set(features) == {'loc_peak_loc', 'loc_peak_glob'}
+
+
+@pytest.mark.unit
+def test_radiomics_rejects_direct_image_mask_inputs():
+    image = _make_image(np.arange(27, dtype=np.float64).reshape(3, 3, 3))
+    mask = _make_image(np.ones((3, 3, 3), dtype=np.float64))
+
+    with pytest.raises(TypeError, match="unexpected keyword"):
+        Radiomics().extract_features(image=image, mask=mask)
+
+
+@pytest.mark.unit
+def test_radiomics_requires_roi_data():
+    with pytest.raises(TypeError, match="roi_data"):
+        Radiomics().extract_features()
 
 
 @pytest.mark.unit
@@ -36,10 +66,8 @@ def test_radiomics_feature_subset_returns_only_requested_keys():
     image = _make_image(np.arange(1, 28, dtype=np.float64).reshape(3, 3, 3))
     mask = _make_image(np.ones((3, 3, 3), dtype=np.float64))
 
-    radiomics = Radiomics()
-    features = radiomics.extract_features(
-        image=image,
-        mask=mask,
+    features = Radiomics().extract_features(
+        roi_data=_roi_data(image, mask),
         features=['stat_mean', 'stat_max'],
     )
 
@@ -49,20 +77,59 @@ def test_radiomics_feature_subset_returns_only_requested_keys():
 
 
 @pytest.mark.unit
-def test_radiomics_metadata_is_opt_in():
+def test_default_extraction_uses_available_prepared_families():
+    image = _make_image(np.arange(1, 217, dtype=np.float64).reshape(6, 6, 6))
+    mask_array = np.zeros((6, 6, 6), dtype=np.float64)
+    mask_array[1:5, 1:4, 1:4] = 1
+    mask_array[4, 3, 3] = 1
+    mask = _make_image(mask_array)
+    roi_data = TextureDiscretizer(number_of_bins=4).apply(_roi_data(image, mask))
+
+    features = Radiomics().extract_features(roi_data=roi_data)
+
+    assert 'stat_mean' in features
+    assert 'ih_mean' in features
+    assert 'cm_joint_max_3D_avg' in features
+    assert 'ivh_v10' not in features
+    assert 'morph_moran_i' not in features
+
+
+@pytest.mark.unit
+def test_explicit_missing_texture_family_raises_clear_error():
     image = _make_image(np.arange(1, 28, dtype=np.float64).reshape(3, 3, 3))
     mask = _make_image(np.ones((3, 3, 3), dtype=np.float64))
 
-    radiomics = Radiomics(number_of_bins=8)
+    with pytest.raises(Exception, match="not supported"):
+        Radiomics().extract_features(
+            roi_data=_roi_data(image, mask),
+            families=['glcm'],
+        )
 
-    without_metadata = radiomics.extract_features(
-        image=image,
-        mask=mask,
+
+@pytest.mark.unit
+def test_explicit_missing_ivh_family_raises_clear_error():
+    image = _make_image(np.arange(1, 28, dtype=np.float64).reshape(3, 3, 3))
+    mask = _make_image(np.ones((3, 3, 3), dtype=np.float64))
+
+    with pytest.raises(Exception, match="not supported"):
+        Radiomics().extract_features(
+            roi_data=_roi_data(image, mask),
+            families=['ivh'],
+        )
+
+
+@pytest.mark.unit
+def test_radiomics_metadata_is_opt_in():
+    image = _make_image(np.arange(1, 28, dtype=np.float64).reshape(3, 3, 3))
+    mask = _make_image(np.ones((3, 3, 3), dtype=np.float64))
+    roi_data = TextureDiscretizer(number_of_bins=8).apply(_roi_data(image, mask))
+
+    without_metadata = Radiomics().extract_features(
+        roi_data=roi_data,
         families=['intensity_histogram'],
     )
-    with_metadata = radiomics.extract_features(
-        image=image,
-        mask=mask,
+    with_metadata = Radiomics().extract_features(
+        roi_data=roi_data,
         families=['intensity_histogram'],
         include_metadata=True,
     )
@@ -76,73 +143,28 @@ def test_radiomics_metadata_is_opt_in():
 
 
 @pytest.mark.unit
-@pytest.mark.parametrize(
-    "kwargs, message",
-    [
-        ({"number_of_bins": 4, "bin_size": 25, "intensity_range": (0, 100)}, "Specify only one"),
-        ({"number_of_bins": 0}, "positive integer"),
-        ({"bin_size": 25}, "stable lower anchor"),
-        ({"bin_size": 0, "intensity_range": (0, 100)}, "positive number"),
-        ({"ivh_number_of_bins": 10, "ivh_bin_size": 2.5, "intensity_range": (0, 100)}, "ivh_number_of_bins"),
-        ({"ivh_number_of_bins": 0}, "positive integer"),
-        ({"ivh_bin_size": 2.5}, "stable lower anchor"),
-        ({"ivh_method": "unsupported"}, "ivh_method"),
-        ({"ivh_method": "direct", "ivh_number_of_bins": 10}, "direct IVH"),
-        ({"ivh_method": "fixed_bin_number"}, "requires ivh_number_of_bins"),
-        ({"ivh_method": "fixed_bin_number", "ivh_number_of_bins": 10, "ivh_bin_size": 2.5}, "ivh_bin_size"),
-        ({"ivh_method": "fixed_bin_size", "intensity_range": (0, 100)}, "requires ivh_bin_size"),
-        ({"ivh_method": "fixed_bin_size", "ivh_bin_size": 2.5}, "stable lower anchor"),
-        ({"ivh_method": "fixed_bin_size", "ivh_bin_size": 2.5, "ivh_number_of_bins": 10, "intensity_range": (0, 100)}, "ivh_number_of_bins"),
-        ({"intensity_range": (100, 0)}, "intensity_range"),
-        ({"outlier_range": 0}, "outlier_range"),
-    ],
-)
-def test_radiomics_validates_resegmentation_and_discretization(kwargs, message):
-    with pytest.raises(ValueError, match=message):
-        Radiomics(**kwargs)
+def test_ivh_features_use_prepared_image_and_axis():
+    image = _make_image(np.array([[[2.0, 4.0, 8.0], [2.0, 4.0, 8.0], [2.0, 4.0, 8.0]],
+                                  [[2.0, 4.0, 8.0], [2.0, 4.0, 8.0], [2.0, 4.0, 8.0]],
+                                  [[2.0, 4.0, 8.0], [2.0, 4.0, 8.0], [2.0, 4.0, 8.0]]]))
+    mask = _make_image(np.ones((3, 3, 3), dtype=np.float64))
+    roi_data = IVHIntensityPreparer(
+        method='direct',
+        minimum=0.0,
+        maximum=10.0,
+    ).apply(_roi_data(image, mask))
 
+    features = Radiomics().extract_features(roi_data=roi_data, families=['ivh'])
 
-@pytest.mark.unit
-def test_direct_ivh_uses_intensity_range_as_axis_when_available():
-    intensity_mask = _make_image(np.array([[[2.0, 4.0, 8.0]]]))
-    context = SimpleNamespace(
-        intensity_range=(0.0, 10.0),
-        ivh_method='direct',
-        ivh_number_of_bins=None,
-        ivh_bin_size=None,
-    )
-
-    image, min_intensity, max_intensity, step = prepare_ivh_intensity_image(context, intensity_mask)
-
-    np.testing.assert_array_equal(image.array, intensity_mask.array)
-    assert min_intensity == 0.0
-    assert max_intensity == 10.0
-    assert step == 1
-
-
-@pytest.mark.unit
-def test_direct_ivh_without_intensity_range_uses_observed_axis():
-    intensity_mask = _make_image(np.array([[[2.0, 4.0, 8.0]]]))
-    context = SimpleNamespace(
-        intensity_range=None,
-        ivh_method='direct',
-        ivh_number_of_bins=None,
-        ivh_bin_size=None,
-    )
-
-    image, min_intensity, max_intensity, step = prepare_ivh_intensity_image(context, intensity_mask)
-
-    np.testing.assert_array_equal(image.array, intensity_mask.array)
-    assert min_intensity == 2.0
-    assert max_intensity == 8.0
-    assert step == 1
+    assert roi_data.ivh_axis == IVHAxis(minimum=0.0, maximum=10.0, step=1)
+    assert set(features) == {'ivh_v10', 'ivh_v90', 'ivh_i10', 'ivh_i90',
+                             'ivh_diff_v10_v90', 'ivh_diff_i10_i90'}
 
 
 @pytest.mark.unit
 def test_radiomics_filtered_image_uses_original_image_for_masking():
     original = np.zeros((3, 3, 3), dtype=np.float64)
     original[1, 1, 1] = 10.0
-
     filtered = np.full((3, 3, 3), 50.0, dtype=np.float64)
     filtered[1, 1, 1] = 100.0
 
@@ -150,40 +172,8 @@ def test_radiomics_filtered_image_uses_original_image_for_masking():
     filtered_image = _make_image(filtered)
     mask = _make_image(np.ones((3, 3, 3), dtype=np.float64))
 
-    radiomics = Radiomics(intensity_range=[10.0, 10.0])
-    features = radiomics.extract_features(
-        image=image,
-        mask=mask,
-        filtered_image=filtered_image,
-        families=['intensity_statistics'],
-    )
-
-    assert list(features) == ['stat_mean', 'stat_var', 'stat_skew', 'stat_kurt', 'stat_median', 'stat_min', 'stat_p10',
-                              'stat_p90', 'stat_max', 'stat_iqr', 'stat_range', 'stat_mad', 'stat_rmad',
-                              'stat_medad', 'stat_cov', 'stat_qcod', 'stat_energy', 'stat_rms']
-    assert features['stat_mean'] == pytest.approx(100.0)
-    assert features['stat_max'] == pytest.approx(100.0)
-
-
-@pytest.mark.unit
-def test_radiomics_accepts_prepared_roi_data():
-    original = np.zeros((3, 3, 3), dtype=np.float64)
-    original[1, 1, 1] = 10.0
-
-    filtered = np.full((3, 3, 3), 50.0, dtype=np.float64)
-    filtered[1, 1, 1] = 100.0
-
-    image = _make_image(original)
-    filtered_image = _make_image(filtered)
-    mask = _make_image(np.ones((3, 3, 3), dtype=np.float64))
-
-    roi_data = IntensityMaskBuilder().apply(RoiData(
-        image=image,
-        filtered_image=filtered_image,
-        morphological_mask=mask,
-    ))
+    roi_data = _roi_data(image, mask, filtered_image=filtered_image)
     roi_data = Resegmenter(intensity_range=[10.0, 10.0]).apply(roi_data)
-
     features = Radiomics().extract_features(
         roi_data=roi_data,
         families=['intensity_statistics'],
@@ -204,18 +194,10 @@ def test_explicit_roi_cropping_preserves_feature_values():
     mask = _make_image(mask_array)
 
     families = ['intensity_statistics', 'intensity_histogram', 'glcm']
-    uncropped = Radiomics(number_of_bins=4).extract_features(
-        image=image,
-        mask=mask,
-        families=families,
-    )
-    roi_data = IntensityMaskBuilder().apply(RoiData(
-        image=image,
-        morphological_mask=mask,
-    ))
-    roi_data = RoiCropper().apply(roi_data)
-    cropped = Radiomics(number_of_bins=4).extract_features(
-        roi_data=roi_data,
+    roi_data = TextureDiscretizer(number_of_bins=4).apply(_roi_data(image, mask))
+    uncropped = Radiomics().extract_features(roi_data=roi_data, families=families)
+    cropped = Radiomics().extract_features(
+        roi_data=RoiCropper().apply(roi_data),
         families=families,
     )
 

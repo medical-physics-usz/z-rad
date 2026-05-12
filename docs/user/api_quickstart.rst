@@ -18,11 +18,14 @@ The typical Python workflow is:
 2. Resample them so image and mask share the intended
    voxel spacing.
 3. Apply a configured filter if the experiment requires a filtered representation.
-4. Run ``Radiomics.extract_features()`` and collect the returned feature dictionary for storage
-   in a table or downstream analysis pipeline.
+4. Prepare texture and IVH images in ``RoiData`` when those feature families
+   are needed.
+5. Run ``Radiomics.extract_features()`` on the prepared ``RoiData`` and collect
+   the returned feature dictionary for storage in a table or downstream
+   analysis pipeline.
    Use ``include_metadata=True`` if you also want summary fields such as
    bounding-box size, voxel count, and discretized-bin count in the result.
-5. Keep the exact preprocessing, filtering, and discretization settings next
+6. Keep the exact preprocessing, filtering, and discretization settings next
    to the extracted features so the run remains reproducible.
 
 Canonical Full Pipeline Example
@@ -40,11 +43,13 @@ through preprocessing.
    from zrad.preprocessing import (
        ImageResampler,
        IntensityMaskBuilder,
+       IVHIntensityPreparer,
        MaskResampler,
        Pipeline,
        Resegmenter,
        RoiCropper,
        RoiData,
+       TextureDiscretizer,
    )
    from zrad.radiomics import Radiomics
 
@@ -79,6 +84,14 @@ through preprocessing.
            intensity_range=(-500, 400),
            outlier_range=3.0,
        )),
+       ("ivh_preparer", IVHIntensityPreparer(
+           method="direct",
+           minimum=-500,
+           maximum=400,
+       )),
+       ("texture_discretizer", TextureDiscretizer(
+           number_of_bins=32,
+       )),
        ("cropper", RoiCropper(padding=1)),
    ])
 
@@ -87,7 +100,6 @@ through preprocessing.
    rad = Radiomics(
        aggr_dim="3D",
        aggr_method="AVER",
-       number_of_bins=32,
    )
    features = rad.extract_features(
        roi_data=roi_data,

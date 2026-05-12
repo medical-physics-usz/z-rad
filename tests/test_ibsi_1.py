@@ -4,7 +4,15 @@ from pathlib import Path
 import pytest
 
 from zrad.image import Image
-from zrad.preprocessing import ImageResampler, MaskResampler
+from zrad.preprocessing import (
+    ImageResampler,
+    IVHIntensityPreparer,
+    IntensityMaskBuilder,
+    MaskResampler,
+    Resegmenter,
+    RoiData,
+    TextureDiscretizer,
+)
 from zrad.radiomics import Radiomics
 
 
@@ -59,6 +67,51 @@ def _resolution(image, value, dimension):
     if dimension == '2D':
         return (value, value, image.spacing[2])
     return (value, value, value)
+
+
+def _prepare_roi_data(
+    image,
+    mask,
+    intensity_range=None,
+    outlier_range=None,
+    number_of_bins=None,
+    bin_size=None,
+    ivh_method=None,
+    ivh_number_of_bins=None,
+    ivh_bin_size=None,
+):
+    roi_data = IntensityMaskBuilder().apply(RoiData(
+        image=image,
+        morphological_mask=mask,
+    ))
+    roi_data = Resegmenter(
+        intensity_range=intensity_range,
+        outlier_range=outlier_range,
+    ).apply(roi_data)
+    if number_of_bins is not None or bin_size is not None:
+        roi_data = TextureDiscretizer(
+            number_of_bins=number_of_bins,
+            bin_size=bin_size,
+            minimum=None if intensity_range is None or bin_size is None else intensity_range[0],
+        ).apply(roi_data)
+    if ivh_method is not None:
+        roi_data = IVHIntensityPreparer(
+            method=ivh_method,
+            number_of_bins=ivh_number_of_bins,
+            bin_size=ivh_bin_size,
+            minimum=None if intensity_range is None else intensity_range[0],
+            maximum=None if intensity_range is None else intensity_range[1],
+        ).apply(roi_data)
+    return roi_data
+
+
+def _extract_features(image, mask, aggr_dim, aggr_method, **prep_kwargs):
+    return Radiomics(
+        aggr_dim=aggr_dim,
+        aggr_method=aggr_method,
+    ).extract_features(
+        roi_data=_prepare_roi_data(image, mask, **prep_kwargs),
+    )
 
 
 @pytest.fixture()
@@ -130,40 +183,32 @@ def res3d_2mm_image_spline(dcm_ct_phantom_image):
 def test_ibsi_i_config_a(dcm_ct_phantom_image, dcm_ct_phantom_mask):
     ibsi_features = ibsi_i_feature_tolerances('config_A')
 
-    radiomics = Radiomics(aggr_dim='2D',
-                          aggr_method='AVER',
-                          intensity_range=[-500, 400],
-                          bin_size=25,
-                          calc_ivh_features=True)
-
-    features = radiomics.extract_features(image=dcm_ct_phantom_image, mask=dcm_ct_phantom_mask)
+    features = _extract_features(
+        dcm_ct_phantom_image, dcm_ct_phantom_mask,
+        aggr_dim='2D', aggr_method='AVER',
+        intensity_range=[-500, 400], bin_size=25, ivh_method='direct',
+    )
     ibsi_i_validation(ibsi_features, features, True)
 
-    radiomics = Radiomics(aggr_dim='2D',
-                          aggr_method='SLICE_MERG',
-                          intensity_range=[-500, 400],
-                          bin_size=25,
-                          calc_ivh_features=True)
-
-    features = radiomics.extract_features(image=dcm_ct_phantom_image, mask=dcm_ct_phantom_mask)
+    features = _extract_features(
+        dcm_ct_phantom_image, dcm_ct_phantom_mask,
+        aggr_dim='2D', aggr_method='SLICE_MERG',
+        intensity_range=[-500, 400], bin_size=25, ivh_method='direct',
+    )
     ibsi_i_validation(ibsi_features, features, True)
 
-    radiomics = Radiomics(aggr_dim='2.5D',
-                          aggr_method='DIR_MERG',
-                          intensity_range=[-500, 400],
-                          bin_size=25,
-                          calc_ivh_features=True)
-
-    features = radiomics.extract_features(image=dcm_ct_phantom_image, mask=dcm_ct_phantom_mask)
+    features = _extract_features(
+        dcm_ct_phantom_image, dcm_ct_phantom_mask,
+        aggr_dim='2.5D', aggr_method='DIR_MERG',
+        intensity_range=[-500, 400], bin_size=25, ivh_method='direct',
+    )
     ibsi_i_validation(ibsi_features, features, True)
 
-    radiomics = Radiomics(aggr_dim='2.5D',
-                          aggr_method='MERG',
-                          intensity_range=[-500, 400],
-                          bin_size=25,
-                          calc_ivh_features=True)
-
-    features = radiomics.extract_features(image=dcm_ct_phantom_image, mask=dcm_ct_phantom_mask)
+    features = _extract_features(
+        dcm_ct_phantom_image, dcm_ct_phantom_mask,
+        aggr_dim='2.5D', aggr_method='MERG',
+        intensity_range=[-500, 400], bin_size=25, ivh_method='direct',
+    )
     ibsi_i_validation(ibsi_features, features, True)
 
 
@@ -171,38 +216,31 @@ def test_ibsi_i_config_a(dcm_ct_phantom_image, dcm_ct_phantom_mask):
 def test_ibsi_i_config_b(res2d_2mm_image_linear, res2d_2mm_mask_linear):
     ibsi_features = ibsi_i_feature_tolerances('config_B')
 
-    radiomics = Radiomics(aggr_dim='2D',
-                          aggr_method='AVER',
-                          intensity_range=[-500, 400],
-                          number_of_bins=32)
-
-    features = radiomics.extract_features(image=res2d_2mm_image_linear, mask=res2d_2mm_mask_linear)
+    features = _extract_features(
+        res2d_2mm_image_linear, res2d_2mm_mask_linear,
+        aggr_dim='2D', aggr_method='AVER',
+        intensity_range=[-500, 400], number_of_bins=32,
+    )
     ibsi_i_validation(ibsi_features, features)
-    radiomics = Radiomics(aggr_dim='2D',
-                          aggr_method='SLICE_MERG',
-                          intensity_range=[-500, 400],
-                          number_of_bins=32,
-                          calc_ivh_features=True)
-
-    features = radiomics.extract_features(image=res2d_2mm_image_linear, mask=res2d_2mm_mask_linear)
+    features = _extract_features(
+        res2d_2mm_image_linear, res2d_2mm_mask_linear,
+        aggr_dim='2D', aggr_method='SLICE_MERG',
+        intensity_range=[-500, 400], number_of_bins=32, ivh_method='direct',
+    )
     ibsi_i_validation(ibsi_features, features)
 
-    radiomics = Radiomics(aggr_dim='2.5D',
-                          aggr_method='DIR_MERG',
-                          intensity_range=[-500, 400],
-                          number_of_bins=32,
-                          calc_ivh_features=True)
-
-    features = radiomics.extract_features(image=res2d_2mm_image_linear, mask=res2d_2mm_mask_linear)
+    features = _extract_features(
+        res2d_2mm_image_linear, res2d_2mm_mask_linear,
+        aggr_dim='2.5D', aggr_method='DIR_MERG',
+        intensity_range=[-500, 400], number_of_bins=32, ivh_method='direct',
+    )
     ibsi_i_validation(ibsi_features, features)
 
-    radiomics = Radiomics(aggr_dim='2.5D',
-                          aggr_method='MERG',
-                          intensity_range=[-500, 400],
-                          number_of_bins=32,
-                          calc_ivh_features=True)
-
-    features = radiomics.extract_features(image=res2d_2mm_image_linear, mask=res2d_2mm_mask_linear)
+    features = _extract_features(
+        res2d_2mm_image_linear, res2d_2mm_mask_linear,
+        aggr_dim='2.5D', aggr_method='MERG',
+        intensity_range=[-500, 400], number_of_bins=32, ivh_method='direct',
+    )
     ibsi_i_validation(ibsi_features, features)
 
 
@@ -210,26 +248,20 @@ def test_ibsi_i_config_b(res2d_2mm_image_linear, res2d_2mm_mask_linear):
 def test_ibsi_i_config_c(res3d_2mm_image_linear, res3d_2mm_mask_linear):
     ibsi_features = ibsi_i_feature_tolerances('config_C')
 
-    radiomics = Radiomics(aggr_dim='3D',
-                          aggr_method='AVER',
-                          intensity_range=[-1000, 400],
-                          bin_size=25,
-                          calc_ivh_features=True,
-                          ivh_bin_size=2.5
-                          )
-
-    features = radiomics.extract_features(image=res3d_2mm_image_linear, mask=res3d_2mm_mask_linear)
+    features = _extract_features(
+        res3d_2mm_image_linear, res3d_2mm_mask_linear,
+        aggr_dim='3D', aggr_method='AVER',
+        intensity_range=[-1000, 400], bin_size=25,
+        ivh_method='fixed_bin_size', ivh_bin_size=2.5,
+    )
     ibsi_i_validation(ibsi_features, features)
 
-    radiomics = Radiomics(aggr_dim='3D',
-                          aggr_method='MERG',
-                          intensity_range=[-1000, 400],
-                          bin_size=25,
-                          calc_ivh_features=True,
-                          ivh_bin_size=2.5
-                          )
-
-    features = radiomics.extract_features(image=res3d_2mm_image_linear, mask=res3d_2mm_mask_linear)
+    features = _extract_features(
+        res3d_2mm_image_linear, res3d_2mm_mask_linear,
+        aggr_dim='3D', aggr_method='MERG',
+        intensity_range=[-1000, 400], bin_size=25,
+        ivh_method='fixed_bin_size', ivh_bin_size=2.5,
+    )
     ibsi_i_validation(ibsi_features, features)
 
 
@@ -237,22 +269,18 @@ def test_ibsi_i_config_c(res3d_2mm_image_linear, res3d_2mm_mask_linear):
 def test_ibsi_i_config_d(res3d_2mm_image_linear, res3d_2mm_mask_linear):
     ibsi_features = ibsi_i_feature_tolerances('config_D')
 
-    radiomics = Radiomics(aggr_dim='3D',
-                          aggr_method='AVER',
-                          outlier_range=3,
-                          number_of_bins=32,
-                          calc_ivh_features=True)
-
-    features = radiomics.extract_features(image=res3d_2mm_image_linear, mask=res3d_2mm_mask_linear)
+    features = _extract_features(
+        res3d_2mm_image_linear, res3d_2mm_mask_linear,
+        aggr_dim='3D', aggr_method='AVER',
+        outlier_range=3, number_of_bins=32, ivh_method='direct',
+    )
     ibsi_i_validation(ibsi_features, features)
 
-    radiomics = Radiomics(aggr_dim='3D',
-                          aggr_method='MERG',
-                          outlier_range=3,
-                          number_of_bins=32,
-                          calc_ivh_features=True)
-
-    features = radiomics.extract_features(image=res3d_2mm_image_linear, mask=res3d_2mm_mask_linear)
+    features = _extract_features(
+        res3d_2mm_image_linear, res3d_2mm_mask_linear,
+        aggr_dim='3D', aggr_method='MERG',
+        outlier_range=3, number_of_bins=32, ivh_method='direct',
+    )
     ibsi_i_validation(ibsi_features, features)
 
 
@@ -260,24 +288,18 @@ def test_ibsi_i_config_d(res3d_2mm_image_linear, res3d_2mm_mask_linear):
 def test_ibsi_i_config_e(res3d_2mm_image_spline, res3d_2mm_mask_linear):
     ibsi_features = ibsi_i_feature_tolerances('config_E')
 
-    radiomics = Radiomics(aggr_dim='3D',
-                          aggr_method='AVER',
-                          intensity_range=[-1000, 400],
-                          outlier_range=3,
-                          number_of_bins=32,
-                          calc_ivh_features=True,
-                          ivh_number_of_bins=1000)
-
-    features = radiomics.extract_features(image=res3d_2mm_image_spline, mask=res3d_2mm_mask_linear)
+    features = _extract_features(
+        res3d_2mm_image_spline, res3d_2mm_mask_linear,
+        aggr_dim='3D', aggr_method='AVER',
+        intensity_range=[-1000, 400], outlier_range=3, number_of_bins=32,
+        ivh_method='fixed_bin_number', ivh_number_of_bins=1000,
+    )
     ibsi_i_validation(ibsi_features, features)
 
-    radiomics = Radiomics(aggr_dim='3D',
-                          aggr_method='MERG',
-                          intensity_range=[-1000, 400],
-                          outlier_range=3,
-                          number_of_bins=32,
-                          calc_ivh_features=True,
-                          ivh_number_of_bins=1000)
-
-    features = radiomics.extract_features(image=res3d_2mm_image_spline, mask=res3d_2mm_mask_linear)
+    features = _extract_features(
+        res3d_2mm_image_spline, res3d_2mm_mask_linear,
+        aggr_dim='3D', aggr_method='MERG',
+        intensity_range=[-1000, 400], outlier_range=3, number_of_bins=32,
+        ivh_method='fixed_bin_number', ivh_number_of_bins=1000,
+    )
     ibsi_i_validation(ibsi_features, features)

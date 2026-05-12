@@ -9,7 +9,8 @@ class RangeResegmenter:
 
     Range re-segmentation restricts the intensity ROI to voxels whose original
     image intensities lie within user-defined absolute bounds. Excluded voxels
-    are represented as ``NaN`` in the intensity mask.
+    are represented as ``NaN`` in the intensity mask. Prepared texture and IVH
+    images are cleared because the valid intensity population has changed.
 
     Parameters
     ----------
@@ -89,7 +90,9 @@ class OutlierResegmenter:
 
     Outlier re-segmentation excludes voxels whose current intensity-mask value
     is outside a symmetric interval around the valid intensity-mask mean. The
-    interval width is controlled by a standard-deviation multiplier.
+    interval width is controlled by a standard-deviation multiplier. Prepared
+    texture and IVH images are cleared because the valid intensity population
+    has changed.
 
     Parameters
     ----------
@@ -167,11 +170,11 @@ class Resegmenter:
     """Apply range and outlier re-segmentation to ``RoiData.intensity_mask``.
 
     Re-segmentation removes voxels from the intensity ROI by replacing excluded
-    voxels with ``NaN``. Range re-segmentation is evaluated on
-    ``RoiData.image`` and applied to the existing ``RoiData.intensity_mask``.
-    If both criteria are configured, range re-segmentation is applied first;
-    outlier statistics are then calculated from the remaining valid
-    intensity-mask values.
+    voxels with ``NaN`` and clearing prepared texture and IVH images. Range
+    re-segmentation is evaluated on ``RoiData.image`` and applied to the
+    existing ``RoiData.intensity_mask``. If both criteria are configured, range
+    re-segmentation is applied first; outlier statistics are then calculated
+    from the remaining valid intensity-mask values.
 
     Parameters
     ----------

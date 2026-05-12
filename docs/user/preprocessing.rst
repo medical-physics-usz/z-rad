@@ -17,12 +17,13 @@ intermediate images and masks can be inspected before feature extraction.
 .. code-block:: python
 
    from zrad.preprocessing import (
-       ImageDiscretizer,
        ImageResampler,
+       IntensityMaskBuilder,
+       IVHIntensityPreparer,
        MaskResampler,
        Resegmenter,
-       IntensityMaskBuilder,
        RoiData,
+       TextureDiscretizer,
    )
 
    image_resampler = ImageResampler(
@@ -46,8 +47,15 @@ intermediate images and masks can be inspected before feature extraction.
    roi_data = Resegmenter(intensity_range=(-500, 400)).apply(
        roi_data,
    )
-   discretized_image = ImageDiscretizer(bin_size=25, minimum=-500).apply(
-       roi_data.intensity_mask,
+   roi_data = TextureDiscretizer(bin_size=25, minimum=-500).apply(
+       roi_data,
+   )
+   roi_data = IVHIntensityPreparer(
+       method="direct",
+       minimum=-500,
+       maximum=400,
+   ).apply(
+       roi_data,
    )
 
 Pipeline Contract
@@ -62,7 +70,14 @@ the current ``RoiData`` and returns an updated ``RoiData``:
 * ``IntensityMaskBuilder`` updates ``roi_data.intensity_mask`` from
   ``roi_data.filtered_image`` if present, otherwise from ``roi_data.image``.
 * ``Resegmenter`` updates ``roi_data.intensity_mask``.
+* ``TextureDiscretizer`` updates ``roi_data.texture_discretized_image``.
+* ``IVHIntensityPreparer`` updates ``roi_data.ivh_intensity_image`` and
+  ``roi_data.ivh_axis``.
 * ``RoiCropper`` crops all present images and masks.
+
+Steps that change the image, feature image, morphology mask, or intensity mask
+clear prepared texture and IVH fields. Run re-segmentation before texture or
+IVH preparation.
 
 .. figure:: ../images/prepr_tab.png
    :alt: Z-Rad preprocessing tab

@@ -114,7 +114,7 @@ class ImageResampler:
         ----------
         data : Image or RoiData
             Image to resample. If ``RoiData`` is supplied, only ``data.image``
-            is resampled and the intensity mask is cleared.
+            is resampled and intensity-derived fields are cleared.
 
         Returns
         -------
@@ -198,8 +198,8 @@ class MaskResampler:
         ----------
         data : Image or RoiData
             Mask image to resample. If ``RoiData`` is supplied,
-            ``morphological_mask`` is resampled and ``intensity_mask`` is
-            cleared.
+            ``morphological_mask`` is resampled and intensity-derived fields
+            are cleared.
 
         Returns
         -------

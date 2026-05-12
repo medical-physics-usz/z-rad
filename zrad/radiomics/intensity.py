@@ -541,7 +541,7 @@ class IntensityHistogramFeatureGroup(BaseFeatureGroup):
     requirements = frozenset({'analysis_masks', 'discretized_intensity_image'})
 
     def supports(self, context):
-        return True
+        return context.roi_data.texture_discretized_image is not None
 
     def output_names(self, context):
         return INTENSITY_HISTOGRAM_FEATURE_NAMES
@@ -560,10 +560,10 @@ class IVHFeatureGroup(BaseFeatureGroup):
     requirements = frozenset({'analysis_masks', 'ivh_intensity_image'})
 
     def supports(self, context):
-        return True
+        return context.roi_data.ivh_intensity_image is not None and context.roi_data.ivh_axis is not None
 
     def default_enabled(self, context):
-        return context.calc_ivh_features
+        return self.supports(context)
 
     def output_names(self, context):
         return IVH_FEATURE_NAMES

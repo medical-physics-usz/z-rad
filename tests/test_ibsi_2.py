@@ -6,7 +6,14 @@ import pytest
 
 from zrad.filtering import create_filter
 from zrad.image import Image
-from zrad.preprocessing import ImageResampler, MaskResampler
+from zrad.preprocessing import (
+    ImageResampler,
+    IntensityMaskBuilder,
+    MaskResampler,
+    Resegmenter,
+    RoiData,
+    TextureDiscretizer,
+)
 from zrad.radiomics import Radiomics
 
 
@@ -50,6 +57,20 @@ def ibsi_ii_ph_ii_validation(ibsi_features, features):
             if not (lower_boundary <= features[tag] <= upper_boundary):
                 pytest.fail(
                     f"Feature {tag} out of tolerance: {features[tag]} not in range ({lower_boundary}, {upper_boundary})")
+
+
+def _extract_filtered_features(image, filtered_image, mask, aggr_dim='2D', aggr_method='AVER'):
+    roi_data = IntensityMaskBuilder().apply(RoiData(
+        image=image,
+        filtered_image=filtered_image,
+        morphological_mask=mask,
+    ))
+    roi_data = Resegmenter(intensity_range=[-1000, 400]).apply(roi_data)
+    roi_data = TextureDiscretizer(bin_size=25, minimum=-1000).apply(roi_data)
+    return Radiomics(
+        aggr_dim=aggr_dim,
+        aggr_method=aggr_method,
+    ).extract_features(roi_data=roi_data)
 
 
 
@@ -264,12 +285,7 @@ def test_ibsi_ii_ph_ii_2a(ct_phantom_image, ct_phantom_mask):
 
     filtered_image = filtering.apply(ct_phantom_image)
 
-    radiomics = Radiomics(aggr_dim='2D',
-                          aggr_method='AVER',
-                          intensity_range=[-1000, 400],
-                          bin_size=25)
-
-    features = radiomics.extract_features(image=ct_phantom_image, filtered_image=filtered_image, mask=ct_phantom_mask)
+    features = _extract_filtered_features(ct_phantom_image, filtered_image, ct_phantom_mask)
     ibsi_ii_ph_ii_validation(ibsi_features, features)
 
 
@@ -284,12 +300,7 @@ def test_ibsi_ii_ph_ii_2b(res3d_1mm_image_spline, res3d_1mm_mask_linear):
 
     filtered_image = filtering.apply(res3d_1mm_image_spline)
 
-    radiomics = Radiomics(aggr_dim='2D',
-                          aggr_method='AVER',
-                          intensity_range=[-1000, 400],
-                          bin_size=25)
-
-    features = radiomics.extract_features(image=res3d_1mm_image_spline, filtered_image=filtered_image, mask=res3d_1mm_mask_linear)
+    features = _extract_filtered_features(res3d_1mm_image_spline, filtered_image, res3d_1mm_mask_linear)
     ibsi_ii_ph_ii_validation(ibsi_features, features)
 
 
@@ -305,12 +316,7 @@ def test_ibsi_ii_ph_ii_3a(ct_phantom_image, ct_phantom_mask):
 
     filtered_image = filtering.apply(ct_phantom_image)
 
-    radiomics = Radiomics(aggr_dim='2D',
-                          aggr_method='AVER',
-                          intensity_range=[-1000, 400],
-                          bin_size=25)
-
-    features = radiomics.extract_features(image=ct_phantom_image, filtered_image=filtered_image, mask=ct_phantom_mask)
+    features = _extract_filtered_features(ct_phantom_image, filtered_image, ct_phantom_mask)
     ibsi_ii_ph_ii_validation(ibsi_features, features)
 
 
@@ -326,12 +332,7 @@ def test_ibsi_ii_ph_ii_3b(res3d_1mm_image_spline, res3d_1mm_mask_linear):
 
     filtered_image = filtering.apply(res3d_1mm_image_spline)
 
-    radiomics = Radiomics(aggr_dim='2D',
-                          aggr_method='AVER',
-                          intensity_range=[-1000, 400],
-                          bin_size=25)
-
-    features = radiomics.extract_features(image=res3d_1mm_image_spline, filtered_image=filtered_image, mask=res3d_1mm_mask_linear)
+    features = _extract_filtered_features(res3d_1mm_image_spline, filtered_image, res3d_1mm_mask_linear)
     ibsi_ii_ph_ii_validation(ibsi_features, features)
 
 
@@ -350,12 +351,7 @@ def test_ibsi_ii_ph_ii_4a(ct_phantom_image, ct_phantom_mask):
 
     filtered_image = filtering.apply(ct_phantom_image)
 
-    radiomics = Radiomics(aggr_dim='2D',
-                          aggr_method='AVER',
-                          intensity_range=[-1000, 400],
-                          bin_size=25)
-
-    features = radiomics.extract_features(image=ct_phantom_image, filtered_image=filtered_image, mask=ct_phantom_mask)
+    features = _extract_filtered_features(ct_phantom_image, filtered_image, ct_phantom_mask)
     ibsi_ii_ph_ii_validation(ibsi_features, features)
 
 
@@ -374,12 +370,7 @@ def test_ibsi_ii_ph_ii_4b(res3d_1mm_image_spline, res3d_1mm_mask_linear):
 
     filtered_image = filtering.apply(res3d_1mm_image_spline)
 
-    radiomics = Radiomics(aggr_dim='2D',
-                          aggr_method='AVER',
-                          intensity_range=[-1000, 400],
-                          bin_size=25)
-
-    features = radiomics.extract_features(image=res3d_1mm_image_spline, filtered_image=filtered_image, mask=res3d_1mm_mask_linear)
+    features = _extract_filtered_features(res3d_1mm_image_spline, filtered_image, res3d_1mm_mask_linear)
     ibsi_ii_ph_ii_validation(ibsi_features, features)
 
 # Gabor
@@ -400,12 +391,7 @@ def test_ibsi_ii_ph_ii_5a(ct_phantom_image, ct_phantom_mask):
 
     filtered_image = filtering.apply(ct_phantom_image)
 
-    radiomics = Radiomics(aggr_dim='2D',
-                          aggr_method='AVER',
-                          intensity_range=[-1000, 400],
-                          bin_size=25)
-
-    features = radiomics.extract_features(image=ct_phantom_image, filtered_image=filtered_image, mask=ct_phantom_mask)
+    features = _extract_filtered_features(ct_phantom_image, filtered_image, ct_phantom_mask)
     ibsi_ii_ph_ii_validation(ibsi_features, features)
 
 
@@ -426,12 +412,7 @@ def test_ibsi_ii_ph_ii_5b(res3d_1mm_image_spline, res3d_1mm_mask_linear):
 
     filtered_image = filtering.apply(res3d_1mm_image_spline)
 
-    radiomics = Radiomics(aggr_dim='2D',
-                          aggr_method='AVER',
-                          intensity_range=[-1000, 400],
-                          bin_size=25)
-
-    features = radiomics.extract_features(image=res3d_1mm_image_spline, filtered_image=filtered_image, mask=res3d_1mm_mask_linear)
+    features = _extract_filtered_features(res3d_1mm_image_spline, filtered_image, res3d_1mm_mask_linear)
     ibsi_ii_ph_ii_validation(ibsi_features, features)
 
 @pytest.mark.integration
@@ -448,12 +429,7 @@ def test_ibsi_ii_ph_ii_6a(ct_phantom_image, ct_phantom_mask):
 
     filtered_image = filtering.apply(ct_phantom_image)
 
-    radiomics = Radiomics(aggr_dim='2D',
-                          aggr_method='AVER',
-                          intensity_range=[-1000, 400],
-                          bin_size=25)
-
-    features = radiomics.extract_features(image=ct_phantom_image, filtered_image=filtered_image, mask=ct_phantom_mask)
+    features = _extract_filtered_features(ct_phantom_image, filtered_image, ct_phantom_mask)
     ibsi_ii_ph_ii_validation(ibsi_features, features)
 
 
@@ -471,12 +447,7 @@ def test_ibsi_ii_ph_ii_6b(res3d_1mm_image_spline, res3d_1mm_mask_linear):
 
     filtered_image = filtering.apply(res3d_1mm_image_spline)
 
-    radiomics = Radiomics(aggr_dim='2D',
-                          aggr_method='AVER',
-                          intensity_range=[-1000, 400],
-                          bin_size=25)
-
-    features = radiomics.extract_features(image=res3d_1mm_image_spline, filtered_image=filtered_image, mask=res3d_1mm_mask_linear)
+    features = _extract_filtered_features(res3d_1mm_image_spline, filtered_image, res3d_1mm_mask_linear)
     ibsi_ii_ph_ii_validation(ibsi_features, features)
 
 
@@ -494,12 +465,7 @@ def test_ibsi_ii_ph_ii_7a(ct_phantom_image, ct_phantom_mask):
 
     filtered_image = filtering.apply(ct_phantom_image)
 
-    radiomics = Radiomics(aggr_dim='2D',
-                          aggr_method='AVER',
-                          intensity_range=[-1000, 400],
-                          bin_size=25)
-
-    features = radiomics.extract_features(image=ct_phantom_image, filtered_image=filtered_image, mask=ct_phantom_mask)
+    features = _extract_filtered_features(ct_phantom_image, filtered_image, ct_phantom_mask)
     ibsi_ii_ph_ii_validation(ibsi_features, features)
 
 
@@ -516,10 +482,5 @@ def test_ibsi_ii_ph_ii_7b(res3d_1mm_image_spline, res3d_1mm_mask_linear):
 
     filtered_image = filtering.apply(res3d_1mm_image_spline)
 
-    radiomics = Radiomics(aggr_dim='2D',
-                          aggr_method='AVER',
-                          intensity_range=[-1000, 400],
-                          bin_size=25)
-
-    features = radiomics.extract_features(image=res3d_1mm_image_spline, filtered_image=filtered_image, mask=res3d_1mm_mask_linear)
+    features = _extract_filtered_features(res3d_1mm_image_spline, filtered_image, res3d_1mm_mask_linear)
     ibsi_ii_ph_ii_validation(ibsi_features, features)

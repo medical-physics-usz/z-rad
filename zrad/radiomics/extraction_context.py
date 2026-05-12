@@ -9,19 +9,9 @@ class ExtractionContext:
     """Immutable extraction inputs and configuration."""
 
     roi_data: RoiData
-    resegment_roi_data: bool
     is_slice_2d_image: bool
     aggr_dim: str
     aggr_method: str
-    intensity_range: tuple[float, float] | None
-    outlier_range: float | None
-    number_of_bins: int | None
-    bin_size: float | None
-    calc_ivh_features: bool
-    ivh_method: str
-    ivh_number_of_bins: int | None
-    ivh_bin_size: float | None
-    calc_morph_moran_i_and_geary_c_features: bool
     slice_weighting: bool
     slice_median: bool
 

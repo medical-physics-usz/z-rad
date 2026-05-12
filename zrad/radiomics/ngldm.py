@@ -195,7 +195,7 @@ class NGLDMFeatureGroup(BaseFeatureGroup):
     requirements = frozenset({'analysis_masks', 'discretized_intensity_image'})
 
     def supports(self, context):
-        return True
+        return context.roi_data.texture_discretized_image is not None
 
     def output_names(self, context):
         return format_texture_feature_names(NGLDM_FEATURE_NAMES, context.aggr_dim)

@@ -18,6 +18,7 @@ class ExtractionContext:
     number_of_bins: int | None
     bin_size: float | None
     calc_ivh_features: bool
+    ivh_method: str
     ivh_number_of_bins: int | None
     ivh_bin_size: float | None
     calc_morph_moran_i_and_geary_c_features: bool

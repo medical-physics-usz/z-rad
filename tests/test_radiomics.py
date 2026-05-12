@@ -83,9 +83,16 @@ def test_radiomics_metadata_is_opt_in():
         ({"number_of_bins": 0}, "positive integer"),
         ({"bin_size": 25}, "stable lower anchor"),
         ({"bin_size": 0, "intensity_range": (0, 100)}, "positive number"),
-        ({"ivh_number_of_bins": 10, "ivh_bin_size": 2.5, "intensity_range": (0, 100)}, "Specify only one"),
+        ({"ivh_number_of_bins": 10, "ivh_bin_size": 2.5, "intensity_range": (0, 100)}, "ivh_number_of_bins"),
         ({"ivh_number_of_bins": 0}, "positive integer"),
         ({"ivh_bin_size": 2.5}, "stable lower anchor"),
+        ({"ivh_method": "unsupported"}, "ivh_method"),
+        ({"ivh_method": "direct", "ivh_number_of_bins": 10}, "direct IVH"),
+        ({"ivh_method": "fixed_bin_number"}, "requires ivh_number_of_bins"),
+        ({"ivh_method": "fixed_bin_number", "ivh_number_of_bins": 10, "ivh_bin_size": 2.5}, "ivh_bin_size"),
+        ({"ivh_method": "fixed_bin_size", "intensity_range": (0, 100)}, "requires ivh_bin_size"),
+        ({"ivh_method": "fixed_bin_size", "ivh_bin_size": 2.5}, "stable lower anchor"),
+        ({"ivh_method": "fixed_bin_size", "ivh_bin_size": 2.5, "ivh_number_of_bins": 10, "intensity_range": (0, 100)}, "ivh_number_of_bins"),
         ({"intensity_range": (100, 0)}, "intensity_range"),
         ({"outlier_range": 0}, "outlier_range"),
     ],
@@ -100,6 +107,7 @@ def test_direct_ivh_uses_intensity_range_as_axis_when_available():
     intensity_mask = _make_image(np.array([[[2.0, 4.0, 8.0]]]))
     context = SimpleNamespace(
         intensity_range=(0.0, 10.0),
+        ivh_method='direct',
         ivh_number_of_bins=None,
         ivh_bin_size=None,
     )
@@ -117,6 +125,7 @@ def test_direct_ivh_without_intensity_range_uses_observed_axis():
     intensity_mask = _make_image(np.array([[[2.0, 4.0, 8.0]]]))
     context = SimpleNamespace(
         intensity_range=None,
+        ivh_method='direct',
         ivh_number_of_bins=None,
         ivh_bin_size=None,
     )

@@ -104,7 +104,7 @@ def discretize_intensity_image(context, intensity_mask):
 
 def prepare_ivh_intensity_image(context, intensity_mask):
     """Return the image and axis settings used for IVH features."""
-    if context.ivh_number_of_bins is None and context.ivh_bin_size is None:
+    if context.ivh_method == 'direct':
         if context.intensity_range is not None:
             min_intensity = context.intensity_range[0]
             max_intensity = (
@@ -119,11 +119,11 @@ def prepare_ivh_intensity_image(context, intensity_mask):
 
     minimum = context.intensity_range[0] if context.intensity_range is not None else None
     ivh_intensity_image = IntensityVolumeHistogramDiscretizer(
-        number_of_bins=context.ivh_number_of_bins,
-        bin_size=context.ivh_bin_size,
+        number_of_bins=context.ivh_number_of_bins if context.ivh_method == 'fixed_bin_number' else None,
+        bin_size=context.ivh_bin_size if context.ivh_method == 'fixed_bin_size' else None,
         minimum=minimum,
     ).apply(intensity_mask)
-    if context.ivh_number_of_bins is not None:
+    if context.ivh_method == 'fixed_bin_number':
         return (
             ivh_intensity_image,
             np.nanmin(ivh_intensity_image.array),

@@ -36,13 +36,19 @@ class Radiomics:
         IVH-specific discretization is supplied, IVH uses retained intensity
         values directly and uses ``intensity_range`` as the IVH range when
         available.
+    ivh_method : {"direct", "fixed_bin_size", "fixed_bin_number"} or None, optional
+        IVH intensity-axis strategy. If ``None``, the method is inferred from
+        legacy IVH parameters: ``ivh_bin_size`` selects ``"fixed_bin_size"``,
+        ``ivh_number_of_bins`` selects ``"fixed_bin_number"``, and neither
+        selects ``"direct"``.
     ivh_number_of_bins : int or None, optional
         Number of bins for IVH discretization. Mutually exclusive with
-        ``ivh_bin_size``. If neither IVH discretization parameter is supplied,
-        IVH features use the retained intensity values directly.
+        ``ivh_bin_size`` and required when ``ivh_method`` is
+        ``"fixed_bin_number"``.
     ivh_bin_size : float or None, optional
         Bin width for IVH discretization. Mutually exclusive with
-        ``ivh_number_of_bins`` and requires ``intensity_range``.
+        ``ivh_number_of_bins`` and required when ``ivh_method`` is
+        ``"fixed_bin_size"``.
     calc_morph_moran_i_and_geary_c_features : bool, default=False
         If true, include morphology correlation features.
     slice_weighting : bool, default=False
@@ -60,6 +66,7 @@ class Radiomics:
         number_of_bins=None,
         bin_size=None,
         calc_ivh_features=False,
+        ivh_method=None,
         ivh_number_of_bins=None,
         ivh_bin_size=None,
         calc_morph_moran_i_and_geary_c_features=False,
@@ -84,7 +91,13 @@ class Radiomics:
             intensity_range=intensity_range,
             label='radiomics',
         )
+        ivh_method = self._resolve_ivh_method(
+            ivh_method=ivh_method,
+            ivh_number_of_bins=ivh_number_of_bins,
+            ivh_bin_size=ivh_bin_size,
+        )
         self._validate_ivh_discretization(
+            ivh_method=ivh_method,
             ivh_number_of_bins=ivh_number_of_bins,
             ivh_bin_size=ivh_bin_size,
             intensity_range=intensity_range,
@@ -97,6 +110,7 @@ class Radiomics:
         self.number_of_bins = number_of_bins
         self.bin_size = bin_size
         self.calc_ivh_features = calc_ivh_features
+        self.ivh_method = ivh_method
         self.ivh_number_of_bins = ivh_number_of_bins
         self.ivh_bin_size = ivh_bin_size
         self.calc_morph_moran_i_and_geary_c_features = calc_morph_moran_i_and_geary_c_features
@@ -191,6 +205,7 @@ class Radiomics:
             number_of_bins=self.number_of_bins,
             bin_size=self.bin_size,
             calc_ivh_features=self.calc_ivh_features,
+            ivh_method=self.ivh_method,
             ivh_number_of_bins=self.ivh_number_of_bins,
             ivh_bin_size=self.ivh_bin_size,
             calc_morph_moran_i_and_geary_c_features=self.calc_morph_moran_i_and_geary_c_features,
@@ -211,6 +226,7 @@ class Radiomics:
             number_of_bins=self.number_of_bins,
             bin_size=self.bin_size,
             calc_ivh_features=self.calc_ivh_features,
+            ivh_method=self.ivh_method,
             ivh_number_of_bins=self.ivh_number_of_bins,
             ivh_bin_size=self.ivh_bin_size,
             calc_morph_moran_i_and_geary_c_features=self.calc_morph_moran_i_and_geary_c_features,
@@ -266,10 +282,44 @@ class Radiomics:
             if intensity_range is None:
                 raise ValueError(f"{label} bin_size requires intensity_range to define a stable lower anchor.")
 
-    @classmethod
-    def _validate_ivh_discretization(cls, ivh_number_of_bins, ivh_bin_size, intensity_range):
-        cls._validate_discretization(
-            number_of_bins=ivh_number_of_bins,
+    @staticmethod
+    def _resolve_ivh_method(ivh_method, ivh_number_of_bins, ivh_bin_size):
+        if ivh_method is None:
+            if ivh_bin_size is not None:
+                return 'fixed_bin_size'
+            if ivh_number_of_bins is not None:
+                return 'fixed_bin_number'
+            return 'direct'
+        if ivh_method not in {'direct', 'fixed_bin_size', 'fixed_bin_number'}:
+            raise ValueError("ivh_method must be 'direct', 'fixed_bin_size', or 'fixed_bin_number'.")
+        return ivh_method
+
+    @staticmethod
+    def _validate_ivh_discretization(ivh_method, ivh_number_of_bins, ivh_bin_size, intensity_range):
+        if ivh_method == 'direct':
+            if ivh_number_of_bins is not None or ivh_bin_size is not None:
+                raise ValueError("direct IVH does not accept ivh_number_of_bins or ivh_bin_size.")
+            return
+
+        if ivh_method == 'fixed_bin_number':
+            if ivh_bin_size is not None:
+                raise ValueError("fixed_bin_number IVH does not accept ivh_bin_size.")
+            if ivh_number_of_bins is None:
+                raise ValueError("fixed_bin_number IVH requires ivh_number_of_bins.")
+            Radiomics._validate_discretization(
+                number_of_bins=ivh_number_of_bins,
+                bin_size=None,
+                intensity_range=intensity_range,
+                label='IVH',
+            )
+            return
+
+        if ivh_number_of_bins is not None:
+            raise ValueError("fixed_bin_size IVH does not accept ivh_number_of_bins.")
+        if ivh_bin_size is None:
+            raise ValueError("fixed_bin_size IVH requires ivh_bin_size.")
+        Radiomics._validate_discretization(
+            number_of_bins=None,
             bin_size=ivh_bin_size,
             intensity_range=intensity_range,
             label='IVH',

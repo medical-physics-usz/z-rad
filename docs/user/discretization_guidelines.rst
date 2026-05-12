@@ -222,6 +222,12 @@ The recommended IVH strategy depends on the image intensity type.
      - Use fixed bin number discretization.
      - ``N_g = 1000``
 
+In the Python API, choose this explicitly with ``ivh_method``:
+``"direct"``, ``"fixed_bin_size"``, or ``"fixed_bin_number"``. If
+``ivh_method`` is omitted, Z-Rad infers the legacy behavior from
+``ivh_bin_size`` or ``ivh_number_of_bins``; new analyses should set
+``ivh_method`` explicitly.
+
 For CT IVH features:
 
 * use HU values directly
@@ -233,6 +239,7 @@ For CT IVH features:
 Example:
 
 * re-segmentation range: ``[-500, 400]`` HU
+* ``ivh_method="direct"``
 * IVH range: ``[-500, 400]`` HU
 * IVH interval: ``1`` HU
 
@@ -246,12 +253,14 @@ For PET IVH features:
 Example:
 
 * re-segmentation range: ``[0, 20]`` SUV
+* ``ivh_method="fixed_bin_size"``
 * IVH bin width: ``0.1`` SUV
 * IVH axis after bin-centre conversion: ``0.05, 0.15, 0.25, ..., 19.95`` SUV
 
 For MRI or other arbitrary units:
 
 * use fixed bin number discretization with ``N_g = 1000``
+* set ``ivh_method="fixed_bin_number"``
 * avoid fixed bin size unless intensities have been standardized or calibrated
 * construct the IVH over the discretized range ``[1, 1000]``
 

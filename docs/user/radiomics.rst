@@ -34,7 +34,8 @@ numbering below matches the annotated screenshots used for this workflow.
 ``(3)`` ``Intensity Range``
    Restricts the analyzed voxel intensities to a user-defined interval. This is
    useful when radiomic features should only be computed within a selected
-   signal range.
+   signal range. For practical guidance, see
+   :doc:`resegmentation_guidelines`.
 
 ``(4)`` ``Outlier Removal``
    Removes extreme voxel values based on a selected number of standard
@@ -49,7 +50,8 @@ numbering below matches the annotated screenshots used for this workflow.
 ``(6)`` ``Discretization``
    Controls how image intensities are discretized before texture feature
    computation. The GUI supports fixed bin size and fixed bin number
-   discretization.
+   discretization. For practical guidance, see
+   :doc:`discretization_guidelines`.
 
 ``(7)`` ``RUN``
    Starts radiomics extraction with the currently selected configuration.

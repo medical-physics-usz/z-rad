@@ -12,6 +12,8 @@ preprocessing, filtering, and radiomics workflows.
    data_structure
    gui_quickstart
    preprocessing
+   resegmentation_guidelines
+   discretization_guidelines
    filtering
    radiomics
    visualization

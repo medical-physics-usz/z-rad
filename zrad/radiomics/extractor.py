@@ -1,3 +1,5 @@
+import numpy as np
+
 from ..preprocessing import IntensityMaskBuilder, RoiData
 from .extraction_context import ExtractionContext
 from .extraction_preparation import build_extraction_metadata, prepare_extraction_data
@@ -18,19 +20,26 @@ class Radiomics:
     aggr_method : {"MERG", "AVER", "SLICE_MERG", "DIR_MERG"}, default="AVER"
         Texture aggregation strategy across directions and slices.
     intensity_range : tuple[float, float] or None, optional
-        Absolute intensity limits used for range re-segmentation.
+        Absolute intensity limits used for range re-segmentation. Required when
+        fixed-bin-size discretization is configured.
     outlier_range : float, str, or None, optional
         Standard-deviation multiplier used for outlier re-segmentation.
     number_of_bins : int or None, optional
-        Number of bins for fixed-bin-number discretization.
+        Number of bins for fixed-bin-number discretization. Mutually exclusive
+        with ``bin_size``.
     bin_size : float or None, optional
-        Bin width for fixed-bin-size discretization.
+        Bin width for fixed-bin-size discretization. Mutually exclusive with
+        ``number_of_bins`` and requires ``intensity_range`` so its lower bound
+        can be used as a stable bin origin.
     calc_ivh_features : bool, default=False
         If true, include intensity-volume histogram features.
     ivh_number_of_bins : int or None, optional
-        Number of bins for IVH discretization.
+        Number of bins for IVH discretization. Mutually exclusive with
+        ``ivh_bin_size``. If neither IVH discretization parameter is supplied,
+        IVH features use the retained intensity values directly.
     ivh_bin_size : float or None, optional
-        Bin width for IVH discretization.
+        Bin width for IVH discretization. Mutually exclusive with
+        ``ivh_number_of_bins`` and requires ``intensity_range``.
     calc_morph_moran_i_and_geary_c_features : bool, default=False
         If true, include morphology correlation features.
     slice_weighting : bool, default=False
@@ -64,6 +73,19 @@ class Radiomics:
             raise ValueError(
                 f"Wrong aggregation dim {aggr_method}. Available 'MERG', 'AVER', 'SLICE_MERG', and 'DIR_MERG'."
             )
+
+        self._validate_resegmentation(intensity_range, outlier_range)
+        self._validate_discretization(
+            number_of_bins=number_of_bins,
+            bin_size=bin_size,
+            intensity_range=intensity_range,
+            label='radiomics',
+        )
+        self._validate_ivh_discretization(
+            ivh_number_of_bins=ivh_number_of_bins,
+            ivh_bin_size=ivh_bin_size,
+            intensity_range=intensity_range,
+        )
 
         self.aggr_dim = aggr_dim
         self.aggr_method = aggr_method
@@ -205,3 +227,47 @@ class Radiomics:
         missing = [name for name, value in required_fields.items() if value is None]
         if missing:
             raise ValueError(f"roi_data is missing required field(s): {', '.join(missing)}.")
+
+    @staticmethod
+    def _validate_resegmentation(intensity_range, outlier_range):
+        if intensity_range is not None:
+            if (
+                not isinstance(intensity_range, (list, tuple))
+                or len(intensity_range) != 2
+                or not all(isinstance(value, (int, float)) and not isinstance(value, bool) for value in intensity_range)
+            ):
+                raise ValueError("intensity_range must be a two-value numeric sequence.")
+            lower, upper = intensity_range
+            if not np.isfinite(lower) or np.isnan(upper) or lower > upper:
+                raise ValueError("intensity_range must have a finite lower bound and lower <= upper.")
+
+        if outlier_range is not None:
+            try:
+                outlier_range = float(outlier_range)
+            except (TypeError, ValueError) as exc:
+                raise ValueError("outlier_range must be a positive number.") from exc
+            if not np.isfinite(outlier_range) or outlier_range <= 0:
+                raise ValueError("outlier_range must be a positive number.")
+
+    @staticmethod
+    def _validate_discretization(number_of_bins, bin_size, intensity_range, label):
+        if number_of_bins is not None and bin_size is not None:
+            raise ValueError(f"Specify only one of {label} number_of_bins or bin_size.")
+        if number_of_bins is not None and (
+            not isinstance(number_of_bins, int) or isinstance(number_of_bins, bool) or number_of_bins <= 0
+        ):
+            raise ValueError(f"{label} number_of_bins must be a positive integer.")
+        if bin_size is not None:
+            if not isinstance(bin_size, (int, float)) or isinstance(bin_size, bool) or bin_size <= 0:
+                raise ValueError(f"{label} bin_size must be a positive number.")
+            if intensity_range is None:
+                raise ValueError(f"{label} bin_size requires intensity_range to define a stable lower anchor.")
+
+    @classmethod
+    def _validate_ivh_discretization(cls, ivh_number_of_bins, ivh_bin_size, intensity_range):
+        cls._validate_discretization(
+            number_of_bins=ivh_number_of_bins,
+            bin_size=ivh_bin_size,
+            intensity_range=intensity_range,
+            label='IVH',
+        )

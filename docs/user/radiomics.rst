@@ -34,13 +34,16 @@ numbering below matches the annotated screenshots used for this workflow.
 ``(3)`` ``Intensity Range``
    Restricts the analyzed voxel intensities to a user-defined interval. This is
    useful when radiomic features should only be computed within a selected
-   signal range. For practical guidance, see
+   signal range. The lower bound is also used as the fixed-bin-size origin when
+   fixed bin size discretization is selected. For practical guidance, see
    :doc:`resegmentation_guidelines`.
 
 ``(4)`` ``Outlier Removal``
    Removes extreme voxel values based on a selected number of standard
-   deviations. This can suppress unusually high or low intensities, but it can
-   also create holes in the effective region of interest.
+   deviations calculated from the current valid intensity mask. If an intensity
+   range is also configured, range re-segmentation is applied first. This can
+   suppress unusually high or low intensities, but it can also create holes in
+   the effective region of interest.
 
 ``(5)`` ``Texture Aggregation Method``
    Defines how texture matrices are computed and merged. The GUI supports
@@ -49,8 +52,9 @@ numbering below matches the annotated screenshots used for this workflow.
 
 ``(6)`` ``Discretization``
    Controls how image intensities are discretized before texture feature
-   computation. The GUI supports fixed bin size and fixed bin number
-   discretization. For practical guidance, see
+   computation. The GUI supports either fixed bin size or fixed bin number
+   discretization. Fixed bin size requires an intensity range so the lower
+   bound can be used as a stable bin origin. For practical guidance, see
    :doc:`discretization_guidelines`.
 
 ``(7)`` ``RUN``

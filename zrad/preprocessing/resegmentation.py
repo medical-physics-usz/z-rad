@@ -22,6 +22,16 @@ class RangeResegmenter:
     """
 
     def __init__(self, intensity_range):
+        if intensity_range is not None:
+            if (
+                not isinstance(intensity_range, (list, tuple))
+                or len(intensity_range) != 2
+                or not all(isinstance(value, (int, float)) and not isinstance(value, bool) for value in intensity_range)
+            ):
+                raise ValueError("intensity_range must be a two-value numeric sequence.")
+            lower, upper = intensity_range
+            if not np.isfinite(lower) or np.isnan(upper) or lower > upper:
+                raise ValueError("intensity_range must have a finite lower bound and lower <= upper.")
         self.intensity_range = intensity_range
 
     def get_params(self):
@@ -77,9 +87,9 @@ class RangeResegmenter:
 class OutlierResegmenter:
     """Remove ROI voxels outside a mean-centered standard-deviation range.
 
-    Outlier re-segmentation excludes voxels whose original image intensity is
-    outside a symmetric interval around the ROI mean. The interval width is
-    controlled by a standard-deviation multiplier.
+    Outlier re-segmentation excludes voxels whose current intensity-mask value
+    is outside a symmetric interval around the valid intensity-mask mean. The
+    interval width is controlled by a standard-deviation multiplier.
 
     Parameters
     ----------
@@ -87,11 +97,18 @@ class OutlierResegmenter:
         Number of standard deviations around the ROI mean to retain. Values
         outside ``mean +/- outlier_range * std`` are removed from
         ``RoiData.intensity_mask`` by replacing them with ``NaN``. If ``None``
-        or a non-numeric string is supplied, outlier re-segmentation is skipped.
+        is supplied, outlier re-segmentation is skipped.
 
     """
 
     def __init__(self, outlier_range):
+        if outlier_range is not None:
+            try:
+                outlier_range = float(outlier_range)
+            except (TypeError, ValueError) as exc:
+                raise ValueError("outlier_range must be a positive number.") from exc
+            if not np.isfinite(outlier_range) or outlier_range <= 0:
+                raise ValueError("outlier_range must be a positive number.")
         self.outlier_range = outlier_range
 
     def get_params(self):
@@ -119,22 +136,19 @@ class OutlierResegmenter:
         roi_data : RoiData
             ROI data with statistical outliers removed from the intensity mask.
         """
-        if self.outlier_range is None or not str(self.outlier_range).strip().replace('.', '').isdigit():
+        if self.outlier_range is None:
             return roi_data
 
-        outlier_range = float(self.outlier_range)
-        morphological_array = roi_data.morphological_mask.array
-        flattened_image = np.where(morphological_array > 0, roi_data.image.array, np.nan).ravel()
-        valid_values = flattened_image[~np.isnan(flattened_image)]
+        intensity_mask = roi_data.intensity_mask
+        valid_values = intensity_mask.array[~np.isnan(intensity_mask.array)]
         mean = np.mean(valid_values)
         std = np.std(valid_values)
         outlier_mask = np.where(
-            (roi_data.image.array <= mean + outlier_range * std)
-            & (roi_data.image.array >= mean - outlier_range * std),
+            (intensity_mask.array <= mean + self.outlier_range * std)
+            & (intensity_mask.array >= mean - self.outlier_range * std),
             1,
             0,
         )
-        intensity_mask = roi_data.intensity_mask
         return RoiData(
             image=roi_data.image,
             filtered_image=roi_data.filtered_image,
@@ -153,10 +167,11 @@ class Resegmenter:
     """Apply range and outlier re-segmentation to ``RoiData.intensity_mask``.
 
     Re-segmentation removes voxels from the intensity ROI by replacing excluded
-    voxels with ``NaN``. The current implementation evaluates range and outlier
-    criteria on ``RoiData.image`` and applies them to the existing
-    ``RoiData.intensity_mask``. If both criteria are configured, range
-    re-segmentation is applied first and outlier re-segmentation second.
+    voxels with ``NaN``. Range re-segmentation is evaluated on
+    ``RoiData.image`` and applied to the existing ``RoiData.intensity_mask``.
+    If both criteria are configured, range re-segmentation is applied first;
+    outlier statistics are then calculated from the remaining valid
+    intensity-mask values.
 
     Parameters
     ----------
@@ -165,8 +180,7 @@ class Resegmenter:
         ``None``, range re-segmentation is skipped.
     outlier_range : float, str, or None, optional
         Number of standard deviations around the ROI mean to retain. If
-        ``None`` or a non-numeric string is supplied, outlier re-segmentation is
-        skipped.
+        ``None`` is supplied, outlier re-segmentation is skipped.
 
     """
 

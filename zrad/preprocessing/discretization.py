@@ -22,6 +22,12 @@ class FixedBinSizeDiscretizer:
     """
 
     def __init__(self, bin_size, minimum=None):
+        if not isinstance(bin_size, (int, float)) or isinstance(bin_size, bool) or bin_size <= 0:
+            raise ValueError("bin_size must be a positive number.")
+        if minimum is not None and (
+            not isinstance(minimum, (int, float)) or isinstance(minimum, bool) or not np.isfinite(minimum)
+        ):
+            raise ValueError("minimum must be a finite number.")
         self.bin_size = bin_size
         self.minimum = minimum
 
@@ -77,6 +83,8 @@ class FixedBinNumberDiscretizer:
     """
 
     def __init__(self, number_of_bins):
+        if not isinstance(number_of_bins, int) or isinstance(number_of_bins, bool) or number_of_bins <= 0:
+            raise ValueError("number_of_bins must be a positive integer.")
         self.number_of_bins = number_of_bins
 
     def get_params(self):
@@ -107,6 +115,14 @@ class FixedBinNumberDiscretizer:
         """
         minimum = np.nanmin(image.array)
         maximum = np.nanmax(image.array)
+        if maximum == minimum:
+            return Image(
+                array=np.where(np.isnan(image.array), np.nan, 1),
+                origin=image.origin,
+                spacing=image.spacing,
+                direction=image.direction,
+                shape=image.shape,
+            )
         return Image(
             array=np.where(
                 image.array != maximum,
@@ -124,19 +140,18 @@ class IntensityVolumeHistogramDiscretizer:
     """Prepare an intensity image for intensity-volume histogram calculation.
 
     This helper applies the discretization pathway used before
-    intensity-volume histogram features. Fixed-bin-size discretization converts
-    bins to their centre intensities before optional fixed-bin-number
-    discretization.
+    intensity-volume histogram features. Exactly one IVH discretization method
+    must be configured. Fixed-bin-size discretization converts bins to their
+    centre intensities.
 
     Parameters
     ----------
     number_of_bins : int or None, optional
-        Number of bins used for fixed-bin-number discretization. If ``None``,
-        this step is skipped.
+        Number of bins used for fixed-bin-number discretization. Mutually
+        exclusive with ``bin_size``.
     bin_size : float or None, optional
-        Width of each fixed-size intensity bin. If supplied, fixed-bin-size
-        discretization is applied before optional fixed-bin-number
-        discretization.
+        Width of each fixed-size intensity bin. Mutually exclusive with
+        ``number_of_bins``.
     minimum : float or None, optional
         Intensity value used as the lower anchor for fixed-bin-size
         discretization. If ``None``, the minimum finite value in the input
@@ -145,6 +160,12 @@ class IntensityVolumeHistogramDiscretizer:
     """
 
     def __init__(self, number_of_bins=None, bin_size=None, minimum=None):
+        if (number_of_bins is None) == (bin_size is None):
+            raise ValueError("Specify exactly one of number_of_bins or bin_size.")
+        if number_of_bins is not None:
+            FixedBinNumberDiscretizer(number_of_bins)
+        if bin_size is not None:
+            FixedBinSizeDiscretizer(bin_size, minimum)
         self.number_of_bins = number_of_bins
         self.bin_size = bin_size
         self.minimum = minimum
@@ -178,20 +199,17 @@ class IntensityVolumeHistogramDiscretizer:
             Image transformed according to the configured IVH discretization
             pathway.
         """
-        result = image.copy()
         if self.bin_size is not None:
-            minimum = np.nanmin(result.array) if self.minimum is None else self.minimum
-            discretized = FixedBinSizeDiscretizer(self.bin_size, minimum).apply(result)
-            result = Image(
+            minimum = np.nanmin(image.array) if self.minimum is None else self.minimum
+            discretized = FixedBinSizeDiscretizer(self.bin_size, minimum).apply(image)
+            return Image(
                 array=minimum + (discretized.array - 0.5) * self.bin_size,
-                origin=result.origin,
-                spacing=result.spacing,
-                direction=result.direction,
-                shape=result.shape,
+                origin=image.origin,
+                spacing=image.spacing,
+                direction=image.direction,
+                shape=image.shape,
             )
-        if self.number_of_bins is not None:
-            result = FixedBinNumberDiscretizer(self.number_of_bins).apply(result)
-        return result
+        return FixedBinNumberDiscretizer(self.number_of_bins).apply(image)
 
 
 class ImageDiscretizer:
@@ -226,6 +244,10 @@ class ImageDiscretizer:
     def __init__(self, number_of_bins=None, bin_size=None, minimum=None):
         if (number_of_bins is None) == (bin_size is None):
             raise ValueError("Specify exactly one of number_of_bins or bin_size.")
+        if number_of_bins is not None:
+            FixedBinNumberDiscretizer(number_of_bins)
+        if bin_size is not None:
+            FixedBinSizeDiscretizer(bin_size, minimum)
         self.number_of_bins = number_of_bins
         self.bin_size = bin_size
         self.minimum = minimum

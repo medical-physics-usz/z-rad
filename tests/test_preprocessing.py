@@ -1,6 +1,8 @@
 import pytest
 import numpy as np
 import zrad.preprocessing as preprocessing
+from zrad.preprocessing.discretization import IntensityVolumeHistogramDiscretizer
+from zrad.preprocessing.resegmentation import OutlierResegmenter, RangeResegmenter, Resegmenter
 from zrad.preprocessing import (
     ImageDiscretizer,
     ImageResampler,
@@ -75,6 +77,22 @@ def test_image_discretizer_requires_exactly_one_method(kwargs):
 
 
 @pytest.mark.unit
+@pytest.mark.parametrize(
+    "kwargs, message",
+    [
+        ({"number_of_bins": 0}, "positive integer"),
+        ({"number_of_bins": 1.5}, "positive integer"),
+        ({"bin_size": 0}, "positive number"),
+        ({"bin_size": -1}, "positive number"),
+        ({"bin_size": 1, "minimum": np.inf}, "finite number"),
+    ],
+)
+def test_image_discretizer_validates_method_parameters(kwargs, message):
+    with pytest.raises(ValueError, match=message):
+        ImageDiscretizer(**kwargs)
+
+
+@pytest.mark.unit
 def test_image_discretizer_applies_fixed_bin_size():
     image = _make_image(np.array([[[0.0, 25.0, 50.0]]]))
     discretized = ImageDiscretizer(bin_size=25, minimum=0).apply(image)
@@ -86,6 +104,59 @@ def test_image_discretizer_applies_fixed_bin_number():
     image = _make_image(np.array([[[0.0, 10.0, 20.0, 30.0]]]))
     discretized = ImageDiscretizer(number_of_bins=3).apply(image)
     np.testing.assert_array_equal(discretized.array, np.array([[[1.0, 2.0, 3.0, 3.0]]]))
+
+
+@pytest.mark.unit
+def test_fixed_bin_number_constant_image_maps_to_first_bin():
+    image = _make_image(np.array([[[5.0, 5.0, np.nan]]]))
+    discretized = ImageDiscretizer(number_of_bins=4).apply(image)
+    np.testing.assert_array_equal(discretized.array, np.array([[[1.0, 1.0, np.nan]]]))
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {},
+        {"number_of_bins": 4, "bin_size": 25},
+    ],
+)
+def test_ivh_discretizer_requires_exactly_one_method(kwargs):
+    with pytest.raises(ValueError, match="Specify exactly one"):
+        IntensityVolumeHistogramDiscretizer(**kwargs)
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("intensity_range", [[1], [2, 1], [np.nan, 1], ["a", 1]])
+def test_range_resegmenter_validates_intensity_range(intensity_range):
+    with pytest.raises(ValueError, match="intensity_range"):
+        RangeResegmenter(intensity_range)
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("outlier_range", [0, -1, np.inf, "not-a-number"])
+def test_outlier_resegmenter_validates_outlier_range(outlier_range):
+    with pytest.raises(ValueError, match="outlier_range"):
+        OutlierResegmenter(outlier_range)
+
+
+@pytest.mark.unit
+def test_outlier_resegmenter_accepts_numeric_string():
+    assert OutlierResegmenter("3").outlier_range == 3.0
+
+
+@pytest.mark.unit
+def test_outlier_resegmenter_uses_current_intensity_mask_after_range_resegmentation():
+    image = _make_image(np.array([[[0.0, 100.0, 100.0, 100.0, 1000.0]]]))
+    mask = _make_image(np.ones((1, 1, 5), dtype=np.float64))
+    roi_data = IntensityMaskBuilder().apply(RoiData(image=image, morphological_mask=mask))
+
+    resegmented = Resegmenter(intensity_range=(0.0, 100.0), outlier_range=1.0).apply(roi_data)
+
+    np.testing.assert_array_equal(
+        resegmented.intensity_mask.array,
+        np.array([[[np.nan, 100.0, 100.0, 100.0, np.nan]]]),
+    )
 
 @pytest.mark.unit
 def test_constructor_valid_inputs():

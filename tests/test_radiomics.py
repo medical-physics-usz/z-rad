@@ -73,6 +73,26 @@ def test_radiomics_metadata_is_opt_in():
 
 
 @pytest.mark.unit
+@pytest.mark.parametrize(
+    "kwargs, message",
+    [
+        ({"number_of_bins": 4, "bin_size": 25, "intensity_range": (0, 100)}, "Specify only one"),
+        ({"number_of_bins": 0}, "positive integer"),
+        ({"bin_size": 25}, "stable lower anchor"),
+        ({"bin_size": 0, "intensity_range": (0, 100)}, "positive number"),
+        ({"ivh_number_of_bins": 10, "ivh_bin_size": 2.5, "intensity_range": (0, 100)}, "Specify only one"),
+        ({"ivh_number_of_bins": 0}, "positive integer"),
+        ({"ivh_bin_size": 2.5}, "stable lower anchor"),
+        ({"intensity_range": (100, 0)}, "intensity_range"),
+        ({"outlier_range": 0}, "outlier_range"),
+    ],
+)
+def test_radiomics_validates_resegmentation_and_discretization(kwargs, message):
+    with pytest.raises(ValueError, match=message):
+        Radiomics(**kwargs)
+
+
+@pytest.mark.unit
 def test_radiomics_filtered_image_uses_original_image_for_masking():
     original = np.zeros((3, 3, 3), dtype=np.float64)
     original[1, 1, 1] = 10.0

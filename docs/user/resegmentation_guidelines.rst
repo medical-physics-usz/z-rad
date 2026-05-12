@@ -82,6 +82,10 @@ Here, ``mu`` is the mean intensity inside the ROI, and ``sigma`` is the
 standard deviation. Voxels outside this interval are removed from the intensity
 mask.
 
+When range re-segmentation and outlier filtering are both configured, Z-Rad
+applies the range first, then calculates ``mu`` and ``sigma`` from the
+remaining valid intensity-mask voxels.
+
 This method is data-driven. The accepted range can differ between patients or
 lesions. It is not the same as using a fixed physical range.
 
@@ -94,7 +98,8 @@ final intensity mask contains only voxels accepted by all selected rules.
 Example:
 
 * range re-segmentation keeps ``[-50, 150]`` HU
-* outlier filtering keeps ``[mu - 3 sigma, mu + 3 sigma]``
+* outlier filtering calculates ``mu`` and ``sigma`` from those retained voxels
+  and keeps ``[mu - 3 sigma, mu + 3 sigma]``
 * the final intensity mask keeps only voxels that satisfy both rules
 
 Practical Guidance
@@ -142,6 +147,8 @@ Include:
 * whether the range is closed, such as ``[a, b]``, or half-open, such as
   ``[a, infinity)``
 * that re-segmentation was applied after interpolation
+* if outlier filtering was combined with range re-segmentation, that outlier
+  statistics were calculated after range re-segmentation
 * whether the morphological mask and intensity mask may differ
 
 Main Point

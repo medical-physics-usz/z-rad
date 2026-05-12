@@ -46,12 +46,7 @@ def prepare_extraction_data(context, groups, *, include_metadata=False):
 
     ivh_intensity_image = None
     if 'ivh_intensity_image' in required:
-        minimum = context.intensity_range[0] if context.intensity_range is not None else None
-        ivh_intensity_image = IntensityVolumeHistogramDiscretizer(
-            number_of_bins=context.ivh_number_of_bins,
-            bin_size=context.ivh_bin_size,
-            minimum=minimum,
-        ).apply(analysis_masks.intensity_mask)
+        ivh_intensity_image = discretize_ivh_intensity_image(context, analysis_masks.intensity_mask)
 
     return PreparedExtractionData(
         base_masks=base_masks,
@@ -92,6 +87,19 @@ def discretize_intensity_image(context, intensity_mask):
     return ImageDiscretizer(
         number_of_bins=context.number_of_bins,
         bin_size=context.bin_size,
+        minimum=minimum,
+    ).apply(intensity_mask)
+
+
+def discretize_ivh_intensity_image(context, intensity_mask):
+    """Return the image used for IVH features."""
+    if context.ivh_number_of_bins is None and context.ivh_bin_size is None:
+        return intensity_mask.copy()
+
+    minimum = context.intensity_range[0] if context.intensity_range is not None else None
+    return IntensityVolumeHistogramDiscretizer(
+        number_of_bins=context.ivh_number_of_bins,
+        bin_size=context.ivh_bin_size,
         minimum=minimum,
     ).apply(intensity_mask)
 

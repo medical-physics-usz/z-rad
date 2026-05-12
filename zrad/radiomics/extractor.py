@@ -12,12 +12,33 @@ class Radiomics:
     re-segmentation, and preparing texture or IVH intensity images before
     extraction.
 
+    Supported feature families are:
+
+    * ``"morphology"``
+    * ``"local_intensity"``
+    * ``"intensity_statistics"``
+    * ``"intensity_histogram"``
+    * ``"glcm"``
+    * ``"glrlm"``
+    * ``"glszm"``
+    * ``"gldzm"``
+    * ``"ngtdm"``
+    * ``"ngldm"``
+    * ``"ivh"``
+    * ``"morphology_correlation"``
+
+    ``"morphology_correlation"`` contains Moran's I and Geary's C. It is
+    supported for 3D ROIs but is not extracted by default because it can be
+    computationally expensive.
+
     Parameters
     ----------
     aggr_dim : {"2D", "2.5D", "3D"}, default="3D"
-        Spatial aggregation dimensionality for texture features.
+        Spatial aggregation dimensionality for texture features. This affects
+        GLCM, GLRLM, GLSZM, GLDZM, NGTDM, and NGLDM feature names and values.
     aggr_method : {"MERG", "AVER", "SLICE_MERG", "DIR_MERG"}, default="AVER"
-        Texture aggregation strategy across directions and slices.
+        Texture aggregation strategy across directions and slices. This is used
+        by GLCM and GLRLM features.
     slice_weighting : bool, default=False
         Weight 2D slice-wise texture averages by slice ROI size.
     slice_median : bool, default=False
@@ -63,19 +84,56 @@ class Radiomics:
             ``morphological_mask``, and ``intensity_mask``. Texture and IVH
             feature families additionally require their corresponding prepared
             fields on ``RoiData``.
-        families : list of str, optional
-            Feature families to extract. If omitted, all families available
-            from the prepared ``RoiData`` are extracted.
-        features : list of str, optional
+        families : str or sequence of str, optional
+            Feature families to extract. Supported names are:
+            ``"morphology"``, ``"local_intensity"``,
+            ``"intensity_statistics"``, ``"intensity_histogram"``,
+            ``"glcm"``, ``"glrlm"``, ``"glszm"``, ``"gldzm"``,
+            ``"ngtdm"``, ``"ngldm"``, ``"ivh"``, and
+            ``"morphology_correlation"``.
+
+            If omitted, all default-enabled families supported by the prepared
+            ``RoiData`` are extracted. Use ``"all"`` to extract every
+            supported family, including ``"morphology_correlation"``.
+            Repeated family names are ignored.
+        features : str or sequence of str, optional
             Individual feature names to extract. Names may come from one or
-            more feature families.
+            more feature families. Use either ``families`` or ``features``,
+            not both. For texture features, either configured output names or
+            base feature names can be supplied. Base names are mapped to the
+            configured output names for the current aggregation settings.
         include_metadata : bool, default=False
             If ``True``, append extraction metadata to the returned dictionary.
+            Metadata currently includes the minimum bounding-box side length,
+            voxel count, and number of discretized texture bins.
 
         Returns
         -------
         features : dict
             Flat dictionary mapping feature names to calculated values.
+
+        Raises
+        ------
+        TypeError
+            If ``roi_data`` is not a ``RoiData`` instance.
+        ValueError
+            If required ROI fields are missing, if an unknown family or feature
+            is requested, or if both ``families`` and ``features`` are set.
+        DataStructureError
+            If a requested family is not supported for the current image shape
+            or prepared ROI data.
+
+        Notes
+        -----
+        Feature availability depends on the prepared ``RoiData``:
+
+        * ``"morphology"`` and ``"morphology_correlation"`` require a 3D ROI.
+        * ``"intensity_histogram"`` and texture families require
+          ``texture_discretized_image``.
+        * ``"ivh"`` requires ``ivh_intensity_image`` and IVH discretization
+          metadata.
+        * ``"local_intensity"`` and ``"intensity_statistics"`` use the
+          non-discretized intensity mask.
         """
         context = self._build_context(roi_data)
         groups, selected_features = resolve_groups(context, families=families, features=features)

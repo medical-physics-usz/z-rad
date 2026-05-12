@@ -2,6 +2,7 @@ import pytest
 import numpy as np
 import zrad.preprocessing as preprocessing
 from zrad.preprocessing import (
+    ImageDiscretizer,
     ImageResampler,
     IntensityMaskBuilder,
     MaskResampler,
@@ -58,6 +59,33 @@ def test_preprocessing_public_api_exposes_main_steps_only():
     assert not hasattr(preprocessing, 'FixedBinSizeDiscretizer')
     assert not hasattr(preprocessing, 'FixedBinNumberDiscretizer')
     assert not hasattr(preprocessing, 'IntensityVolumeHistogramDiscretizer')
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {},
+        {"number_of_bins": 4, "bin_size": 25},
+    ],
+)
+def test_image_discretizer_requires_exactly_one_method(kwargs):
+    with pytest.raises(ValueError, match="Specify exactly one"):
+        ImageDiscretizer(**kwargs)
+
+
+@pytest.mark.unit
+def test_image_discretizer_applies_fixed_bin_size():
+    image = _make_image(np.array([[[0.0, 25.0, 50.0]]]))
+    discretized = ImageDiscretizer(bin_size=25, minimum=0).apply(image)
+    np.testing.assert_array_equal(discretized.array, np.array([[[1.0, 2.0, 3.0]]]))
+
+
+@pytest.mark.unit
+def test_image_discretizer_applies_fixed_bin_number():
+    image = _make_image(np.array([[[0.0, 10.0, 20.0, 30.0]]]))
+    discretized = ImageDiscretizer(number_of_bins=3).apply(image)
+    np.testing.assert_array_equal(discretized.array, np.array([[[1.0, 2.0, 3.0, 3.0]]]))
 
 @pytest.mark.unit
 def test_constructor_valid_inputs():

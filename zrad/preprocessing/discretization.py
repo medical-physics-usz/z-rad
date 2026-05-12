@@ -197,19 +197,25 @@ class IntensityVolumeHistogramDiscretizer:
 class ImageDiscretizer:
     """Choose fixed-bin-size or fixed-bin-number discretization from configuration.
 
-    This convenience wrapper applies fixed-bin-size discretization, fixed-bin-
-    number discretization, both in that order, or neither when no discretization
-    parameters are configured.
+    Exactly one discretization method must be configured: set ``bin_size`` for
+    fixed-bin-size discretization or ``number_of_bins`` for fixed-bin-number
+    discretization.
+
+    Use fixed-bin-number discretization for arbitrary intensity scales such as
+    raw MRI or many filtered images. Use fixed-bin-size discretization for
+    calibrated units when a consistent lower anchor is defined for all samples,
+    preferably the lower bound of the re-segmentation range. Fixed-bin-size is
+    not recommended for arbitrary intensity scales without such an anchor.
+    Report the chosen method and ``minimum`` value.
 
     Parameters
     ----------
     number_of_bins : int or None, optional
-        Number of bins used for fixed-bin-number discretization. If ``None``,
-        this step is skipped.
+        Number of bins used for fixed-bin-number discretization. Mutually
+        exclusive with ``bin_size``.
     bin_size : float or None, optional
-        Width of each fixed-size intensity bin. If supplied, fixed-bin-size
-        discretization is applied before optional fixed-bin-number
-        discretization.
+        Width of each fixed-size intensity bin. Mutually exclusive with
+        ``number_of_bins``.
     minimum : float or None, optional
         Intensity value used as the lower anchor for fixed-bin-size
         discretization. If ``None``, the minimum finite value in the input
@@ -218,6 +224,8 @@ class ImageDiscretizer:
     """
 
     def __init__(self, number_of_bins=None, bin_size=None, minimum=None):
+        if (number_of_bins is None) == (bin_size is None):
+            raise ValueError("Specify exactly one of number_of_bins or bin_size.")
         self.number_of_bins = number_of_bins
         self.bin_size = bin_size
         self.minimum = minimum
@@ -238,7 +246,7 @@ class ImageDiscretizer:
         }
 
     def apply(self, image):
-        """Return a discretized image, or a copy when no discretization is configured.
+        """Return a discretized image.
 
         Parameters
         ----------
@@ -248,15 +256,11 @@ class ImageDiscretizer:
         Returns
         -------
         image : Image
-            Discretized image, or a copy of the input image when no
-            discretization parameters are configured.
+            Discretized image.
         """
-        result = image.copy()
         if self.bin_size is not None:
-            result = FixedBinSizeDiscretizer(self.bin_size, self.minimum).apply(result)
-        if self.number_of_bins is not None:
-            result = FixedBinNumberDiscretizer(self.number_of_bins).apply(result)
-        return result
+            return FixedBinSizeDiscretizer(self.bin_size, self.minimum).apply(image)
+        return FixedBinNumberDiscretizer(self.number_of_bins).apply(image)
 
 
 def count_bins(image):

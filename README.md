@@ -77,7 +77,7 @@ and neighbouring gray level dependance matrix (NGLDM) features families.
 The simplest way to run Z-Rad on Windows is to start the `z-rad.exe` attached to every Z-Rad release.
 
 ### Windows, Linux, and macOS
-For users familiar with Python programming langauage, we recommend: 
+For users familiar with Python programming language, we recommend Python 3.11 or newer:
 
 1. Download the Z-Rad repository
 2. Open the terminal and navigate to the project directory

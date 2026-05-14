@@ -4,7 +4,7 @@ Installation
 Requirements
 ------------
 
-* Python 3.10 or newer for Python-based workflows.
+* Python 3.11 or newer for Python-based workflows.
 * Windows, macOS, or Linux.
 * Enough local storage for imaging data, masks, output files, and logs.
 
@@ -25,8 +25,8 @@ On Windows, use the ``z-rad.exe`` asset distributed with the release package.
 Run From A Repository Checkout
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Download or clone the repository, create a Python environment, install the
-project requirements, and start the GUI from the repository root.
+Download or clone the repository, create a Python environment, install Z-Rad
+from the source checkout, and start the GUI from the repository root.
 
 Create and activate a virtual environment:
 

@@ -8,40 +8,40 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "z-rad"
-version = "25.4.1-dev"
+dynamic = ["version"]
 description = "Z-Rad is a radiomic feature extraction software with GUI and API."
 readme = "README.md"
 requires-python = ">=3.10"
-
-# Authors
 authors = [
     { name = "Radiomics Team of Radiation Oncology Department at University Hospital Zurich", email = "zrad@usz.ch" }
 ]
-
-# Dependencies
+keywords = ["radiomics", "feature-extraction", "python", "GUI", "API"]
+license = { text = "MIT" }
 dependencies = [
+    "pyqtgraph>=0.14.0",
     "pydicom>=3.0.0",
     "pyqt5>=5.15.11",
     "numpy>=2.1.1",
-    "pandas>=2.2.2",
     "simpleitk>=2.4.0",
     "scipy>=1.14.1",
     "pywavelets>=1.7.0",
-    "openpyxl>=3.1.5",
     "scikit-image>=0.24.0",
-    "scikit-learn>=1.5.2",
     "opencv-python-headless>=4.10.0.84",
     "joblib>=1.4.2",
-    "tqdm>=4.66.5"
 ]
 
-# Optional project URLs, license, etc.
-keywords = ["radiomics", "feature-extraction", "python", "GUI", "API"]
-license = { text = "MIT" }
+[project.optional-dependencies]
+docs = [
+    "sphinx>=8",
+    "pydata-sphinx-theme>=0.16.1",
+    "sphinx-design>=0.6",
+]
 
 [tool.setuptools]
 # Additional setuptools configuration
 
-[tool.setuptools.packages.find]
-include = ["zrad"]
+[tool.setuptools.dynamic]
+version = { attr = "zrad.__version__" }
 
+[tool.setuptools.packages.find]
+include = ["zrad", "zrad.*"]

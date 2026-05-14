@@ -1,0 +1,325 @@
+filter_id;feature;feature_tag;consensus_value;tolerance
+1.A;Mean;stat_mean;-47;4.6
+1.A;Variance;stat_var;53300;2000
+1.A;Skewness;stat_skew;-2.17;0.07
+1.A;(Excess) kurtosis;stat_kurt;3.65;0.34
+1.A;Median;stat_median;41;0.6
+1.A;Minimum;stat_min;-1000;10
+1.A;10th percentile;stat_p10;-434;21
+1.A;90th percentile;stat_p90;93;0.1
+1.A;Maximum;stat_max;377;10
+1.A;Interquartile range;stat_iqr;69;6.4
+1.A;Range;stat_range;1380;10
+1.A;Mean absolute deviation;stat_mad;160;5
+1.A;Robust mean absolute deviation;stat_rmad;64.4;5.8
+1.A;Median absolute deviation;stat_medad;122;4
+1.A;Coefficient of variation;stat_cov;-4.92;0.42
+1.A;Quartile coefficient of dispersion;stat_qcod;1;0.85
+1.A;Energy;stat_energy;6.96e+09;4.5e+08
+1.A;Root mean square;stat_rms;236;5
+1.B;Mean;stat_mean;-46.4;5.9
+1.B;Variance;stat_var;52600;2800
+1.B;Skewness;stat_skew;-2.18;0.09
+1.B;(Excess) kurtosis;stat_kurt;3.71;0.47
+1.B;Median;stat_median;41;0.7
+1.B;Minimum;stat_min;-997;3
+1.B;10th percentile;stat_p10;-427;29
+1.B;90th percentile;stat_p90;92;0.1
+1.B;Maximum;stat_max;377;15
+1.B;Interquartile range;stat_iqr;67;9.1
+1.B;Range;stat_range;1370;20
+1.B;Mean absolute deviation;stat_mad;159;7
+1.B;Robust mean absolute deviation;stat_rmad;63.6;7.3
+1.B;Median absolute deviation;stat_medad;121;6
+1.B;Coefficient of variation;stat_cov;-4.94;0.64
+1.B;Quartile coefficient of dispersion;stat_qcod;0.944;0.925
+1.B;Energy;stat_energy;1.96e+10;1.9e+09
+1.B;Root mean square;stat_rms;234;7
+2.A;Mean;stat_mean;-49.9;4.4
+2.A;Variance;stat_var;46600;1600
+2.A;Skewness;stat_skew;-2.13;0.07
+2.A;(Excess) kurtosis;stat_kurt;3.53;0.33
+2.A;Median;stat_median;38.1;0.7
+2.A;Minimum;stat_min;-889;3
+2.A;10th percentile;stat_p10;-402;18
+2.A;90th percentile;stat_p90;79.8;0.1
+2.A;Maximum;stat_max;334;7
+2.A;Interquartile range;stat_iqr;82;10.5
+2.A;Range;stat_range;1220;10
+2.A;Mean absolute deviation;stat_mad;153;5
+2.A;Robust mean absolute deviation;stat_rmad;67.7;5.6
+2.A;Median absolute deviation;stat_medad;116;4
+2.A;Coefficient of variation;stat_cov;-4.33;0.34
+2.A;Quartile coefficient of dispersion;stat_qcod;1.85;0.66
+2.A;Energy;stat_energy;6.15e+09;3.9e+08
+2.A;Root mean square;stat_rms;222;5
+2.B;Mean;stat_mean;-49.9;5.7
+2.B;Variance;stat_var;44400;2300
+2.B;Skewness;stat_skew;-2.13;0.09
+2.B;(Excess) kurtosis;stat_kurt;3.59;0.46
+2.B;Median;stat_median;37.3;0.6
+2.B;Minimum;stat_min;-906;5
+2.B;10th percentile;stat_p10;-389;25
+2.B;90th percentile;stat_p90;77.2;0.1
+2.B;Maximum;stat_max;316;7
+2.B;Interquartile range;stat_iqr;92.6;13.5
+2.B;Range;stat_range;1220;10
+2.B;Mean absolute deviation;stat_mad;149;6
+2.B;Robust mean absolute deviation;stat_rmad;68.1;6.9
+2.B;Median absolute deviation;stat_medad;114;5
+2.B;Coefficient of variation;stat_cov;-4.22;0.47
+2.B;Quartile coefficient of dispersion;stat_qcod;2.97;0.58
+2.B;Energy;stat_energy;1.68e+10;1.6e+09
+2.B;Root mean square;stat_rms;217;7
+3.A;Mean;stat_mean;-2.44;0.12
+3.A;Variance;stat_var;556;24
+3.A;Skewness;stat_skew;0.295;0.027
+3.A;(Excess) kurtosis;stat_kurt;7.02;0.3
+3.A;Median;stat_median;-0.585;0.012
+3.A;Minimum;stat_min;-178;1
+3.A;10th percentile;stat_p10;-27.1;0.5
+3.A;90th percentile;stat_p90;13.2;1.3
+3.A;Maximum;stat_max;191;1
+3.A;Interquartile range;stat_iqr;8.74;0.19
+3.A;Range;stat_range;369;2
+3.A;Mean absolute deviation;stat_mad;13.2;0.3
+3.A;Robust mean absolute deviation;stat_rmad;4.98;0.16
+3.A;Median absolute deviation;stat_medad;12.9;0.4
+3.A;Coefficient of variation;stat_cov;-9.66;1.21
+3.A;Quartile coefficient of dispersion;stat_qcod;-2.93;0.06
+3.A;Energy;stat_energy;70300000;4200000
+3.A;Root mean square;stat_rms;23.7;0.5
+3.B;Mean;stat_mean;-2.94;0.2
+3.B;Variance;stat_var;720;33
+3.B;Skewness;stat_skew;0.428;0.009
+3.B;(Excess) kurtosis;stat_kurt;6.13;0.27
+3.B;Median;stat_median;-0.919;0.024
+3.B;Minimum;stat_min;-173;5
+3.B;10th percentile;stat_p10;-32.2;0.5
+3.B;90th percentile;stat_p90;17.4;1.9
+3.B;Maximum;stat_max;204;1
+3.B;Interquartile range;stat_iqr;11.4;0.3
+3.B;Range;stat_range;377;5
+3.B;Mean absolute deviation;stat_mad;15.5;0.4
+3.B;Robust mean absolute deviation;stat_rmad;6.37;0.19
+3.B;Median absolute deviation;stat_medad;15.3;0.4
+3.B;Coefficient of variation;stat_cov;-9.12;1.63
+3.B;Quartile coefficient of dispersion;stat_qcod;-2.34;0.07
+3.B;Energy;stat_energy;2.61e+08;1.9e+07
+3.B;Root mean square;stat_rms;27;0.6
+4.A;Mean;stat_mean;148;3
+4.A;Variance;stat_var;18000;500
+4.A;Skewness;stat_skew;0.877;0.024
+4.A;(Excess) kurtosis;stat_kurt;-0.279;0.039
+4.A;Median;stat_median;88.7;5
+4.A;Minimum;stat_min;15.5;0.1
+4.A;10th percentile;stat_p10;26.9;0.1
+4.A;90th percentile;stat_p90;347;4
+4.A;Maximum;stat_max;672;4
+4.A;Interquartile range;stat_iqr;219;5
+4.A;Range;stat_range;657;4
+4.A;Mean absolute deviation;stat_mad;116;2
+4.A;Robust mean absolute deviation;stat_rmad;92.9;1.8
+4.A;Median absolute deviation;stat_medad;111;2
+4.A;Coefficient of variation;stat_cov;0.904;0.007
+4.A;Quartile coefficient of dispersion;stat_qcod;0.773;0.003
+4.A;Energy;stat_energy;5e+09;2.7e+08
+4.A;Root mean square;stat_rms;200;4
+4.B;Mean;stat_mean;142;3
+4.B;Variance;stat_var;11100;300
+4.B;Skewness;stat_skew;0.645;0.028
+4.B;(Excess) kurtosis;stat_kurt;-0.711;0.044
+4.B;Median;stat_median;113;4
+4.B;Minimum;stat_min;28.5;0.1
+4.B;10th percentile;stat_p10;35.6;0.1
+4.B;90th percentile;stat_p90;293;4
+4.B;Maximum;stat_max;525;1
+4.B;Interquartile range;stat_iqr;188;4
+4.B;Range;stat_range;496;1
+4.B;Mean absolute deviation;stat_mad;92.4;1.4
+4.B;Robust mean absolute deviation;stat_rmad;75.9;1.4
+4.B;Median absolute deviation;stat_medad;90.8;1.6
+4.B;Coefficient of variation;stat_cov;0.743;0.005
+4.B;Quartile coefficient of dispersion;stat_qcod;0.699;0.003
+4.B;Energy;stat_energy;1.12e+10;7e+08
+4.B;Root mean square;stat_rms;177;3
+5.A;Mean;stat_mean;103;1
+5.A;Variance;stat_var;1040;10
+5.A;Skewness;stat_skew;1.31;0.03
+5.A;(Excess) kurtosis;stat_kurt;2.84;0.14
+5.A;Median;stat_median;97;1.3
+5.A;Minimum;stat_min;31.4;0.5
+5.A;10th percentile;stat_p10;68.8;0.9
+5.A;90th percentile;stat_p90;145;2
+5.A;Maximum;stat_max;354;5
+5.A;Interquartile range;stat_iqr;37.2;0.6
+5.A;Range;stat_range;322;5
+5.A;Mean absolute deviation;stat_mad;24.2;0.4
+5.A;Robust mean absolute deviation;stat_rmad;15.8;0.2
+5.A;Median absolute deviation;stat_medad;23.7;0.4
+5.A;Coefficient of variation;stat_cov;0.313;0.003
+5.A;Quartile coefficient of dispersion;stat_qcod;0.187;0.001
+5.A;Energy;stat_energy;1.46e+09;2e+07
+5.A;Root mean square;stat_rms;108;2
+5.B;Mean;stat_mean;40.2;0.2
+5.B;Variance;stat_var;231;2
+5.B;Skewness;stat_skew;1.57;0.03
+5.B;(Excess) kurtosis;stat_kurt;4.34;0.2
+5.B;Median;stat_median;37.2;0.1
+5.B;Minimum;stat_min;9.53;0.11
+5.B;10th percentile;stat_p10;24.6;0.1
+5.B;90th percentile;stat_p90;59.3;0.3
+5.B;Maximum;stat_max;175;3
+5.B;Interquartile range;stat_iqr;17.4;0.1
+5.B;Range;stat_range;165;3
+5.B;Mean absolute deviation;stat_mad;11.3;0.1
+5.B;Robust mean absolute deviation;stat_rmad;7.31;0.06
+5.B;Median absolute deviation;stat_medad;11;0.1
+5.B;Coefficient of variation;stat_cov;0.377;0.004
+5.B;Quartile coefficient of dispersion;stat_qcod;0.226;0.002
+5.B;Energy;stat_energy;6.62e+08;9e+06
+5.B;Root mean square;stat_rms;43;0.2
+6.A;Mean;stat_mean;-0.185;0.025
+6.A;Variance;stat_var;427;11
+6.A;Skewness;stat_skew;0.0837;0.0188
+6.A;(Excess) kurtosis;stat_kurt;7.72;0.24
+6.A;Median;stat_median;0.0456;0.0041
+6.A;Minimum;stat_min;-245;2
+6.A;10th percentile;stat_p10;-18.8;0.4
+6.A;90th percentile;stat_p90;17.7;0.4
+6.A;Maximum;stat_max;202;2
+6.A;Interquartile range;stat_iqr;15.8;0.1
+6.A;Range;stat_range;447;3
+6.A;Mean absolute deviation;stat_mad;13;0.2
+6.A;Robust mean absolute deviation;stat_rmad;6.82;0.08
+6.A;Median absolute deviation;stat_medad;13;0.2
+6.A;Coefficient of variation;stat_cov;-112;37
+6.A;Quartile coefficient of dispersion;stat_qcod;491;10
+6.A;Energy;stat_energy;53500000;2e+06
+6.A;Root mean square;stat_rms;20.7;0.3
+6.B;Mean;stat_mean;-0.182;0.024
+6.B;Variance;stat_var;250;9
+6.B;Skewness;stat_skew;0.157;0.018
+6.B;(Excess) kurtosis;stat_kurt;8.98;0.35
+6.B;Median;stat_median;0.0575;0.0046
+6.B;Minimum;stat_min;-148;1
+6.B;10th percentile;stat_p10;-13.8;0.5
+6.B;90th percentile;stat_p90;12.1;0.4
+6.B;Maximum;stat_max;155;1
+6.B;Interquartile range;stat_iqr;9.35;0.15
+6.B;Range;stat_range;303;2
+6.B;Mean absolute deviation;stat_mad;9.26;0.22
+6.B;Robust mean absolute deviation;stat_rmad;4.21;0.09
+6.B;Median absolute deviation;stat_medad;9.25;0.22
+6.B;Coefficient of variation;stat_cov;-86.9;32.6
+6.B;Quartile coefficient of dispersion;stat_qcod;-162;27
+6.B;Energy;stat_energy;89600000;5300000
+6.B;Root mean square;stat_rms;15.8;0.3
+7.A;Mean;stat_mean;0.245;0.03
+7.A;Variance;stat_var;1910;40
+7.A;Skewness;stat_skew;0.0469;0.0072
+7.A;(Excess) kurtosis;stat_kurt;6.22;0.16
+7.A;Median;stat_median;0.0675;0.0061
+7.A;Minimum;stat_min;-349;7
+7.A;10th percentile;stat_p10;-39.6;1
+7.A;90th percentile;stat_p90;40.5;0.9
+7.A;Maximum;stat_max;352;4
+7.A;Interquartile range;stat_iqr;28.8;0.4
+7.A;Range;stat_range;701;9
+7.A;Mean absolute deviation;stat_mad;26.9;0.4
+7.A;Robust mean absolute deviation;stat_rmad;13;0.2
+7.A;Median absolute deviation;stat_medad;26.9;0.4
+7.A;Coefficient of variation;stat_cov;178;77
+7.A;Quartile coefficient of dispersion;stat_qcod;104;66
+7.A;Energy;stat_energy;2.39e+08;9e+06
+7.A;Root mean square;stat_rms;43.7;0.6
+7.B;Mean;stat_mean;-0.0406;0.0051
+7.B;Variance;stat_var;422;11
+7.B;Skewness;stat_skew;-0.0112;0.0027
+7.B;(Excess) kurtosis;stat_kurt;5.45;0.09
+7.B;Median;stat_median;-0.0164;0.0013
+7.B;Minimum;stat_min;-203;3
+7.B;10th percentile;stat_p10;-20.6;0.4
+7.B;90th percentile;stat_p90;20.4;0.4
+7.B;Maximum;stat_max;201;4
+7.B;Interquartile range;stat_iqr;16.3;0.2
+7.B;Range;stat_range;404;7
+7.B;Mean absolute deviation;stat_mad;13.4;0.2
+7.B;Robust mean absolute deviation;stat_rmad;7.2;0.1
+7.B;Median absolute deviation;stat_medad;13.4;0.2
+7.B;Coefficient of variation;stat_cov;-506;149
+7.B;Quartile coefficient of dispersion;stat_qcod;-684;130
+7.B;Energy;stat_energy;1.51e+08;7e+06
+7.B;Root mean square;stat_rms;20.6;0.3
+8.A;Mean;stat_mean;0.248;0.047
+8.A;Variance;stat_var;1550;50
+8.A;Skewness;stat_skew;-0.0473;0.0145
+8.A;(Excess) kurtosis;stat_kurt;8.19;0.3
+8.A;Median;stat_median;-0.0323;0.0073
+8.A;Minimum;stat_min;-395;3
+8.A;10th percentile;stat_p10;-33.5;0.9
+8.A;90th percentile;stat_p90;34.4;1
+8.A;Maximum;stat_max;408;3
+8.A;Interquartile range;stat_iqr;24.8;0.3
+8.A;Range;stat_range;803;5
+8.A;Mean absolute deviation;stat_mad;23.6;0.5
+8.A;Robust mean absolute deviation;stat_rmad;11.1;0.2
+8.A;Median absolute deviation;stat_medad;23.6;0.5
+8.A;Coefficient of variation;stat_cov;159;30
+8.A;Quartile coefficient of dispersion;stat_qcod;-441;29
+8.A;Energy;stat_energy;1.94e+08;9e+06
+8.A;Root mean square;stat_rms;39.3;0.7
+8.B;Mean;stat_mean;0.32;0.059
+8.B;Variance;stat_var;1810;70
+8.B;Skewness;stat_skew;-0.0719;0.0163
+8.B;(Excess) kurtosis;stat_kurt;7.64;0.33
+8.B;Median;stat_median;-0.00947;0.0107
+8.B;Minimum;stat_min;-411;5
+8.B;10th percentile;stat_p10;-36.5;1.3
+8.B;90th percentile;stat_p90;38.1;1.3
+8.B;Maximum;stat_max;374;3
+8.B;Interquartile range;stat_iqr;25.5;0.4
+8.B;Range;stat_range;785;6
+8.B;Mean absolute deviation;stat_mad;25.3;0.6
+8.B;Robust mean absolute deviation;stat_rmad;11.7;0.3
+8.B;Median absolute deviation;stat_medad;25.3;0.6
+8.B;Coefficient of variation;stat_cov;134;27
+8.B;Quartile coefficient of dispersion;stat_qcod;;
+8.B;Energy;stat_energy;6.48e+08;3.9e+07
+8.B;Root mean square;stat_rms;42.5;0.9
+9.A;Mean;stat_mean;2.08;0.17
+9.A;Variance;stat_var;4580;170
+9.A;Skewness;stat_skew;-0.0596;0.0145
+9.A;(Excess) kurtosis;stat_kurt;6.11;0.21
+9.A;Median;stat_median;0.14;0.028
+9.A;Minimum;stat_min;-535;1
+9.A;10th percentile;stat_p10;-59.2;1.8
+9.A;90th percentile;stat_p90;71.5;1.9
+9.A;Maximum;stat_max;470;6
+9.A;Interquartile range;stat_iqr;34.2;0.8
+9.A;Range;stat_range;1000;10
+9.A;Mean absolute deviation;stat_mad;40.1;0.9
+9.A;Robust mean absolute deviation;stat_rmad;17.6;0.5
+9.A;Median absolute deviation;stat_medad;40;0.9
+9.A;Coefficient of variation;stat_cov;32.6;24.4
+9.A;Quartile coefficient of dispersion;stat_qcod;47;15.2
+9.A;Energy;stat_energy;5.74e+08;3.1e+07
+9.A;Root mean square;stat_rms;67.7;1.3
+9.B;Mean;stat_mean;2.68;0.22
+9.B;Variance;stat_var;5490;220
+9.B;Skewness;stat_skew;-0.0858;0.0107
+9.B;(Excess) kurtosis;stat_kurt;5.58;0.18
+9.B;Median;stat_median;0.233;0.046
+9.B;Minimum;stat_min;-605;2
+9.B;10th percentile;stat_p10;-65.9;2.2
+9.B;90th percentile;stat_p90;82.8;1.8
+9.B;Maximum;stat_max;471;13
+9.B;Interquartile range;stat_iqr;41;1
+9.B;Range;stat_range;1080;20
+9.B;Mean absolute deviation;stat_mad;45.1;1.1
+9.B;Robust mean absolute deviation;stat_rmad;21;0.5
+9.B;Median absolute deviation;stat_medad;45;1.1
+9.B;Coefficient of variation;stat_cov;27.7;20.4
+9.B;Quartile coefficient of dispersion;stat_qcod;47.4;20.7
+9.B;Energy;stat_energy;1.97e+09;1.4e+08
+9.B;Root mean square;stat_rms;74.1;1.6

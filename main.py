@@ -11,6 +11,7 @@ from zrad import __version__
 from zrad.gui.filt_tab import FilteringTab
 from zrad.gui.prep_tab import PreprocessingTab
 from zrad.gui.rad_tab import RadiomicsTab
+from zrad.gui.visual_tab import VisualizationTab
 from zrad.gui.toolbox_gui import CustomWarningBox
 
 WINDOW_TITLE = f"Z-Rad v{__version__}"
@@ -31,7 +32,7 @@ def resource_path(relative_path: str) -> str:
 
 def add_logo_to_tab(tab: QWidget):
     logo_label = QLabel(tab)
-    logo_pixmap = QPixmap(resource_path('doc/logos/USZLogo.png'))
+    logo_pixmap = QPixmap(resource_path('docs/logos/USZLogo.png'))
     desired_width = 300
     desired_height = 150
     logo_pixmap = logo_pixmap.scaled(desired_width, desired_height, Qt.KeepAspectRatio, Qt.SmoothTransformation)
@@ -68,7 +69,7 @@ class ZRad(QMainWindow):
 
         self.init_tabs()
         self.create_menu()
-        self.setWindowIcon(QIcon(resource_path("doc/logos/icon.ico")))
+        self.setWindowIcon(QIcon(resource_path("docs/logos/icon.ico")))
 
     def init_tabs(self):
         """
@@ -80,7 +81,8 @@ class ZRad(QMainWindow):
         self.tabs = [
             ("Preprocessing", PreprocessingTab()),
             ("Filtering", FilteringTab()),
-            ("Radiomics", RadiomicsTab())
+            ("Radiomics", RadiomicsTab()),
+            ("Visualization", VisualizationTab())
         ]
 
         for title, tab in self.tabs:
@@ -205,9 +207,9 @@ def main():
     font = QFont(FONT_FAMILY)
     font.setPixelSize(FONT_SIZE)
     app.setFont(font)
-    app.setWindowIcon(QIcon(resource_path("doc/logos/icon.ico")))
+    app.setWindowIcon(QIcon(resource_path("docs/logos/icon.ico")))
 
-    splash_pix = QPixmap(resource_path("doc/logos/ZRadLogo.jpg"))
+    splash_pix = QPixmap(resource_path("docs/logos/ZRadLogo.jpg"))
     splash = QSplashScreen(splash_pix, Qt.WindowStaysOnTopHint)
     splash.setWindowFlag(Qt.FramelessWindowHint)  # No window frame
     splash.show()

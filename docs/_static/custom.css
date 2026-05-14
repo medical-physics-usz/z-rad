@@ -1,0 +1,7 @@
+/* Hide the class prefix in rendered Python method signatures while keeping
+   fully qualified targets in the source for stable autodoc resolution. */
+.bd-content .py.method .sig-prename,
+.bd-content .py.classmethod .sig-prename,
+.bd-content .py.staticmethod .sig-prename {
+  display: none;
+}

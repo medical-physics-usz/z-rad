@@ -44,6 +44,7 @@ htmlcov/
 nosetests.xml
 coverage.xml
 *,cover
+*.flag
 
 # Translations
 *.mo
@@ -54,6 +55,11 @@ coverage.xml
 
 # Sphinx documentation
 docs/_build/
+docs/auto_examples/
+docs/generated/
+docs/reference/generated/
+docs/bibtex/auto
+docs/min_dependency_table.rst
 
 # PyBuilder
 target/
@@ -94,3 +100,8 @@ config.json
 **/*.json
 
 **/__pycache__/
+
+# DICOM and NIfTI files
+*.dcm
+*.nii
+*.nii.gz

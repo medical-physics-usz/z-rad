@@ -1,6 +1,6 @@
 # Z-RAD
 
-<img src="https://raw.githubusercontent.com/medical-physics-usz/z-rad/master/doc/logos/ZRadLogo.jpg" width="600" alt="Z-Rad logo"/>
+<img src="https://raw.githubusercontent.com/medical-physics-usz/z-rad/master/docs/logos/ZRadLogo.jpg" width="600" alt="Z-Rad logo"/>
 
 Radiomics is the high-throughput extraction of quantitative features from medical images, 
 revolutionizing personalized medicine and enhancing clinical decision-making. 
@@ -11,7 +11,7 @@ and lack of standardization.
 addresses these issues by offering a user-friendly, IBSI-compliant, and open-source solution for radiomics analysis.
 
 ## Z-Rad Features
-<img src="https://raw.githubusercontent.com/medical-physics-usz/z-rad/master/doc/images/zrad_screenshot.png" width="600" alt="Z-Rad screenshot"/>
+<img src="https://raw.githubusercontent.com/medical-physics-usz/z-rad/master/docs/images/zrad_screenshot.png" width="600" alt="Z-Rad screenshot"/>
 
 ### User-Friendly Interface
 - **Graphical User Interface (GUI)**: Designed for medical professionals with no programming skills.
@@ -33,19 +33,16 @@ addresses these issues by offering a user-friendly, IBSI-compliant, and open-sou
   - Joblib
   - NumPy
   - OpenCV
-  - OpenPyXL
   - Pandas
   - PyDicom
   - PyQt5
   - PyWavelets
   - Scikit-image
-  - Scikit-learn
   - SciPy
   - SimpleITK
-  - tqdm
 
 ### Radiomics Extraction Pathways
-<img src="https://raw.githubusercontent.com/medical-physics-usz/z-rad/master/doc/images/ZRadExtractionPathways.png" width="600" alt="Z-Rad Pathways"/>
+<img src="https://raw.githubusercontent.com/medical-physics-usz/z-rad/master/docs/images/ZRadExtractionPathways.png" width="600" alt="Z-Rad Pathways"/>
 
 ## Graphical User Interface (GUI) and Application Programming Interface (API)
 Both GUI and API are structured into three primary classes: **Resampling**, **Filtering**, and **Radiomics**:
@@ -78,13 +75,6 @@ and neighbouring gray level dependance matrix (NGLDM) features families.
 
 ### Windows executable file:
 The simplest way to run Z-Rad on Windows is to start the `z-rad.exe` attached to every Z-Rad release.
-
-Executables can be also generated for Windows, MacOS, and Linux by running
-```sh
-python generate_executable.py
-```
-Creating an executable requires [PyInstaller](https://pyinstaller.readthedocs.io).
-The executable is going to be saved in *dist/* directory.
 
 ### Windows, Linux, and macOS
 For users familiar with Python programming langauage, we recommend: 

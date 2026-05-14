@@ -9,7 +9,14 @@ run the project:
 
 .. code-block:: bash
 
-   python3 -m pip install -r docs/requirements.txt
+   python3 -m pip install -e ".[docs]"
+
+For a full local development environment with docs, tests, and lint tooling,
+install the development extra instead:
+
+.. code-block:: bash
+
+   python3 -m pip install -e ".[dev]"
 
 Build Commands
 --------------

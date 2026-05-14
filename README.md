@@ -81,10 +81,10 @@ For users familiar with Python programming langauage, we recommend:
 
 1. Download the Z-Rad repository
 2. Open the terminal and navigate to the project directory
-3. Install requirements by typing in the terminal:
+3. Install Z-Rad from the source checkout by typing in the terminal:
 
 ```sh
-pip install -r requirements.txt
+pip install -e .
 ```
 
 4. Run the `main.py` file:

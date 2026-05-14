@@ -36,6 +36,23 @@ docs = [
     "pydata-sphinx-theme>=0.16.1",
     "sphinx-design>=0.6",
 ]
+test = [
+    "pytest",
+    "pytest-cov",
+    "pytest-xdist",
+]
+lint = [
+    "ruff==0.15.12",
+]
+dev = [
+    "sphinx>=8",
+    "pydata-sphinx-theme>=0.16.1",
+    "sphinx-design>=0.6",
+    "pytest",
+    "pytest-cov",
+    "pytest-xdist",
+    "ruff==0.15.12",
+]
 
 [tool.setuptools]
 # Additional setuptools configuration

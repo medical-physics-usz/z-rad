@@ -1,9 +1,9 @@
 ---
 version: 2
 updates:
-  # Update dependencies in `requirements.txt`
+  # Update Python dependencies declared in `pyproject.toml`
   - package-ecosystem: "pip"
-    directory: "/" # Directory where requirements.txt is located
+    directory: "/" # Directory where pyproject.toml is located
     schedule:
       interval: "weekly" # Frequency of checks (daily, weekly, or monthly)
 

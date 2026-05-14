@@ -34,11 +34,11 @@ Create and activate a virtual environment:
 
    python -m venv .venv
 
-Then install the runtime requirements:
+Then install Z-Rad from the source checkout:
 
 .. code-block:: bash
 
-   pip install -r requirements.txt
+   pip install -e .
 
 Launch the application:
 

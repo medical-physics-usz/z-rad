@@ -6,7 +6,6 @@ from .base import BaseFeatureGroup
 from .texture_aggregation import format_texture_feature_names
 from .texture_base import NGLDM_ATTRIBUTE_NAMES, TextureFeatureBase
 
-
 NGLDM_FEATURE_NAMES = (
     'ngl_lde',
     'ngl_hde',
@@ -92,7 +91,7 @@ class NGLDM(TextureFeatureBase):
             counts = neighbor_counts[matrix.astype(bool)]
             if counts.size:
                 bincounts = np.bincount(counts, minlength=27)
-                ngldm[gray_level, :len(bincounts)] += bincounts
+                ngldm[gray_level, : len(bincounts)] += bincounts
 
         return ngldm
 
@@ -101,9 +100,14 @@ class NGLDM(TextureFeatureBase):
         ngldm_2d_matrices = []
         roi_voxel_counts = []
         offsets = [
-            (-1, -1), (-1, 0), (-1, 1),
-            (0, -1), (0, 1),
-            (1, -1), (1, 0), (1, 1),
+            (-1, -1),
+            (-1, 0),
+            (-1, 1),
+            (0, -1),
+            (0, 1),
+            (1, -1),
+            (1, 0),
+            (1, 1),
         ]
 
         def calc_ngldm_slice(array):
@@ -113,8 +117,8 @@ class NGLDM(TextureFeatureBase):
 
             for dx, dy in offsets:
                 neighbor = padded[
-                    1 + dx: 1 + dx + center.shape[0],
-                    1 + dy: 1 + dy + center.shape[1],
+                    1 + dx : 1 + dx + center.shape[0],
+                    1 + dy : 1 + dy + center.shape[1],
                 ]
                 neighbor_count += neighbor == center
 
@@ -212,9 +216,7 @@ class NGLDMFeatureGroup(BaseFeatureGroup):
             slice_weight=context.slice_weighting,
             slice_median=context.slice_median,
         )
-        feature_values = ngldm.calculate_features(
-            prepared_data.require_discretized_intensity_image().array.T
-        )
+        feature_values = ngldm.calculate_features(prepared_data.require_discretized_intensity_image().array.T)
         return {
             output_name: feature_values[base_name]
             for output_name, base_name in zip(self.output_names(context), NGLDM_FEATURE_NAMES)

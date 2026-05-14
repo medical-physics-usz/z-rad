@@ -1,6 +1,6 @@
 from .base import BaseFilter
 from .factory import create_filter
-from .spatial import Mean, LoG, Laws, Gabor
+from .spatial import Gabor, Laws, LoG, Mean
 from .wavelet import Wavelets2D, Wavelets3D
 
 __all__ = [

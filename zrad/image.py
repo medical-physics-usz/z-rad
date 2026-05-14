@@ -1,8 +1,8 @@
 import copy
 import os
 
-import SimpleITK as sitk
 import numpy as np
+import SimpleITK as sitk
 
 from .io import dicom, nifti
 
@@ -141,7 +141,7 @@ class Image:
             origin=copy.deepcopy(self.origin),
             spacing=copy.deepcopy(self.spacing),
             direction=copy.deepcopy(self.direction),
-            shape=copy.deepcopy(self.shape)
+            shape=copy.deepcopy(self.shape),
         )
 
     def save_as_nifti(self, output_path):

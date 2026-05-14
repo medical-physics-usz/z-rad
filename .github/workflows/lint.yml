@@ -1,3 +1,4 @@
+---
 name: Super-Linter
 
 on:
@@ -8,18 +9,30 @@ on:
     branches:
       - master
 
+permissions:
+  contents: read
+  statuses: write
+
 jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
-          # Full git history is needed to get a proper list of changed files within `super-linter`
+          # Full git history is needed to get a proper list of changed files
+          # within `super-linter`.
           fetch-depth: 0
       - name: Super-Linter
-        uses: super-linter/super-linter@v7.2.1
+        uses: super-linter/super-linter@v8.6.0
         env:
           VALIDATE_ALL_CODEBASE: false
           DEFAULT_BRANCH: master
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VALIDATE_CHECKOV: true
+          VALIDATE_GITHUB_ACTIONS: true
+          VALIDATE_GITLEAKS: true
+          VALIDATE_GIT_MERGE_CONFLICT_MARKERS: true
+          VALIDATE_JSCPD: true
+          VALIDATE_YAML: true
+          VALIDATE_YAML_PRETTIER: true

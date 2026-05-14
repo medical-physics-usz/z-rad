@@ -5,6 +5,7 @@ from scipy.stats import iqr
 from ..exceptions import DataStructureError
 from .base import BaseFeatureGroup
 
+
 class LocalIntensityFeatures:
     """Local intensity peak features derived from the ROI and surrounding image.
 
@@ -51,8 +52,9 @@ class LocalIntensityFeatures:
         highest_peak = []
         for voxel in max_voxels:
             distances = np.sqrt(
-                ((np.indices(masked_image.shape).T * self.spacing - voxel * self.spacing) ** 2).sum(axis=3))
-            sphere_mask = (distances <= radius_mm)
+                ((np.indices(masked_image.shape).T * self.spacing - voxel * self.spacing) ** 2).sum(axis=3)
+            )
+            sphere_mask = distances <= radius_mm
             selected_voxels = image[sphere_mask.T]
             mean_intensity = np.mean(selected_voxels)
             highest_peak.append(mean_intensity)
@@ -64,13 +66,11 @@ class LocalIntensityFeatures:
         half_sizes = np.ceil(radius_mm / spacing).astype(int)
         grid_ranges = [np.arange(-hs, hs + 1) for hs in half_sizes]
         zz, yy, xx = np.meshgrid(grid_ranges[0], grid_ranges[1], grid_ranges[2], indexing='ij')
-        distances = np.sqrt((zz * spacing[0]) ** 2 +
-                            (yy * spacing[1]) ** 2 +
-                            (xx * spacing[2]) ** 2)
+        distances = np.sqrt((zz * spacing[0]) ** 2 + (yy * spacing[1]) ** 2 + (xx * spacing[2]) ** 2)
         spherical_mask = distances <= radius_mm
         n_s = np.sum(spherical_mask)
         if n_s == 0:
-            raise DataStructureError(f"Ns is zero in global int. mask.")
+            raise DataStructureError("Ns is zero in global int. mask.")
         kernel = spherical_mask.astype(float) / n_s
         local_means = convolve(image, kernel, mode='constant', cval=0.0)
         roi_mask = ~np.isnan(masked_image)
@@ -111,22 +111,22 @@ class _IntensityFeatureCalculator:
         x = cls._valid_values(array)
         mu = np.mean(x)
         diff = x - mu
-        v2 = np.mean(diff ** 2)
+        v2 = np.mean(diff**2)
         if v2 == 0:
             return 0.0
-        m3 = np.mean(diff ** 3)
-        return m3 / (v2 ** 1.5)
+        m3 = np.mean(diff**3)
+        return m3 / (v2**1.5)
 
     @classmethod
     def _kurtosis(cls, array):
         x = cls._valid_values(array)
         mu = np.mean(x)
         diff = x - mu
-        v2 = np.mean(diff ** 2)
+        v2 = np.mean(diff**2)
         if v2 == 0:
             return 0.0
-        m4 = np.mean(diff ** 4)
-        return (m4 / (v2 ** 2)) - 3
+        m4 = np.mean(diff**4)
+        return (m4 / (v2**2)) - 3
 
     @staticmethod
     def _robust_mean_abs_deviation(array):
@@ -163,7 +163,7 @@ class _IntensityFeatureCalculator:
         _, counts = np.unique(array[~np.isnan(array)], return_counts=True)
         sum_counts = np.sum(counts)
         if sum_counts == 0:
-            raise DataStructureError(f"Sum of counts is zero.")
+            raise DataStructureError("Sum of counts is zero.")
         return counts / sum_counts
 
     @classmethod
@@ -180,7 +180,7 @@ class _IntensityFeatureCalculator:
     def _histogram_gradient(array):
         values, counts = np.unique(array[~np.isnan(array)], return_counts=True)
         if len(counts) <= 1:
-            raise DataStructureError(f"Not enough bins to calculate gradient.")
+            raise DataStructureError("Not enough bins to calculate gradient.")
         gradient = np.gradient(counts)
         return values, gradient
 
@@ -247,8 +247,8 @@ class IntensityStatisticsFeatures(_IntensityFeatureCalculator):
             'stat_medad': np.nanmean(np.absolute(intensity_array - np.nanmedian(intensity_array))),
             'stat_cov': self._variation_coefficient(intensity_array),
             'stat_qcod': self._quartile_coefficient_dispersion(intensity_array),
-            'stat_energy': np.nansum(intensity_array ** 2),
-            'stat_rms': np.sqrt(np.nanmean(intensity_array ** 2)),
+            'stat_energy': np.nansum(intensity_array**2),
+            'stat_rms': np.sqrt(np.nanmean(intensity_array**2)),
         }
 
 
@@ -341,6 +341,7 @@ class IntensityVolumeHistogramFeatures:
         Discretization step used to sample the intensity-volume histogram.
 
     """
+
     def __init__(self, min_intensity, max_intensity, discr=1):
         self.min_intensity = min_intensity
         self.max_intensity = max_intensity
@@ -378,11 +379,11 @@ class IntensityVolumeHistogramFeatures:
         for idx, intensity_value in enumerate(intensities):
             len_valid_vals = len(valid_values)
             if len_valid_vals == 0:
-                raise DataStructureError(f"No valid values in fractions.")
+                raise DataStructureError("No valid values in fractions.")
             fractional_volumes[idx] = 1 - np.sum(valid_values < intensity_value) / len_valid_vals
             intensity_diff = self.max_intensity - self.min_intensity
             if intensity_diff == 0:
-                raise DataStructureError(f"Intensity range is zero.")
+                raise DataStructureError("Intensity range is zero.")
             intensity_fractions[idx] = (intensity_value - self.min_intensity) / intensity_diff
         return intensities, fractional_volumes, intensity_fractions
 
@@ -425,7 +426,6 @@ class IntensityVolumeHistogramFeatures:
                 - self._calc_intensity_at_volume_fraction(intensities, fractional_volumes, 90)
             ),
         }
-
 
 
 LOCAL_INTENSITY_FEATURE_NAMES = (

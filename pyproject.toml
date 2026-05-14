@@ -45,3 +45,27 @@ version = { attr = "zrad.__version__" }
 
 [tool.setuptools.packages.find]
 include = ["zrad", "zrad.*"]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 120
+exclude = [
+    ".git",
+    ".pytest_cache",
+    ".venv",
+    "build",
+    "dist",
+    "docs/_build",
+    "htmlcov",
+    "z_rad.egg-info",
+]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "C90"]
+ignore = ["E501"]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 40
+
+[tool.ruff.format]
+quote-style = "preserve"

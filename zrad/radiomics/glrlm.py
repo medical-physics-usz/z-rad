@@ -5,7 +5,6 @@ from .base import BaseFeatureGroup
 from .texture_aggregation import format_cm_rlm_feature_names
 from .texture_base import TEXTURE_ATTRIBUTE_NAMES, TextureFeatureBase
 
-
 GLRLM_FEATURE_NAMES = (
     'rlm_sre',
     'rlm_lre',
@@ -160,13 +159,23 @@ class GLRLM(TextureFeatureBase):
     @staticmethod
     def _calc_3d_matrices(image, lvl):
         x, y, z = image.shape
-        directions = np.array([
-            (0, 0, 1), (0, 1, -1), (0, 1, 0),
-            (0, 1, 1), (1, -1, -1), (1, -1, 0),
-            (1, -1, 1), (1, 0, -1), (1, 0, 0),
-            (1, 0, 1), (1, 1, -1), (1, 1, 0),
-            (1, 1, 1),
-        ])
+        directions = np.array(
+            [
+                (0, 0, 1),
+                (0, 1, -1),
+                (0, 1, 0),
+                (0, 1, 1),
+                (1, -1, -1),
+                (1, -1, 0),
+                (1, -1, 1),
+                (1, 0, -1),
+                (1, 0, 0),
+                (1, 0, 1),
+                (1, 1, -1),
+                (1, 1, 0),
+                (1, 1, 1),
+            ]
+        )
 
         max_dim = max(x, y, z)
         glrlm_3d_matrix = np.zeros((len(directions), lvl, max_dim), dtype=np.int64)
@@ -186,7 +195,9 @@ class GLRLM(TextureFeatureBase):
                 visited[i, j, k] = True
                 new_i, new_j, new_k = i + dx, j + dy, k + dz
                 while (
-                    0 <= new_i < x and 0 <= new_j < y and 0 <= new_k < z
+                    0 <= new_i < x
+                    and 0 <= new_j < y
+                    and 0 <= new_k < z
                     and image[new_i, new_j, new_k] == gr_lvl
                     and not visited[new_i, new_j, new_k]
                     and not nan_mask[new_i, new_j, new_k]
@@ -248,19 +259,13 @@ class GLRLM(TextureFeatureBase):
         if number_of_directions == 0:
             raise DataStructureError(' Denominator is zero in calc_2_5d_direction_merged_glrlm_features.')
         averaged_glrlm = np.sum(matrices, axis=0)
-        values = [
-            self._matrix_feature_values(matrix, np.sum(roi_voxel_counts))
-            for matrix in averaged_glrlm
-        ]
+        values = [self._matrix_feature_values(matrix, np.sum(roi_voxel_counts)) for matrix in averaged_glrlm]
         return self._mean_feature_dicts(values)
 
     def _calc_3d_averaged_features(self, matrices, total_roi_voxels):
         if matrices.shape[0] == 0:
             raise DataStructureError(' Denominator is zero in calc_3d_averaged_glrlm_features.')
-        values = [
-            self._matrix_feature_values(matrix, total_roi_voxels)
-            for matrix in matrices
-        ]
+        values = [self._matrix_feature_values(matrix, total_roi_voxels) for matrix in matrices]
         return self._mean_feature_dicts(values)
 
     def _calc_3d_merged_features(self, matrices, total_roi_voxels):
@@ -307,7 +312,9 @@ class GLRLM(TextureFeatureBase):
         elif self.aggr_method == 'SLICE_MERG':
             values = self._calc_2d_slice_merged_features(matrices, roi_voxel_counts, total_roi_voxels)
         else:
-            raise DataStructureError(f'Unsupported GLRLM aggregation: aggr_dim={self.aggr_dim}, aggr_method={self.aggr_method}.')
+            raise DataStructureError(
+                f'Unsupported GLRLM aggregation: aggr_dim={self.aggr_dim}, aggr_method={self.aggr_method}.'
+            )
         return self._map_feature_names(values)
 
 
@@ -334,9 +341,7 @@ class GLRLMFeatureGroup(BaseFeatureGroup):
             slice_weight=context.slice_weighting,
             slice_median=context.slice_median,
         )
-        feature_values = glrlm.calculate_features(
-            prepared_data.require_discretized_intensity_image().array.T
-        )
+        feature_values = glrlm.calculate_features(prepared_data.require_discretized_intensity_image().array.T)
         return {
             output_name: feature_values[base_name]
             for output_name, base_name in zip(self.output_names(context), GLRLM_FEATURE_NAMES)

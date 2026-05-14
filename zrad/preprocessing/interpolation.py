@@ -1,5 +1,5 @@
-import SimpleITK as sitk
 import numpy as np
+import SimpleITK as sitk
 
 from ..image import Image
 from .roi import RoiData
@@ -235,8 +235,7 @@ def _resample_image(image, output_spacing, interpolation_method):
         raise TypeError(f"Expected Image, got {type(image)}.")
 
     output_origin = [
-        _calculate_resampled_origin(image.shape, image.spacing, output_spacing, image.origin, axis)
-        for axis in range(3)
+        _calculate_resampled_origin(image.shape, image.spacing, output_spacing, image.origin, axis) for axis in range(3)
     ]
     output_shape = np.ceil((np.array(image.shape) * (np.array(image.spacing) / np.array(output_spacing)))).astype(int)
 

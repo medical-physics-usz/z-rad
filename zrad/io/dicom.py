@@ -1,9 +1,9 @@
 import os
 import warnings
 
-import SimpleITK as sitk
 import numpy as np
 import pydicom
+import SimpleITK as sitk
 from pydicom.errors import InvalidDicomError
 from skimage import draw
 
@@ -262,12 +262,12 @@ def extract_dicom_mask(rtstruct_path, roi_name, image):
 
             points = contour["points"]
             num_points = len(points["x"])
-            transformed_points = np.array([
-                sitk_image.TransformPhysicalPointToContinuousIndex(
-                    (points["x"][i], points["y"][i], points["z"][i])
-                )
-                for i in range(num_points)
-            ])
+            transformed_points = np.array(
+                [
+                    sitk_image.TransformPhysicalPointToContinuousIndex((points["x"][i], points["y"][i], points["z"][i]))
+                    for i in range(num_points)
+                ]
+            )
 
             z_indices = np.rint(transformed_points[:, 2]).astype(int)
             polygon_coords = np.column_stack((transformed_points[:, 1], transformed_points[:, 0]))
@@ -295,14 +295,17 @@ def extract_dicom_mask(rtstruct_path, roi_name, image):
             }
 
             if not skip_contours_bool and hasattr(current_roi_sequence, "ContourSequence"):
-                contour_info["sequence"] = [{
-                    "type": getattr(contour, "ContourGeometricType", "unknown"),
-                    "points": {
-                        "x": [contour.ContourData[i] for i in range(0, len(contour.ContourData), 3)],
-                        "y": [contour.ContourData[i + 1] for i in range(0, len(contour.ContourData), 3)],
-                        "z": [contour.ContourData[i + 2] for i in range(0, len(contour.ContourData), 3)],
-                    },
-                } for contour in current_roi_sequence.ContourSequence]
+                contour_info["sequence"] = [
+                    {
+                        "type": getattr(contour, "ContourGeometricType", "unknown"),
+                        "points": {
+                            "x": [contour.ContourData[i] for i in range(0, len(contour.ContourData), 3)],
+                            "y": [contour.ContourData[i + 1] for i in range(0, len(contour.ContourData), 3)],
+                            "z": [contour.ContourData[i + 2] for i in range(0, len(contour.ContourData), 3)],
+                        },
+                    }
+                    for contour in current_roi_sequence.ContourSequence
+                ]
 
             return contour_info
 

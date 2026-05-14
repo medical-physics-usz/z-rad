@@ -3,12 +3,11 @@ from abc import ABC, ABCMeta, abstractmethod
 from multiprocessing import cpu_count
 
 from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QFileDialog
-from PyQt5.QtWidgets import QWidget, QVBoxLayout
+from PyQt5.QtWidgets import QFileDialog, QVBoxLayout, QWidget
 
-from .toolbox_gui import CustomButton, CustomLabel, CustomBox, CustomTextField, CustomInfo, CustomWarningBox
-from ..exceptions import InvalidInputParametersError, DataStructureError
+from ..exceptions import DataStructureError, InvalidInputParametersError
 from ..image import Image
+from .toolbox_gui import CustomBox, CustomButton, CustomInfo, CustomLabel, CustomTextField, CustomWarningBox
 
 
 class BaseTabMeta(ABCMeta, type(QWidget)):
@@ -63,8 +62,9 @@ def load_images(input_params, patient_folder):
 
         # Read filtered image if specified
         if nifti_filtered_image_name:
-            filtered_image_path = get_imaging_filepath(input_dir, patient_folder, nifti_filtered_image_name,
-                                                       imaging_format='nifti')
+            filtered_image_path = get_imaging_filepath(
+                input_dir, patient_folder, nifti_filtered_image_name, imaging_format='nifti'
+            )
             if filtered_image_path:
                 try:
                     filtered_image = Image.from_nifti(filtered_image_path)
@@ -139,54 +139,30 @@ class BaseTab(QWidget, ABC, metaclass=BaseTabMeta):
         """Initialize the user interface components for this tab."""
         self.init_io_elements()
 
-        self.input_data_type_combo_box = CustomBox(
-            20, 300, 160, 50, self,
-            item_list=["Data Type:", "DICOM", "NIfTI"]
-        )
+        self.input_data_type_combo_box = CustomBox(20, 300, 160, 50, self, item_list=["Data Type:", "DICOM", "NIfTI"])
 
         if not self.visual_tab:
-
             # Number of Threads ComboBox
-            no_of_threads = ['Threads:'] + [str(i+1) for i in range(cpu_count())]
-            self.number_of_threads_combo_box = CustomBox(
-                20, 140, 160, 50, self,
-                item_list=no_of_threads
-            )
+            no_of_threads = ['Threads:'] + [str(i + 1) for i in range(cpu_count())]
+            self.number_of_threads_combo_box = CustomBox(20, 140, 160, 50, self, item_list=no_of_threads)
 
         self.run_button = CustomButton('RUN', 600, 590, 80, 50, self, style=False)
 
     def init_io_elements(self):
         # Imaging Modality selector
         self.input_imaging_mod_combo_box = CustomBox(
-            200, 140, 160, 50, self,
-            item_list=[
-                "Imaging Modality:", "CT", "MRI", "PET", "MG", "RTDOSE"
-            ]
+            200, 140, 160, 50, self, item_list=["Imaging Modality:", "CT", "MRI", "PET", "MG", "RTDOSE"]
         )
 
         # Load Directory Button and Label
-        self.load_dir_button = CustomButton(
-            'Input Directory',
-            20, 50, 160, 50, self,
-            style=True)
-        self.load_dir_text_field = CustomTextField(
-            '',
-            200, 50, 1000, 50,
-            self,
-            style=True)
+        self.load_dir_button = CustomButton('Input Directory', 20, 50, 160, 50, self, style=True)
+        self.load_dir_text_field = CustomTextField('', 200, 50, 1000, 50, self, style=True)
         self.load_dir_text_field.setAlignment(Qt.AlignCenter)
         self.load_dir_button.clicked.connect(lambda: self.open_directory(is_load_dir=True))
 
         #  Start and Stop Folder TextFields and Labels
-        self.start_folder_label = CustomLabel(
-            'Start Folder:',
-            400, 140, 100, 50, self,
-            style="color: white;"
-        )
-        self.start_folder_text_field = CustomTextField(
-            "",
-            500, 140, 60, 50, self
-        )
+        self.start_folder_label = CustomLabel('Start Folder:', 400, 140, 100, 50, self, style="color: white;")
+        self.start_folder_text_field = CustomTextField("", 500, 140, 60, 50, self)
 
         for pos_x in [570, 770, 1150]:
             CustomInfo(
@@ -195,38 +171,25 @@ class BaseTab(QWidget, ABC, metaclass=BaseTabMeta):
                 '• Start and Stop Folders: Use these options only if all folders in the directory have integer names.\n'
                 '• List of Folders: You can specify the folders of interest here (e.g. 1, 2a, 3_1), even if their names are non-integer.\n'
                 '• Running All Folders: Leave the Start, Stop, and List of Folders fields empty to run all folders in the Input Directory, regardless of whether their names are integers or not.',
-                pos_x, 140, 14, 14, self
+                pos_x,
+                140,
+                14,
+                14,
+                self,
             )
 
-        self.stop_folder_label = CustomLabel(
-            'Stop Folder:',
-            600, 140, 100, 50, self,
-            style="color: white;")
-        self.stop_folder_text_field = CustomTextField(
-            "",
-            700, 140, 60, 50, self
-        )
+        self.stop_folder_label = CustomLabel('Stop Folder:', 600, 140, 100, 50, self, style="color: white;")
+        self.stop_folder_text_field = CustomTextField("", 700, 140, 60, 50, self)
         # List of Patient Folders TextField and Label
         self.list_of_patient_folders_label = CustomLabel(
-            'List of Folders:',
-            800, 140, 110, 50, self,
-            style="color: white;"
+            'List of Folders:', 800, 140, 110, 50, self, style="color: white;"
         )
-        self.list_of_patient_folders_text_field = CustomTextField(
-            "E.g. 1, 5, 10, 34, ...",
-            920, 140, 220, 50, self)
+        self.list_of_patient_folders_text_field = CustomTextField("E.g. 1, 5, 10, 34, ...", 920, 140, 220, 50, self)
 
         if not self.visual_tab:
             # Save Directory Button and Label
-            self.save_dir_button = CustomButton(
-                'Output Directory',
-                20, 220, 160, 50, self,
-                style=True)
-            self.save_dir_text_field = CustomTextField(
-                '',
-                200, 220, 1000, 50,
-                self,
-                style=True)
+            self.save_dir_button = CustomButton('Output Directory', 20, 220, 160, 50, self, style=True)
+            self.save_dir_text_field = CustomTextField('', 200, 220, 1000, 50, self, style=True)
             self.save_dir_text_field.setAlignment(Qt.AlignCenter)
             self.save_dir_button.clicked.connect(lambda: self.open_directory(is_load_dir=False))
 
@@ -345,8 +308,7 @@ class BaseTab(QWidget, ABC, metaclass=BaseTabMeta):
             list_of_patient_folders = list_of_patient_folders
         elif not list_of_patient_folders and not start_folder and not stop_folder:  # All are None or empty
             list_of_patient_folders = [
-                e for e in os.listdir(input_dir)
-                if not e.startswith('.') and os.path.isdir(os.path.join(input_dir, e))
+                e for e in os.listdir(input_dir) if not e.startswith('.') and os.path.isdir(os.path.join(input_dir, e))
             ]
         else:
             warning_msg = "Incorrectly selected patient folders."
@@ -426,7 +388,9 @@ class BaseTab(QWidget, ABC, metaclass=BaseTabMeta):
             self.input_params["number_of_threads"] = 1
         self.input_params["start_folder"] = self.get_text_from_text_field(self.input_params["start_folder"])
         self.input_params["stop_folder"] = self.get_text_from_text_field(self.input_params["stop_folder"])
-        self.input_params["list_of_patient_folders"] = self.get_list_from_text_field(self.input_params["list_of_patient_folders"])
+        self.input_params["list_of_patient_folders"] = self.get_list_from_text_field(
+            self.input_params["list_of_patient_folders"]
+        )
         self.input_params["input_data_type"] = self._get_input_data_type()
         self.input_params["input_imaging_modality"] = self._get_input_imaging_modality()
         if not self.visual_tab:

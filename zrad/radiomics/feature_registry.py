@@ -4,15 +4,14 @@ from .gldzm import GLDZMFeatureGroup
 from .glrlm import GLRLMFeatureGroup
 from .glszm import GLSZMFeatureGroup
 from .intensity import (
-    IVHFeatureGroup,
     IntensityHistogramFeatureGroup,
     IntensityStatisticsFeatureGroup,
+    IVHFeatureGroup,
     LocalIntensityFeatureGroup,
 )
 from .morphology import MorphologyCorrelationFeatureGroup, MorphologyFeatureGroup
 from .ngldm import NGLDMFeatureGroup
 from .ngtdm import NGTDMFeatureGroup
-
 
 DEFAULT_GROUP_ORDER = (
     'morphology',
@@ -65,19 +64,11 @@ def _normalize_selection(selection, label):
 
 
 def all_supported_families(context):
-    return [
-        family
-        for family in DEFAULT_GROUP_ORDER
-        if FEATURE_GROUPS[family].supports(context)
-    ]
+    return [family for family in DEFAULT_GROUP_ORDER if FEATURE_GROUPS[family].supports(context)]
 
 
 def default_families(context):
-    return [
-        family
-        for family in DEFAULT_GROUP_ORDER
-        if FEATURE_GROUPS[family].default_enabled(context)
-    ]
+    return [family for family in DEFAULT_GROUP_ORDER if FEATURE_GROUPS[family].default_enabled(context)]
 
 
 def resolve_groups(context, families=None, features=None):

@@ -4,7 +4,6 @@ from ..exceptions import DataStructureError
 from .base import BaseFeatureGroup
 from .texture_aggregation import format_cm_rlm_feature_names
 
-
 GLCM_FEATURE_NAMES = (
     'cm_joint_max',
     'cm_joint_avg',
@@ -126,7 +125,9 @@ class GLCM:
                     slice_no_of_roi_voxels,
                     tot_no_of_roi_voxels,
                 )
-        raise DataStructureError(f'Unsupported GLCM aggregation: aggr_dim={self.aggr_dim}, aggr_method={self.aggr_method}.')
+        raise DataStructureError(
+            f'Unsupported GLCM aggregation: aggr_dim={self.aggr_dim}, aggr_method={self.aggr_method}.'
+        )
 
     @staticmethod
     def _calc_2d_matrices(image, lvl):
@@ -168,9 +169,19 @@ class GLCM:
     def _calc_3d_matrices(image, lvl):
         glcm_3d_matrices = []
         for direction_3d in (
-            [0, 0, 1], [0, 1, 0], [1, 0, 0], [0, 1, 1], [0, 1, -1],
-            [1, 0, 1], [1, 0, -1], [1, 1, 0], [1, -1, 0], [1, 1, 1],
-            [1, 1, -1], [1, -1, 1], [1, -1, -1],
+            [0, 0, 1],
+            [0, 1, 0],
+            [1, 0, 0],
+            [0, 1, 1],
+            [0, 1, -1],
+            [1, 0, 1],
+            [1, 0, -1],
+            [1, 1, 0],
+            [1, -1, 0],
+            [1, 1, 1],
+            [1, 1, -1],
+            [1, -1, 1],
+            [1, -1, -1],
         ):
             co_matrix = np.zeros((lvl, lvl), dtype=np.float64)
             depth, height, width = image.shape
@@ -183,9 +194,9 @@ class GLCM:
 
             arr1 = image[min_i:max_i, min_y:max_y, min_x:max_x]
             arr2 = image[
-                min_i + direction_3d[2]:max_i + direction_3d[2],
-                min_y + direction_3d[1]:max_y + direction_3d[1],
-                min_x + direction_3d[0]:max_x + direction_3d[0],
+                min_i + direction_3d[2] : max_i + direction_3d[2],
+                min_y + direction_3d[1] : max_y + direction_3d[1],
+                min_x + direction_3d[0] : max_x + direction_3d[0],
             ]
             not_nan_mask = np.logical_and(~np.isnan(arr1), ~np.isnan(arr2))
             y_cm_values = arr1[not_nan_mask].astype(int)
@@ -229,7 +240,7 @@ class GLCM:
         mu_i, sigma_i = cls._calc_mu_i_and_sigma_i(matrix)
         if sigma_i == 0:
             raise DataStructureError('Sigma_i in correlation is zero.')
-        return (np.sum(matrix * i * j) - mu_i ** 2) / sigma_i ** 2
+        return (np.sum(matrix * i * j) - mu_i**2) / sigma_i**2
 
     @classmethod
     def _calc_cluster_tendency_shade_prominence(cls, matrix, power):
@@ -344,7 +355,7 @@ class GLCM:
     @staticmethod
     def _calc_inv_diff_moment(p_minus):
         k = np.indices(p_minus.shape)
-        return np.sum(p_minus / (1 + k ** 2))
+        return np.sum(p_minus / (1 + k**2))
 
     @staticmethod
     def _calc_norm_inv_diff_moment(p_minus):
@@ -435,9 +446,7 @@ class GLCM:
                 feature_dicts.append(self._feature_values(glcm_slice))
                 if self.slice_weight:
                     if tot_no_of_roi_voxels == 0:
-                        raise DataStructureError(
-                            'tot_no_of_roi_voxels in calc_2d_averaged_glcm_features is zero.'
-                        )
+                        raise DataStructureError('tot_no_of_roi_voxels in calc_2d_averaged_glcm_features is zero.')
                     weights.append(slice_no_of_roi_voxels[slice_index] / tot_no_of_roi_voxels)
                 else:
                     weights.append(1.0)
@@ -458,9 +467,7 @@ class GLCM:
             feature_dicts.append(self._feature_values(glcm_slice))
             if self.slice_weight:
                 if tot_no_of_roi_voxels == 0:
-                    raise DataStructureError(
-                        'tot_no_of_roi_voxels in calc_2d_slice_merged_glcm_features is zero.'
-                    )
+                    raise DataStructureError('tot_no_of_roi_voxels in calc_2d_slice_merged_glcm_features is zero.')
                 weights.append(slice_no_of_roi_voxels[slice_index] / tot_no_of_roi_voxels)
             else:
                 weights.append(1.0)
@@ -525,9 +532,7 @@ class GLCMFeatureGroup(BaseFeatureGroup):
             slice_weight=context.slice_weighting,
             slice_median=context.slice_median,
         )
-        feature_values = glcm.calculate_features(
-            prepared_data.require_discretized_intensity_image().array.T
-        )
+        feature_values = glcm.calculate_features(prepared_data.require_discretized_intensity_image().array.T)
         return {
             output_name: feature_values[base_name]
             for output_name, base_name in zip(self.output_names(context), GLCM_FEATURE_NAMES)

@@ -6,9 +6,14 @@ import sys
 from datetime import datetime
 
 import numpy as np
-from PyQt5.QtCore import QThread
 from joblib import Parallel, delayed
+from PyQt5.QtCore import QThread
 
+from ..exceptions import DataStructureError, InvalidInputParametersError
+from ..io.dicom import get_all_structure_names, get_dicom_files
+from ..preprocessing import IntensityMaskBuilder, Resegmenter, RoiData, TextureDiscretizer
+from ..radiomics import Radiomics
+from ..toolbox_logic import close_all_loggers, get_logger, joblib_progress
 from ._base_tab import BaseTab, load_images, load_mask
 from .toolbox_gui import (
     CustomBox,
@@ -21,15 +26,11 @@ from .toolbox_gui import (
     ProcessingProgressDialog,
     ProcessingWorker,
 )
-from ..exceptions import InvalidInputParametersError, DataStructureError
-from ..io.dicom import get_all_structure_names, get_dicom_files
-from ..preprocessing import IntensityMaskBuilder, Resegmenter, RoiData, TextureDiscretizer
-from ..radiomics import Radiomics
-from ..toolbox_logic import get_logger, close_all_loggers, joblib_progress
 
 logging.captureWarnings(True)
 
 IS_FROZEN = getattr(sys, 'frozen', False)
+
 
 def process_patient_folder(input_params, patient_folder, structure_set):
 
@@ -85,11 +86,13 @@ def process_patient_folder(input_params, patient_folder, structure_set):
         if mask and mask.array is not None:
             logger.info(f"Processing patient: {patient_folder} with ROI: {mask_name}.")
             try:
-                roi_data = IntensityMaskBuilder().apply(RoiData(
-                    image=image,
-                    filtered_image=filtered_image,
-                    morphological_mask=mask,
-                ))
+                roi_data = IntensityMaskBuilder().apply(
+                    RoiData(
+                        image=image,
+                        filtered_image=filtered_image,
+                        morphological_mask=mask,
+                    )
+                )
                 roi_data = Resegmenter(
                     intensity_range=local_params['intensity_range'],
                     outlier_range=local_params['outlier_range'],
@@ -135,6 +138,7 @@ def _write_radiomics_csv(file_path, features):
 
 class RadiomicsTab(BaseTab):
     """Tab for configuring radiomics extraction options."""
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.init_dicom_elements()
@@ -144,79 +148,55 @@ class RadiomicsTab(BaseTab):
 
     def init_dicom_elements(self):
         """Initialize UI components related to DICOM elements."""
-        self.dicom_structures_label = CustomLabel(
-            'Structures:',
-            200, 300, 200, 50, self,
-            style="color: white;"
-        )
-        self.dicom_structures_text_field = CustomTextField(
-            "E.g. CTV, liver, ...",
-            300, 300, 400, 50, self
-        )
+        self.dicom_structures_label = CustomLabel('Structures:', 200, 300, 200, 50, self, style="color: white;")
+        self.dicom_structures_text_field = CustomTextField("E.g. CTV, liver, ...", 300, 300, 400, 50, self)
 
         self.dicom_structures_info_label = CustomInfo(
-            ' i',
-            'Type ROIs of interest (e.g. CTV, liver).',
-            710, 300, 14, 14, self
+            ' i', 'Type ROIs of interest (e.g. CTV, liver).', 710, 300, 14, 14, self
         )
 
-        self.use_all_structures_check_box = CustomCheckBox(
-            'All structures',
-            750, 300, 150, 50, self)
+        self.use_all_structures_check_box = CustomCheckBox('All structures', 750, 300, 150, 50, self)
 
         self._hide_dicom_elements()
 
     def init_nifti_elements(self):
         """Initialize UI components related to NIfTI elements."""
         # Structures
-        self.nifti_structures_label = CustomLabel(
-            'NIfTI Masks:',
-            200, 300, 200, 50, self,
-            style="color: white;"
-        )
-        self.nifti_structures_text_field = CustomTextField(
-            "E.g. CTV, liver, ...",
-            300, 300, 230, 50, self
-        )
+        self.nifti_structures_label = CustomLabel('NIfTI Masks:', 200, 300, 200, 50, self, style="color: white;")
+        self.nifti_structures_text_field = CustomTextField("E.g. CTV, liver, ...", 300, 300, 230, 50, self)
         self.nifti_structures_info_label = CustomInfo(
             ' i',
             'Provide the names of the NIfTI masks you are interested in, excluding the file extensions.'
             '\nFor example, if the files you are interested in are GTV.nii.gz and liver.nii, enter: GTV, liver.',
-            545, 300, 14, 14, self
+            545,
+            300,
+            14,
+            14,
+            self,
         )
 
         # Image
-        self.nifti_image_label = CustomLabel(
-            'NIfTI Image:',
-            600, 300, 200, 50, self,
-            style="color: white;"
-        )
-        self.nifti_image_text_field = CustomTextField(
-            "E.g. imageCT",
-            700, 300, 120, 50, self
-        )
+        self.nifti_image_label = CustomLabel('NIfTI Image:', 600, 300, 200, 50, self, style="color: white;")
+        self.nifti_image_text_field = CustomTextField("E.g. imageCT", 700, 300, 120, 50, self)
         self.nifti_image_info_label = CustomInfo(
-            ' i',
-            'Specify NIfTI image file without file extension',
-            830, 300, 14, 14, self
+            ' i', 'Specify NIfTI image file without file extension', 830, 300, 14, 14, self
         )
 
         # Filtered image
         self.nifti_filtered_image_label = CustomLabel(
-            'NIfTI Filtered Image:',
-            900, 300, 200, 50, self,
-            style="color: white;"
+            'NIfTI Filtered Image:', 900, 300, 200, 50, self, style="color: white;"
         )
-        self.nifti_filtered_image_text_field = CustomTextField(
-            "E.g. filtered_imageCT",
-            1060, 300, 120, 50, self
-        )
+        self.nifti_filtered_image_text_field = CustomTextField("E.g. filtered_imageCT", 1060, 300, 120, 50, self)
         self.nifti_filtered_image_info_label = CustomInfo(
             ' i',
             'Specify filtered NIfTI image file without file extension'
             '\nIf radiomics are extracted from a filtered NIfTI image, you must provide both the filtered and the original NIfTI images.'
             '\nPlease specify the file names of the NIfTI images without their extensions.',
-            1190, 300, 14, 14, self
+            1190,
+            300,
+            14,
+            14,
+            self,
         )
 
         # Hide NIfTI elements
@@ -225,44 +205,31 @@ class RadiomicsTab(BaseTab):
     def init_radiomics_elements(self):
         """Initialize UI components related to radiomics processing options."""
         # Outlier detection
-        self.outlier_detection_check_box = CustomCheckBox(
-            'Outlier Removal (in \u03C3)',
-            200, 460, 250, 50, self
-        )
-        self.outlier_detection_text_field = CustomTextField(
-            "E.g. 3",
-            410, 460, 100, 50, self
-        )
+        self.outlier_detection_check_box = CustomCheckBox('Outlier Removal (in \u03c3)', 200, 460, 250, 50, self)
+        self.outlier_detection_text_field = CustomTextField("E.g. 3", 410, 460, 100, 50, self)
         self.outlier_detection_text_field.hide()
 
         # Intensity range
-        self.intensity_range_text_field = CustomTextField(
-            "E.g. -1000, 400",
-            410, 375, 210, 50, self
-        )
+        self.intensity_range_text_field = CustomTextField("E.g. -1000, 400", 410, 375, 210, 50, self)
         self.intensity_range_text_field.hide()
-        self.intensity_range_check_box = CustomCheckBox(
-            'Intensity Range',
-            200, 380, 200, 50, self)
+        self.intensity_range_check_box = CustomCheckBox('Intensity Range', 200, 380, 200, 50, self)
 
         # Discretization
         self.discretization_combo_box = CustomBox(
-            700, 460, 170, 50, self,
-            item_list=[
-                "Discretization:", "Number of Bins", "Bin Size"
-            ]
+            700, 460, 170, 50, self, item_list=["Discretization:", "Number of Bins", "Bin Size"]
         )
-        self.bin_number_text_field = CustomTextField(
-            "E.g. 5",
-            1000, 460, 100, 50, self
-        )
+        self.bin_number_text_field = CustomTextField("E.g. 5", 1000, 460, 100, 50, self)
         self.bin_size_text_field = CustomTextField("E.g. 50", 1000, 460, 100, 50, self)
         self.bin_number_text_field.hide()
         self.bin_size_text_field.hide()
 
         # Aggregation
         self.aggr_dim_and_method_combo_box = CustomBox(
-            700, 375, 250, 50, self,
+            700,
+            375,
+            250,
+            50,
+            self,
             item_list=[
                 "Texture Aggregation Method:",
                 "2D, averaged",
@@ -270,19 +237,21 @@ class RadiomicsTab(BaseTab):
                 "2.5D, direction-merged",
                 "2.5D, merged",
                 "3D, averaged",
-                "3D, merged"
-            ]
+                "3D, merged",
+            ],
         )
         self.weighting_combo_box = CustomBox(
-            1000, 375, 175, 50, self,
-            item_list=[
-                "Slice Averaging:", "Mean", "Weighted Mean", "Median"]
+            1000, 375, 175, 50, self, item_list=["Slice Averaging:", "Mean", "Weighted Mean", "Median"]
         )
         self.weighting_combo_box_info_label = CustomInfo(
             ' i',
             "'Mean' approach is in agreement with IBSI. \n'Weighted Mean' and 'Median' "
             "are custom solutions developed at USZ.",
-            1185, 375, 14, 14, self
+            1185,
+            375,
+            14,
+            14,
+            self,
         )
         self.weighting_combo_box_info_label.hide()
         self.weighting_combo_box.hide()
@@ -323,7 +292,9 @@ class RadiomicsTab(BaseTab):
         self.check_common_input_parameters()
 
         self.input_params["nifti_image_name"] = self.get_text_from_text_field(self.input_params["nifti_image_name"])
-        self.input_params["nifti_filtered_image_name"] = self.get_text_from_text_field(self.input_params["nifti_filtered_image_name"])
+        self.input_params["nifti_filtered_image_name"] = self.get_text_from_text_field(
+            self.input_params["nifti_filtered_image_name"]
+        )
         self.input_params["nifti_structures"] = self.get_list_from_text_field(self.input_params["nifti_structures"])
         self.input_params["dicom_structures"] = self.get_list_from_text_field(self.input_params["dicom_structures"])
 
@@ -398,9 +369,7 @@ class RadiomicsTab(BaseTab):
             backend_hint = "processes"
             self.logger.info("Not frozen state. Set backend_hint to processes")
         if list_of_patient_folders:
-            progress_dialog = ProcessingProgressDialog(
-                "Radiomics Progress", len(list_of_patient_folders), self
-            )
+            progress_dialog = ProcessingProgressDialog("Radiomics Progress", len(list_of_patient_folders), self)
             progress_dialog.start()
             n_jobs = self.input_params["number_of_threads"]
 
@@ -480,7 +449,9 @@ class RadiomicsTab(BaseTab):
                 outlier_sigma = float(text)
             except ValueError:
                 # Handle any non-numeric input gracefully
-                warning_msg = "Invalid input for the standard deviation in outlier filtering. Please enter a valid number."
+                warning_msg = (
+                    "Invalid input for the standard deviation in outlier filtering. Please enter a valid number."
+                )
                 raise InvalidInputParametersError(warning_msg)
 
             if outlier_sigma <= 0:
@@ -512,10 +483,7 @@ class RadiomicsTab(BaseTab):
 
         # Split the text field input by commas, convert to floats, handling empty values as np.inf
         try:
-            intensity_range = [
-                np.inf if value.strip() == '' else float(value.strip())
-                for value in text.split(',')
-            ]
+            intensity_range = [np.inf if value.strip() == '' else float(value.strip()) for value in text.split(',')]
         except ValueError:
             # Handle any non-numeric input gracefully
             warning_msg = "Invalid input for intensity range. Please enter numbers separated by a comma."
@@ -534,6 +502,7 @@ class RadiomicsTab(BaseTab):
             tuple: A tuple containing (discretization_method, number_of_bins, bin_size).
                    Returns (None, None, None) if required input is missing or invalid.
         """
+
         def get_bin_input(text_field, warning_message, expected_type):
             """
             Helper function to get and validate the bin input from a text field.
@@ -572,14 +541,14 @@ class RadiomicsTab(BaseTab):
             # Get and validate the number of bins input
             number_of_bins = get_bin_input(self.bin_number_text_field, "Enter Number of Bins", int)
             if number_of_bins is None:
-                warning_msg = f"Enter Number of Bins."
+                warning_msg = "Enter Number of Bins."
                 raise InvalidInputParametersError(warning_msg)
 
         elif discretization_method == 'Bin Size':
             # Get and validate the bin size input
             bin_size = get_bin_input(self.bin_size_text_field, "Enter Bin Size", float)
             if bin_size is None:
-                warning_msg = f"Enter Bin Size"
+                warning_msg = "Enter Bin Size"
                 raise InvalidInputParametersError(warning_msg)
 
         return discretization_method, number_of_bins, bin_size
@@ -599,7 +568,7 @@ class RadiomicsTab(BaseTab):
                 'merged': 'MERG',
                 'averaged': 'AVER',
                 'slice-merged': 'SLICE_MERG',
-                'direction-merged': 'DIR_MERG'
+                'direction-merged': 'DIR_MERG',
             }
             return method_mapping.get(method, method)
 
@@ -610,7 +579,7 @@ class RadiomicsTab(BaseTab):
         try:
             aggr_dim, aggr_method = map(str.strip, combo_text.split(','))
         except ValueError:
-            warning_msg = f"Invalid aggregation settings format. Please ensure it's in 'dimension,method' format."
+            warning_msg = "Invalid aggregation settings format. Please ensure it's in 'dimension,method' format."
             raise InvalidInputParametersError(warning_msg)
 
         # Map the aggregation method to its corresponding value
@@ -625,7 +594,7 @@ class RadiomicsTab(BaseTab):
             ('Data Type:', self.input_data_type_combo_box),
             ('Discretization:', self.discretization_combo_box),
             ('Texture Features Aggr. Method:', self.aggr_dim_and_method_combo_box),
-            ('Imaging Modality:', self.input_imaging_mod_combo_box)
+            ('Imaging Modality:', self.input_imaging_mod_combo_box),
         ]
         for message, combo_box in required_selections:
             if combo_box.currentText() == message:
@@ -728,7 +697,8 @@ class RadiomicsTab(BaseTab):
                 self.nifti_filtered_image_text_field.setText(data.get('radiomics_nifti_filtered_image_name', ''))
                 self.intensity_range_text_field.setText(data.get('radiomics_intensity_range', ''))
                 self.aggr_dim_and_method_combo_box.setCurrentText(
-                    data.get('radiomics_agr_strategy', 'Texture Features Aggr. Method:'))
+                    data.get('radiomics_agr_strategy', 'Texture Features Aggr. Method:')
+                )
                 self.discretization_combo_box.setCurrentText(data.get('radiomics_binning', 'Discretization:'))
                 self.bin_number_text_field.setText(data.get('radiomics_number_of_bins', ''))
                 self.bin_size_text_field.setText(data.get('radiomics_bin_size', ''))
@@ -736,7 +706,9 @@ class RadiomicsTab(BaseTab):
                 self.outlier_detection_check_box.setCheckState(data.get('radiomics_outlier_detection_check_box', 0))
                 self.outlier_detection_text_field.setText(data.get('radiomics_outlier_detection_value', ''))
                 self.weighting_combo_box.setCurrentText(data.get('radiomics_weighting', 'Slice Averaging:'))
-                self.input_imaging_mod_combo_box.setCurrentText(data.get('radiomics_input_imaging_modality', 'Imaging Modality:'))
+                self.input_imaging_mod_combo_box.setCurrentText(
+                    data.get('radiomics_input_imaging_modality', 'Imaging Modality:')
+                )
                 self.use_all_structures_check_box.setCheckState(data.get('radiomics_use_all_structures', 0))
         except FileNotFoundError:
             print("No previous data found!")

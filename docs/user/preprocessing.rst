@@ -8,6 +8,76 @@ The preprocessing tab is used to import DICOM or NIfTI data, select the masks
 to process, and resample images and segmentations onto a target voxel grid
 before filtering or radiomics extraction.
 
+Python API Steps
+----------------
+
+The Python API exposes the main image-processing steps as separate classes so
+intermediate images and masks can be inspected before feature extraction.
+
+.. code-block:: python
+
+   from zrad.preprocessing import (
+       ImageResampler,
+       IntensityMaskBuilder,
+       IVHIntensityDiscretizer,
+       MaskResampler,
+       Resegmenter,
+       RoiData,
+       TextureDiscretizer,
+   )
+
+   image_resampler = ImageResampler(
+       resolution=(1.0, 1.0, 1.0),
+       method="linear",
+       intensity_rounding="nearest_integer",
+   )
+   mask_resampler = MaskResampler(
+       resolution=(1.0, 1.0, 1.0),
+       method="linear",
+       partial_volume_threshold=0.5,
+   )
+
+   resampled_image = image_resampler.apply(image)
+   resampled_mask = mask_resampler.apply(mask)
+
+   roi_data = IntensityMaskBuilder().apply(RoiData(
+       image=resampled_image,
+       morphological_mask=resampled_mask,
+   ))
+   roi_data = Resegmenter(intensity_range=(-500, 400)).apply(
+       roi_data,
+   )
+   roi_data = TextureDiscretizer(bin_size=25).apply(
+       roi_data,
+   )
+   roi_data = IVHIntensityDiscretizer(
+       method="direct",
+   ).apply(
+       roi_data,
+   )
+
+Pipeline Contract
+-----------------
+
+The optional preprocessing pipeline operates on ``RoiData``. Each step receives
+the current ``RoiData`` and returns an updated ``RoiData``:
+
+* ``ImageResampler`` updates ``roi_data.image``.
+* ``MaskResampler`` updates ``roi_data.morphological_mask``.
+* Concrete filters update ``roi_data.filtered_image``.
+* ``IntensityMaskBuilder`` updates ``roi_data.intensity_mask`` from
+  ``roi_data.filtered_image`` if present, otherwise from ``roi_data.image``.
+* ``Resegmenter`` updates ``roi_data.intensity_mask``.
+* ``TextureDiscretizer`` updates ``roi_data.texture_discretized_image``.
+* ``IVHIntensityDiscretizer`` updates ``roi_data.ivh_intensity_image`` and
+  IVH metadata.
+* ``RoiCropper`` crops all present images and masks.
+
+Steps that change the image, feature image, morphology mask, or intensity mask
+clear prepared texture and IVH fields. Run re-segmentation before texture or
+IVH preparation. Fixed-bin-size texture and IVH discretization reuse the lower
+bound stored by ``Resegmenter`` as the discretization anchor.
+
 .. figure:: ../images/prepr_tab.png
    :alt: Z-Rad preprocessing tab
    :width: 900

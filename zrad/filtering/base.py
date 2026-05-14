@@ -1,11 +1,7 @@
-import sys
-
 import numpy as np
 
 from ..image import Image
-from ..toolbox_logic import handle_uncaught_exception
-
-sys.excepthook = handle_uncaught_exception
+from ..preprocessing.roi import RoiData
 
 
 class BaseFilter:
@@ -14,7 +10,16 @@ class BaseFilter:
     def __init__(self, filtering_method, **filtering_params):
         self.filtering_method = filtering_method
         self.filtering_params = filtering_params
-        self.filter = self
+
+    def get_params(self):
+        """Return filter parameters mapped to their configured values.
+
+        Returns
+        -------
+        params : dict
+            Constructor parameters stored by the filter instance.
+        """
+        return dict(self.filtering_params)
 
     def _prepare(self, image):
         """Hook for subclasses that need image metadata before filtering."""
@@ -23,9 +28,30 @@ class BaseFilter:
         raise NotImplementedError
 
     def apply(self, image):
-        """Apply the filter to an :class:`~zrad.image.Image` and return an image."""
+        """Apply the filter to an image or set ``RoiData.filtered_image``.
+
+        Parameters
+        ----------
+        image : Image or RoiData
+            Input image to filter. If ``RoiData`` is supplied, filtering is
+            applied to ``image.image`` and the result is stored as
+            ``filtered_image`` in the returned ROI data. Existing intensity,
+            texture, and IVH prepared fields are cleared.
+
+        Returns
+        -------
+        filtered : Image or RoiData
+            Filtered image, or ROI data with ``filtered_image`` updated.
+        """
+        if isinstance(image, RoiData):
+            return RoiData(
+                image=image.image,
+                filtered_image=self.apply(image.image),
+                morphological_mask=image.morphological_mask,
+                intensity_mask=None,
+            )
         if not isinstance(image, Image):
-            raise TypeError(f"Expected Image, got {type(image)}.")
+            raise TypeError(f"Expected Image or RoiData, got {type(image)}.")
 
         self._prepare(image)
 

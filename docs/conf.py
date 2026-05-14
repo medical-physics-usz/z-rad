@@ -30,7 +30,7 @@ templates_path = ['_templates']
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 autodoc_member_order = 'bysource'
 autoclass_content = 'both'
-autosummary_generate = ['reference/index.rst']
+autosummary_generate = True
 
 
 

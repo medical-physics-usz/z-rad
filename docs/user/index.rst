@@ -10,9 +10,7 @@ preprocessing, filtering, and radiomics workflows.
 
    installation
    data_structure
-   gui_quickstart
-   preprocessing
-   filtering
-   radiomics
-   visualization
+   gui_workflows
+   resegmentation_guidelines
+   discretization_guidelines
    api_quickstart

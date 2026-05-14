@@ -12,7 +12,7 @@ from .toolbox_gui import (
     CustomWarningBox,
 )
 from ..exceptions import InvalidInputParametersError, DataStructureError
-from ..image import get_all_structure_names, get_dicom_files
+from ..io.dicom import get_all_structure_names, get_dicom_files
 from ..visualization import Visualization
 from ..toolbox_logic import get_logger, close_all_loggers
 

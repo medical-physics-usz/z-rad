@@ -5,8 +5,45 @@ Overview
 --------
 
 The filtering layer applies optional image transforms before radiomics feature
-extraction. Filters are configured through the ``Filtering`` class and resolved
-to concrete implementations in ``zrad.filtering.filtering_definitions``.
+extraction. In Python code, instantiate concrete filter classes directly. The
+``create_filter(...)`` helper is kept for GUI and configuration-driven
+workflows where the filter family is selected by name.
+
+Python API
+----------
+
+Concrete filters expose a small, consistent API:
+
+* configure the filter in the constructor
+* call ``apply(image)`` to return a filtered ``Image``
+* call ``apply(roi_data)`` inside a preprocessing ``Pipeline`` to set
+  ``roi_data.filtered_image``
+
+.. code-block:: python
+
+   from zrad.filtering import Mean
+
+   image_filter = Mean(
+       padding_type="reflect",
+       support=3,
+       dimensionality="3D",
+   )
+
+   filtered_image = image_filter.apply(image)
+
+For dynamic workflows, use ``create_filter(...)`` when the filter type and
+parameters come from a GUI form or saved configuration:
+
+.. code-block:: python
+
+   from zrad.filtering import create_filter
+
+   image_filter = create_filter(
+       filtering_method="Mean",
+       padding_type="reflect",
+       support=3,
+       dimensionality="3D",
+   )
 
 .. figure:: ../images/Filt_tab.png
    :alt: Z-Rad filtering tab

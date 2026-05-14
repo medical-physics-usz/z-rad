@@ -1,1 +1,1 @@
-from .radiomics import Radiomics
+from .extractor import Radiomics

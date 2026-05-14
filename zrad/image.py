@@ -1,53 +1,34 @@
 import copy
 import os
-import re
-import warnings
-from datetime import datetime
 
 import SimpleITK as sitk
 import numpy as np
-import pydicom
-from pydicom.errors import InvalidDicomError
-from skimage import draw
 
-from .exceptions import DataStructureWarning, DataStructureError
-
-
-def is_fdg(name):
-    FDG_PATTERN = re.compile(
-        r"(fdg|fluorodeoxy|fludeoxy|2[-\s]?\[?18f\]?[-\s]?fluoro)",
-        re.IGNORECASE
-    )
-    return bool(FDG_PATTERN.search(name))
-
-
-def parse_time(time_str):
-    """
-    Parse a time string into a datetime object using various possible formats.
-
-    Args:
-        time_str (str or bytes): The time string to parse.
-
-    Returns:
-        datetime: Parsed datetime object.
-
-    Raises:
-        ValueError: If the time string does not match any expected formats.
-    """
-    if isinstance(time_str, bytes):
-        time_str = time_str.decode('utf-8').strip()
-
-    for fmt in ('%H%M%S.%f', '%H%M%S', '%Y%m%d%H%M%S.%f', '%Y%m%d%H%M%S'):
-        try:
-            return datetime.strptime(time_str, fmt)
-        except ValueError:
-            continue
-        except TypeError:
-            continue
-    raise ValueError(f"Time data '{time_str}' does not match expected formats")
+from .io import dicom, nifti
 
 
 class Image:
+    """Image volume with voxel data and physical geometry metadata.
+
+    ``Image`` stores arrays in NumPy order while preserving the origin, spacing,
+    direction, and size used by SimpleITK. The class is used throughout
+    preprocessing, filtering, and radiomics to keep image data aligned with ROI
+    masks.
+
+    Parameters
+    ----------
+    array : numpy.ndarray or None, optional
+        Voxel array. Image data are typically stored in ``(z, y, x)`` order.
+    origin : sequence of float or None, optional
+        Physical origin of the image in SimpleITK ``(x, y, z)`` order.
+    spacing : sequence of float or None, optional
+        Physical voxel spacing in SimpleITK ``(x, y, z)`` order.
+    direction : sequence of float or None, optional
+        Flattened 3D direction cosine matrix.
+    shape : sequence of int or None, optional
+        Image size in SimpleITK ``(x, y, z)`` order.
+    """
+
     def __init__(self, array=None, origin=None, spacing=None, direction=None, shape=None):
         self.sitk_image = None
         self.array = array
@@ -56,7 +37,105 @@ class Image:
         self.direction = direction
         self.shape = shape
 
+    @classmethod
+    def from_nifti(cls, image_path):
+        """Create an image from a NIfTI file.
+
+        Parameters
+        ----------
+        image_path : str or path-like
+            Path to the NIfTI image file.
+
+        Returns
+        -------
+        image : Image
+            Image populated with voxel data and geometry read from the file.
+        """
+        return cls._from_sitk_image(nifti.read_nifti_image(image_path))
+
+    @classmethod
+    def from_nifti_mask(cls, mask_path, reference):
+        """Create a NIfTI mask aligned to a reference image.
+
+        Parameters
+        ----------
+        mask_path : str or path-like
+            Path to the NIfTI mask file.
+        reference : Image
+            Reference image that defines the target grid and geometry.
+
+        Returns
+        -------
+        mask : Image
+            Binary mask image resampled onto the reference geometry.
+        """
+        mask = nifti.read_nifti_mask(mask_path, reference.sitk_image)
+        image = cls._from_sitk_image(mask)
+        image.origin = reference.origin
+        image.spacing = reference.spacing
+        image.direction = reference.direction
+        image.shape = reference.shape
+        return image
+
+    @classmethod
+    def from_dicom(cls, dicom_dir, modality):
+        """Create an image from a DICOM series.
+
+        Parameters
+        ----------
+        dicom_dir : str or path-like
+            Directory containing the DICOM series.
+        modality : str
+            Imaging modality used by the DICOM reader.
+
+        Returns
+        -------
+        image : Image
+            Image populated with voxel data and geometry read from the series.
+        """
+        return cls._from_sitk_image(dicom.read_dicom_image(dicom_dir, modality))
+
+    @classmethod
+    def from_dicom_mask(cls, rtstruct_path, structure_name, reference):
+        """Create a DICOM RTSTRUCT mask aligned to a reference image.
+
+        Parameters
+        ----------
+        rtstruct_path : str or path-like
+            Path to the DICOM RTSTRUCT file.
+        structure_name : str
+            Name of the ROI structure to rasterize.
+        reference : Image
+            Reference image that defines the target grid and geometry.
+
+        Returns
+        -------
+        mask : Image
+            Binary mask image aligned to the reference geometry.
+        """
+        return dicom.read_dicom_mask(rtstruct_path, structure_name, reference.sitk_image)
+
+    @classmethod
+    def _from_sitk_image(cls, image):
+        array = sitk.GetArrayFromImage(image)
+        result = cls(
+            array=array.astype(np.float64),
+            origin=image.GetOrigin(),
+            spacing=np.array(image.GetSpacing()),
+            direction=image.GetDirection(),
+            shape=image.GetSize(),
+        )
+        result.sitk_image = image
+        return result
+
     def copy(self):
+        """Return a deep copy of the image data and geometry.
+
+        Returns
+        -------
+        image : Image
+            New image with copied array, origin, spacing, direction, and shape.
+        """
         return Image(
             array=copy.deepcopy(self.array),
             origin=copy.deepcopy(self.origin),
@@ -66,6 +145,13 @@ class Image:
         )
 
     def save_as_nifti(self, output_path):
+        """Write the image to a NIfTI file.
+
+        Parameters
+        ----------
+        output_path : str or path-like
+            Destination file path for the written NIfTI image.
+        """
         if not os.path.exists(os.path.dirname(output_path)):
             os.makedirs(os.path.dirname(output_path))
         img = sitk.GetImageFromArray(self.array)
@@ -73,1004 +159,3 @@ class Image:
         img.SetSpacing(self.spacing)
         img.SetDirection(self.direction)
         sitk.WriteImage(img, output_path)
-
-    def read_nifti_image(self, image_path):
-        sitk_reader = sitk.ImageFileReader()
-        sitk_reader.SetImageIO("NiftiImageIO")
-        sitk_reader.SetFileName(image_path)
-        image = sitk_reader.Execute()
-        array = sitk.GetArrayFromImage(image)
-        self.sitk_image = image
-        self.array = array.astype(np.float64)
-        self.origin = image.GetOrigin()
-        self.spacing = np.array(image.GetSpacing())
-        self.direction = image.GetDirection()
-        self.shape = image.GetSize()
-
-    def read_nifti_mask(self, image, mask_path):
-        sitk_reader = sitk.ImageFileReader()
-        sitk_reader.SetImageIO("NiftiImageIO")
-        sitk_reader.SetFileName(mask_path)
-        mask = sitk_reader.Execute()
-
-        ref = image.sitk_image
-
-        if mask.GetOrigin() != ref.GetOrigin() or mask.GetDirection() != ref.GetDirection():
-            resampler = sitk.ResampleImageFilter()
-            resampler.SetReferenceImage(ref)
-            resampler.SetInterpolator(sitk.sitkNearestNeighbor)
-            resampler.SetDefaultPixelValue(0)
-            resampler.SetTransform(sitk.Transform())
-
-            mask = resampler.Execute(mask)
-
-        array = sitk.GetArrayFromImage(mask)
-        self.sitk_image = mask
-        self.array = array.astype(np.float64)
-        self.origin = image.origin
-        self.spacing = image.spacing
-        self.direction = image.direction
-        self.shape = image.shape
-
-    def read_dicom_image(self, dicom_dir, modality):
-        dicom_files = get_dicom_files(directory=dicom_dir, modality=modality)
-        if len(dicom_files) == 0:
-            raise DataStructureError(f"No {modality} data found in {dicom_dir}. Patient skipped.")
-        if modality in ["CT", "MRI", "PET"]:
-            validate_z_spacing(dicom_files)
-        if modality in ["CT", "MRI", "PET", "MG"]:
-            image = process_dicom_series(dicom_files)
-        if modality == 'PET':
-            validate_pet_dicom_tags(dicom_files)
-            image = apply_suv_correction(dicom_files, image)
-        if modality == 'RTDOSE':
-            file_path = dicom_files[0]['file_path']
-            image = self.read_dicom_dose(file_path)
-        if image:
-            array = sitk.GetArrayFromImage(image)
-            self.sitk_image = image
-            self.array = array.astype(np.float64)
-            self.origin = image.GetOrigin()
-            self.spacing = np.array(image.GetSpacing())
-            self.direction = image.GetDirection()
-            self.shape = image.GetSize()
-
-    def read_dicom_mask(self, rtstruct_path, structure_name, image):
-        mask = extract_dicom_mask(rtstruct_path, structure_name, image.sitk_image)
-        self.array = mask.array
-        self.origin = mask.origin
-        self.spacing = mask.spacing
-        self.direction = mask.direction
-        self.shape = mask.shape
-
-    def read_dicom_dose(self, rtdose_path):
-        ds = pydicom.dcmread(rtdose_path)
-        if ds.DoseUnits != 'GY':
-            raise DataStructureError(f"Only dose in Gy is supported. Provided {ds.DoseUnits}. Patient skipped")
-        if ds.DoseType != 'PHYSICAL':
-            raise DataStructureError(f"Only physical dose is supported. Provided {ds.DoseType}. Patient skipped.")
-        raw_dose_image = sitk.ReadImage(rtdose_path)
-        dose_array = sitk.GetArrayFromImage(raw_dose_image) * ds.DoseGridScaling
-        dose_image = sitk.GetImageFromArray(
-            dose_array)  # dose_array is a NumPy array that contains the dose values (after applying DoseGridScaling). This line converts dose_array back into a SITK image.
-        dose_image.SetOrigin(
-            raw_dose_image.GetOrigin())  # Copies the origin (spatial reference of the image in the coordinate system) from the original DICOM image (raw_dose_image) to dose_image.
-        dose_image.SetSpacing(
-            raw_dose_image.GetSpacing())  # Ensures that the voxel spacing (physical size of each pixel in millimeters) is retained from the original dose DICOM file.
-        dose_image.SetDirection(
-            raw_dose_image.GetDirection())  # Copies the image orientation (how the image is aligned in 3D space) from the original dose DICOM file.
-
-        return dose_image
-
-
-def remove_duplicate_slices(dicom_files_info):
-    """
-    Remove duplicate slices with identical ImagePositionPatient (IPP).
-
-    Keeps the first occurrence of each IPP (in the order coming from
-    GetGDCMSeriesFileNames, which is already geometrically sorted).
-    """
-    cleaned = []
-    seen_ipps = set()
-    duplicates = 0
-
-    for info in dicom_files_info:
-        ds = info['ds']
-
-        if "ImagePositionPatient" in ds:
-            ipp = tuple(map(float, ds.ImagePositionPatient))
-        else:
-            ipp = None
-
-        if ipp is None:
-            cleaned.append(info)
-            continue
-
-        if ipp in seen_ipps:
-            duplicates += 1
-            continue
-
-        seen_ipps.add(ipp)
-        cleaned.append(info)
-    if duplicates > 0:
-        warnings.warn(
-            f"Removed {duplicates} duplicate slice(s) with identical ImagePositionPatient.",
-            DataStructureWarning
-        )
-
-    return cleaned
-
-
-def sort_by_geometric_position(dicom_files_info):
-    """
-    Sort slices by physical position using ImageOrientationPatient + ImagePositionPatient
-    (distance along the slice normal).
-    """
-
-    def slice_distance(ds):
-        iop = np.array(ds.ImageOrientationPatient, dtype=float)
-        row = iop[:3]
-        col = iop[3:]
-        normal = np.cross(row, col)
-        ipp = np.array(ds.ImagePositionPatient, dtype=float)
-        return float(np.dot(ipp, normal))
-
-    return sorted(dicom_files_info, key=lambda x: slice_distance(x['ds']))
-
-
-def get_dicom_files(directory, modality):
-    modality_dicom = modality_mapping(modality)
-    dicom_files_info = []
-    if modality_dicom in ['CT', 'PT', 'MR']:
-        reader = sitk.ImageSeriesReader()
-        series_IDs = reader.GetGDCMSeriesIDs(directory)
-        selected_series = None
-        for sid in series_IDs:
-            files = reader.GetGDCMSeriesFileNames(directory, sid)
-            dcm = pydicom.dcmread(os.path.join(directory, files[0]), stop_before_pixels=True)
-            if dcm.Modality == modality_dicom:
-                selected_series = sid
-                break
-        if selected_series is None:
-            raise DataStructureError(f"No {modality_dicom} series found for {directory}. Patient skipped")
-        all_files = reader.GetGDCMSeriesFileNames(directory, selected_series)
-    else:
-        all_files = [os.path.join(directory, i) for i in os.listdir(directory)]
-    for file_path in all_files:
-        try:
-            # Try to read the DICOM file without loading pixel data
-            ds = pydicom.dcmread(file_path, stop_before_pixels=True)
-            # Check if the DICOM file's Modality matches the desired modality
-            if ds.Modality == modality_dicom:
-                if hasattr(ds, 'ImageType') and (
-                        'LOCALIZER' in ds.ImageType or any('MIP' in entry for entry in ds.ImageType)):
-                    continue
-                dicom_files_info.append({'file_path': file_path, 'ds': ds})
-
-        except InvalidDicomError:
-            # File is not a valid DICOM; skip it
-            continue
-        except Exception as e:
-            # Handle any other unexpected exceptions
-            warning_msg = f"An error occurred while processing file {file_path}: {str(e)}"
-            warnings.warn(warning_msg, DataStructureWarning)
-
-    if len(dicom_files_info) > 1:
-
-        # Build signatures
-        signatures = []
-        for item in dicom_files_info:
-            ds = item["ds"]
-
-            pix = tuple(ds.PixelSpacing) if hasattr(ds, "PixelSpacing") else None
-            thick = getattr(ds, "SliceThickness", None)
-            space = getattr(ds, "SpacingBetweenSlices", None)
-            kernel = getattr(ds, "ConvolutionKernel", None)
-
-            signatures.append((pix, thick, space, kernel))
-
-        # Unique geometry keys
-        unique_keys = []
-        for sig in signatures:
-            if sig not in unique_keys:
-                unique_keys.append(sig)
-
-        # Count how many slices fall in each geometry group
-        group_counts = []
-        for key in unique_keys:
-            count = 0
-            for sig in signatures:
-                if sig == key:
-                    count += 1
-            group_counts.append(count)
-
-        # Pick largest geometry group
-        best_key = unique_keys[group_counts.index(max(group_counts))]
-
-        # Filter slices matching that geometry
-        filtered = []
-        for item, sig in zip(dicom_files_info, signatures):
-            if sig == best_key:
-                filtered.append(item)
-
-        if len(filtered) != len(dicom_files_info):
-            warnings.warn(
-                "Series contains mixed geometries; keeping the largest consistent set.",
-                DataStructureWarning
-            )
-
-        dicom_files_info = filtered
-    if modality_dicom in ['CT', 'PT', 'MR']:
-        dicom_files_info = remove_duplicate_slices(dicom_files_info)
-        dicom_files_info = sort_by_geometric_position(dicom_files_info)
-    return dicom_files_info
-
-
-def validate_z_spacing(dicom_files):
-    slice_z_origin = []
-    for dcm_file in dicom_files:
-        slice_z_origin.append(float(dcm_file['ds'].ImagePositionPatient[2]))
-    slice_z_origin = sorted(slice_z_origin)
-    slice_thickness = [abs(slice_z_origin[i] - slice_z_origin[i + 1]) for i in range(len(slice_z_origin) - 1)]
-    for i in range(len(slice_thickness) - 1):
-        spacing_difference = abs((slice_thickness[i] - slice_thickness[i + 1]))
-        spacing_threshold = 0.1
-        if spacing_difference > spacing_threshold:
-            error_msg = f'Inconsistent z-spacing. Absolute deviation is {spacing_difference:.3f} which is greater than {spacing_threshold:.3f} mm.'
-            raise DataStructureError(error_msg)
-
-
-def calc_elapsed_time(ds, decay_constant, acquisition_time, injection_time):
-    frame_reference_time = float(ds.FrameReferenceTime) / 1000
-    decay_during_frame = decay_constant * ds.ActualFrameDuration / 1000
-    avg_count_rate_time = (1 / decay_constant) * np.log(
-        decay_during_frame / (1 - np.exp(-decay_during_frame)))
-
-    return (acquisition_time - injection_time).total_seconds() + avg_count_rate_time - frame_reference_time
-
-def get_patient_height_cm(ds):
-    """
-    Return patient height in cm.
-
-    DICOM PatientSize (0010,1020) is defined in meters in standard DICOM,
-    but some datasets may store cm. We accept both:
-      - <= 3   -> interpreted as meters
-      - > 3    -> interpreted as cm
-    """
-    if hasattr(ds, "PatientSize") and ds.PatientSize not in [None, ""]:
-        h = float(ds.PatientSize)
-    elif (0x0010, 0x1020) in ds and ds[(0x0010, 0x1020)].value not in [None, ""]:
-        h = float(ds[(0x0010, 0x1020)].value)
-    else:
-        raise DataStructureError("Patient height tag (0010,1020) is missing.")
-
-    if h <= 0:
-        raise DataStructureError("Patient height must be > 0.")
-
-    return h * 100.0 if h <= 3 else h
-
-
-def calculate_bsa_du_bois(height_cm, weight_kg):
-    """
-    Du Bois body surface area in m^2.
-    BSA = 0.007184 * H^0.725 * W^0.425
-    """
-    if height_cm <= 0 or weight_kg <= 0:
-        raise DataStructureError("Height and weight must be > 0 to compute BSA.")
-    return 0.007184 * (height_cm ** 0.725) * (weight_kg ** 0.425)
-
-def get_patient_sex(ds):
-    """
-    Return normalized patient sex: 'M', 'F', or 'O'.
-
-    DICOM PatientSex (0010,0040) may contain M, F, O, or be missing/empty.
-    """
-    sex = getattr(ds, "PatientSex", None)
-    if sex is None and (0x0010, 0x0040) in ds:
-        sex = ds[(0x0010, 0x0040)].value
-
-    if sex is None:
-        raise DataStructureError("Patient sex tag (0010,0040) is missing.")
-
-    sex = str(sex).strip().upper()
-    if sex == "":
-        raise DataStructureError("Patient sex tag (0010,0040) is empty.")
-    if sex not in {"M", "F", "O"}:
-        raise DataStructureError(
-            f"Unsupported PatientSex '{sex}'. Expected one of 'M', 'F', or 'O'."
-        )
-    return sex
-
-
-def calculate_lbm_morgan(height_cm, weight_kg, sex):
-    """
-    Lean body mass using Morgan/Sugawara-style formula.
-
-    Male:   LBM = 1.10 * W - 120 * (W / H)^2
-    Female: LBM = 1.07 * W - 148 * (W / H)^2
-    Other:  mean of male and female values
-
-    W in kg, H in cm.
-    """
-    if height_cm <= 0 or weight_kg <= 0:
-        raise DataStructureError("Height and weight must be > 0 to compute LBM.")
-
-    male_lbm = 1.10 * weight_kg - 120.0 * ((weight_kg / height_cm) ** 2)
-    female_lbm = 1.07 * weight_kg - 148.0 * ((weight_kg / height_cm) ** 2)
-
-    if sex == "M":
-        lbm = male_lbm
-    elif sex == "F":
-        lbm = female_lbm
-    elif sex == "O":
-        lbm = 0.5 * (male_lbm + female_lbm)
-    else:
-        raise DataStructureError(f"Unsupported sex '{sex}' for LBM calculation.")
-
-    if lbm <= 0:
-        raise DataStructureError(f"Computed Morgan LBM is non-positive: {lbm}.")
-    return lbm
-
-
-def calculate_lbm_james128(height_cm, weight_kg, sex):
-    """
-    Lean body mass using James/Morgan-128 formula.
-
-    Male:   LBM = 1.10 * W - 128 * (W / H)^2
-    Female: LBM = 1.07 * W - 148 * (W / H)^2
-    Other:  mean of male and female values
-
-    W in kg, H in cm.
-    """
-    if height_cm <= 0 or weight_kg <= 0:
-        raise DataStructureError("Height and weight must be > 0 to compute LBM.")
-
-    male_lbm = 1.10 * weight_kg - 128.0 * ((weight_kg / height_cm) ** 2)
-    female_lbm = 1.07 * weight_kg - 148.0 * ((weight_kg / height_cm) ** 2)
-
-    if sex == "M":
-        lbm = male_lbm
-    elif sex == "F":
-        lbm = female_lbm
-    elif sex == "O":
-        lbm = 0.5 * (male_lbm + female_lbm)
-    else:
-        raise DataStructureError(f"Unsupported sex '{sex}' for LBM calculation.")
-
-    if lbm <= 0:
-        raise DataStructureError(f"Computed James128 LBM is non-positive: {lbm}.")
-    return lbm
-
-
-def calculate_lbm_janmahasatian(height_cm, weight_kg, sex):
-    """
-    Lean body mass using Janmahasatian formula.
-
-    BMI = W / (H * 1e-2)^2
-
-    Male:   LBM = 9270 * W / (6680 + 216 * BMI)
-    Female: LBM = 9270 * W / (8780 + 244 * BMI)
-    Other:  mean of male and female values
-
-    W in kg, H in cm.
-    """
-    if height_cm <= 0 or weight_kg <= 0:
-        raise DataStructureError("Height and weight must be > 0 to compute LBM.")
-
-    height_m = height_cm * 1e-2
-    bmi = weight_kg / (height_m ** 2)
-
-    male_lbm = 9270.0 * weight_kg / (6680.0 + 216.0 * bmi)
-    female_lbm = 9270.0 * weight_kg / (8780.0 + 244.0 * bmi)
-
-    if sex == "M":
-        lbm = male_lbm
-    elif sex == "F":
-        lbm = female_lbm
-    elif sex == "O":
-        lbm = 0.5 * (male_lbm + female_lbm)
-    else:
-        raise DataStructureError(f"Unsupported sex '{sex}' for LBM calculation.")
-
-    if lbm <= 0:
-        raise DataStructureError(f"Computed Janmahasatian LBM is non-positive: {lbm}.")
-    return lbm
-
-
-def calculate_ibw(height_cm, sex):
-    """
-    Ideal body weight.
-
-    Male:   IBW = 48.0 + 1.06 * (H - 152)
-    Female: IBW = 45.5 + 0.91 * (H - 152)
-    Other:  mean of male and female values
-
-    H in cm.
-    """
-    if height_cm <= 0:
-        raise DataStructureError("Height must be > 0 to compute IBW.")
-
-    male_ibw = 48.0 + 1.06 * (height_cm - 152.0)
-    female_ibw = 45.5 + 0.91 * (height_cm - 152.0)
-
-    if sex == "M":
-        ibw = male_ibw
-    elif sex == "F":
-        ibw = female_ibw
-    elif sex == "O":
-        ibw = 0.5 * (male_ibw + female_ibw)
-    else:
-        raise DataStructureError(f"Unsupported sex '{sex}' for IBW calculation.")
-
-    if ibw <= 0:
-        raise DataStructureError(f"Computed IBW is non-positive: {ibw}.")
-    return ibw
-
-
-def get_gml_normalization_info(ds):
-    """
-    Parse GML SUV normalization metadata and compute the normalization factor.
-
-    Returns:
-        tuple[str, float]: (suv_type, factor_kg)
-
-    Supported SUV Type values:
-        - missing/empty -> 'BW'
-        - 'BW'
-        - 'LBM'          -> Morgan
-        - 'LBMJAMES128'
-        - 'LBMJANMA'
-        - 'IBW'
-    """
-    suv_type_elem = ds.get((0x0054, 0x1006), None)
-    suv_type = "BW" if suv_type_elem is None or suv_type_elem.value in [None, ""] else str(suv_type_elem.value).strip().upper()
-
-    try:
-        patient_weight = float(ds.PatientWeight)
-    except Exception:
-        raise DataStructureError("Patient weight tag is missing or invalid for GML normalization.")
-
-    if patient_weight <= 0:
-        raise DataStructureError("Patient weight must be > 0 for GML normalization.")
-
-    if suv_type == "BW":
-        return suv_type, patient_weight
-
-    height_cm = get_patient_height_cm(ds)
-    sex = get_patient_sex(ds)
-
-    if suv_type == "LBM":
-        factor = calculate_lbm_morgan(height_cm, patient_weight, sex)
-    elif suv_type == "LBMJAMES128":
-        factor = calculate_lbm_james128(height_cm, patient_weight, sex)
-    elif suv_type == "LBMJANMA":
-        factor = calculate_lbm_janmahasatian(height_cm, patient_weight, sex)
-    elif suv_type == "IBW":
-        factor = calculate_ibw(height_cm, sex)
-    else:
-        raise DataStructureError(
-            f"GML with SUV Type '{suv_type}' is not supported. "
-            f"Supported types are BW, LBM, LBMJAMES128, LBMJANMA, and IBW."
-        )
-
-    return suv_type, factor
-
-def validate_pet_dicom_tags(dicom_files):
-    for dcm_file in dicom_files:
-        ds = dcm_file['ds']
-        image_id = dcm_file['file_path']
-
-        try:
-            pat_weight = ds[(0x0010, 0x1030)].value
-            if float(pat_weight) < 1:
-                warning_msg = f"For patient's {image_id} image, patient's weight tag (0071, 1022) contains weight < 1kg. Patient is excluded from the analysis."
-                warnings.warn(warning_msg, DataStructureWarning)
-
-        except (KeyError, TypeError):
-            warning_msg = f"For patient's {image_id} image, patient's weight tag (0071, 1022) is not present. Patient is excluded from the analysis."
-            warnings.warn(warning_msg, DataStructureWarning)
-        if pat_weight <= 0:
-            raise DataStructureError("Patient weight must be > 0.")
-        if 'DECY' not in ds[(0x0028, 0x0051)].value or 'ATTN' not in ds[(0x0028, 0x0051)].value:
-            warning_msg = f"For patient's {image_id} image, in DICOM tag (0028, 0051) either no 'DECY' (decay correction) or 'ATTN' (attenuation correction). Patient is excluded from the analysis."
-            warnings.warn(warning_msg, DataStructureWarning)
-
-        if ds.Units == 'BQML':
-            try:
-                injection_time = parse_time(
-                    ds.RadiopharmaceuticalInformationSequence[0].RadiopharmaceuticalStartTime)
-            except AttributeError:
-                injection_time = parse_time(
-                    ds.RadiopharmaceuticalInformationSequence[0].RadiopharmaceuticalStartDateTime)
-            half_life = float(ds.RadiopharmaceuticalInformationSequence[0].RadionuclideHalfLife)
-            decay_constant = np.log(2) / half_life
-
-            if ds.DecayCorrection == 'START':
-                if 'PHILIPS' in ds.Manufacturer.upper():
-
-                    acquisition_time = parse_time(ds.AcquisitionTime).replace(year=injection_time.year,
-                                                                              month=injection_time.month,
-                                                                              day=injection_time.day)
-
-                    elapsed_time = calc_elapsed_time(ds, decay_constant, acquisition_time, injection_time)
-                elif 'SIEMENS' in ds.Manufacturer.upper() or 'CPS' in ds.Manufacturer.upper() or 'CTI' in ds.Manufacturer.upper():
-                    try:
-                        elapsed_time = (
-                                parse_time(ds[(0x0071, 0x1022)].value).replace(year=injection_time.year,
-                                                                               month=injection_time.month,
-                                                                               day=injection_time.day)
-                                - injection_time).total_seconds()
-
-                    except (KeyError, TypeError):
-                        acquisition_time = parse_time(ds.AcquisitionTime).replace(year=injection_time.year,
-                                                                                  month=injection_time.month,
-                                                                                  day=injection_time.day)
-
-                        elapsed_time = calc_elapsed_time(ds, decay_constant, acquisition_time, injection_time)
-                elif 'GE' in ds.Manufacturer.upper():
-                    try:
-                        elapsed_time = (
-                                parse_time(ds[(0x0009, 0x100d)].value).replace(year=injection_time.year,
-                                                                               month=injection_time.month,
-                                                                               day=injection_time.day)
-                                - injection_time).total_seconds()
-                    except (KeyError, TypeError):
-                        acquisition_time = parse_time(ds.AcquisitionTime).replace(year=injection_time.year,
-                                                                                  month=injection_time.month,
-                                                                                  day=injection_time.day)
-                        frame_reference_time = float(ds.FrameReferenceTime) / 1000
-
-                        elapsed_time = (acquisition_time - injection_time).total_seconds() - frame_reference_time
-                else:
-                    acquisition_time = parse_time(ds.AcquisitionTime).replace(year=injection_time.year,
-                                                                              month=injection_time.month,
-                                                                              day=injection_time.day)
-
-                    elapsed_time = calc_elapsed_time(ds, decay_constant, acquisition_time, injection_time)
-
-                    warning_msg = f"For patient's {image_id} image, an unknown PET scaner manufacturer is present {ds.Manufacturer}. Siemens/Philips strategy is applied."
-                    warnings.warn(warning_msg, DataStructureWarning)
-
-            elif ds.DecayCorrection == 'ADMIN':
-                elapsed_time = 0
-            elif ds.DecayCorrection == 'NONE':
-                elapsed_time = None
-            else:
-                warning_msg = f"For patient's {image_id} image, An unsupported Decay Correction {ds.DecayCorrection} is present. Only supported are 'NONE', 'START' and 'ADMIN'. Patient is excluded from the analysis."
-                raise DataStructureError(warning_msg)
-            if elapsed_time is not None and elapsed_time < 0:
-                error_msg = f"For patient's {image_id} image, patient is excluded from the analysis due to the negative time difference in the decay factor."
-                raise DataStructureError(error_msg)
-            elif elapsed_time is not None and elapsed_time > 0 and abs(
-                    elapsed_time) < 1800 and ds.DecayCorrection != 'ADMIN':
-                warning_msg = f"Only {abs(elapsed_time) / 60} minutes after the injection."
-                warnings.warn(warning_msg, DataStructureWarning)
-        elif ds.Units == 'CNTS' and 'PHILIPS' in ds.Manufacturer.upper():
-            if not (((0x7053, 0x1009) in ds and ds[(0x7053, 0x1009)].value != 0) or (
-                    (0x7053, 0x1000) in ds and ds[(0x7053, 0x1000)].value != 0)):
-                error_msg = f"For patient's {image_id} image, patient is excluded, Philips scale factors not present (PET units CNTS)"
-                raise DataStructureError(error_msg)
-        elif ds.Units == 'GML':
-            try:
-                _suv_type, _factor = get_gml_normalization_info(ds)
-            except Exception as e:
-                error_msg = (
-                    f"For patient's {image_id} image, patient is excluded, "
-                    f"GML normalization is invalid: {e}"
-                )
-                raise DataStructureError(error_msg)
-
-        elif ds.Units == 'CM2ML':
-            suv_type = ds.get((0x0054, 0x1006), None)
-            if suv_type is not None and suv_type.value != 'BSA':
-                error_msg = (
-                    f"For patient's {image_id} image, patient is excluded, SUV Type "
-                    f"is not BSA (CM2ML units)"
-                )
-                raise DataStructureError(error_msg)
-
-            try:
-                patient_weight = float(ds.PatientWeight)
-                height_cm = get_patient_height_cm(ds)
-                _ = calculate_bsa_du_bois(height_cm, patient_weight)
-            except Exception as e:
-                error_msg = (
-                    f"For patient's {image_id} image, CM2ML requires valid patient "
-                    f"height and weight for Du Bois BSA calculation: {e}"
-                )
-                raise DataStructureError(error_msg)
-
-        else:
-            error_msg = f"For patient's {image_id} image, patient is excluded, only supported PET Units are BQML for Philips, Siemens and GE or CNTS for Philips"
-            raise DataStructureError(error_msg)
-
-
-def apply_suv_correction(dicom_files, suv_image):
-    def process_single_slice(dicom_file_path):
-        ds = pydicom.dcmread(dicom_file_path)
-
-        def get_injection_time(ds):
-            rph = ds.RadiopharmaceuticalInformationSequence[0]
-            try:
-                return parse_time(rph.RadiopharmaceuticalStartTime)
-            except AttributeError:
-                return parse_time(rph.RadiopharmaceuticalStartDateTime)
-
-        def get_tracer_name(rph_item):
-            value = getattr(rph_item, "Radiopharmaceutical", None)
-            if value is None and (0x0018, 0x0031) in rph_item:
-                value = rph_item[(0x0018, 0x0031)].value
-            return str(value) if value is not None else None
-
-        def get_datetime_on_injection_day(time_value, injection_time):
-            return parse_time(time_value).replace(
-                year=injection_time.year,
-                month=injection_time.month,
-                day=injection_time.day,
-            )
-
-        def compute_elapsed_time_for_start_decay_correction(ds, injection_time, decay_constant):
-            manufacturer = ds.Manufacturer.upper()
-
-            acquisition_time = get_datetime_on_injection_day(ds.AcquisitionTime, injection_time)
-            series_time = get_datetime_on_injection_day(ds.SeriesTime, injection_time)
-
-            if "PHILIPS" in manufacturer:
-                if acquisition_time == series_time:
-                    return (acquisition_time - injection_time).total_seconds()
-                return calc_elapsed_time(ds, decay_constant, acquisition_time, injection_time)
-
-            if "SIEMENS" in manufacturer or "CPS" in manufacturer or "CTI" in manufacturer:
-                try:
-                    private_time = get_datetime_on_injection_day(ds[(0x0071, 0x1022)].value, injection_time)
-                    return (private_time - injection_time).total_seconds()
-                except (KeyError, TypeError):
-                    if acquisition_time == series_time:
-                        return (acquisition_time - injection_time).total_seconds()
-                    return calc_elapsed_time(ds, decay_constant, acquisition_time, injection_time)
-
-            if "GE" in manufacturer:
-                try:
-                    private_time = get_datetime_on_injection_day(ds[(0x0009, 0x100D)].value, injection_time)
-                    return (private_time - injection_time).total_seconds()
-                except (KeyError, TypeError):
-                    if acquisition_time == series_time:
-                        return (acquisition_time - injection_time).total_seconds()
-                    frame_reference_time = float(ds.FrameReferenceTime) / 1000.0
-                    return (acquisition_time - injection_time).total_seconds() - frame_reference_time
-
-            if acquisition_time == series_time:
-                return (acquisition_time - injection_time).total_seconds()
-            return calc_elapsed_time(ds, decay_constant, acquisition_time, injection_time)
-
-        def process_gml(pixel_array_units, ds):
-            """
-            Handle PET images stored with Units == 'GML'.
-
-            Stored values are already SUV-normalized, but not always by body weight.
-            Convert all supported GML normalizations to SUVbw.
-
-            Supported SUV Type values:
-              - missing/empty or 'BW'     -> already SUVbw
-              - 'LBM'                     -> Morgan
-              - 'LBMJAMES128'             -> James/Morgan-128
-              - 'LBMJANMA'                -> Janmahasatian
-              - 'IBW'                     -> ideal body weight
-            """
-            suv_type, factor = get_gml_normalization_info(ds)
-            patient_weight = float(ds.PatientWeight)
-
-            if suv_type == "BW":
-                return pixel_array_units
-
-            return pixel_array_units * (patient_weight / factor)
-
-        def process_cm2ml(pixel_array_units, ds):
-            """
-            Convert SUVbsa (cm^2/ml) to SUVbw.
-
-            Given:
-              SUVbsa = Ac * BSA * 10^4 / D
-              SUVbw  = Ac * W * 1000 / D
-
-            Therefore:
-              SUVbw = SUVbsa * (W / (BSA * 10))
-            where:
-              - W is in kg
-              - BSA is in m^2
-            """
-            suv_type = ds.get((0x0054, 0x1006), None)
-            if suv_type is not None and suv_type.value != "BSA":
-                raise DataStructureError(
-                    f"CM2ML with {suv_type.value} SUV normalization is not supported!"
-                )
-
-            patient_weight = float(ds.PatientWeight)
-            height_cm = get_patient_height_cm(ds)
-            bsa_m2 = calculate_bsa_du_bois(height_cm, patient_weight)
-
-            return pixel_array_units * (patient_weight / (bsa_m2 * 10.0))
-
-        def process_bqml(activity_concentration, ds):
-            """
-            Convert BQML to SUVbw.
-
-            Handles both decay-corrected and decay-uncorrected images depending on
-            ds.DecayCorrection.
-            """
-            rph = ds.RadiopharmaceuticalInformationSequence[0]
-            injection_time = get_injection_time(ds)
-            patient_weight = float(ds.PatientWeight)
-            injected_dose = float(rph.RadionuclideTotalDose)
-
-            tracer_name = get_tracer_name(rph)
-            if tracer_name is not None and is_fdg(tracer_name) and injected_dose < 10000:
-                injected_dose *= 1000000
-                warnings.warn(
-                    f"Injected dose is {injected_dose} Bq, it is too low for FDG, assumed to be in MBq",
-                    DataStructureWarning,
-                )
-
-            if injected_dose <= 0:
-                raise DataStructureError("The injected PET tracer dose is zero.")
-
-            half_life = float(rph.RadionuclideHalfLife)
-            decay_constant = np.log(2) / half_life
-            decay_correction = ds.DecayCorrection
-
-            if decay_correction == "START":
-                elapsed_time = compute_elapsed_time_for_start_decay_correction(
-                    ds, injection_time, decay_constant
-                )
-                decay_factor = np.exp(-(np.log(2) * elapsed_time) / half_life)
-                decay_corrected_dose = injected_dose * decay_factor
-                return activity_concentration / (decay_corrected_dose / (patient_weight * 1000))
-
-            if decay_correction == "ADMIN":
-                return activity_concentration / (injected_dose / (patient_weight * 1000))
-
-            if decay_correction == "NONE":
-                manufacturer = ds.Manufacturer.upper()
-                acquisition_time = get_datetime_on_injection_day(ds.AcquisitionTime, injection_time)
-
-                decay_during_frame = decay_constant * float(ds.ActualFrameDuration) / 1000.0
-                avg_count_rate_time = (1 / decay_constant) * np.log(
-                    decay_during_frame / (1 - np.exp(-decay_during_frame))
-                )
-                decay_corrected_activity_concentration = activity_concentration * np.exp(
-                    decay_constant
-                    * ((acquisition_time - injection_time).total_seconds() + avg_count_rate_time)
-                )
-
-                return decay_corrected_activity_concentration / (
-                    injected_dose / (patient_weight * 1000)
-                )
-
-            raise DataStructureError(
-                f"Decay correction {decay_correction} is not supported!"
-            )
-
-        def process_cnts(pixel_array_units, ds):
-            """
-            Convert Philips CNTS to SUVbw.
-
-            Handles both decay-corrected and decay-uncorrected images depending on
-            ds.DecayCorrection.
-            """
-            manufacturer = ds.Manufacturer.upper()
-            if "PHILIPS" not in manufacturer:
-                raise DataStructureError(
-                    f"Vendor {ds.Manufacturer} is not supported with CNTS units!"
-                )
-
-            if (0x7053, 0x1009) in ds and ds[(0x7053, 0x1009)].value != 0:
-                activity_concentration_bqml = pixel_array_units * ds[(0x7053, 0x1009)].value
-                return process_bqml(activity_concentration_bqml, ds)
-
-            if ds.DecayCorrection != "NONE" and (0x7053, 0x1000) in ds and ds[(0x7053, 0x1000)].value != 0:
-                return pixel_array_units * ds[(0x7053, 0x1000)].value
-
-            raise DataStructureError("Philips-specific scaling factors not present!")
-
-        units = ds.Units
-        pixel_array_units = (ds.pixel_array * ds.RescaleSlope) + ds.RescaleIntercept
-
-        if units == "GML":
-            suv = process_gml(pixel_array_units, ds)
-        elif units == "CM2ML":
-            suv = process_cm2ml(pixel_array_units, ds)
-        elif units == "BQML":
-            suv = process_bqml(pixel_array_units, ds)
-        elif units == "CNTS":
-            suv = process_cnts(pixel_array_units, ds)
-        else:
-            raise DataStructureError(f"Units {units} are not supported!")
-
-        return suv.T
-
-    intensity_array = np.zeros(suv_image.GetSize())
-
-    dicom_files = sorted(dicom_files, key=lambda f: float(f["ds"].ImagePositionPatient[2]))
-    for z_slice_id, dicom_file in enumerate(dicom_files):
-        intensity_array[:, :, z_slice_id] = process_single_slice(dicom_file["file_path"])
-
-    # Flip from head to toe
-    intensity_image = sitk.GetImageFromArray(intensity_array.T)
-    intensity_image.SetOrigin(suv_image.GetOrigin())
-    intensity_image.SetSpacing(np.array(suv_image.GetSpacing()))
-    intensity_image.SetDirection(np.array(suv_image.GetDirection()))
-    return intensity_image
-
-
-def modality_mapping(modality):
-    modality_map = {'PET': 'PT', 'CT': 'CT', 'MRI': 'MR', 'RTSTRUCT': 'RTSTRUCT', 'MG': 'MG', 'RTDOSE': 'RTDOSE'}
-    return modality_map[modality]
-
-
-def process_dicom_series(dicom_files):
-    reader = sitk.ImageSeriesReader()
-    file_names = [i['file_path'] for i in dicom_files]
-    reader.SetFileNames(file_names)
-    image = reader.Execute()
-
-    slice_z_origin = []
-    direction = None
-    for dicom_file in dicom_files:
-        ds = dicom_file['ds']
-
-        if ds.Modality in ['CT', 'PT', 'MR']:
-            pixel_spacing = ds.PixelSpacing
-
-            # Use full 3D position
-            iop = np.array(ds.ImageOrientationPatient, dtype=float)  # 6 values
-            row_cosines = iop[:3]
-            col_cosines = iop[3:]
-            normal = np.cross(row_cosines, col_cosines)  # image plane normal
-            if direction is None:
-                direction = np.vstack([row_cosines, col_cosines, normal]).flatten(order="F")
-            # Project position onto normal vector
-            distance_along_normal = np.dot(np.array(ds.ImagePositionPatient, dtype=float), normal)
-            slice_z_origin.append(distance_along_normal)
-
-        elif ds.Modality == 'MG':
-            pixel_spacing = ds.ImagerPixelSpacing
-            slice_z_origin.append(ds.BodyPartThickness)
-            image.SetOrigin([0, 0, 0])
-            direction = [1, 0, 0, 0, 1, 0, 0, 0, 1]
-
-    slice_z_origin = sorted(slice_z_origin)
-    if len(slice_z_origin) > 1:
-        slice_thickness = np.median(np.abs(np.diff(np.asarray(slice_z_origin, float))))
-
-    elif len(slice_z_origin) == 1:
-        slice_thickness = slice_z_origin[0]
-
-    image.SetSpacing((float(pixel_spacing[0]), float(pixel_spacing[1]), float(slice_thickness)))
-    image.SetDirection(direction)
-    if dicom_files[0]['ds'].Modality == 'CT' and np.min(sitk.GetArrayFromImage(image)) >= 0:
-        error_msg = f'Non-negative CT intensity. SITK failed to convert CT into HU for {dicom_files[0]["file_path"]}. The patient is excluded from analysis'
-        raise DataStructureError(error_msg)
-
-    return image
-
-
-def extract_dicom_mask(rtstruct_path, roi_name, image):
-    def generate_mask_array(contours, sitk_image):
-
-        # Get image dimensions: (width, height, depth)
-        width, height, depth = sitk_image.GetSize()
-        # Create an empty 3D mask with shape (depth, height, width)
-        mask_array = np.zeros((depth, height, width), dtype=np.uint8)
-
-        for contour in contours:
-            # Normalize contour type string
-            contour_type = contour['type'].upper().replace('_', '').strip()
-            if contour_type not in ['CLOSEDPLANAR', 'INTERPOLATEDPLANAR', 'CLOSEDPLANARXOR']:
-                continue
-
-            points = contour['points']
-            num_points = len(points['x'])
-            # Transform all physical points to continuous index coordinates
-            transformed_points = np.array([
-                sitk_image.TransformPhysicalPointToContinuousIndex(
-                    (points['x'][i], points['y'][i], points['z'][i])
-                )
-                for i in range(num_points)
-            ])
-
-            # Compute rounded z indices for each point
-            z_indices = np.rint(transformed_points[:, 2]).astype(int)
-
-            # Prepare polygon coordinates for x and y. Note: polygon2mask expects (row, col) = (y, x)
-            polygon_coords = np.column_stack((transformed_points[:, 1], transformed_points[:, 0]))
-            mask_layer = draw.polygon2mask((height, width), polygon_coords)
-
-            # Combine the mask on each relevant slice:
-            # Use XOR for "CLOSEDPLANARXOR" contours; for others, simply add (logical OR).
-            for z in z_indices:
-                if contour_type == 'CLOSEDPLANARXOR':
-                    mask_array[z] = np.logical_xor(mask_array[z], mask_layer).astype(np.uint8)
-                else:
-                    mask_array[z] = np.logical_or(mask_array[z], mask_layer).astype(np.uint8)
-
-        return mask_array
-
-    def get_contour_data(file_path, selected_roi):
-        def get_contour_coord(metadata, current_roi_sequence, skip_contours_bool=False):
-            contour_info = {
-                'name': getattr(metadata[current_roi_sequence.ReferencedROINumber], 'ROIName', 'unknown'),
-                'roi_number': current_roi_sequence.ReferencedROINumber,
-                'referenced_frame': getattr(metadata[current_roi_sequence.ReferencedROINumber],
-                                            'ReferencedFrameOfReferenceUID', 'unknown'),
-                'display_color': getattr(current_roi_sequence, 'ROIDisplayColor', [])
-            }
-
-            if not skip_contours_bool and hasattr(current_roi_sequence, 'ContourSequence'):
-                contour_info['sequence'] = [{
-                    'type': getattr(contour, 'ContourGeometricType', 'unknown'),
-                    'points': {
-                        'x': [contour.ContourData[i] for i in range(0, len(contour.ContourData), 3)],
-                        'y': [contour.ContourData[i + 1] for i in range(0, len(contour.ContourData), 3)],
-                        'z': [contour.ContourData[i + 2] for i in range(0, len(contour.ContourData), 3)]
-                    }
-                } for contour in current_roi_sequence.ContourSequence]
-
-            return contour_info
-
-        dicom_data = pydicom.dcmread(file_path)
-        if not hasattr(dicom_data, 'StructureSetROISequence'):
-            raise InvalidDicomError()
-
-        contour_data = None
-        metadata_map = {data.ROINumber: data for data in dicom_data.StructureSetROISequence}
-        for roi_sequence in dicom_data.ROIContourSequence:
-            roi_name = getattr(metadata_map[roi_sequence.ReferencedROINumber], 'ROIName', 'unknown')
-            if roi_name == selected_roi:
-                contour_data = get_contour_coord(metadata_map, roi_sequence)
-                break
-
-        return contour_data
-
-    rt_struct = get_contour_data(rtstruct_path, roi_name)
-    if rt_struct and 'sequence' in rt_struct:
-        mask = generate_mask_array(rt_struct['sequence'], image)
-        return Image(array=mask,
-                     origin=image.GetOrigin(),
-                     spacing=np.array(image.GetSpacing()),
-                     direction=image.GetDirection(),
-                     shape=image.GetSize())
-    else:
-        return Image()
-
-
-def get_all_structure_names(rtstruct_path):
-    """Extracts all structure names from an RTSTRUCT DICOM file.
-
-    Args:
-        rtstruct_path (str): Path to the RTSTRUCT DICOM file.
-
-    Returns:
-        list: A list of structure names.
-
-    Raises:
-        InvalidDicomError: If the DICOM file does not have a StructureSetROISequence attribute.
-    """
-    # Read the DICOM file
-    dicom_data = pydicom.dcmread(rtstruct_path)
-
-    # Check if the file contains a StructureSetROISequence
-    if not hasattr(dicom_data, 'StructureSetROISequence'):
-        raise InvalidDicomError(f"The DICOM file at {rtstruct_path} is not a valid RTSTRUCT file.")
-
-    # Map ROI numbers to metadata for quick lookup
-    metadata_map = {roi_data.ROINumber: roi_data for roi_data in dicom_data.StructureSetROISequence}
-
-    # Extract structure names
-    structure_names = []
-    if hasattr(dicom_data, 'ROIContourSequence'):
-        for roi_sequence in dicom_data.ROIContourSequence:
-            roi_number = roi_sequence.ReferencedROINumber
-            roi_name = getattr(metadata_map.get(roi_number, {}), 'ROIName', 'unknown')
-            structure_names.append(roi_name)
-
-    return structure_names

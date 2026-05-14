@@ -20,7 +20,7 @@ from .toolbox_gui import (
     ProcessingWorker,
 )
 from ..exceptions import InvalidInputParametersError, DataStructureError
-from ..filtering import Filtering
+from ..filtering import create_filter
 from ..toolbox_logic import get_logger, close_all_loggers, joblib_progress
 
 logging.captureWarnings(True)
@@ -30,7 +30,7 @@ IS_FROZEN = getattr(sys, 'frozen', False)
 
 def _get_filtering(input_params):
     if input_params["filter_type"] == 'Mean':
-        filtering = Filtering(
+        filtering = create_filter(
             filtering_method=input_params["filter_type"],
             padding_type=input_params["filter_padding_type"],
             support=int(input_params["filter_mean_support"]),
@@ -38,7 +38,7 @@ def _get_filtering(input_params):
         )
 
     elif input_params["filter_type"] == 'Laplacian of Gaussian':
-        filtering = Filtering(
+        filtering = create_filter(
             filtering_method=input_params["filter_type"],
             padding_type=input_params["filter_padding_type"],
             sigma_mm=float(input_params["filter_log_sigma"]),
@@ -46,7 +46,7 @@ def _get_filtering(input_params):
             dimensionality=input_params["filter_dimension"],
         )
     elif input_params["filter_type"] == 'Laws Kernels':
-        filtering = Filtering(
+        filtering = create_filter(
             filtering_method=input_params["filter_type"],
             response_map=input_params["filter_laws_response_map"],
             padding_type=input_params["filter_padding_type"],
@@ -57,7 +57,7 @@ def _get_filtering(input_params):
             distance=int(input_params["filter_laws_distance"])
         )
     elif input_params["filter_type"] == 'Gabor':
-        filtering = Filtering(
+        filtering = create_filter(
             filtering_method='Gabor',
             padding_type=input_params["filter_padding_type"],
             res_mm=float(input_params["filter_gabor_res_mm"]),
@@ -70,7 +70,7 @@ def _get_filtering(input_params):
         )
     elif input_params["filter_type"] == 'Wavelets':
         if input_params["filter_dimension"] == '2D':
-            filtering = Filtering(
+            filtering = create_filter(
                 filtering_method=input_params["filter_type"],
                 dimensionality=input_params["filter_dimension"],
                 padding_type=input_params["filter_padding_type"],
@@ -80,7 +80,7 @@ def _get_filtering(input_params):
                 rotation_invariance=input_params["filter_wavelet_rot_inv"] == 'Enable'
             )
         elif input_params["filter_dimension"] == '3D':
-            filtering = Filtering(
+            filtering = create_filter(
                 filtering_method=input_params["filter_type"],
                 dimensionality=input_params["filter_dimension"],
                 padding_type=input_params["filter_padding_type"],
@@ -161,7 +161,7 @@ def process_patient_folder(input_params, patient_folder):
         logger.error(e)
         logger.error(f"Patient {patient_folder} could not be loaded and is skipped.")
         return
-    image_new = filtering.apply_filter(image)
+    image_new = filtering.apply(image)
 
     # Save new image
     filename = _get_filename(local_params)

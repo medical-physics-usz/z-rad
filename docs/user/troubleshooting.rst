@@ -25,6 +25,6 @@ If the desktop application starts but does not behave as expected:
 Packaging And Version Mismatch
 ------------------------------
 
-The package version is defined in ``zrad.__version__`` and should match the
-documentation version shown by Sphinx. If they diverge, rebuild the docs after
-updating the package metadata.
+The package version is defined in ``zrad.__version__``. Build metadata and the
+documentation version shown by Sphinx derive from that value. If documentation
+still shows an older version, rebuild the docs after updating ``zrad.__version__``.

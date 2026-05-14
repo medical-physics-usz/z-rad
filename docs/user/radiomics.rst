@@ -4,9 +4,10 @@ GUI Radiomics Extraction
 Overview
 --------
 
-The ``Radiomics`` class computes morphological, intensity, histogram, and
-texture features from an image-mask pair. The extracted feature set depends on
-the aggregation dimensionality and discretization choices.
+The ``Radiomics`` class computes morphological, intensity, histogram, texture,
+and optional IVH features from prepared ``RoiData``. Preprocessing now owns
+intensity-mask construction, re-segmentation, texture discretization, and IVH
+preparation. ``Radiomics`` only consumes those prepared fields.
 
 .. figure:: ../images/Rad_tab.png
    :alt: Z-Rad radiomics tab
@@ -34,12 +35,17 @@ numbering below matches the annotated screenshots used for this workflow.
 ``(3)`` ``Intensity Range``
    Restricts the analyzed voxel intensities to a user-defined interval. This is
    useful when radiomic features should only be computed within a selected
-   signal range.
+   signal range. In the GUI backend this range is applied before texture
+   discretization. The lower bound is used as the fixed-bin-size origin when
+   fixed bin size discretization is selected. For practical guidance, see
+   :doc:`resegmentation_guidelines`.
 
 ``(4)`` ``Outlier Removal``
    Removes extreme voxel values based on a selected number of standard
-   deviations. This can suppress unusually high or low intensities, but it can
-   also create holes in the effective region of interest.
+   deviations calculated from the current valid intensity mask. If an intensity
+   range is also configured, range re-segmentation is applied first. This can
+   suppress unusually high or low intensities, but it can also create holes in
+   the effective region of interest.
 
 ``(5)`` ``Texture Aggregation Method``
    Defines how texture matrices are computed and merged. The GUI supports
@@ -48,8 +54,10 @@ numbering below matches the annotated screenshots used for this workflow.
 
 ``(6)`` ``Discretization``
    Controls how image intensities are discretized before texture feature
-   computation. The GUI supports fixed bin size and fixed bin number
-   discretization.
+   computation. The GUI prepares ``RoiData.texture_discretized_image`` using
+   either fixed bin size or fixed bin number discretization. Fixed bin size
+   requires an intensity range so the lower bound can be used as a stable bin
+   origin. For practical guidance, see :doc:`discretization_guidelines`.
 
 ``(7)`` ``RUN``
    Starts radiomics extraction with the currently selected configuration.
@@ -110,8 +118,11 @@ The output includes metadata such as:
 * voxel count
 * number of bins used for discretization
 
-At the API level, the extracted values are also exposed through the
-``features_`` dictionary.
+At the API level, ``Radiomics.extract_features(roi_data=...)`` returns the
+extracted values directly as a dictionary. If ``families`` is omitted, Z-Rad
+extracts all feature families available from the prepared ``RoiData``. Summary
+fields such as bounding-box size, voxel count, and discretized-bin count are
+opt-in via ``include_metadata=True``.
 
 Practical Notes
 ---------------
@@ -122,6 +133,10 @@ Practical Notes
 * Intensity-volume histogram features and computationally expensive measures
   such as Moran's I and Geary's C are not exposed in the GUI and remain
   available through the API only.
+* API users should prepare ``RoiData.texture_discretized_image`` before
+  requesting histogram or texture families.
+* API users should prepare ``RoiData.ivh_intensity_image`` with
+  ``IVHIntensityDiscretizer`` before requesting IVH features.
 * If you extract features from a filtered NIfTI image, the GUI expects both the
   original NIfTI image and the filtered NIfTI image to be provided.
 

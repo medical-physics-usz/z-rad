@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "z-rad"
-version = "26.4.0-dev"
+dynamic = ["version"]
 description = "Z-Rad is a radiomic feature extraction software with GUI and API."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -40,5 +40,8 @@ docs = [
 [tool.setuptools]
 # Additional setuptools configuration
 
+[tool.setuptools.dynamic]
+version = { attr = "zrad.__version__" }
+
 [tool.setuptools.packages.find]
-include = ["zrad", "zrad.preprocessing", "zrad.filtering", "zrad.radiomics"]
+include = ["zrad", "zrad.*"]

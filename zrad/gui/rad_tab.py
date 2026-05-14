@@ -22,7 +22,8 @@ from .toolbox_gui import (
     ProcessingWorker,
 )
 from ..exceptions import InvalidInputParametersError, DataStructureError
-from ..image import get_dicom_files, get_all_structure_names
+from ..io.dicom import get_all_structure_names, get_dicom_files
+from ..preprocessing import IntensityMaskBuilder, Resegmenter, RoiData, TextureDiscretizer
 from ..radiomics import Radiomics
 from ..toolbox_logic import get_logger, close_all_loggers, joblib_progress
 
@@ -58,10 +59,6 @@ def process_patient_folder(input_params, patient_folder, structure_set):
     rad_instance = Radiomics(
         aggr_dim=local_params['aggregation_method'][0],
         aggr_method=local_params['aggregation_method'][1],
-        intensity_range=local_params['intensity_range'],
-        outlier_range=local_params['outlier_range'],
-        number_of_bins=local_params['discretization'][1],
-        bin_size=local_params['discretization'][2],
         slice_weighting=is_slice_weighting(),
         slice_median=is_slice_median(),
     )
@@ -88,12 +85,27 @@ def process_patient_folder(input_params, patient_folder, structure_set):
         if mask and mask.array is not None:
             logger.info(f"Processing patient: {patient_folder} with ROI: {mask_name}.")
             try:
-                rad_instance.extract_features(image, mask, filtered_image)
-            except DataStructureError as e:
+                roi_data = IntensityMaskBuilder().apply(RoiData(
+                    image=image,
+                    filtered_image=filtered_image,
+                    morphological_mask=mask,
+                ))
+                roi_data = Resegmenter(
+                    intensity_range=local_params['intensity_range'],
+                    outlier_range=local_params['outlier_range'],
+                ).apply(roi_data)
+                roi_data = TextureDiscretizer(
+                    number_of_bins=local_params['discretization'][1],
+                    bin_size=local_params['discretization'][2],
+                ).apply(roi_data)
+                radiomic_features = rad_instance.extract_features(
+                    roi_data=roi_data,
+                    include_metadata=True,
+                )
+            except (DataStructureError, ValueError) as e:
                 logger.error(e)
                 logger.info(f"Patient {patient_folder} with mask {mask_name} skipped.")
                 continue
-            radiomic_features = rad_instance.features_
             radiomic_features['pat_id'] = patient_folder
             radiomic_features['mask_id'] = mask_name
             radiomic_features_list.append(radiomic_features)
@@ -471,7 +483,7 @@ class RadiomicsTab(BaseTab):
                 warning_msg = "Invalid input for the standard deviation in outlier filtering. Please enter a valid number."
                 raise InvalidInputParametersError(warning_msg)
 
-            if outlier_sigma < 0:
+            if outlier_sigma <= 0:
                 warning_msg = "The standard deviation in outlier filtering needs to be a positive number."
                 raise InvalidInputParametersError(warning_msg)
 

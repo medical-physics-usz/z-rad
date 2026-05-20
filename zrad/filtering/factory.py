@@ -1,5 +1,5 @@
 from .base import BaseFilter
-from .spatial import Mean, LoG, Laws, Gabor
+from .spatial import Gabor, Laws, LoG, Mean
 from .wavelet import Wavelets2D, Wavelets3D
 
 
@@ -27,16 +27,14 @@ def create_filter(filtering_method, **kwargs) -> BaseFilter:
     params = kwargs
     if filtering_method == 'Mean':
         return Mean(
-            padding_type=params['padding_type'],
-            support=int(params['support']),
-            dimensionality=params['dimensionality']
+            padding_type=params['padding_type'], support=int(params['support']), dimensionality=params['dimensionality']
         )
     if filtering_method == 'Laplacian of Gaussian':
         return LoG(
             padding_type=params['padding_type'],
             sigma_mm=float(params['sigma_mm']),
             cutoff=float(params['cutoff']),
-            dimensionality=params['dimensionality']
+            dimensionality=params['dimensionality'],
         )
     if filtering_method == 'Laws Kernels':
         return Laws(
@@ -46,7 +44,7 @@ def create_filter(filtering_method, **kwargs) -> BaseFilter:
             rotation_invariance=params['rotation_invariance'],
             pooling=params['pooling'],
             energy_map=params['energy_map'],
-            distance=int(params['distance'])
+            distance=int(params['distance']),
         )
     if filtering_method == 'Gabor':
         return Gabor(
@@ -67,7 +65,7 @@ def create_filter(filtering_method, **kwargs) -> BaseFilter:
             padding_type=params['padding_type'],
             response_map=params['response_map'],
             decomposition_level=int(params['decomposition_level']),
-            rotation_invariance=params['rotation_invariance']
+            rotation_invariance=params['rotation_invariance'],
         )
         if dim == '2D':
             return Wavelets2D(**common)

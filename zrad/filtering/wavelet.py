@@ -34,7 +34,7 @@ class Wavelets2D(BaseFilter):
             response_map=response_map,
             decomposition_level=decomposition_level,
             rotation_invariance=rotation_invariance,
-            dimensionality='2D'
+            dimensionality='2D',
         )
 
         self.dimensionality = '2D'
@@ -42,26 +42,32 @@ class Wavelets2D(BaseFilter):
         if padding_type in ['constant', 'nearest', 'wrap', 'reflect']:
             self.padding_type = padding_type
         else:
-            raise ValueError(f"Wrong padding type '{padding_type}'. "
-                             "Available padding types are: 'constant', 'nearest', 'wrap', and 'reflect'.")
+            raise ValueError(
+                f"Wrong padding type '{padding_type}'. "
+                "Available padding types are: 'constant', 'nearest', 'wrap', and 'reflect'."
+            )
 
         if wavelet_type in ['db3', 'db2', 'coif1', 'haar']:
             self.wavelet_type = wavelet_type
         else:
-            raise ValueError(f"Wrong wavelet type '{wavelet_type}'. "
-                             "Available wavelet types are: 'db3', 'db2', 'coif1', 'haar'.")
+            raise ValueError(
+                f"Wrong wavelet type '{wavelet_type}'. Available wavelet types are: 'db3', 'db2', 'coif1', 'haar'."
+            )
 
         if decomposition_level in [1, 2]:
             self.decomposition_level = decomposition_level
         else:
-            raise ValueError(f"Wrong decomposition_level' {decomposition_level}'. "
-                             "Decomposition level should be integer. Available decomposition levels are: 1 and 2.")
+            raise ValueError(
+                f"Wrong decomposition_level' {decomposition_level}'. "
+                "Decomposition level should be integer. Available decomposition levels are: 1 and 2."
+            )
 
         if response_map in ['LL', 'HL', 'LH', 'HH']:
             self.response_map = response_map
         else:
-            raise ValueError(f"Wrong response_map' {response_map}'. "
-                             "Available response_maps are: 'LL', 'HL', 'LH', 'HH'.")
+            raise ValueError(
+                f"Wrong response_map' {response_map}'. Available response_maps are: 'LL', 'HL', 'LH', 'HH'."
+            )
 
         if isinstance(rotation_invariance, bool):
             self.rotation_invariance = rotation_invariance
@@ -93,8 +99,9 @@ class Wavelets2D(BaseFilter):
                 final_image = np.zeros(img.shape)
                 for i in range(img.shape[2]):
                     for k in range(4):
-                        final_image[:, :, i] += np.rot90(self._filter(np.rot90(img[:, :, i], k=k, axes=(0, 1)),
-                                                         x_filter, y_filter), k=k, axes=(1, 0))
+                        final_image[:, :, i] += np.rot90(
+                            self._filter(np.rot90(img[:, :, i], k=k, axes=(0, 1)), x_filter, y_filter), k=k, axes=(1, 0)
+                        )
                 filtered_img = final_image / 4
             else:
                 filtered_img = np.zeros(img.shape)
@@ -146,7 +153,7 @@ class Wavelets3D(BaseFilter):
             response_map=response_map,
             decomposition_level=decomposition_level,
             rotation_invariance=rotation_invariance,
-            dimensionality='3D'
+            dimensionality='3D',
         )
 
         self.dimensionality = '3D'
@@ -154,26 +161,33 @@ class Wavelets3D(BaseFilter):
         if padding_type in ['constant', 'nearest', 'wrap', 'reflect']:
             self.padding_type = padding_type
         else:
-            raise ValueError(f"Wrong padding type '{padding_type}'. "
-                             "Available padding types are: 'constant', 'nearest', 'wrap', and 'reflect'.")
+            raise ValueError(
+                f"Wrong padding type '{padding_type}'. "
+                "Available padding types are: 'constant', 'nearest', 'wrap', and 'reflect'."
+            )
 
         if wavelet_type in ['db3', 'db2', 'coif1', 'haar']:
             self.wavelet_type = wavelet_type
         else:
-            raise ValueError(f"Wrong wavelet type '{wavelet_type}'. "
-                             "Available wavelet types are: 'db3', 'db2', 'coif1', 'haar'.")
+            raise ValueError(
+                f"Wrong wavelet type '{wavelet_type}'. Available wavelet types are: 'db3', 'db2', 'coif1', 'haar'."
+            )
 
         if decomposition_level in [1, 2]:
             self.decomposition_level = decomposition_level
         else:
-            raise ValueError(f"Wrong decomposition_level' {decomposition_level}'. "
-                             "Decomposition level should be integer. Available decomposition levels are: 1 and 2.")
+            raise ValueError(
+                f"Wrong decomposition_level' {decomposition_level}'. "
+                "Decomposition level should be integer. Available decomposition levels are: 1 and 2."
+            )
 
         if response_map in ['LLL', 'LLH', 'LHL', 'HLL', 'LHH', 'HHL', 'HLH', 'HHH']:
             self.response_map = response_map
         else:
-            raise ValueError(f"Wrong response_map' {response_map}'. "
-                             "Available response_maps are: 'LLL', 'LLH', 'LHL', 'HLL', 'LHH', 'HHL', 'HLH', 'HHH'.")
+            raise ValueError(
+                f"Wrong response_map' {response_map}'. "
+                "Available response_maps are: 'LLL', 'LLH', 'LHL', 'HLL', 'LHH', 'HHL', 'HLH', 'HHH'."
+            )
 
         if isinstance(rotation_invariance, bool):
             self.rotation_invariance = rotation_invariance
@@ -207,9 +221,11 @@ class Wavelets3D(BaseFilter):
             z_filter = self._get_kernel(self.response_map[2])
             if self.rotation_invariance:
                 final_image = np.zeros(img.shape)
-                kernels_permutation = [(x_filter, y_filter, z_filter),
-                                       (z_filter, x_filter, y_filter),
-                                       (y_filter, z_filter, x_filter)]
+                kernels_permutation = [
+                    (x_filter, y_filter, z_filter),
+                    (z_filter, x_filter, y_filter),
+                    (y_filter, z_filter, x_filter),
+                ]
                 for kernels in kernels_permutation:
                     final_image += self._filter(img, kernels[0], kernels[1], kernels[2])
                     final_image += self._filter(img[::-1, :, :], kernels[0], kernels[1], kernels[2])[::-1, :, :]
@@ -218,7 +234,9 @@ class Wavelets3D(BaseFilter):
                     final_image += self._filter(img[::-1, ::-1, :], kernels[0], kernels[1], kernels[2])[::-1, ::-1, :]
                     final_image += self._filter(img[::-1, :, ::-1], kernels[0], kernels[1], kernels[2])[::-1, :, ::-1]
                     final_image += self._filter(img[:, ::-1, ::-1], kernels[0], kernels[1], kernels[2])[:, ::-1, ::-1]
-                    final_image += self._filter(img[::-1, ::-1, ::-1], kernels[0], kernels[1], kernels[2])[::-1, ::-1, ::-1]
+                    final_image += self._filter(img[::-1, ::-1, ::-1], kernels[0], kernels[1], kernels[2])[
+                        ::-1, ::-1, ::-1
+                    ]
                 filtered_img = final_image / (8 * len(kernels_permutation))
             else:
                 filtered_img = self._filter(img, x_filter, y_filter, z_filter)
@@ -226,35 +244,61 @@ class Wavelets3D(BaseFilter):
             x_filter = self._get_kernel("L")
             y_filter = self._get_kernel("L")
             z_filter = self._get_kernel("L")
-            kernels_permutation = [(x_filter, y_filter, z_filter),
-                                   (z_filter, x_filter, y_filter),
-                                   (y_filter, z_filter, x_filter)]
+            kernels_permutation = [
+                (x_filter, y_filter, z_filter),
+                (z_filter, x_filter, y_filter),
+                (y_filter, z_filter, x_filter),
+            ]
             level1_responses = list()
             for kernels in kernels_permutation:
                 level1_responses.append(self._filter(img, kernels[0], kernels[1], kernels[2]))
                 level1_responses.append(self._filter(img[::-1, :, :], kernels[0], kernels[1], kernels[2])[::-1, :, :])
                 level1_responses.append(self._filter(img[:, ::-1, :], kernels[0], kernels[1], kernels[2])[:, ::-1, :])
                 level1_responses.append(self._filter(img[:, :, ::-1], kernels[0], kernels[1], kernels[2])[:, :, ::-1])
-                level1_responses.append(self._filter(img[::-1, ::-1, :], kernels[0], kernels[1], kernels[2])[::-1, ::-1, :])
-                level1_responses.append(self._filter(img[::-1, :, ::-1], kernels[0], kernels[1], kernels[2])[::-1, :, ::-1])
-                level1_responses.append(self._filter(img[:, ::-1, ::-1], kernels[0], kernels[1], kernels[2])[:, ::-1, ::-1])
-                level1_responses.append(self._filter(img[::-1, ::-1, ::-1], kernels[0], kernels[1], kernels[2])[::-1, ::-1, ::-1])
+                level1_responses.append(
+                    self._filter(img[::-1, ::-1, :], kernels[0], kernels[1], kernels[2])[::-1, ::-1, :]
+                )
+                level1_responses.append(
+                    self._filter(img[::-1, :, ::-1], kernels[0], kernels[1], kernels[2])[::-1, :, ::-1]
+                )
+                level1_responses.append(
+                    self._filter(img[:, ::-1, ::-1], kernels[0], kernels[1], kernels[2])[:, ::-1, ::-1]
+                )
+                level1_responses.append(
+                    self._filter(img[::-1, ::-1, ::-1], kernels[0], kernels[1], kernels[2])[::-1, ::-1, ::-1]
+                )
 
             x_filter = self._get_kernel(self.response_map[0], decomposition_level=2)
             y_filter = self._get_kernel(self.response_map[1], decomposition_level=2)
             z_filter = self._get_kernel(self.response_map[2], decomposition_level=2)
             final_image = np.zeros(img.shape)
-            kernels_permutation = [(x_filter, y_filter, z_filter),
-                                   (z_filter, x_filter, y_filter),
-                                   (y_filter, z_filter, x_filter)]
+            kernels_permutation = [
+                (x_filter, y_filter, z_filter),
+                (z_filter, x_filter, y_filter),
+                (y_filter, z_filter, x_filter),
+            ]
             for kernels in kernels_permutation:
                 final_image += self._filter(level1_responses[0], kernels[0], kernels[1], kernels[2])
-                final_image += self._filter(level1_responses[1][::-1, :, :], kernels[0], kernels[1], kernels[2])[::-1, :, :]
-                final_image += self._filter(level1_responses[2][:, ::-1, :], kernels[0], kernels[1], kernels[2])[:, ::-1, :]
-                final_image += self._filter(level1_responses[3][:, :, ::-1], kernels[0], kernels[1], kernels[2])[:, :, ::-1]
-                final_image += self._filter(level1_responses[4][::-1, ::-1, :], kernels[0], kernels[1], kernels[2])[::-1, ::-1, :]
-                final_image += self._filter(level1_responses[5][::-1, :, ::-1], kernels[0], kernels[1], kernels[2])[::-1, :, ::-1]
-                final_image += self._filter(level1_responses[6][:, ::-1, ::-1], kernels[0], kernels[1], kernels[2])[:, ::-1, ::-1]
-                final_image += self._filter(level1_responses[7][::-1, ::-1, ::-1], kernels[0], kernels[1], kernels[2])[::-1, ::-1, ::-1]
+                final_image += self._filter(level1_responses[1][::-1, :, :], kernels[0], kernels[1], kernels[2])[
+                    ::-1, :, :
+                ]
+                final_image += self._filter(level1_responses[2][:, ::-1, :], kernels[0], kernels[1], kernels[2])[
+                    :, ::-1, :
+                ]
+                final_image += self._filter(level1_responses[3][:, :, ::-1], kernels[0], kernels[1], kernels[2])[
+                    :, :, ::-1
+                ]
+                final_image += self._filter(level1_responses[4][::-1, ::-1, :], kernels[0], kernels[1], kernels[2])[
+                    ::-1, ::-1, :
+                ]
+                final_image += self._filter(level1_responses[5][::-1, :, ::-1], kernels[0], kernels[1], kernels[2])[
+                    ::-1, :, ::-1
+                ]
+                final_image += self._filter(level1_responses[6][:, ::-1, ::-1], kernels[0], kernels[1], kernels[2])[
+                    :, ::-1, ::-1
+                ]
+                final_image += self._filter(level1_responses[7][::-1, ::-1, ::-1], kernels[0], kernels[1], kernels[2])[
+                    ::-1, ::-1, ::-1
+                ]
             filtered_img = final_image / (8 * len(kernels_permutation))
         return filtered_img

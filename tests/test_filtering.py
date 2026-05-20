@@ -1,28 +1,20 @@
 import numpy as np
 import pytest
+
 from zrad.filtering import Mean, create_filter
 from zrad.image import Image
 
 
 @pytest.mark.unit
 def test_concrete_filter_constructor_valid_mean():
-    flt = Mean(
-        padding_type='constant',
-        support=3,
-        dimensionality='2D'
-    )
+    flt = Mean(padding_type='constant', support=3, dimensionality='2D')
     assert flt.filtering_method == 'Mean'
     assert flt.get_params()['support'] == 3
 
 
 @pytest.mark.unit
 def test_factory_creates_mean_from_config_parameters():
-    flt = create_filter(
-        filtering_method='Mean',
-        padding_type='constant',
-        support=3,
-        dimensionality='2D'
-    )
+    flt = create_filter(filtering_method='Mean', padding_type='constant', support=3, dimensionality='2D')
     assert isinstance(flt, Mean)
 
 
@@ -36,7 +28,7 @@ def test_filtering_constructor_valid_wavelets_2d():
         response_map='LL',
         decomposition_level=2,
         rotation_invariance=False,
-        dimensionality='2D'
+        dimensionality='2D',
     )
     assert flt.filtering_method == 'Wavelets'
     assert flt.get_params()['wavelet_type'] == 'haar'
@@ -52,7 +44,7 @@ def test_filtering_constructor_valid_wavelets_3d():
         response_map='LLL',
         decomposition_level=1,
         rotation_invariance=True,
-        dimensionality='3D'
+        dimensionality='3D',
     )
     assert flt.filtering_method == 'Wavelets'
     assert flt.get_params()['dimensionality'] == '3D'
@@ -77,7 +69,7 @@ def test_filtering_constructor_laws_kernels():
         rotation_invariance=False,
         pooling=None,
         energy_map=True,
-        distance=1
+        distance=1,
     )
     assert flt.filtering_method == 'Laws Kernels'
     assert flt.get_params()['energy_map'] is True
@@ -85,18 +77,13 @@ def test_filtering_constructor_laws_kernels():
 
 @pytest.mark.unit
 def test_filter_apply_returns_image():
-    flt = create_filter(
-        filtering_method='Mean',
-        padding_type='reflect',
-        support=3,
-        dimensionality='3D'
-    )
+    flt = create_filter(filtering_method='Mean', padding_type='reflect', support=3, dimensionality='3D')
     image = Image(
         array=np.ones((2, 3, 4), dtype=np.float64),
         origin=(0.0, 0.0, 0.0),
         spacing=np.array([1.0, 1.0, 1.0]),
         direction=(1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0),
-        shape=(4, 3, 2)
+        shape=(4, 3, 2),
     )
 
     filtered = flt.apply(image)

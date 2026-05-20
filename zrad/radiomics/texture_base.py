@@ -3,7 +3,6 @@ from scipy.ndimage import distance_transform_cdt, label, minimum
 
 from ..exceptions import DataStructureError
 
-
 TEXTURE_ATTRIBUTE_NAMES = (
     'short_runs_emphasis',
     'long_runs_emphasis',
@@ -66,10 +65,7 @@ class TextureFeatureBase:
         if not feature_dicts:
             raise DataStructureError('No feature values were computed for aggregation.')
         names = tuple(feature_dicts[0].keys())
-        return {
-            name: float(np.mean([values[name] for values in feature_dicts]))
-            for name in names
-        }
+        return {name: float(np.mean([values[name] for values in feature_dicts])) for name in names}
 
     def _aggregate_feature_dicts(self, feature_dicts, weights=None, *, include_energy=False):
         names = self._feature_names(include_energy=include_energy)
@@ -78,14 +74,8 @@ class TextureFeatureBase:
         if self.slice_median:
             if self.slice_weight and weights is not None:
                 raise DataStructureError('Weighted median is not supported for texture aggregation.')
-            return {
-                name: float(np.median([values[name] for values in feature_dicts]))
-                for name in names
-            }
-        return {
-            name: float(np.average([values[name] for values in feature_dicts], weights=weights))
-            for name in names
-        }
+            return {name: float(np.median([values[name] for values in feature_dicts])) for name in names}
+        return {name: float(np.average([values[name] for values in feature_dicts], weights=weights)) for name in names}
 
     @staticmethod
     def _calc_short_emphasis(matrix):
@@ -118,7 +108,7 @@ class TextureFeatureBase:
         i, _ = np.indices(matrix.shape)
         if n_s == 0:
             raise DataStructureError(' Denominator is zero in calc_high_gr_lvl_emphasis.')
-        return np.sum(matrix * i ** 2) / n_s
+        return np.sum(matrix * i**2) / n_s
 
     @staticmethod
     def _calc_short_low_gr_lvl_emphasis(matrix):
@@ -135,7 +125,7 @@ class TextureFeatureBase:
         i, j = np.indices(matrix.shape)
         if n_s == 0:
             raise DataStructureError(' Denominator is zero in calc_short_high_gr_lvl_emphasis.')
-        return np.sum((i ** 2 * matrix) / ((j + 1) ** 2)) / n_s
+        return np.sum((i**2 * matrix) / ((j + 1) ** 2)) / n_s
 
     @staticmethod
     def _calc_long_low_gr_lvl_emphasis(matrix):
@@ -152,7 +142,7 @@ class TextureFeatureBase:
         i, j = np.indices(matrix.shape)
         if n_s == 0:
             raise DataStructureError(' Denominator is zero in calc_long_high_gr_lvl_emphasis.')
-        return np.sum(matrix * (j + 1) ** 2 * i ** 2) / n_s
+        return np.sum(matrix * (j + 1) ** 2 * i**2) / n_s
 
     @staticmethod
     def _calc_non_uniformity(matrix):
@@ -166,7 +156,7 @@ class TextureFeatureBase:
         n_s = np.sum(matrix)
         if n_s == 0:
             raise DataStructureError(' Denominator is zero in calc_norm_non_uniformity.')
-        return np.sum(np.sum(matrix, axis=1) ** 2) / n_s ** 2
+        return np.sum(np.sum(matrix, axis=1) ** 2) / n_s**2
 
     @staticmethod
     def _calc_length_non_uniformity(matrix):
@@ -180,7 +170,7 @@ class TextureFeatureBase:
         n_s = np.sum(matrix)
         if n_s == 0:
             raise DataStructureError(' Denominator is zero in calc_norm_length_non_uniformity.')
-        return np.sum(np.sum(matrix, axis=0) ** 2) / n_s ** 2
+        return np.sum(np.sum(matrix, axis=0) ** 2) / n_s**2
 
     @staticmethod
     def _calc_percentage(matrix, voxel_count):

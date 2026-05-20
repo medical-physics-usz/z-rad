@@ -4,9 +4,12 @@ import os
 import sys
 from datetime import datetime
 
-from PyQt5.QtCore import QThread
 from joblib import Parallel, delayed
+from PyQt5.QtCore import QThread
 
+from ..exceptions import DataStructureError, InvalidInputParametersError
+from ..filtering import create_filter
+from ..toolbox_logic import close_all_loggers, get_logger, joblib_progress
 from ._base_tab import BaseTab, load_images
 from .toolbox_gui import (
     CustomBox,
@@ -19,9 +22,6 @@ from .toolbox_gui import (
     ProcessingProgressDialog,
     ProcessingWorker,
 )
-from ..exceptions import InvalidInputParametersError, DataStructureError
-from ..filtering import create_filter
-from ..toolbox_logic import get_logger, close_all_loggers, joblib_progress
 
 logging.captureWarnings(True)
 
@@ -54,7 +54,7 @@ def _get_filtering(input_params):
             rotation_invariance=input_params["filter_laws_rot_inv"] == 'Enable',
             pooling=input_params["filter_laws_pooling"],
             energy_map=input_params["filter_laws_energy_map"] == 'Enable',
-            distance=int(input_params["filter_laws_distance"])
+            distance=int(input_params["filter_laws_distance"]),
         )
     elif input_params["filter_type"] == 'Gabor':
         filtering = create_filter(
@@ -66,7 +66,7 @@ def _get_filtering(input_params):
             gamma=float(input_params["filter_gabor_gamma"]),
             theta=float(input_params["filter_gabor_theta"]),
             rotation_invariance=input_params["filter_gabor_rotinv"] == 'Enable',
-            orthogonal_planes=input_params["filter_gabor_ortho"] == 'Enable'
+            orthogonal_planes=input_params["filter_gabor_ortho"] == 'Enable',
         )
     elif input_params["filter_type"] == 'Wavelets':
         if input_params["filter_dimension"] == '2D':
@@ -77,7 +77,7 @@ def _get_filtering(input_params):
                 wavelet_type=input_params["filter_wavelet_type"],
                 response_map=input_params["filter_wavelet_resp_map_2D"],
                 decomposition_level=int(input_params["filter_wavelet_decomp_lvl"]),
-                rotation_invariance=input_params["filter_wavelet_rot_inv"] == 'Enable'
+                rotation_invariance=input_params["filter_wavelet_rot_inv"] == 'Enable',
             )
         elif input_params["filter_dimension"] == '3D':
             filtering = create_filter(
@@ -87,12 +87,12 @@ def _get_filtering(input_params):
                 wavelet_type=input_params["filter_wavelet_type"],
                 response_map=input_params["filter_wavelet_resp_map_3D"],
                 decomposition_level=int(input_params["filter_wavelet_decomp_lvl"]),
-                rotation_invariance=input_params["filter_wavelet_rot_inv"] == 'Enable'
+                rotation_invariance=input_params["filter_wavelet_rot_inv"] == 'Enable',
             )
         else:
             raise InvalidInputParametersError(f"Filter_dimension {input_params['filter_dimension']} is not supported.")
     else:
-         raise InvalidInputParametersError(f"Filter_type {input_params['filter_type']} not supported.")
+        raise InvalidInputParametersError(f"Filter_type {input_params['filter_type']} not supported.")
 
     return filtering
 
@@ -100,35 +100,36 @@ def _get_filtering(input_params):
 def _get_filename(input_params):
     # Base formats for all filters except Wavelets
     filter_formats = {
-        'Mean':  "{filter_type}_{filter_dimension}_{filter_mean_support}support_{filter_padding_type}",
-        'Laplacian of Gaussian':
-                 "{filter_type}_{filter_dimension}_{filter_log_sigma}sigma_"
-                 "{filter_log_cutoff}cutoff_{filter_padding_type}",
-        'Laws Kernels':
-                 "{filter_type}_{filter_dimension}_{filter_laws_response_map}_"
-                 "{filter_laws_rot_inv}_{filter_laws_pooling}_"
-                 "{filter_laws_energy_map}_{filter_laws_distance}_{filter_padding_type}",
-        'Gabor':
-            "Gabor_{filter_dimension}_"
-            "{filter_gabor_res_mm}resmm_"
-            "{filter_gabor_sigma_mm}sigmm_"
-            "{filter_gabor_lambda_mm}lambmm_"
-            "g{filter_gabor_gamma}_"
-            "t{filter_gabor_theta}_"
-            "{filter_gabor_rotinv}_"
-            "{filter_gabor_ortho}_"
-            "{filter_padding_type}"
+        'Mean': "{filter_type}_{filter_dimension}_{filter_mean_support}support_{filter_padding_type}",
+        'Laplacian of Gaussian': "{filter_type}_{filter_dimension}_{filter_log_sigma}sigma_"
+        "{filter_log_cutoff}cutoff_{filter_padding_type}",
+        'Laws Kernels': "{filter_type}_{filter_dimension}_{filter_laws_response_map}_"
+        "{filter_laws_rot_inv}_{filter_laws_pooling}_"
+        "{filter_laws_energy_map}_{filter_laws_distance}_{filter_padding_type}",
+        'Gabor': "Gabor_{filter_dimension}_"
+        "{filter_gabor_res_mm}resmm_"
+        "{filter_gabor_sigma_mm}sigmm_"
+        "{filter_gabor_lambda_mm}lambmm_"
+        "g{filter_gabor_gamma}_"
+        "t{filter_gabor_theta}_"
+        "{filter_gabor_rotinv}_"
+        "{filter_gabor_ortho}_"
+        "{filter_padding_type}",
     }
 
     def format_wavelets():
-        base = ("{filter_wavelet_type}_{filter_dimension}_"
-                "{filter_wavelet_resp_map}_"
-                "{filter_wavelet_decomp_lvl}_"
-                "{filter_wavelet_rot_inv}_"
-                "{filter_padding_type}")
-        resp = (input_params["filter_wavelet_resp_map_3D"]
-                if input_params["filter_dimension"] == '3D'
-                else input_params["filter_wavelet_resp_map_2D"])
+        base = (
+            "{filter_wavelet_type}_{filter_dimension}_"
+            "{filter_wavelet_resp_map}_"
+            "{filter_wavelet_decomp_lvl}_"
+            "{filter_wavelet_rot_inv}_"
+            "{filter_padding_type}"
+        )
+        resp = (
+            input_params["filter_wavelet_resp_map_3D"]
+            if input_params["filter_dimension"] == '3D'
+            else input_params["filter_wavelet_resp_map_2D"]
+        )
         return base.format(filter_wavelet_resp_map=resp, **input_params)
 
     ft = input_params["filter_type"]
@@ -183,19 +184,10 @@ class FilteringTab(BaseTab):
 
     def init_nifti_elements(self):
         # Image
-        self.nifti_image_label = CustomLabel(
-            'NIfTI Image:',
-            200, 300, 200, 50, self,
-            style="color: white;"
-        )
-        self.nifti_image_text_field = CustomTextField(
-            "E.g. imageCT",
-            300, 300, 200, 50, self
-        )
+        self.nifti_image_label = CustomLabel('NIfTI Image:', 200, 300, 200, 50, self, style="color: white;")
+        self.nifti_image_text_field = CustomTextField("E.g. imageCT", 300, 300, 200, 50, self)
         self.nifti_image_info_label = CustomInfo(
-            ' i',
-            'Specify NIfTI image file without file extension',
-            510, 300, 14, 14, self
+            ' i', 'Specify NIfTI image file without file extension', 510, 300, 14, 14, self
         )
         self._hide_nifti_elements()
 
@@ -226,88 +218,57 @@ class FilteringTab(BaseTab):
         pos_y_row2 = 460
 
         self.filter_combo_box = CustomBox(
-            20, pos_y_row1, 160, 50, self,
-            item_list=[
-                "Filter Type:", "Mean", "Laplacian of Gaussian", "Laws Kernels", "Gabor", "Wavelets"
-            ]
+            20,
+            pos_y_row1,
+            160,
+            50,
+            self,
+            item_list=["Filter Type:", "Mean", "Laplacian of Gaussian", "Laws Kernels", "Gabor", "Wavelets"],
         )
 
         self.padding_type_combo_box = CustomBox(
-            340, pos_y_row1, 150, 50, self,
-            item_list=[
-                "Padding Type:", "constant", "nearest", "wrap", "reflect"
-            ]
+            340, pos_y_row1, 150, 50, self, item_list=["Padding Type:", "constant", "nearest", "wrap", "reflect"]
         )
         self.padding_type_combo_box.hide()
 
-        self.mean_filter_support_label = CustomLabel(
-            'Support:',
-            200, pos_y_row2, 100, 50, self,
-            style="color: white;"
-        )
-        self.mean_filter_support_text_field = CustomTextField(
-            "E.g. 15",
-            275, pos_y_row2, 75, 50, self
-        )
+        self.mean_filter_support_label = CustomLabel('Support:', 200, pos_y_row2, 100, 50, self, style="color: white;")
+        self.mean_filter_support_text_field = CustomTextField("E.g. 15", 275, pos_y_row2, 75, 50, self)
         self.mean_filter_support_text_field.hide()
         self.mean_filter_support_label.hide()
 
         self.filter_dimension_combo_box = CustomBox(
-            200, pos_y_row1, 120, 50, self,
-            item_list=[
-                "Dimension:", "2D", "3D"
-            ]
+            200, pos_y_row1, 120, 50, self, item_list=["Dimension:", "2D", "3D"]
         )
         self.filter_dimension_combo_box.hide()
 
-        self.log_filter_sigma_label = CustomLabel(
-            '\u03C3 (mm):',
-            200, pos_y_row2, 200, 50, self,
-            style="color: white;"
-        )
-        self.log_filter_sigma_text_field = CustomTextField(
-            "E.g. 3",
-            290, pos_y_row2, 60, 50, self
-        )
+        self.log_filter_sigma_label = CustomLabel('\u03c3 (mm):', 200, pos_y_row2, 200, 50, self, style="color: white;")
+        self.log_filter_sigma_text_field = CustomTextField("E.g. 3", 290, pos_y_row2, 60, 50, self)
         self.log_filter_sigma_label.hide()
         self.log_filter_sigma_text_field.hide()
 
         self.log_filter_cutoff_label = CustomLabel(
-            'Cutoff (in \u03C3):',
-            375, pos_y_row2, 200, 50, self,
-            style="color: white;"
+            'Cutoff (in \u03c3):', 375, pos_y_row2, 200, 50, self, style="color: white;"
         )
-        self.log_filter_cutoff_text_field = CustomTextField(
-            "E.g. 4",
-            480, pos_y_row2, 60, 50, self)
+        self.log_filter_cutoff_text_field = CustomTextField("E.g. 4", 480, pos_y_row2, 60, 50, self)
         self.log_filter_cutoff_label.hide()
         self.log_filter_cutoff_text_field.hide()
 
         self.laws_filter_response_map_label = CustomLabel(
-            'Response Map:',
-            200, pos_y_row2, 200, 50, self,
-            style="color: white;"
+            'Response Map:', 200, pos_y_row2, 200, 50, self, style="color: white;"
         )
         self.laws_filter_response_map_text_field = CustomTextField("E.g. L5E5", 325, pos_y_row2, 100, 50, self)
         self.laws_filter_rot_inv_combo_box = CustomBox(
-            510, pos_y_row1, 170, 50, self,
-            item_list=[
-                'Rotation invariance:', 'Enable', 'Disable'
-            ]
+            510, pos_y_row1, 170, 50, self, item_list=['Rotation invariance:', 'Enable', 'Disable']
         )
-        self.laws_filter_distance_label = CustomLabel('Distance:', 500, pos_y_row2, 200, 50, self, style="color: white;")
-        self.laws_filter_distance_text_field = CustomTextField(
-            "E.g. 5",
-            580, pos_y_row2, 60, 50, self
+        self.laws_filter_distance_label = CustomLabel(
+            'Distance:', 500, pos_y_row2, 200, 50, self, style="color: white;"
         )
+        self.laws_filter_distance_text_field = CustomTextField("E.g. 5", 580, pos_y_row2, 60, 50, self)
         self.laws_filter_pooling_combo_box = CustomBox(
-            700, pos_y_row1, 120, 50, self,
-            item_list=['Pooling:', 'max', 'min', 'average'])
+            700, pos_y_row1, 120, 50, self, item_list=['Pooling:', 'max', 'min', 'average']
+        )
         self.laws_filter_energy_map_combo_box = CustomBox(
-            840, pos_y_row1, 140, 50, self,
-            item_list=[
-                'Energy map:', 'Enable', 'Disable'
-            ]
+            840, pos_y_row1, 140, 50, self, item_list=['Energy map:', 'Enable', 'Disable']
         )
         self.laws_filter_response_map_label.hide()
         self.laws_filter_response_map_text_field.hide()
@@ -318,90 +279,100 @@ class FilteringTab(BaseTab):
         self.laws_filter_energy_map_combo_box.hide()
 
         self.wavelet_filter_type_combo_box = CustomBox(
-            200, pos_y_row2, 170, 50, self,
-            item_list=[
-                "Wavelet type:", "db3", "db2", "coif1", "haar"
-            ]
+            200, pos_y_row2, 170, 50, self, item_list=["Wavelet type:", "db3", "db2", "coif1", "haar"]
         )
         self.wavelet_filter_type_combo_box.hide()
         self.wavelet_filter_response_map_combo_box = CustomBox(
-            390, pos_y_row2, 150, 50, self,
-            item_list=['Response Map:']
+            390, pos_y_row2, 150, 50, self, item_list=['Response Map:']
         )
         self.wavelet_filter_response_map_combo_box.hide()
         self.wavelet_filter_response_map_2d_combo_box = CustomBox(
-            390, pos_y_row2, 150, 50, self,
-            item_list=[
-                'Response Map:', 'LL', 'HL', 'LH', 'HH'
-            ]
+            390, pos_y_row2, 150, 50, self, item_list=['Response Map:', 'LL', 'HL', 'LH', 'HH']
         )
         self.wavelet_filter_response_map_2d_combo_box.hide()
         self.wavelet_filter_response_map_3d_combo_box = CustomBox(
-            390, pos_y_row2, 150, 50, self,
-            item_list=['Response Map:', 'LLL', 'LLH', 'LHL', 'HLL', 'LHH', 'HHL', "HLH", "HHH"
-                       ]
+            390,
+            pos_y_row2,
+            150,
+            50,
+            self,
+            item_list=['Response Map:', 'LLL', 'LLH', 'LHL', 'HLL', 'LHH', 'HHL', "HLH", "HHH"],
         )
         self.wavelet_filter_response_map_3d_combo_box.hide()
 
         self.wavelet_filter_response_map_3d_combo_box = CustomBox(
-            390, pos_y_row2, 150, 50, self,
-            item_list=[
-                'Response Map:', 'LLL', 'LLH', 'LHL', 'HLL', 'LHH', 'HHL', "HLH", "HHH"
-            ]
+            390,
+            pos_y_row2,
+            150,
+            50,
+            self,
+            item_list=['Response Map:', 'LLL', 'LLH', 'LHL', 'HLL', 'LHH', 'HHL', "HLH", "HHH"],
         )
         self.wavelet_filter_response_map_3d_combo_box.hide()
 
         self.wavelet_filter_decomposition_level_combo_box = CustomBox(
-            560, pos_y_row2, 175, 50, self,
-            item_list=[
-                'Decomposition level:', '1', '2'
-            ]
+            560, pos_y_row2, 175, 50, self, item_list=['Decomposition level:', '1', '2']
         )
         self.wavelet_filter_decomposition_level_combo_box.hide()
 
         self.wavelet_filter_rot_inv_combo_box = CustomBox(
-            750, pos_y_row2, 175, 50, self,
-            item_list=[
-                'Rotation invariance:', 'Enable', 'Disable'
-            ]
+            750, pos_y_row2, 175, 50, self, item_list=['Rotation invariance:', 'Enable', 'Disable']
         )
         self.wavelet_filter_rot_inv_combo_box.hide()
 
         # Gabor
         element_height = 50
-        self.gabor_res_label = CustomLabel('Resolution (mm/px):', 200, pos_y_row2, 150, element_height, self, style="color: white;")
+        self.gabor_res_label = CustomLabel(
+            'Resolution (mm/px):', 200, pos_y_row2, 150, element_height, self, style="color: white;"
+        )
         self.gabor_res_label.hide()
         self.gabor_res_field = CustomTextField("", 350, pos_y_row2, 60, element_height, self)
         self.gabor_res_field.hide()
 
-        self.gabor_sigma_label = CustomLabel('\u03C3 (mm):', 430, pos_y_row2, 60, element_height, self, style="color: white;")
+        self.gabor_sigma_label = CustomLabel(
+            '\u03c3 (mm):', 430, pos_y_row2, 60, element_height, self, style="color: white;"
+        )
         self.gabor_sigma_label.hide()
         self.gabor_sigma_field = CustomTextField("", 490, pos_y_row2, 60, element_height, self)
         self.gabor_sigma_field.hide()
 
-        self.gabor_lambda_label = CustomLabel('\u03bb (mm):', 570, pos_y_row2, 60, element_height, self, style="color: white;")
+        self.gabor_lambda_label = CustomLabel(
+            '\u03bb (mm):', 570, pos_y_row2, 60, element_height, self, style="color: white;"
+        )
         self.gabor_lambda_label.hide()
         self.gabor_lambda_field = CustomTextField("", 630, pos_y_row2, 60, element_height, self)
         self.gabor_lambda_field.hide()
 
-        self.gabor_gamma_label = CustomLabel('\u03B3:', 710, pos_y_row2, 20, element_height, self, style="color: white;")
+        self.gabor_gamma_label = CustomLabel(
+            '\u03b3:', 710, pos_y_row2, 20, element_height, self, style="color: white;"
+        )
         self.gabor_gamma_label.hide()
         self.gabor_gamma_field = CustomTextField("", 730, pos_y_row2, 60, element_height, self)
         self.gabor_gamma_field.hide()
 
-        self.gabor_theta_label = CustomLabel('\u03B8/\u0394\u03B8 (rad):', 810, pos_y_row2, 80, element_height, self, style="color: white;")
+        self.gabor_theta_label = CustomLabel(
+            '\u03b8/\u0394\u03b8 (rad):', 810, pos_y_row2, 80, element_height, self, style="color: white;"
+        )
         self.gabor_theta_label.hide()
         self.gabor_theta_field = CustomTextField("", 890, pos_y_row2, 60, element_height, self)
         self.gabor_theta_field.hide()
 
-        self.gabor_rotinv_box = CustomBox(510, pos_y_row1, 180, element_height, self, item_list=['Rotation invariance:', 'Enable', 'Disable'])
+        self.gabor_rotinv_box = CustomBox(
+            510, pos_y_row1, 180, element_height, self, item_list=['Rotation invariance:', 'Enable', 'Disable']
+        )
         self.gabor_rotinv_box.hide()
-        self.gabor_ortho_box = CustomBox(710, pos_y_row1, 170, element_height, self, item_list=['Orthogonal planes:', 'Enable', 'Disable'])
+        self.gabor_ortho_box = CustomBox(
+            710, pos_y_row1, 170, element_height, self, item_list=['Orthogonal planes:', 'Enable', 'Disable']
+        )
         self.gabor_ortho_box.hide()
 
         self.run_button = CustomButton(
             'RUN',
-            600, 590, 80, 50, self,
+            600,
+            590,
+            80,
+            50,
+            self,
             style=False,
         )
 
@@ -450,8 +421,13 @@ class FilteringTab(BaseTab):
             if self.wavelet_filter_rot_inv_combo_box.currentText() == 'Rotation invariance:':
                 error_msg = "Select Pseudo-rot. inv"
                 raise InvalidInputParametersError(error_msg)
-            if ((self.wavelet_filter_response_map_3d_combo_box.currentText() == 'Response Map:' and self.filter_dimension_combo_box.currentText() == '3D') or
-                (self.wavelet_filter_response_map_2d_combo_box.currentText() == 'Response Map:' and self.filter_dimension_combo_box.currentText() == '2D')):
+            if (
+                self.wavelet_filter_response_map_3d_combo_box.currentText() == 'Response Map:'
+                and self.filter_dimension_combo_box.currentText() == '3D'
+            ) or (
+                self.wavelet_filter_response_map_2d_combo_box.currentText() == 'Response Map:'
+                and self.filter_dimension_combo_box.currentText() == '2D'
+            ):
                 error_msg = "Select Response Map"
                 raise InvalidInputParametersError(error_msg)
 
@@ -461,7 +437,7 @@ class FilteringTab(BaseTab):
                 (self.gabor_sigma_field, "Sigma"),
                 (self.gabor_lambda_field, "Lambda"),
                 (self.gabor_gamma_field, "Gamma"),
-                (self.gabor_theta_field, "Theta")
+                (self.gabor_theta_field, "Theta"),
             ]:
                 if not fld.text().strip():
                     raise InvalidInputParametersError(f"Enter Gabor {name}!")
@@ -470,7 +446,9 @@ class FilteringTab(BaseTab):
             if self.gabor_ortho_box.currentText() == 'Orthogonal planes:':
                 raise InvalidInputParametersError("Select Gabor orthogonal‑planes")
             if self.filter_dimension_combo_box.currentText() == '3D':
-                CustomInfoBox("True full 3D Gabor filtering is not implemented.\n Recommendation: Set dimensionality to 2D and enable orthogonal planes. This will provide a light‐weight, “three‐plane” 2D approximation to true 3D Gabor filtering.").response()
+                CustomInfoBox(
+                    "True full 3D Gabor filtering is not implemented.\n Recommendation: Set dimensionality to 2D and enable orthogonal planes. This will provide a light‐weight, “three‐plane” 2D approximation to true 3D Gabor filtering."
+                ).response()
 
     def get_input_parameters(self):
         input_parameters = {
@@ -539,9 +517,7 @@ class FilteringTab(BaseTab):
             backend_hint = "processes"
             self.logger.info("Not frozen state. Set backend_hint to processes")
         if list_of_patient_folders:
-            progress_dialog = ProcessingProgressDialog(
-                "Filtering Progress", len(list_of_patient_folders), self
-            )
+            progress_dialog = ProcessingProgressDialog("Filtering Progress", len(list_of_patient_folders), self)
             progress_dialog.start()
             n_jobs = self.input_params["number_of_threads"]
 
@@ -624,7 +600,8 @@ class FilteringTab(BaseTab):
                 self.input_data_type_combo_box.setCurrentText(data.get('filtering_input_data_type', 'Data Type:'))
                 self.save_dir_text_field.setText(data.get('filtering_output_directory', ''))
                 self.input_imaging_mod_combo_box.setCurrentText(
-                    data.get('filtering_input_image_modality', 'Imaging Modality:'))
+                    data.get('filtering_input_image_modality', 'Imaging Modality:')
+                )
                 self.number_of_threads_combo_box.setCurrentText(data.get('filtering_number_of_threads', 'Threads:'))
                 self.nifti_image_text_field.setText(data.get('filtering_nifti_image_name', ''))
                 self.filter_combo_box.setCurrentText(data.get('filtering_filter_type', 'Filter Type:'))
@@ -634,47 +611,37 @@ class FilteringTab(BaseTab):
                 self.log_filter_sigma_text_field.setText(data.get('filtering_filter_log_sigma', ''))
                 self.log_filter_cutoff_text_field.setText(data.get('filtering_filter_log_cutoff', ''))
                 self.laws_filter_response_map_text_field.setText(data.get('filtering_filter_laws_response_map', ''))
-                self.laws_filter_rot_inv_combo_box.setCurrentText(data.get('filtering_filter_laws_rot_inv', 'Rotation invariance:'))
+                self.laws_filter_rot_inv_combo_box.setCurrentText(
+                    data.get('filtering_filter_laws_rot_inv', 'Rotation invariance:')
+                )
                 self.laws_filter_distance_text_field.setText(data.get('filtering_filter_laws_distance', ''))
                 self.laws_filter_pooling_combo_box.setCurrentText(data.get('filtering_filter_laws_pooling', 'Pooling:'))
-                self.laws_filter_energy_map_combo_box.setCurrentText(data.get('filtering_filter_laws_energy_map', 'Energy map:'))
+                self.laws_filter_energy_map_combo_box.setCurrentText(
+                    data.get('filtering_filter_laws_energy_map', 'Energy map:')
+                )
                 self.wavelet_filter_response_map_2d_combo_box.setCurrentText(
-                    data.get('filtering_filter_wavelet_resp_map_2D', 'Response Map:'))
+                    data.get('filtering_filter_wavelet_resp_map_2D', 'Response Map:')
+                )
                 self.wavelet_filter_response_map_3d_combo_box.setCurrentText(
-                    data.get('filtering_filter_wavelet_resp_map_3D', 'Response Map:'))
-                self.wavelet_filter_type_combo_box.setCurrentText(data.get('filtering_filter_wavelet_type', 'Wavelet type:'))
+                    data.get('filtering_filter_wavelet_resp_map_3D', 'Response Map:')
+                )
+                self.wavelet_filter_type_combo_box.setCurrentText(
+                    data.get('filtering_filter_wavelet_type', 'Wavelet type:')
+                )
                 self.wavelet_filter_decomposition_level_combo_box.setCurrentText(
-                    data.get('filtering_filter_wavelet_decomp_lvl', 'Decomposition Lvl.:'))
+                    data.get('filtering_filter_wavelet_decomp_lvl', 'Decomposition Lvl.:')
+                )
                 self.wavelet_filter_rot_inv_combo_box.setCurrentText(
-                    data.get('filtering_filter_wavelet_rot_inv', 'Rotation invariance:'))
+                    data.get('filtering_filter_wavelet_rot_inv', 'Rotation invariance:')
+                )
                 # Gabor-specific fields:
-                self.gabor_res_field.setText(
-                    data.get('filtering_filter_gabor_res_mm', '')
-                )
-                self.gabor_sigma_field.setText(
-                    data.get('filtering_filter_gabor_sigma_mm', '')
-                )
-                self.gabor_lambda_field.setText(
-                    data.get('filtering_filter_gabor_lambda_mm', '')
-                )
-                self.gabor_gamma_field.setText(
-                    data.get('filtering_filter_gabor_gamma', '')
-                )
-                self.gabor_theta_field.setText(
-                    data.get('filtering_filter_gabor_theta', '')
-                )
-                self.gabor_rotinv_box.setCurrentText(
-                    data.get(
-                        'filtering_filter_gabor_rotinv',
-                        'Rotation invariance:'
-                    )
-                )
-                self.gabor_ortho_box.setCurrentText(
-                    data.get(
-                        'filtering_filter_gabor_ortho',
-                        'Orthogonal planes:'
-                    )
-                )
+                self.gabor_res_field.setText(data.get('filtering_filter_gabor_res_mm', ''))
+                self.gabor_sigma_field.setText(data.get('filtering_filter_gabor_sigma_mm', ''))
+                self.gabor_lambda_field.setText(data.get('filtering_filter_gabor_lambda_mm', ''))
+                self.gabor_gamma_field.setText(data.get('filtering_filter_gabor_gamma', ''))
+                self.gabor_theta_field.setText(data.get('filtering_filter_gabor_theta', ''))
+                self.gabor_rotinv_box.setCurrentText(data.get('filtering_filter_gabor_rotinv', 'Rotation invariance:'))
+                self.gabor_ortho_box.setCurrentText(data.get('filtering_filter_gabor_ortho', 'Orthogonal planes:'))
 
         except FileNotFoundError:
             print("No previous data found!")
@@ -947,7 +914,7 @@ class FilteringTab(BaseTab):
             ('Filter Type:', self.filter_combo_box),
             ('Dimension:', self.filter_dimension_combo_box),
             ('Padding Type:', self.padding_type_combo_box),
-            ('Imaging Modality:', self.input_imaging_mod_combo_box)
+            ('Imaging Modality:', self.input_imaging_mod_combo_box),
         ]
         for message, combo_box in required_selections:
             if combo_box.currentText() == message:

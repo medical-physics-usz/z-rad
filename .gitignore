@@ -98,6 +98,7 @@ config.json
 .spyderworkspace
 
 **/*.json
+!.jscpd.json
 
 **/__pycache__/
 

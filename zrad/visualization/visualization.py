@@ -1,10 +1,8 @@
-import os
-import sys
 import warnings
+
 import numpy as np
 import pyqtgraph as pg
-
-from PyQt5 import QtWidgets, QtCore, QtGui
+from PyQt5 import QtCore, QtGui, QtWidgets
 
 
 class RangeSlider(QtWidgets.QWidget):
@@ -528,7 +526,7 @@ class ColorLegendWidget(QtWidgets.QFrame):
 
     def _update_toggle_button_text(self):
         any_visible = any(button.isChecked() for button in self._buttons)
-        self._all_hidden = (len(self._buttons) > 0 and not any_visible)
+        self._all_hidden = len(self._buttons) > 0 and not any_visible
 
         if self._all_hidden:
             self.hide_all_button.setText("Show All Masks")
@@ -559,7 +557,9 @@ class Visualization(QtWidgets.QMainWindow):
             raise ValueError("image_sets must contain at least one image.")
 
         self.image_sets = image_sets
-        self.case_identifiers = case_identifiers or [item.get("image_name", str(i)) for i, item in enumerate(image_sets)]
+        self.case_identifiers = case_identifiers or [
+            item.get("image_name", str(i)) for i, item in enumerate(image_sets)
+        ]
         self.case_loader = case_loader
         self.total_cases = len(self.case_identifiers)
         self.current_image_index = 0
@@ -790,9 +790,12 @@ class Visualization(QtWidgets.QMainWindow):
         self.axi_hline = pg.InfiniteLine(angle=0, movable=False, pen=self.crosshair_pen)
 
         for line in (
-            self.sag_vline, self.sag_hline,
-            self.cor_vline, self.cor_hline,
-            self.axi_vline, self.axi_hline,
+            self.sag_vline,
+            self.sag_hline,
+            self.cor_vline,
+            self.cor_hline,
+            self.axi_vline,
+            self.axi_hline,
         ):
             line.setZValue(10)
 
@@ -816,7 +819,7 @@ class Visualization(QtWidgets.QMainWindow):
 
         self._maximized_view = view
         for i, v in enumerate(all_views):
-            is_target = (v is view)
+            is_target = v is view
             v.setVisible(is_target)
             self.views_layout.setStretch(i, 1 if is_target else 0)
 
@@ -1234,7 +1237,9 @@ class Visualization(QtWidgets.QMainWindow):
         self.axi_hline.setPos(self._crosshair_pos(self.current_coronal, self.sy))
 
     def _update_titles(self):
-        prefix = f"{self.current_case_name if len(self.current_case_name) <= 25 else self.current_case_name[:25] + '...'}"
+        prefix = (
+            f"{self.current_case_name if len(self.current_case_name) <= 25 else self.current_case_name[:25] + '...'}"
+        )
         self.sag_view.plot.setTitle(f"{prefix} | {self.current_sagittal}", color="w")
         self.cor_view.plot.setTitle(f"{prefix} | {self.current_coronal}", color="w")
         self.axi_view.plot.setTitle(f"{prefix} | {self.current_axial}", color="w")

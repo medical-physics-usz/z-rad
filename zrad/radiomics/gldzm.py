@@ -5,7 +5,6 @@ from .base import BaseFeatureGroup
 from .texture_aggregation import format_texture_feature_names
 from .texture_base import TEXTURE_ATTRIBUTE_NAMES, ZoneMatrixFeatureBase
 
-
 GLDZM_FEATURE_NAMES = (
     'dzm_sde',
     'dzm_lde',

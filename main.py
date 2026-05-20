@@ -3,16 +3,26 @@ import sys
 from multiprocessing import freeze_support
 
 from PyQt5.QtCore import Qt, QTimer
-from PyQt5.QtGui import QFont, QPalette, QColor, QIcon, QPixmap
-from PyQt5.QtWidgets import QApplication, QMainWindow, QTabWidget, QAction, QStyleFactory, QScrollArea, QWidget, \
-    QVBoxLayout, QSplashScreen, QLabel
+from PyQt5.QtGui import QColor, QFont, QIcon, QPalette, QPixmap
+from PyQt5.QtWidgets import (
+    QAction,
+    QApplication,
+    QLabel,
+    QMainWindow,
+    QScrollArea,
+    QSplashScreen,
+    QStyleFactory,
+    QTabWidget,
+    QVBoxLayout,
+    QWidget,
+)
 
 from zrad import __version__
 from zrad.gui.filt_tab import FilteringTab
 from zrad.gui.prep_tab import PreprocessingTab
 from zrad.gui.rad_tab import RadiomicsTab
-from zrad.gui.visual_tab import VisualizationTab
 from zrad.gui.toolbox_gui import CustomWarningBox
+from zrad.gui.visual_tab import VisualizationTab
 
 WINDOW_TITLE = f"Z-Rad v{__version__}"
 WINDOW_WIDTH = 1280
@@ -37,8 +47,7 @@ def add_logo_to_tab(tab: QWidget):
     desired_height = 150
     logo_pixmap = logo_pixmap.scaled(desired_width, desired_height, Qt.KeepAspectRatio, Qt.SmoothTransformation)
     logo_label.setPixmap(logo_pixmap)
-    logo_label.setGeometry(20, 620 - logo_pixmap.height(),
-                           logo_pixmap.width(), logo_pixmap.height())
+    logo_label.setGeometry(20, 620 - logo_pixmap.height(), logo_pixmap.width(), logo_pixmap.height())
 
 
 class ZRad(QMainWindow):
@@ -82,7 +91,7 @@ class ZRad(QMainWindow):
             ("Preprocessing", PreprocessingTab()),
             ("Filtering", FilteringTab()),
             ("Radiomics", RadiomicsTab()),
-            ("Visualization", VisualizationTab())
+            ("Visualization", VisualizationTab()),
         ]
 
         for title, tab in self.tabs:
@@ -165,8 +174,7 @@ class ZRad(QMainWindow):
         """
         Display info about Z-Rad.
         """
-        text = (f'{WINDOW_TITLE} \n\nDeveloped at the University Hospital Zurich '
-                'by the Department of Radiation Oncology')
+        text = f'{WINDOW_TITLE} \n\nDeveloped at the University Hospital Zurich by the Department of Radiation Oncology'
         CustomWarningBox(text, False).response()
 
     def tab_changed(self, index: int):

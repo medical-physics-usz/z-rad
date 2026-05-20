@@ -3,7 +3,6 @@ import numpy as np
 from ..preprocessing import RoiData, RoiMaskValidator
 from .extraction_context import PreparedExtractionData
 
-
 METADATA_REQUIREMENTS = frozenset({'analysis_masks'})
 
 
@@ -24,9 +23,7 @@ def prepare_extraction_data(context, groups, *, include_metadata=False):
         base_masks = prepare_mask_set(context, validation_dim=None if context.is_slice_2d else '3D')
 
     analysis_masks = None
-    needs_analysis_masks = bool(
-        {'analysis_masks', 'discretized_intensity_image', 'ivh_intensity_image'} & required
-    )
+    needs_analysis_masks = bool({'analysis_masks', 'discretized_intensity_image', 'ivh_intensity_image'} & required)
     if needs_analysis_masks:
         if context.is_slice_2d or context.aggr_dim == '3D':
             analysis_masks = base_masks or prepare_mask_set(

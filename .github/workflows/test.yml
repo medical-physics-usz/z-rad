@@ -1,3 +1,4 @@
+---
 name: Run Tests and Coverage
 
 on:
@@ -8,10 +9,17 @@ on:
     branches:
       - master
 
+permissions:
+  contents: read
+
 jobs:
   tests_and_coverage:
-    name: Run All Tests and Coverage
+    name: Run All Tests and Coverage (Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13", "3.14"]
 
     steps:
       - name: Check out repository
@@ -20,22 +28,21 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
-          python-version: "3.10"
+          python-version: ${{ matrix.python-version }}
 
       - name: Cache pip
         uses: actions/cache@v5
         with:
           path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+          key: ${{ runner.os }}-py${{ matrix.python-version }}-pip-${{ hashFiles('pyproject.toml') }}
           restore-keys: |
             ${{ runner.os }}-pip-
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install pytest pytest-cov pytest-xdist
-          pip install -e .
+          python -m pip install -e ".[test]"
+          python -m pip check
 
       - name: Run unit tests with coverage
         run: |

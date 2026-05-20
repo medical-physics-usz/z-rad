@@ -3,6 +3,10 @@ import logging
 import os
 from datetime import datetime
 
+from ..exceptions import DataStructureError, InvalidInputParametersError
+from ..io.dicom import get_all_structure_names, get_dicom_files
+from ..toolbox_logic import close_all_loggers, get_logger
+from ..visualization import Visualization
 from ._base_tab import BaseTab, load_images, load_mask
 from .toolbox_gui import (
     CustomCheckBox,
@@ -11,12 +15,9 @@ from .toolbox_gui import (
     CustomTextField,
     CustomWarningBox,
 )
-from ..exceptions import InvalidInputParametersError, DataStructureError
-from ..io.dicom import get_all_structure_names, get_dicom_files
-from ..visualization import Visualization
-from ..toolbox_logic import get_logger, close_all_loggers
 
 logging.captureWarnings(True)
+
 
 def process_patient_folder(input_params, patient_folder, structure_set):
     """Function to process each patient folder, used for parallel processing."""
@@ -48,8 +49,7 @@ def process_patient_folder(input_params, patient_folder, structure_set):
             local_params["rtstruct_path"] = None
             if current_structure_set or local_params["use_all_structures"]:
                 logger.warning(
-                    f"Patient {patient_folder} has no RTSTRUCT file. "
-                    "Skipping structure/mask loading for this patient."
+                    f"Patient {patient_folder} has no RTSTRUCT file. Skipping structure/mask loading for this patient."
                 )
             current_structure_set = []
 
@@ -59,9 +59,7 @@ def process_patient_folder(input_params, patient_folder, structure_set):
             try:
                 mask = load_mask(local_params, patient_folder, mask_name, image)
             except (DataStructureError, ValueError, TypeError, FileNotFoundError) as e:
-                logger.error(
-                    f"Failed to load ROI '{mask_name}' for patient {patient_folder}: {e}"
-                )
+                logger.error(f"Failed to load ROI '{mask_name}' for patient {patient_folder}: {e}")
                 continue
 
             if mask and mask.array is not None:
@@ -79,61 +77,38 @@ class VisualizationTab(BaseTab):
         self.connect_signals()
 
     def init_dicom_elements(self):
-        self.dicom_structures_label = CustomLabel(
-            'Structures:',
-            200, 300, 200, 50, self,
-            style="color: white;"
-        )
-        self.dicom_structures_text_field = CustomTextField(
-            "E.g. CTV, liver, ...",
-            300, 300, 400, 50, self
-        )
+        self.dicom_structures_label = CustomLabel('Structures:', 200, 300, 200, 50, self, style="color: white;")
+        self.dicom_structures_text_field = CustomTextField("E.g. CTV, liver, ...", 300, 300, 400, 50, self)
 
         self.dicom_structures_info_label = CustomInfo(
-            ' i',
-            'Type ROIs of interest (e.g. CTV, liver).',
-            710, 300, 14, 14, self
+            ' i', 'Type ROIs of interest (e.g. CTV, liver).', 710, 300, 14, 14, self
         )
 
-        self.use_all_structures_check_box = CustomCheckBox(
-            'All structures',
-            750, 300, 150, 50, self)
+        self.use_all_structures_check_box = CustomCheckBox('All structures', 750, 300, 150, 50, self)
 
         self._hide_dicom_elements()
 
     def init_nifti_elements(self):
         """Initialize UI components related to NIfTI elements."""
         # Structures
-        self.nifti_structures_label = CustomLabel(
-            'NIfTI Masks:',
-            200, 300, 200, 50, self,
-            style="color: white;"
-        )
-        self.nifti_structures_text_field = CustomTextField(
-            "E.g. CTV, liver, ...",
-            300, 300, 230, 50, self
-        )
+        self.nifti_structures_label = CustomLabel('NIfTI Masks:', 200, 300, 200, 50, self, style="color: white;")
+        self.nifti_structures_text_field = CustomTextField("E.g. CTV, liver, ...", 300, 300, 230, 50, self)
         self.nifti_structures_info_label = CustomInfo(
             ' i',
             'Provide the names of the NIfTI masks you are interested in, excluding the file extensions.'
             '\nFor example, if the files you are interested in are GTV.nii.gz and liver.nii, enter: GTV, liver.',
-            545, 300, 14, 14, self
+            545,
+            300,
+            14,
+            14,
+            self,
         )
 
         # Image
-        self.nifti_image_label = CustomLabel(
-            'NIfTI Image:',
-            600, 300, 200, 50, self,
-            style="color: white;"
-        )
-        self.nifti_image_text_field = CustomTextField(
-            "E.g. imageCT",
-            700, 300, 120, 50, self
-        )
+        self.nifti_image_label = CustomLabel('NIfTI Image:', 600, 300, 200, 50, self, style="color: white;")
+        self.nifti_image_text_field = CustomTextField("E.g. imageCT", 700, 300, 120, 50, self)
         self.nifti_image_info_label = CustomInfo(
-            ' i',
-            'Specify NIfTI image file without file extension',
-            830, 300, 14, 14, self
+            ' i', 'Specify NIfTI image file without file extension', 830, 300, 14, 14, self
         )
         self._hide_nifti_elements()
 
@@ -178,7 +153,7 @@ class VisualizationTab(BaseTab):
         """Validate combo box selections."""
         required_selections = [
             ('Data Type:', self.input_data_type_combo_box),
-            ('Imaging Modality:', self.input_imaging_mod_combo_box)
+            ('Imaging Modality:', self.input_imaging_mod_combo_box),
         ]
 
         for message, combo_box in required_selections:
@@ -335,7 +310,8 @@ class VisualizationTab(BaseTab):
                 self.nifti_image_text_field.setText(data.get('visual_nifti_image_name', ''))
                 self.nifti_structures_text_field.setText(data.get('visual_nifti_structures', ''))
                 self.input_imaging_mod_combo_box.setCurrentText(
-                    data.get('visual_input_imaging_modality', 'Imaging Modality:'))
+                    data.get('visual_input_imaging_modality', 'Imaging Modality:')
+                )
                 self.use_all_structures_check_box.setCheckState(data.get('visual_use_all_structures', 0))
 
         except FileNotFoundError:

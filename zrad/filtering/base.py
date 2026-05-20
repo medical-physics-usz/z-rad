@@ -63,9 +63,5 @@ class BaseFilter:
 
         out_arr = filtered.transpose(2, 0, 1)
         return Image(
-            array=out_arr,
-            origin=image.origin,
-            spacing=image.spacing,
-            direction=image.direction,
-            shape=image.shape
+            array=out_arr, origin=image.origin, spacing=image.spacing, direction=image.direction, shape=image.shape
         )

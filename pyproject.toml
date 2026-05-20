@@ -11,12 +11,18 @@ name = "z-rad"
 dynamic = ["version"]
 description = "Z-Rad is a radiomic feature extraction software with GUI and API."
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 authors = [
     { name = "Radiomics Team of Radiation Oncology Department at University Hospital Zurich", email = "zrad@usz.ch" }
 ]
 keywords = ["radiomics", "feature-extraction", "python", "GUI", "API"]
 license = { text = "MIT" }
+classifiers = [
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+]
 dependencies = [
     "pyqtgraph>=0.14.0",
     "pydicom>=3.0.0",
@@ -36,6 +42,23 @@ docs = [
     "pydata-sphinx-theme>=0.16.1",
     "sphinx-design>=0.6",
 ]
+test = [
+    "pytest",
+    "pytest-cov",
+    "pytest-xdist",
+]
+lint = [
+    "ruff==0.15.12",
+]
+dev = [
+    "sphinx>=8",
+    "pydata-sphinx-theme>=0.16.1",
+    "sphinx-design>=0.6",
+    "pytest",
+    "pytest-cov",
+    "pytest-xdist",
+    "ruff==0.15.12",
+]
 
 [tool.setuptools]
 # Additional setuptools configuration
@@ -45,3 +68,27 @@ version = { attr = "zrad.__version__" }
 
 [tool.setuptools.packages.find]
 include = ["zrad", "zrad.*"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 120
+exclude = [
+    ".git",
+    ".pytest_cache",
+    ".venv",
+    "build",
+    "dist",
+    "docs/_build",
+    "htmlcov",
+    "z_rad.egg-info",
+]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "C90"]
+ignore = ["E501"]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 40
+
+[tool.ruff.format]
+quote-style = "preserve"

@@ -5,9 +5,13 @@ import sys
 from datetime import datetime
 
 import numpy as np
-from PyQt5.QtCore import QThread
 from joblib import Parallel, delayed
+from PyQt5.QtCore import QThread
 
+from ..exceptions import DataStructureError, InvalidInputParametersError
+from ..io.dicom import get_all_structure_names, get_dicom_files
+from ..preprocessing import ImageResampler, MaskResampler
+from ..toolbox_logic import close_all_loggers, get_logger, joblib_progress
 from ._base_tab import BaseTab, load_images, load_mask
 from .toolbox_gui import (
     CustomBox,
@@ -20,10 +24,6 @@ from .toolbox_gui import (
     ProcessingProgressDialog,
     ProcessingWorker,
 )
-from ..exceptions import InvalidInputParametersError, DataStructureError
-from ..io.dicom import get_all_structure_names, get_dicom_files
-from ..preprocessing import ImageResampler, MaskResampler
-from ..toolbox_logic import get_logger, close_all_loggers, joblib_progress
 
 logging.captureWarnings(True)
 
@@ -64,11 +64,7 @@ def process_patient_folder(input_params, patient_folder, structure_set):
                 local_params["resample_dimension"],
             ),
             method=local_params["image_interpolation_method"],
-            intensity_rounding=(
-                "nearest_integer"
-                if local_params["input_imaging_modality"] == "CT"
-                else None
-            ),
+            intensity_rounding=("nearest_integer" if local_params["input_imaging_modality"] == "CT" else None),
         )
         image_new = prep_image.apply(image)
 
@@ -93,8 +89,7 @@ def process_patient_folder(input_params, patient_folder, structure_set):
         for mask_name in structure_set:
             mask = load_mask(local_params, patient_folder, mask_name, image)
             if mask and mask.array is not None:
-                logger.info(
-                    f"Processing patient's {patient_folder} ROI: {mask_name}.")
+                logger.info(f"Processing patient's {patient_folder} ROI: {mask_name}.")
                 if local_params["just_save_as_nifti"]:
                     mask_new = mask.copy()
                 else:
@@ -120,7 +115,7 @@ def process_patient_folder(input_params, patient_folder, structure_set):
                         mask_union = mask_new.copy()
 
         if mask_union:
-            output_path = os.path.join(local_params["output_directory"], patient_folder, f'mask_union.nii.gz')
+            output_path = os.path.join(local_params["output_directory"], patient_folder, 'mask_union.nii.gz')
             mask_union.save_as_nifti(output_path)
 
 
@@ -133,124 +128,85 @@ class PreprocessingTab(BaseTab):
         self.connect_signals()
 
     def init_dicom_elements(self):
-        self.dicom_structures_label = CustomLabel(
-            'Structures:',
-            200, 300, 200, 50, self,
-            style="color: white;"
-        )
-        self.dicom_structures_text_field = CustomTextField(
-            "E.g. CTV, liver, ...",
-            300, 300, 400, 50, self
-        )
+        self.dicom_structures_label = CustomLabel('Structures:', 200, 300, 200, 50, self, style="color: white;")
+        self.dicom_structures_text_field = CustomTextField("E.g. CTV, liver, ...", 300, 300, 400, 50, self)
 
         self.dicom_structures_info_label = CustomInfo(
-            ' i',
-            'Type ROIs of interest (e.g. CTV, liver).',
-            710, 300, 14, 14, self
+            ' i', 'Type ROIs of interest (e.g. CTV, liver).', 710, 300, 14, 14, self
         )
 
-        self.use_all_structures_check_box = CustomCheckBox(
-            'All structures',
-            750, 300, 150, 50, self)
+        self.use_all_structures_check_box = CustomCheckBox('All structures', 750, 300, 150, 50, self)
 
         self.just_save_as_nifti_check_box = CustomCheckBox(
-            'Convert to NIfTI without resampling',
-            900, 300, 400, 50, self)
+            'Convert to NIfTI without resampling', 900, 300, 400, 50, self
+        )
 
         self._hide_dicom_elements()
 
     def init_nifti_elements(self):
         """Initialize UI components related to NIfTI elements."""
         # Structures
-        self.nifti_structures_label = CustomLabel(
-            'NIfTI Masks:',
-            200, 300, 200, 50, self,
-            style="color: white;"
-        )
-        self.nifti_structures_text_field = CustomTextField(
-            "E.g. CTV, liver, ...",
-            300, 300, 230, 50, self
-        )
+        self.nifti_structures_label = CustomLabel('NIfTI Masks:', 200, 300, 200, 50, self, style="color: white;")
+        self.nifti_structures_text_field = CustomTextField("E.g. CTV, liver, ...", 300, 300, 230, 50, self)
         self.nifti_structures_info_label = CustomInfo(
             ' i',
             'Provide the names of the NIfTI masks you are interested in, excluding the file extensions.'
             '\nFor example, if the files you are interested in are GTV.nii.gz and liver.nii, enter: GTV, liver.',
-            545, 300, 14, 14, self
+            545,
+            300,
+            14,
+            14,
+            self,
         )
 
         # Image
-        self.nifti_image_label = CustomLabel(
-            'NIfTI Image:',
-            600, 300, 200, 50, self,
-            style="color: white;"
-        )
-        self.nifti_image_text_field = CustomTextField(
-            "E.g. imageCT",
-            700, 300, 120, 50, self
-        )
+        self.nifti_image_label = CustomLabel('NIfTI Image:', 600, 300, 200, 50, self, style="color: white;")
+        self.nifti_image_text_field = CustomTextField("E.g. imageCT", 700, 300, 120, 50, self)
         self.nifti_image_info_label = CustomInfo(
-            ' i',
-            'Specify NIfTI image file without file extension',
-            830, 300, 14, 14, self
+            ' i', 'Specify NIfTI image file without file extension', 830, 300, 14, 14, self
         )
         self._hide_nifti_elements()
 
     def init_preprocessing_elements(self):
         # Resample Resolution Label and TextField
         self.resample_resolution_label = CustomLabel(
-            'Resample Resolution (mm):',
-            200, 380, 300, 50, self,
-            style="color: white;"
+            'Resample Resolution (mm):', 200, 380, 300, 50, self, style="color: white;"
         )
-        self.resample_resolution_text_field = CustomTextField(
-            "E.g. 1", 420, 380, 90, 50, self
-        )
+        self.resample_resolution_text_field = CustomTextField("E.g. 1", 420, 380, 90, 50, self)
 
         # Mask union
-        self.mask_union_check_box = CustomCheckBox(
-            'Mask Union',
-            580, 380, 150, 50, self)
+        self.mask_union_check_box = CustomCheckBox('Mask Union', 580, 380, 150, 50, self)
 
         self.mask_union_info_label = CustomInfo(
             ' i',
             'If selected, all chosen masks will be combined into a single mask and saved as a separate .nii.gz file.',
-            700, 380, 14, 14, self
+            700,
+            380,
+            14,
+            14,
+            self,
         )
 
         # Image Interpolation Method ComboBox
         self.image_interpolation_method_combo_box = CustomBox(
-            775, 380, 210, 50, self,
-            item_list=[
-                'Image Interpolation:', "NN", "Linear", "BSpline", "Gaussian"
-            ]
+            775, 380, 210, 50, self, item_list=['Image Interpolation:', "NN", "Linear", "BSpline", "Gaussian"]
         )
 
         # Resample Dimension ComboBox
         self.resample_dimension_combo_box = CustomBox(
-            1000, 380, 210, 50, self,
-            item_list=[
-                'Resample Dimension:', "2D", "3D"
-            ]
+            1000, 380, 210, 50, self, item_list=['Resample Dimension:', "2D", "3D"]
         )
 
         # Mask Interpolation Method ComboBox
         self.mask_interpolation_method_combo_box = CustomBox(
-            200, 460, 210, 50, self,
-            item_list=[
-                'Mask Interpolation:', "NN", "Linear", "BSpline", "Gaussian"
-            ]
+            200, 460, 210, 50, self, item_list=['Mask Interpolation:', "NN", "Linear", "BSpline", "Gaussian"]
         )
 
         # Mask Interpolation Threshold Label and TextField
         self.mask_interpolation_threshold_label = CustomLabel(
-            'Mask Interpolation Threshold:',
-            600, 460, 360, 50, self,
-            style="color: white;"
+            'Mask Interpolation Threshold:', 600, 460, 360, 50, self, style="color: white;"
         )
-        self.mask_interpolation_threshold_text_field = CustomTextField(
-            "E.g. 0.75",
-            830, 460, 100, 50, self
-        )
+        self.mask_interpolation_threshold_text_field = CustomTextField("E.g. 0.75", 830, 460, 100, 50, self)
         self.mask_interpolation_threshold_text_field.setText('0.5')
         self.mask_interpolation_threshold_label.hide()
         self.mask_interpolation_threshold_text_field.hide()
@@ -261,15 +217,13 @@ class PreprocessingTab(BaseTab):
         self.use_all_structures_check_box.stateChanged.connect(self._use_all_structures_changed)
         self.run_button.clicked.connect(self.run_selection)
         self.mask_interpolation_method_combo_box.currentTextChanged.connect(
-            lambda:
-            (
-                self.mask_interpolation_threshold_label.show(),
-                self.mask_interpolation_threshold_text_field.show()
-            )
-            if self.mask_interpolation_method_combo_box.currentText() not in ['NN', 'Mask Interpolation:']
-            else (
-                self.mask_interpolation_threshold_label.hide(),
-                self.mask_interpolation_threshold_text_field.hide()
+            lambda: (
+                (self.mask_interpolation_threshold_label.show(), self.mask_interpolation_threshold_text_field.show())
+                if self.mask_interpolation_method_combo_box.currentText() not in ['NN', 'Mask Interpolation:']
+                else (
+                    self.mask_interpolation_threshold_label.hide(),
+                    self.mask_interpolation_threshold_text_field.hide(),
+                )
             )
         )
 
@@ -315,8 +269,8 @@ class PreprocessingTab(BaseTab):
     def _show_preprocessing_elements(self):
 
         # the threshold should not be displayed when switched back, only when specific mask interpolation methods are selected:
-        #self.mask_interpolation_threshold_label.show()  # TO REMOVE
-        #self.mask_interpolation_threshold_text_field.show()  # TO REMOVE
+        # self.mask_interpolation_threshold_label.show()  # TO REMOVE
+        # self.mask_interpolation_threshold_text_field.show()  # TO REMOVE
         self.mask_interpolation_method_combo_box.show()
         self.resample_resolution_label.show()
         self.resample_resolution_text_field.show()
@@ -328,7 +282,7 @@ class PreprocessingTab(BaseTab):
         required_selections = [
             ('Threads:', self.number_of_threads_combo_box),
             ('Data Type:', self.input_data_type_combo_box),
-            ('Imaging Modality:', self.input_imaging_mod_combo_box)
+            ('Imaging Modality:', self.input_imaging_mod_combo_box),
         ]
 
         if not self.input_params["just_save_as_nifti"]:
@@ -400,7 +354,9 @@ class PreprocessingTab(BaseTab):
 
             if self.input_params["mask_interpolation_method"] != "NN":
                 try:
-                    self.input_params["mask_interpolation_threshold"] = float(self.input_params["mask_interpolation_threshold"])
+                    self.input_params["mask_interpolation_threshold"] = float(
+                        self.input_params["mask_interpolation_threshold"]
+                    )
                 except ValueError:
                     msg = "Select valid mask interpolation threshold"
                     raise InvalidInputParametersError(msg)
@@ -470,9 +426,7 @@ class PreprocessingTab(BaseTab):
             backend_hint = "processes"
             self.logger.info("Not frozen state. Set backend_hint to processes")
         if list_of_patient_folders:
-            progress_dialog = ProcessingProgressDialog(
-                "Preprocessing Progress", len(list_of_patient_folders), self
-            )
+            progress_dialog = ProcessingProgressDialog("Preprocessing Progress", len(list_of_patient_folders), self)
             progress_dialog.start()
             n_jobs = self.input_params["number_of_threads"]
 
@@ -563,14 +517,20 @@ class PreprocessingTab(BaseTab):
                 self.nifti_structures_text_field.setText(data.get('prep_nifti_structures', ''))
                 self.resample_resolution_text_field.setText(data.get('prep_resample_resolution', ''))
                 self.image_interpolation_method_combo_box.setCurrentText(
-                    data.get('prep_image_interpolation_method', 'Image Interpolation:'))
-                self.resample_dimension_combo_box.setCurrentText(data.get('prep_resample_dimension', 'Resample Dimension:'))
+                    data.get('prep_image_interpolation_method', 'Image Interpolation:')
+                )
+                self.resample_dimension_combo_box.setCurrentText(
+                    data.get('prep_resample_dimension', 'Resample Dimension:')
+                )
                 self.mask_interpolation_method_combo_box.setCurrentText(
-                    data.get('prep_mask_interpolation_method', 'Mask Interpolation:'))
+                    data.get('prep_mask_interpolation_method', 'Mask Interpolation:')
+                )
                 self.mask_interpolation_threshold_text_field.setText(
-                    data.get('prep_mask_interpolation_threshold', '0.5'))
+                    data.get('prep_mask_interpolation_threshold', '0.5')
+                )
                 self.input_imaging_mod_combo_box.setCurrentText(
-                    data.get('prep_input_imaging_modality', 'Imaging Modality:'))
+                    data.get('prep_input_imaging_modality', 'Imaging Modality:')
+                )
                 self.just_save_as_nifti_check_box.setCheckState(data.get('prep_just_save_as_nifti', 0))
                 self.use_all_structures_check_box.setCheckState(data.get('prep_use_all_structures', 0))
                 self.mask_union_check_box.setCheckState(data.get('prep_mask_union', 0))

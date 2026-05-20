@@ -6,8 +6,8 @@ import pytest
 from zrad.image import Image
 from zrad.preprocessing import (
     ImageResampler,
-    IVHIntensityDiscretizer,
     IntensityMaskBuilder,
+    IVHIntensityDiscretizer,
     MaskResampler,
     Resegmenter,
     RoiData,
@@ -36,11 +36,15 @@ def ibsi_i_validation(ibsi_features, features, config_a=False):
             lower_boundary = val - tol
 
             if not (lower_boundary <= features[tag] <= upper_boundary):
-                pytest.fail(f"Feature {tag} out of tolerance: {features[tag]} not in range ({lower_boundary}, {upper_boundary})")
+                pytest.fail(
+                    f"Feature {tag} out of tolerance: {features[tag]} not in range ({lower_boundary}, {upper_boundary})"
+                )
+
 
 @pytest.fixture()
 def dcm_ct_phantom_image(ibsi_i_data_dir):
     return Image.from_dicom(dicom_dir=ibsi_i_data_dir / 'dicom' / 'image', modality='CT')
+
 
 @pytest.fixture()
 def dcm_ct_phantom_mask(dcm_ct_phantom_image):
@@ -49,6 +53,7 @@ def dcm_ct_phantom_mask(dcm_ct_phantom_image):
         rtstruct_path='tests/data/IBSI_I/dicom/mask/DCM_RS_00060.dcm',
         structure_name='GTV-1',
     )
+
 
 @pytest.fixture()
 def nii_ct_phantom_image(ibsi_i_data_dir):
@@ -80,10 +85,12 @@ def _prepare_roi_data(
     ivh_number_of_bins=None,
     ivh_bin_size=None,
 ):
-    roi_data = IntensityMaskBuilder().apply(RoiData(
-        image=image,
-        morphological_mask=mask,
-    ))
+    roi_data = IntensityMaskBuilder().apply(
+        RoiData(
+            image=image,
+            morphological_mask=mask,
+        )
+    )
     roi_data = Resegmenter(
         intensity_range=intensity_range,
         outlier_range=outlier_range,
@@ -130,7 +137,7 @@ def res2d_2mm_mask_linear(nii_ct_phantom_mask):
     preprocessing = MaskResampler(
         resolution=_resolution(nii_ct_phantom_mask, 2, '2D'),
         method='Linear',
-        partial_volume_threshold=.5,
+        partial_volume_threshold=0.5,
     )
     res_mask = preprocessing.apply(nii_ct_phantom_mask)
 
@@ -156,7 +163,7 @@ def res3d_2mm_mask_linear(nii_ct_phantom_mask):
     preprocessing = MaskResampler(
         resolution=_resolution(nii_ct_phantom_mask, 2, '3D'),
         method='Linear',
-        partial_volume_threshold=.5,
+        partial_volume_threshold=0.5,
     )
     res_mask = preprocessing.apply(nii_ct_phantom_mask)
 
@@ -181,30 +188,46 @@ def test_ibsi_i_config_a(dcm_ct_phantom_image, dcm_ct_phantom_mask):
     ibsi_features = ibsi_i_feature_tolerances('config_A')
 
     features = _extract_features(
-        dcm_ct_phantom_image, dcm_ct_phantom_mask,
-        aggr_dim='2D', aggr_method='AVER',
-        intensity_range=[-500, 400], bin_size=25, ivh_method='direct',
+        dcm_ct_phantom_image,
+        dcm_ct_phantom_mask,
+        aggr_dim='2D',
+        aggr_method='AVER',
+        intensity_range=[-500, 400],
+        bin_size=25,
+        ivh_method='direct',
     )
     ibsi_i_validation(ibsi_features, features, True)
 
     features = _extract_features(
-        dcm_ct_phantom_image, dcm_ct_phantom_mask,
-        aggr_dim='2D', aggr_method='SLICE_MERG',
-        intensity_range=[-500, 400], bin_size=25, ivh_method='direct',
+        dcm_ct_phantom_image,
+        dcm_ct_phantom_mask,
+        aggr_dim='2D',
+        aggr_method='SLICE_MERG',
+        intensity_range=[-500, 400],
+        bin_size=25,
+        ivh_method='direct',
     )
     ibsi_i_validation(ibsi_features, features, True)
 
     features = _extract_features(
-        dcm_ct_phantom_image, dcm_ct_phantom_mask,
-        aggr_dim='2.5D', aggr_method='DIR_MERG',
-        intensity_range=[-500, 400], bin_size=25, ivh_method='direct',
+        dcm_ct_phantom_image,
+        dcm_ct_phantom_mask,
+        aggr_dim='2.5D',
+        aggr_method='DIR_MERG',
+        intensity_range=[-500, 400],
+        bin_size=25,
+        ivh_method='direct',
     )
     ibsi_i_validation(ibsi_features, features, True)
 
     features = _extract_features(
-        dcm_ct_phantom_image, dcm_ct_phantom_mask,
-        aggr_dim='2.5D', aggr_method='MERG',
-        intensity_range=[-500, 400], bin_size=25, ivh_method='direct',
+        dcm_ct_phantom_image,
+        dcm_ct_phantom_mask,
+        aggr_dim='2.5D',
+        aggr_method='MERG',
+        intensity_range=[-500, 400],
+        bin_size=25,
+        ivh_method='direct',
     )
     ibsi_i_validation(ibsi_features, features, True)
 
@@ -214,29 +237,44 @@ def test_ibsi_i_config_b(res2d_2mm_image_linear, res2d_2mm_mask_linear):
     ibsi_features = ibsi_i_feature_tolerances('config_B')
 
     features = _extract_features(
-        res2d_2mm_image_linear, res2d_2mm_mask_linear,
-        aggr_dim='2D', aggr_method='AVER',
-        intensity_range=[-500, 400], number_of_bins=32,
+        res2d_2mm_image_linear,
+        res2d_2mm_mask_linear,
+        aggr_dim='2D',
+        aggr_method='AVER',
+        intensity_range=[-500, 400],
+        number_of_bins=32,
     )
     ibsi_i_validation(ibsi_features, features)
     features = _extract_features(
-        res2d_2mm_image_linear, res2d_2mm_mask_linear,
-        aggr_dim='2D', aggr_method='SLICE_MERG',
-        intensity_range=[-500, 400], number_of_bins=32, ivh_method='direct',
+        res2d_2mm_image_linear,
+        res2d_2mm_mask_linear,
+        aggr_dim='2D',
+        aggr_method='SLICE_MERG',
+        intensity_range=[-500, 400],
+        number_of_bins=32,
+        ivh_method='direct',
     )
     ibsi_i_validation(ibsi_features, features)
 
     features = _extract_features(
-        res2d_2mm_image_linear, res2d_2mm_mask_linear,
-        aggr_dim='2.5D', aggr_method='DIR_MERG',
-        intensity_range=[-500, 400], number_of_bins=32, ivh_method='direct',
+        res2d_2mm_image_linear,
+        res2d_2mm_mask_linear,
+        aggr_dim='2.5D',
+        aggr_method='DIR_MERG',
+        intensity_range=[-500, 400],
+        number_of_bins=32,
+        ivh_method='direct',
     )
     ibsi_i_validation(ibsi_features, features)
 
     features = _extract_features(
-        res2d_2mm_image_linear, res2d_2mm_mask_linear,
-        aggr_dim='2.5D', aggr_method='MERG',
-        intensity_range=[-500, 400], number_of_bins=32, ivh_method='direct',
+        res2d_2mm_image_linear,
+        res2d_2mm_mask_linear,
+        aggr_dim='2.5D',
+        aggr_method='MERG',
+        intensity_range=[-500, 400],
+        number_of_bins=32,
+        ivh_method='direct',
     )
     ibsi_i_validation(ibsi_features, features)
 
@@ -246,18 +284,26 @@ def test_ibsi_i_config_c(res3d_2mm_image_linear, res3d_2mm_mask_linear):
     ibsi_features = ibsi_i_feature_tolerances('config_C')
 
     features = _extract_features(
-        res3d_2mm_image_linear, res3d_2mm_mask_linear,
-        aggr_dim='3D', aggr_method='AVER',
-        intensity_range=[-1000, 400], bin_size=25,
-        ivh_method='fixed_bin_size', ivh_bin_size=2.5,
+        res3d_2mm_image_linear,
+        res3d_2mm_mask_linear,
+        aggr_dim='3D',
+        aggr_method='AVER',
+        intensity_range=[-1000, 400],
+        bin_size=25,
+        ivh_method='fixed_bin_size',
+        ivh_bin_size=2.5,
     )
     ibsi_i_validation(ibsi_features, features)
 
     features = _extract_features(
-        res3d_2mm_image_linear, res3d_2mm_mask_linear,
-        aggr_dim='3D', aggr_method='MERG',
-        intensity_range=[-1000, 400], bin_size=25,
-        ivh_method='fixed_bin_size', ivh_bin_size=2.5,
+        res3d_2mm_image_linear,
+        res3d_2mm_mask_linear,
+        aggr_dim='3D',
+        aggr_method='MERG',
+        intensity_range=[-1000, 400],
+        bin_size=25,
+        ivh_method='fixed_bin_size',
+        ivh_bin_size=2.5,
     )
     ibsi_i_validation(ibsi_features, features)
 
@@ -267,16 +313,24 @@ def test_ibsi_i_config_d(res3d_2mm_image_linear, res3d_2mm_mask_linear):
     ibsi_features = ibsi_i_feature_tolerances('config_D')
 
     features = _extract_features(
-        res3d_2mm_image_linear, res3d_2mm_mask_linear,
-        aggr_dim='3D', aggr_method='AVER',
-        outlier_range=3, number_of_bins=32, ivh_method='direct',
+        res3d_2mm_image_linear,
+        res3d_2mm_mask_linear,
+        aggr_dim='3D',
+        aggr_method='AVER',
+        outlier_range=3,
+        number_of_bins=32,
+        ivh_method='direct',
     )
     ibsi_i_validation(ibsi_features, features)
 
     features = _extract_features(
-        res3d_2mm_image_linear, res3d_2mm_mask_linear,
-        aggr_dim='3D', aggr_method='MERG',
-        outlier_range=3, number_of_bins=32, ivh_method='direct',
+        res3d_2mm_image_linear,
+        res3d_2mm_mask_linear,
+        aggr_dim='3D',
+        aggr_method='MERG',
+        outlier_range=3,
+        number_of_bins=32,
+        ivh_method='direct',
     )
     ibsi_i_validation(ibsi_features, features)
 
@@ -286,17 +340,27 @@ def test_ibsi_i_config_e(res3d_2mm_image_spline, res3d_2mm_mask_linear):
     ibsi_features = ibsi_i_feature_tolerances('config_E')
 
     features = _extract_features(
-        res3d_2mm_image_spline, res3d_2mm_mask_linear,
-        aggr_dim='3D', aggr_method='AVER',
-        intensity_range=[-1000, 400], outlier_range=3, number_of_bins=32,
-        ivh_method='fixed_bin_number', ivh_number_of_bins=1000,
+        res3d_2mm_image_spline,
+        res3d_2mm_mask_linear,
+        aggr_dim='3D',
+        aggr_method='AVER',
+        intensity_range=[-1000, 400],
+        outlier_range=3,
+        number_of_bins=32,
+        ivh_method='fixed_bin_number',
+        ivh_number_of_bins=1000,
     )
     ibsi_i_validation(ibsi_features, features)
 
     features = _extract_features(
-        res3d_2mm_image_spline, res3d_2mm_mask_linear,
-        aggr_dim='3D', aggr_method='MERG',
-        intensity_range=[-1000, 400], outlier_range=3, number_of_bins=32,
-        ivh_method='fixed_bin_number', ivh_number_of_bins=1000,
+        res3d_2mm_image_spline,
+        res3d_2mm_mask_linear,
+        aggr_dim='3D',
+        aggr_method='MERG',
+        intensity_range=[-1000, 400],
+        outlier_range=3,
+        number_of_bins=32,
+        ivh_method='fixed_bin_number',
+        ivh_number_of_bins=1000,
     )
     ibsi_i_validation(ibsi_features, features)

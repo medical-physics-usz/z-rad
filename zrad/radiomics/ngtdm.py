@@ -5,7 +5,6 @@ from ..exceptions import DataStructureError
 from .base import BaseFeatureGroup
 from .texture_aggregation import format_texture_feature_names
 
-
 NGTDM_FEATURE_NAMES = (
     'ngt_coarseness',
     'ngt_contrast',
@@ -138,7 +137,7 @@ class NGTDM:
         s_2 = np.sum(matrix[:, 1])
         for i in range(matrix.shape[0]):
             for j in range(matrix.shape[0]):
-                s_1 += (matrix[i, 0] * matrix[j, 0] * (i - j) ** 2) / (n ** 2)
+                s_1 += (matrix[i, 0] * matrix[j, 0] * (i - j) ** 2) / (n**2)
         denum = n_g * (n_g - 1) * np.sum(matrix[:, 0])
         return 0 if denum == 0 else (s_1 * s_2) / denum
 
@@ -204,10 +203,7 @@ class NGTDM:
         if self.slice_median:
             if self.slice_weight and weights is not None:
                 raise DataStructureError('Weighted median is not supported for NGTDM aggregation.')
-            return {
-                name: float(np.median([values[name] for values in feature_dicts]))
-                for name in NGTDM_FEATURE_NAMES
-            }
+            return {name: float(np.median([values[name] for values in feature_dicts])) for name in NGTDM_FEATURE_NAMES}
         return {
             name: float(np.average([values[name] for values in feature_dicts], weights=weights))
             for name in NGTDM_FEATURE_NAMES
@@ -283,9 +279,7 @@ class NGTDMFeatureGroup(BaseFeatureGroup):
             slice_weight=context.slice_weighting,
             slice_median=context.slice_median,
         )
-        feature_values = ngtdm.calculate_features(
-            prepared_data.require_discretized_intensity_image().array.T
-        )
+        feature_values = ngtdm.calculate_features(prepared_data.require_discretized_intensity_image().array.T)
         return {
             output_name: feature_values[base_name]
             for output_name, base_name in zip(self.output_names(context), NGTDM_FEATURE_NAMES)

@@ -5,7 +5,6 @@ from .base import BaseFeatureGroup
 from .texture_aggregation import format_texture_feature_names
 from .texture_base import TEXTURE_ATTRIBUTE_NAMES, ZoneMatrixFeatureBase
 
-
 GLSZM_FEATURE_NAMES = (
     'szm_sze',
     'szm_lze',
@@ -147,9 +146,7 @@ class GLSZMFeatureGroup(BaseFeatureGroup):
             slice_weight=context.slice_weighting,
             slice_median=context.slice_median,
         )
-        feature_values = glszm.calculate_features(
-            prepared_data.require_discretized_intensity_image().array.T
-        )
+        feature_values = glszm.calculate_features(prepared_data.require_discretized_intensity_image().array.T)
         return {
             output_name: feature_values[base_name]
             for output_name, base_name in zip(self.output_names(context), GLSZM_FEATURE_NAMES)

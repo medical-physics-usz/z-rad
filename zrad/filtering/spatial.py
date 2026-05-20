@@ -27,10 +27,7 @@ class Mean(BaseFilter):
 
     def __init__(self, padding_type, support, dimensionality):
         super().__init__(
-            filtering_method='Mean',
-            padding_type=padding_type,
-            support=support,
-            dimensionality=dimensionality
+            filtering_method='Mean', padding_type=padding_type, support=support, dimensionality=dimensionality
         )
 
         if dimensionality in ['2D', '3D']:
@@ -46,8 +43,10 @@ class Mean(BaseFilter):
         if padding_type in ['constant', 'nearest', 'wrap', 'reflect']:
             self.padding_type = padding_type
         else:
-            raise ValueError(f"Wrong padding type '{padding_type}'. "
-                             "Available padding types are: 'constant', 'nearest', 'wrap', and 'reflect'.")
+            raise ValueError(
+                f"Wrong padding type '{padding_type}'. "
+                "Available padding types are: 'constant', 'nearest', 'wrap', and 'reflect'."
+            )
 
     def _apply_array(self, img):
         if self.dimensionality == "2D":
@@ -90,7 +89,7 @@ class LoG(BaseFilter):
             padding_type=padding_type,
             sigma_mm=sigma_mm,
             cutoff=cutoff,
-            dimensionality=dimensionality
+            dimensionality=dimensionality,
         )
 
         if dimensionality in ['2D', '3D']:
@@ -101,8 +100,10 @@ class LoG(BaseFilter):
         if padding_type in ['constant', 'nearest', 'wrap', 'reflect']:
             self.padding_type = padding_type
         else:
-            raise ValueError(f"Wrong padding type '{padding_type}'. "
-                             f"Available padding types are: 'constant', 'nearest', 'wrap', and 'reflect'.")
+            raise ValueError(
+                f"Wrong padding type '{padding_type}'. "
+                f"Available padding types are: 'constant', 'nearest', 'wrap', and 'reflect'."
+            )
 
         if isinstance(sigma_mm, (int, float)):
             self.sigma_mm = sigma_mm
@@ -126,13 +127,15 @@ class LoG(BaseFilter):
     def _apply_array(self, img):
         sigma = self.sigma_mm / self.res_mm
         if self.dimensionality == "3D":
-            filtered_img = ndi.gaussian_laplace(img, sigma=sigma, mode=self.padding_type, cval=self.padding_constant,
-                                                truncate=self.cutoff)
+            filtered_img = ndi.gaussian_laplace(
+                img, sigma=sigma, mode=self.padding_type, cval=self.padding_constant, truncate=self.cutoff
+            )
         elif self.dimensionality == "2D":
             filtered_img = np.nan * np.ones(img.shape)
             for i in range(img.shape[2]):
-                filtered_img[:, :, i] = ndi.gaussian_laplace(img[:, :, i], sigma=sigma, mode=self.padding_type,
-                                                             cval=self.padding_constant, truncate=self.cutoff)
+                filtered_img[:, :, i] = ndi.gaussian_laplace(
+                    img[:, :, i], sigma=sigma, mode=self.padding_type, cval=self.padding_constant, truncate=self.cutoff
+                )
         else:
             filtered_img = None
         return filtered_img
@@ -164,8 +167,9 @@ class Laws(BaseFilter):
         Pooling rule for rotation-invariant responses.
     """
 
-    def __init__(self, response_map, padding_type, distance, energy_map, dimensionality,
-                 rotation_invariance=False, pooling=None):
+    def __init__(
+        self, response_map, padding_type, distance, energy_map, dimensionality, rotation_invariance=False, pooling=None
+    ):
         super().__init__(
             filtering_method='Laws Kernels',
             response_map=response_map,
@@ -174,7 +178,7 @@ class Laws(BaseFilter):
             energy_map=energy_map,
             dimensionality=dimensionality,
             rotation_invariance=rotation_invariance,
-            pooling=pooling
+            pooling=pooling,
         )
 
         if dimensionality in ['2D', '3D']:
@@ -185,8 +189,10 @@ class Laws(BaseFilter):
         if padding_type in ['constant', 'nearest', 'wrap', 'reflect']:
             self.padding_type = padding_type
         else:
-            raise ValueError(f"Wrong padding type '{padding_type}'. "
-                             "Available padding types are: 'constant', 'nearest', 'wrap', and 'reflect'.")
+            raise ValueError(
+                f"Wrong padding type '{padding_type}'. "
+                "Available padding types are: 'constant', 'nearest', 'wrap', and 'reflect'."
+            )
 
         if isinstance(distance, int):
             self.distance = distance
@@ -230,7 +236,7 @@ class Laws(BaseFilter):
                 return 1 / np.sqrt(70) * np.array([1, -4, 6, -4, 1])
 
     def _get_response_maps(self):
-        parts = [self.response_map[i:i + 2] for i in range(0, len(self.response_map), 2)]
+        parts = [self.response_map[i : i + 2] for i in range(0, len(self.response_map), 2)]
         return [''.join(e) for e in permutations(parts)]
 
     def _filter(self, img, response_map):
@@ -280,8 +286,9 @@ class Laws(BaseFilter):
                     final_image = np.maximum(final_image, self._filter(img[::-1, ::-1, :], response_map)[::-1, ::-1, :])
                     final_image = np.maximum(final_image, self._filter(img[::-1, :, ::-1], response_map)[::-1, :, ::-1])
                     final_image = np.maximum(final_image, self._filter(img[:, ::-1, ::-1], response_map)[:, ::-1, ::-1])
-                    final_image = np.maximum(final_image,
-                                             self._filter(img[::-1, ::-1, ::-1], response_map)[::-1, ::-1, ::-1])
+                    final_image = np.maximum(
+                        final_image, self._filter(img[::-1, ::-1, ::-1], response_map)[::-1, ::-1, ::-1]
+                    )
         else:
             final_image = self._filter(img, self.response_map)
 
@@ -346,16 +353,18 @@ class Gabor(BaseFilter):
         'wrap': cv2.BORDER_WRAP,
     }
 
-    def __init__(self,
-                 padding_type: str,
-                 res_mm: float,
-                 sigma_mm: float,
-                 lambda_mm: float,
-                 gamma: float,
-                 theta: float,
-                 rotation_invariance: bool = False,
-                 orthogonal_planes: bool = False,
-                 n_stds: float = None):
+    def __init__(
+        self,
+        padding_type: str,
+        res_mm: float,
+        sigma_mm: float,
+        lambda_mm: float,
+        gamma: float,
+        theta: float,
+        rotation_invariance: bool = False,
+        orthogonal_planes: bool = False,
+        n_stds: float = None,
+    ):
         super().__init__(
             filtering_method='Gabor',
             padding_type=padding_type,
@@ -366,14 +375,13 @@ class Gabor(BaseFilter):
             theta=theta,
             rotation_invariance=rotation_invariance,
             orthogonal_planes=orthogonal_planes,
-            n_stds=n_stds
+            n_stds=n_stds,
         )
 
         try:
             self._border = self._PADDING_MAP[padding_type]
         except KeyError:
-            raise ValueError(f"padding_type must be one of {list(self._PADDING_MAP)}, "
-                             f"got {padding_type!r}")
+            raise ValueError(f"padding_type must be one of {list(self._PADDING_MAP)}, got {padding_type!r}")
         self.rotation_invariance = rotation_invariance
         self.res_mm = res_mm
         self.theta = theta
@@ -389,13 +397,23 @@ class Gabor(BaseFilter):
         if ksize % 2 == 0:
             ksize += 1
         kern_real = cv2.getGaborKernel(
-            (ksize, ksize), self.sigma_mm / self.res_mm,
-            theta, self.lambda_mm / self.res_mm,
-            self.gamma, 0, ktype=cv2.CV_32F)
+            (ksize, ksize),
+            self.sigma_mm / self.res_mm,
+            theta,
+            self.lambda_mm / self.res_mm,
+            self.gamma,
+            0,
+            ktype=cv2.CV_32F,
+        )
         kern_imag = cv2.getGaborKernel(
-            (ksize, ksize), self.sigma_mm / self.res_mm,
-            theta, self.lambda_mm / self.res_mm,
-            self.gamma, np.pi / 2, ktype=cv2.CV_32F)
+            (ksize, ksize),
+            self.sigma_mm / self.res_mm,
+            theta,
+            self.lambda_mm / self.res_mm,
+            self.gamma,
+            np.pi / 2,
+            ktype=cv2.CV_32F,
+        )
         return kern_real, kern_imag
 
     def _filter(self, img, theta, plane2d=(0, 1)):

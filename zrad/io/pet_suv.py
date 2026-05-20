@@ -2,9 +2,9 @@ import re
 import warnings
 from datetime import datetime
 
-import SimpleITK as sitk
 import numpy as np
 import pydicom
+import SimpleITK as sitk
 
 from ..exceptions import DataStructureError, DataStructureWarning
 
@@ -35,9 +35,7 @@ def parse_time(time_str):
 def calc_elapsed_time(ds, decay_constant, acquisition_time, injection_time):
     frame_reference_time = float(ds.FrameReferenceTime) / 1000
     decay_during_frame = decay_constant * ds.ActualFrameDuration / 1000
-    avg_count_rate_time = (1 / decay_constant) * np.log(
-        decay_during_frame / (1 - np.exp(-decay_during_frame))
-    )
+    avg_count_rate_time = (1 / decay_constant) * np.log(decay_during_frame / (1 - np.exp(-decay_during_frame)))
 
     return (acquisition_time - injection_time).total_seconds() + avg_count_rate_time - frame_reference_time
 
@@ -61,7 +59,7 @@ def calculate_bsa_du_bois(height_cm, weight_kg):
     """Calculate Du Bois body surface area in m^2."""
     if height_cm <= 0 or weight_kg <= 0:
         raise DataStructureError("Height and weight must be > 0 to compute BSA.")
-    return 0.007184 * (height_cm ** 0.725) * (weight_kg ** 0.425)
+    return 0.007184 * (height_cm**0.725) * (weight_kg**0.425)
 
 
 def get_patient_sex(ds):
@@ -77,9 +75,7 @@ def get_patient_sex(ds):
     if sex == "":
         raise DataStructureError("Patient sex tag (0010,0040) is empty.")
     if sex not in {"M", "F", "O"}:
-        raise DataStructureError(
-            f"Unsupported PatientSex '{sex}'. Expected one of 'M', 'F', or 'O'."
-        )
+        raise DataStructureError(f"Unsupported PatientSex '{sex}'. Expected one of 'M', 'F', or 'O'.")
     return sex
 
 
@@ -133,7 +129,7 @@ def calculate_lbm_janmahasatian(height_cm, weight_kg, sex):
         raise DataStructureError("Height and weight must be > 0 to compute LBM.")
 
     height_m = height_cm * 1e-2
-    bmi = weight_kg / (height_m ** 2)
+    bmi = weight_kg / (height_m**2)
 
     male_lbm = 9270.0 * weight_kg / (6680.0 + 216.0 * bmi)
     female_lbm = 9270.0 * weight_kg / (8780.0 + 244.0 * bmi)
@@ -177,7 +173,9 @@ def calculate_ibw(height_cm, sex):
 def get_gml_normalization_info(ds):
     """Parse GML SUV normalization metadata and compute the normalization factor."""
     suv_type_elem = ds.get((0x0054, 0x1006), None)
-    suv_type = "BW" if suv_type_elem is None or suv_type_elem.value in [None, ""] else str(suv_type_elem.value).strip().upper()
+    suv_type = (
+        "BW" if suv_type_elem is None or suv_type_elem.value in [None, ""] else str(suv_type_elem.value).strip().upper()
+    )
 
     try:
         patient_weight = float(ds.PatientWeight)
@@ -232,9 +230,7 @@ def validate_pet_dicom_tags(dicom_files):
 
         if ds.Units == "BQML":
             try:
-                injection_time = parse_time(
-                    ds.RadiopharmaceuticalInformationSequence[0].RadiopharmaceuticalStartTime
-                )
+                injection_time = parse_time(ds.RadiopharmaceuticalInformationSequence[0].RadiopharmaceuticalStartTime)
             except AttributeError:
                 injection_time = parse_time(
                     ds.RadiopharmaceuticalInformationSequence[0].RadiopharmaceuticalStartDateTime
@@ -251,7 +247,11 @@ def validate_pet_dicom_tags(dicom_files):
                     )
 
                     elapsed_time = calc_elapsed_time(ds, decay_constant, acquisition_time, injection_time)
-                elif "SIEMENS" in ds.Manufacturer.upper() or "CPS" in ds.Manufacturer.upper() or "CTI" in ds.Manufacturer.upper():
+                elif (
+                    "SIEMENS" in ds.Manufacturer.upper()
+                    or "CPS" in ds.Manufacturer.upper()
+                    or "CTI" in ds.Manufacturer.upper()
+                ):
                     try:
                         elapsed_time = (
                             parse_time(ds[(0x0071, 0x1022)].value).replace(
@@ -273,7 +273,7 @@ def validate_pet_dicom_tags(dicom_files):
                 elif "GE" in ds.Manufacturer.upper():
                     try:
                         elapsed_time = (
-                            parse_time(ds[(0x0009, 0x100d)].value).replace(
+                            parse_time(ds[(0x0009, 0x100D)].value).replace(
                                 year=injection_time.year,
                                 month=injection_time.month,
                                 day=injection_time.day,
@@ -311,32 +311,32 @@ def validate_pet_dicom_tags(dicom_files):
             if elapsed_time is not None and elapsed_time < 0:
                 error_msg = f"For patient's {image_id} image, patient is excluded from the analysis due to the negative time difference in the decay factor."
                 raise DataStructureError(error_msg)
-            elif elapsed_time is not None and elapsed_time > 0 and abs(elapsed_time) < 1800 and ds.DecayCorrection != "ADMIN":
+            elif (
+                elapsed_time is not None
+                and elapsed_time > 0
+                and abs(elapsed_time) < 1800
+                and ds.DecayCorrection != "ADMIN"
+            ):
                 warning_msg = f"Only {abs(elapsed_time) / 60} minutes after the injection."
                 warnings.warn(warning_msg, DataStructureWarning)
         elif ds.Units == "CNTS" and "PHILIPS" in ds.Manufacturer.upper():
-            if not (((0x7053, 0x1009) in ds and ds[(0x7053, 0x1009)].value != 0) or (
-                (0x7053, 0x1000) in ds and ds[(0x7053, 0x1000)].value != 0
-            )):
+            if not (
+                ((0x7053, 0x1009) in ds and ds[(0x7053, 0x1009)].value != 0)
+                or ((0x7053, 0x1000) in ds and ds[(0x7053, 0x1000)].value != 0)
+            ):
                 error_msg = f"For patient's {image_id} image, patient is excluded, Philips scale factors not present (PET units CNTS)"
                 raise DataStructureError(error_msg)
         elif ds.Units == "GML":
             try:
                 _suv_type, _factor = get_gml_normalization_info(ds)
             except Exception as e:
-                error_msg = (
-                    f"For patient's {image_id} image, patient is excluded, "
-                    f"GML normalization is invalid: {e}"
-                )
+                error_msg = f"For patient's {image_id} image, patient is excluded, GML normalization is invalid: {e}"
                 raise DataStructureError(error_msg)
 
         elif ds.Units == "CM2ML":
             suv_type = ds.get((0x0054, 0x1006), None)
             if suv_type is not None and suv_type.value != "BSA":
-                error_msg = (
-                    f"For patient's {image_id} image, patient is excluded, SUV Type "
-                    f"is not BSA (CM2ML units)"
-                )
+                error_msg = f"For patient's {image_id} image, patient is excluded, SUV Type is not BSA (CM2ML units)"
                 raise DataStructureError(error_msg)
 
             try:
@@ -425,9 +425,7 @@ def apply_suv_correction(dicom_files, suv_image):
         def process_cm2ml(pixel_array_units, ds):
             suv_type = ds.get((0x0054, 0x1006), None)
             if suv_type is not None and suv_type.value != "BSA":
-                raise DataStructureError(
-                    f"CM2ML with {suv_type.value} SUV normalization is not supported!"
-                )
+                raise DataStructureError(f"CM2ML with {suv_type.value} SUV normalization is not supported!")
 
             patient_weight = float(ds.PatientWeight)
             height_cm = get_patient_height_cm(ds)
@@ -457,9 +455,7 @@ def apply_suv_correction(dicom_files, suv_image):
             decay_correction = ds.DecayCorrection
 
             if decay_correction == "START":
-                elapsed_time = compute_elapsed_time_for_start_decay_correction(
-                    ds, injection_time, decay_constant
-                )
+                elapsed_time = compute_elapsed_time_for_start_decay_correction(ds, injection_time, decay_constant)
                 decay_factor = np.exp(-(np.log(2) * elapsed_time) / half_life)
                 decay_corrected_dose = injected_dose * decay_factor
                 return activity_concentration / (decay_corrected_dose / (patient_weight * 1000))
@@ -475,24 +471,17 @@ def apply_suv_correction(dicom_files, suv_image):
                     decay_during_frame / (1 - np.exp(-decay_during_frame))
                 )
                 decay_corrected_activity_concentration = activity_concentration * np.exp(
-                    decay_constant
-                    * ((acquisition_time - injection_time).total_seconds() + avg_count_rate_time)
+                    decay_constant * ((acquisition_time - injection_time).total_seconds() + avg_count_rate_time)
                 )
 
-                return decay_corrected_activity_concentration / (
-                    injected_dose / (patient_weight * 1000)
-                )
+                return decay_corrected_activity_concentration / (injected_dose / (patient_weight * 1000))
 
-            raise DataStructureError(
-                f"Decay correction {decay_correction} is not supported!"
-            )
+            raise DataStructureError(f"Decay correction {decay_correction} is not supported!")
 
         def process_cnts(pixel_array_units, ds):
             manufacturer = ds.Manufacturer.upper()
             if "PHILIPS" not in manufacturer:
-                raise DataStructureError(
-                    f"Vendor {ds.Manufacturer} is not supported with CNTS units!"
-                )
+                raise DataStructureError(f"Vendor {ds.Manufacturer} is not supported with CNTS units!")
 
             if (0x7053, 0x1009) in ds and ds[(0x7053, 0x1009)].value != 0:
                 activity_concentration_bqml = pixel_array_units * ds[(0x7053, 0x1009)].value

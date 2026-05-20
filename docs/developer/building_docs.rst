@@ -9,12 +9,26 @@ run the project:
 
 .. code-block:: bash
 
-   python3 -m pip install -r docs/requirements.txt
+   python3 -m pip install -e ".[docs]"
+
+For a full local development environment with docs, tests, and lint tooling,
+install the development extra instead:
+
+.. code-block:: bash
+
+   python3 -m pip install -e ".[dev]"
 
 Build Commands
 --------------
 
-Build the HTML site with either of these commands from the repository root:
+Build the HTML site with warnings treated as errors:
+
+.. code-block:: bash
+
+   python3 -m sphinx -b html -W docs docs/_build/html
+
+For iterative local builds, either of these commands can also be used from the
+repository root:
 
 .. code-block:: bash
 
@@ -30,6 +44,19 @@ Output
 ------
 
 The generated documentation is written to ``docs/_build/html``.
+
+When To Update Docs
+-------------------
+
+Update documentation together with code changes when:
+
+* user-facing workflows or behavior change; update the relevant user-guide page
+* public classes, functions, or arguments change; update the API reference
+* a new contributor-visible workflow is introduced; add or update an example
+* a new common user-facing failure mode is found; add troubleshooting guidance
+
+Good documentation changes are usually narrative first and reference second:
+explain when a feature should be used before listing every parameter.
 
 Fixing Build Problems
 ---------------------

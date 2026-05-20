@@ -1,7 +1,7 @@
+from ..preprocessing import RoiData
 from .extraction_context import ExtractionContext
 from .extraction_preparation import build_extraction_metadata, prepare_extraction_data
 from .feature_registry import resolve_groups
-from ..preprocessing import RoiData
 
 
 class Radiomics:

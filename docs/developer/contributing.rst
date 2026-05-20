@@ -1,6 +1,22 @@
 Contributing
 ============
 
+Start by setting up a local development environment with the contributor
+toolchain. See :doc:`development_environment` for Python version, virtual
+environment, and dependency installation guidance.
+
+Before Opening A Pull Request
+-----------------------------
+
+Before opening a pull request:
+
+* run the relevant test set and coverage checks described in :doc:`testing`
+* run the Ruff formatting and lint checks described in :doc:`code_quality`
+* update and build documentation when user-facing behavior, public APIs, or
+  examples change; see :doc:`building_docs`
+* inspect the pull request CI results and fix failures before requesting review;
+  see :doc:`ci`
+
 General Expectations
 --------------------
 

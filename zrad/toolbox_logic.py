@@ -154,8 +154,9 @@ def fetch_github_directory_files(owner, repo, directory_path, save_path=None, to
 
             for item in items:
                 item_path = item['path']  # Full path of the item in the repo
-                relative_path = os.path.relpath(item_path,
-                                                directory_path)  # Relative path within the specified directory
+                relative_path = os.path.relpath(
+                    item_path, directory_path
+                )  # Relative path within the specified directory
 
                 if item['type'] == 'file':
                     download_url = item['download_url']
@@ -221,7 +222,9 @@ def load_ibsi_phantom(chapter=1, phantom='ct_radiomics', imaging_format="dicom",
         raise ValueError(f"Unsupported imaging format '{imaging_format}'. Supported formats are: {supported_formats}")
 
     if chapter == 1 and phantom == 'digital' and imaging_format == "dicom":
-        raise ValueError(f"The DICOM mask was deprecated due to incorrect image spacing. The phantom is available in NIfTI format and consists of the image itself (image) and its segmentation (mask).")
+        raise ValueError(
+            "The DICOM mask was deprecated due to incorrect image spacing. The phantom is available in NIfTI format and consists of the image itself (image) and its segmentation (mask)."
+        )
 
     directory_path = f"ibsi_{chapter}_{phantom}_phantom/{imaging_format.lower()}"
     fetch_github_directory_files(owner, repo, directory_path, save_path)

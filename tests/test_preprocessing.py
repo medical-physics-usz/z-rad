@@ -1,8 +1,8 @@
-import pytest
 import numpy as np
+import pytest
+
 import zrad.preprocessing as preprocessing
-from zrad.preprocessing.discretization import IntensityVolumeHistogramDiscretizer
-from zrad.preprocessing.resegmentation import OutlierResegmenter, RangeResegmenter, Resegmenter
+from zrad.image import Image
 from zrad.preprocessing import (
     ImageResampler,
     IntensityMaskBuilder,
@@ -13,7 +13,8 @@ from zrad.preprocessing import (
     RoiData,
     TextureDiscretizer,
 )
-from zrad.image import Image
+from zrad.preprocessing.discretization import IntensityVolumeHistogramDiscretizer
+from zrad.preprocessing.resegmentation import OutlierResegmenter, RangeResegmenter, Resegmenter
 
 
 class AddOneFilter:
@@ -303,6 +304,7 @@ def test_roi_cropper_crops_prepared_texture_and_ivh_images():
     assert cropped.ivh_discretization_method == roi_data.ivh_discretization_method
     assert cropped.ivh_discretization_step == roi_data.ivh_discretization_step
 
+
 @pytest.mark.unit
 def test_constructor_valid_inputs():
     image_resampler = ImageResampler(
@@ -351,7 +353,7 @@ def test_resample_image_2d():
         origin=[0.0, 0.0, 0.0],
         spacing=[1.0, 1.0, 2.0],  # We can assume (x, y, z) or (y, x, z) as needed
         direction=[1, 0, 0, 0, 1, 0, 0, 0, 1],
-        shape=(1, 10, 10)
+        shape=(1, 10, 10),
     )
 
     preprocessing = ImageResampler(
@@ -381,18 +383,14 @@ def test_resample_mask_3d():
     Create a small 3D mask image and verify thresholding is applied
     when resampling.
     """
-    dummy_mask_array = np.array([[[0.4, 0.6],
-                                  [1.0, 0.2]],
-                                 [[0.9, 0.5],
-                                  [0.2, 0.8]]],
-                                dtype=np.float64)
+    dummy_mask_array = np.array([[[0.4, 0.6], [1.0, 0.2]], [[0.9, 0.5], [0.2, 0.8]]], dtype=np.float64)
     # shape = (2, 2, 2) in z,y,x order
     original_mask = Image(
         array=dummy_mask_array,
         origin=[0.0, 0.0, 0.0],
         spacing=[1.0, 1.0, 1.0],
         direction=[1, 0, 0, 0, 1, 0, 0, 0, 1],
-        shape=dummy_mask_array.shape
+        shape=dummy_mask_array.shape,
     )
 
     preprocessing = MaskResampler(
@@ -414,13 +412,15 @@ def test_pipeline_transforms_roi_data():
     mask = _make_image(np.ones((3, 3, 3), dtype=np.float64))
     roi_data = RoiData(image=image, morphological_mask=mask)
 
-    pipeline = Pipeline([
-        ("image_resampler", ImageResampler(resolution=(1.0, 1.0, 1.0), method="linear")),
-        ("mask_resampler", MaskResampler(resolution=(1.0, 1.0, 1.0), method="trilinear")),
-        ("filter", AddOneFilter()),
-        ("intensity_mask_builder", IntensityMaskBuilder()),
-        ("cropper", RoiCropper()),
-    ])
+    pipeline = Pipeline(
+        [
+            ("image_resampler", ImageResampler(resolution=(1.0, 1.0, 1.0), method="linear")),
+            ("mask_resampler", MaskResampler(resolution=(1.0, 1.0, 1.0), method="trilinear")),
+            ("filter", AddOneFilter()),
+            ("intensity_mask_builder", IntensityMaskBuilder()),
+            ("cropper", RoiCropper()),
+        ]
+    )
 
     result = pipeline.apply(roi_data)
 

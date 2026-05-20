@@ -173,9 +173,7 @@ class RoiCropper:
         return RoiData(
             image=self._crop_image(roi_data.image, bbox_slices),
             filtered_image=(
-                None
-                if roi_data.filtered_image is None
-                else self._crop_image(roi_data.filtered_image, bbox_slices)
+                None if roi_data.filtered_image is None else self._crop_image(roi_data.filtered_image, bbox_slices)
             ),
             morphological_mask=self._crop_image(roi_data.morphological_mask, bbox_slices),
             intensity_mask=self._crop_image(roi_data.intensity_mask, bbox_slices),

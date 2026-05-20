@@ -1,5 +1,12 @@
 # Z-RAD
 
+[![Tests](https://github.com/medical-physics-usz/z-rad/actions/workflows/test.yml/badge.svg?branch=master)](https://github.com/medical-physics-usz/z-rad/actions/workflows/test.yml)
+[![Ruff](https://github.com/medical-physics-usz/z-rad/actions/workflows/python-lint.yml/badge.svg?branch=master)](https://github.com/medical-physics-usz/z-rad/actions/workflows/python-lint.yml)
+[![Docs](https://github.com/medical-physics-usz/z-rad/actions/workflows/docs.yml/badge.svg?branch=master)](https://github.com/medical-physics-usz/z-rad/actions/workflows/docs.yml)
+[![PyPI](https://img.shields.io/pypi/v/z-rad.svg)](https://pypi.org/project/z-rad/)
+[![Python](https://img.shields.io/pypi/pyversions/z-rad.svg)](https://pypi.org/project/z-rad/)
+[![License](https://img.shields.io/pypi/l/z-rad.svg)](https://github.com/medical-physics-usz/z-rad/blob/master/LICENSE)
+
 <img src="https://raw.githubusercontent.com/medical-physics-usz/z-rad/master/docs/logos/ZRadLogo.jpg" width="600" alt="Z-Rad logo"/>
 
 Radiomics is the high-throughput extraction of quantitative features from medical images, 
@@ -77,14 +84,14 @@ and neighbouring gray level dependance matrix (NGLDM) features families.
 The simplest way to run Z-Rad on Windows is to start the `z-rad.exe` attached to every Z-Rad release.
 
 ### Windows, Linux, and macOS
-For users familiar with Python programming langauage, we recommend: 
+For users familiar with Python programming language, we recommend Python 3.11 or newer:
 
 1. Download the Z-Rad repository
 2. Open the terminal and navigate to the project directory
-3. Install requirements by typing in the terminal:
+3. Install Z-Rad from the source checkout by typing in the terminal:
 
 ```sh
-pip install -r requirements.txt
+pip install -e .
 ```
 
 4. Run the `main.py` file:

@@ -1,11 +1,12 @@
 import numpy as np
-from scipy.spatial.distance import pdist, squareform
 from scipy.spatial import ConvexHull
+from scipy.spatial.distance import pdist, squareform
 from scipy.special import legendre
 from skimage import measure
 
 from ..exceptions import DataStructureError
 from .base import BaseFeatureGroup
+
 
 def _pca_eigenvalues(points: np.ndarray) -> np.ndarray:
     """Return eigenvalues of the covariance matrix of ``points`` sorted descending."""
@@ -39,6 +40,7 @@ class MorphologicalFeatures:
     spacing : sequence of float
         Physical voxel spacing along the three array axes.
     """
+
     def __init__(self, spacing):
         self.spacing = spacing
         self.unit_vol = self.spacing[0] * self.spacing[1] * self.spacing[2]
@@ -93,19 +95,19 @@ class MorphologicalFeatures:
 
     @staticmethod
     def _calc_compactness_2(vol_mesh, area_mesh):
-        return 36 * np.pi * (vol_mesh ** 2 / area_mesh ** 3)
+        return 36 * np.pi * (vol_mesh**2 / area_mesh**3)
 
     @staticmethod
     def _calc_spherical_disproportion(area_mesh, vol_mesh):
-        return area_mesh / (36 * np.pi * vol_mesh ** 2) ** (1 / 3)
+        return area_mesh / (36 * np.pi * vol_mesh**2) ** (1 / 3)
 
     @staticmethod
     def _calc_sphericity(vol_mesh, area_mesh):
-        return (36 * np.pi * vol_mesh ** 2) ** (1 / 3) / area_mesh
+        return (36 * np.pi * vol_mesh**2) ** (1 / 3) / area_mesh
 
     @staticmethod
     def _calc_asphericity(area_mesh, vol_mesh):
-        return (area_mesh ** 3 / (36 * np.pi * vol_mesh ** 2)) ** (1 / 3) - 1
+        return (area_mesh**3 / (36 * np.pi * vol_mesh**2)) ** (1 / 3) - 1
 
     def _calc_centre_of_shift(self, mask_array, image_array):
         dx, dy, dz = self.spacing
@@ -147,13 +149,13 @@ class MorphologicalFeatures:
     @staticmethod
     def _calc_elongation(pca_eigenvalues):
         if pca_eigenvalues[0] == 0:
-            raise DataStructureError(f"PCA eigenvalue is zero. ")
+            raise DataStructureError("PCA eigenvalue is zero. ")
         return np.sqrt(pca_eigenvalues[1] / pca_eigenvalues[0])
 
     @staticmethod
     def _calc_flatness(pca_eigenvalues):
         if pca_eigenvalues[0] == 0:
-            raise DataStructureError(f"PCA eigenvalue is zero. ")
+            raise DataStructureError("PCA eigenvalue is zero. ")
         return np.sqrt(pca_eigenvalues[2] / pca_eigenvalues[0])
 
     def _calc_vol_and_area_densities_aabb(self, mask_array, vol_mesh, area_mesh):
@@ -174,7 +176,7 @@ class MorphologicalFeatures:
     @staticmethod
     def _calc_vol_density_aee(vol_mesh, major_axis_len, minor_axis_len, least_axis_len):
         if major_axis_len == 0 or minor_axis_len == 0 or least_axis_len == 0:
-            raise DataStructureError(f"One of the axis is zero. ")
+            raise DataStructureError("One of the axis is zero. ")
         return (8 * 3 * vol_mesh) / (4 * np.pi * major_axis_len * minor_axis_len * least_axis_len)
 
     @staticmethod
@@ -183,16 +185,15 @@ class MorphologicalFeatures:
         b = minor_axis_len / 2
         c = least_axis_len / 2
 
-        alpha = np.sqrt(1 - (b ** 2 / a ** 2))
-        beta = np.sqrt(1 - (c ** 2 / a ** 2))
+        alpha = np.sqrt(1 - (b**2 / a**2))
+        beta = np.sqrt(1 - (c**2 / a**2))
         if alpha == 0 or beta == 0:
-            raise DataStructureError(f"Alpha or beta in area density (AEE) is zero.")
+            raise DataStructureError("Alpha or beta in area density (AEE) is zero.")
         sum_series = 0
         max_nu = 20  # Def by IBSI
         for nu in range(max_nu + 1):
             p_nu = legendre(nu)
-            sum_series += ((alpha * beta) ** nu / (1 - (4 * nu ** 2))) * p_nu(
-                (alpha ** 2 + beta ** 2) / (2 * alpha * beta))
+            sum_series += ((alpha * beta) ** nu / (1 - (4 * nu**2))) * p_nu((alpha**2 + beta**2) / (2 * alpha * beta))
 
         area_aee = 4 * np.pi * a * b * sum_series
         return area_mesh / area_aee
@@ -278,6 +279,7 @@ class MorphologicalFeatures:
         ]
         return dict(zip(MORPHOLOGY_FEATURE_NAMES, values))
 
+
 class MorphologyCorrelationFeatures:
     """Spatial autocorrelation descriptors for a 3D region of interest.
 
@@ -336,15 +338,15 @@ class MorphologyCorrelationFeatures:
         weights = np.zeros_like(distances)
         nonzero_mask = distances > 0
         if np.any(distances[nonzero_mask] == 0):
-            raise DataStructureError(f"There is a zero distance in Moran I.")
+            raise DataStructureError("There is a zero distance in Moran I.")
         weights[nonzero_mask] = 1.0 / distances[nonzero_mask]
         s0 = np.sum(weights)
         diff = intensities - mu
         diff_outer = np.outer(diff, diff)
         numerator = np.sum(weights * diff_outer)
-        denominator = np.sum(diff ** 2)
+        denominator = np.sum(diff**2)
         if denominator == 0:
-            raise DataStructureError(f"There determinator is zero in Moran I.")
+            raise DataStructureError("There determinator is zero in Moran I.")
         return (n / s0) * (numerator / denominator)
 
     def _calc_geary_c(self, mask_array, image_array):
@@ -358,15 +360,15 @@ class MorphologyCorrelationFeatures:
         weights = np.zeros_like(distances)
         nonzero_mask = distances > 0
         if np.any(distances[nonzero_mask] == 0):
-            raise DataStructureError(f"There is a zero distance in Geary C.")
+            raise DataStructureError("There is a zero distance in Geary C.")
         weights[nonzero_mask] = 1.0 / distances[nonzero_mask]
         s0 = np.sum(weights)
         diff_matrix = np.subtract.outer(intensities, intensities)
-        squared_diff = diff_matrix ** 2
+        squared_diff = diff_matrix**2
         numerator = np.sum(weights * squared_diff)
         denominator = np.sum((intensities - mu) ** 2)
         if denominator == 0:
-            raise DataStructureError(f"There determinator is zero in Geary C.")
+            raise DataStructureError("There determinator is zero in Geary C.")
         return ((n - 1) / (2 * s0)) * (numerator / denominator)
 
     def calculate_features(self, mask_array, image_array):
@@ -391,7 +393,6 @@ class MorphologyCorrelationFeatures:
             'morph_moran_i': self._calc_moran_i(mask_array, image_array),
             'morph_geary_c': self._calc_geary_c(mask_array, image_array),
         }
-
 
 
 MORPHOLOGY_FEATURE_NAMES = (

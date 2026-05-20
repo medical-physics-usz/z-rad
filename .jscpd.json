@@ -1,0 +1,15 @@
+{
+  "threshold": 7,
+  "reporters": ["console"],
+  "minLines": 5,
+  "minTokens": 50,
+  "ignore": [
+    "**/.git/**",
+    "**/.venv/**",
+    "**/venv/**",
+    "**/__pycache__/**",
+    "**/.pytest_cache/**",
+    "**/htmlcov/**",
+    "**/docs/_build/**"
+  ]
+}

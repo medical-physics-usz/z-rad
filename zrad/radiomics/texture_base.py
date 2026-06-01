@@ -331,11 +331,8 @@ class ZoneMatrixFeatureBase(TextureFeatureBase):
             labeled, num_features = label(image == intensity, structure=structure)
             if num_features == 0:
                 continue
-            min_dists = np.full(num_features + 1, np.inf)
-            component_labels = labeled.ravel()
-            component_mask = component_labels != 0
-            np.minimum.at(min_dists, component_labels[component_mask], dist_map.ravel()[component_mask])
-            unique_dists, dist_counts = np.unique(min_dists[1:].astype(int), return_counts=True)
+            min_dists = minimum(dist_map, labeled, index=np.arange(1, num_features + 1)).astype(int)
+            unique_dists, dist_counts = np.unique(min_dists, return_counts=True)
             valid_dists = (unique_dists > 0) & (unique_dists <= gldzm.shape[1])
             gldzm[intensity, unique_dists[valid_dists] - 1] += dist_counts[valid_dists]
 

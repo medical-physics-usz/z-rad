@@ -1,5 +1,5 @@
 import numpy as np
-from scipy.ndimage import distance_transform_cdt, label, minimum
+from scipy.ndimage import distance_transform_cdt, label
 
 from ..exceptions import DataStructureError
 
@@ -369,13 +369,13 @@ class ZoneMatrixFeatureBase(TextureFeatureBase):
                 labeled, num_features = label(comp_mask, structure=structure)
                 if num_features == 0:
                     continue
-                min_dists = minimum(dist_map, labeled, index=np.arange(1, num_features + 1))
-
-                min_dists_int = min_dists.astype(int)
-                unique_dists, counts_dists = np.unique(min_dists_int, return_counts=True)
-                for dist, count in zip(unique_dists, counts_dists):
-                    if dist - 1 < gldzm.shape[1]:
-                        gldzm[intensity, dist - 1] += count
+                min_dists = np.full(num_features + 1, np.inf)
+                component_labels = labeled.ravel()
+                component_mask = component_labels != 0
+                np.minimum.at(min_dists, component_labels[component_mask], dist_map.ravel()[component_mask])
+                unique_dists, counts_dists = np.unique(min_dists[1:].astype(int), return_counts=True)
+                valid_dists = (unique_dists > 0) & (unique_dists <= gldzm.shape[1])
+                gldzm[intensity, unique_dists[valid_dists] - 1] += counts_dists[valid_dists]
 
             gldzm_matrices.append(gldzm)
 

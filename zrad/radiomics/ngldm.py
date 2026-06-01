@@ -1,5 +1,4 @@
 import numpy as np
-from scipy.ndimage import convolve
 
 from ..exceptions import DataStructureError
 from .base import BaseFeatureGroup
@@ -78,21 +77,27 @@ class NGLDM(TextureFeatureBase):
 
     @staticmethod
     def _calc_3d_matrix(image, lvl):
+        padded = np.pad(image, pad_width=1, mode='constant', constant_values=np.nan)
+        center = padded[1:-1, 1:-1, 1:-1]
+        neighbor_count = np.zeros_like(center, dtype=np.int64)
+
+        for dx in (-1, 0, 1):
+            for dy in (-1, 0, 1):
+                for dz in (-1, 0, 1):
+                    if dx == 0 and dy == 0 and dz == 0:
+                        continue
+                    neighbor = padded[
+                        1 + dx : 1 + dx + center.shape[0],
+                        1 + dy : 1 + dy + center.shape[1],
+                        1 + dz : 1 + dz + center.shape[2],
+                    ]
+                    neighbor_count += neighbor == center
+
         ngldm = np.zeros((lvl, 27), dtype=np.int64)
-        valid_mask = ~np.isnan(image)
-        kernel = np.ones((3, 3, 3), dtype=int)
-        kernel[1, 1, 1] = 0
-
-        for gray_level in range(lvl):
-            matrix = ((image == gray_level) & valid_mask).astype(np.int64)
-            if np.sum(matrix) == 0:
-                continue
-            neighbor_counts = convolve(matrix, kernel, mode='constant', cval=0)
-            counts = neighbor_counts[matrix.astype(bool)]
-            if counts.size:
-                bincounts = np.bincount(counts, minlength=27)
-                ngldm[gray_level, : len(bincounts)] += bincounts
-
+        valid = ~np.isnan(center)
+        intensities = center[valid].astype(int)
+        counts = neighbor_count[valid]
+        np.add.at(ngldm, (intensities, counts), 1)
         return ngldm
 
     @staticmethod

@@ -1,4 +1,5 @@
 import numpy as np
+
 from ..exceptions import DataStructureError
 from .base import BaseFeatureGroup
 from .texture_aggregation import format_texture_feature_names

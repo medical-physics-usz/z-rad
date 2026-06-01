@@ -7,7 +7,6 @@ from scipy.stats import iqr
 from ..exceptions import DataStructureError
 from .base import BaseFeatureGroup
 
-
 _LOCAL_MEANS_CACHE = {}
 
 

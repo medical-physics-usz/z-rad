@@ -1,5 +1,5 @@
 import numpy as np
-from scipy.ndimage import distance_transform_cdt, label, minimum
+from scipy.ndimage import distance_transform_cdt, label
 
 from ..exceptions import DataStructureError
 
@@ -38,26 +38,46 @@ class TextureFeatureBase:
         return NGLDM_ATTRIBUTE_NAMES if include_energy else TEXTURE_ATTRIBUTE_NAMES
 
     def _matrix_feature_values(self, matrix, voxel_count, *, include_energy=False):
+        matrix = np.asarray(matrix)
+        n_s = np.sum(matrix)
+        if n_s == 0:
+            raise DataStructureError(' Denominator is zero in matrix feature calculation.')
+        if voxel_count == 0:
+            raise DataStructureError(' Denominator is zero in calc_percentage.')
+
+        i = np.arange(matrix.shape[0], dtype=float)[:, np.newaxis]
+        j = np.arange(matrix.shape[1], dtype=float)[np.newaxis, :]
+        run_lengths = j + 1.0
+        gray_nonzero = i != 0
+        row_sums = np.sum(matrix, axis=1)
+        col_sums = np.sum(matrix, axis=0)
+        probabilities = matrix / n_s
+        nz_probabilities = probabilities[matrix != 0]
+
+        low_gray = np.divide(matrix, i**2, out=np.zeros_like(matrix, dtype=float), where=gray_nonzero)
+        mu_gray = np.sum(matrix * i / n_s)
+        mu_length = np.sum(matrix * j / n_s)
+
         values = {
-            'short_runs_emphasis': self._calc_short_emphasis(matrix),
-            'long_runs_emphasis': self._calc_long_emphasis(matrix),
-            'low_grey_level_run_emphasis': self._calc_low_gr_lvl_emphasis(matrix),
-            'high_gr_lvl_emphasis': self._calc_high_gr_lvl_emphasis(matrix),
-            'short_low_gr_lvl_emphasis': self._calc_short_low_gr_lvl_emphasis(matrix),
-            'short_high_gr_lvl_emphasis': self._calc_short_high_gr_lvl_emphasis(matrix),
-            'long_low_gr_lvl_emphasis': self._calc_long_low_gr_lvl_emphasis(matrix),
-            'long_high_gr_lvl_emphasis': self._calc_long_high_gr_lvl_emphasis(matrix),
-            'non_uniformity': self._calc_non_uniformity(matrix),
-            'norm_non_uniformity': self._calc_norm_non_uniformity(matrix),
-            'length_non_uniformity': self._calc_length_non_uniformity(matrix),
-            'norm_length_non_uniformity': self._calc_norm_length_non_uniformity(matrix),
-            'percentage': self._calc_percentage(matrix, voxel_count),
-            'gr_lvl_var': self._calc_gr_lvl_var(matrix),
-            'length_var': self._calc_length_var(matrix),
-            'entropy': self._calc_entropy(matrix),
+            'short_runs_emphasis': np.sum(matrix / run_lengths**2) / n_s,
+            'long_runs_emphasis': np.sum(matrix * run_lengths**2) / n_s,
+            'low_grey_level_run_emphasis': np.sum(low_gray) / n_s,
+            'high_gr_lvl_emphasis': np.sum(matrix * i**2) / n_s,
+            'short_low_gr_lvl_emphasis': np.sum(low_gray / run_lengths**2) / n_s,
+            'short_high_gr_lvl_emphasis': np.sum((i**2 * matrix) / run_lengths**2) / n_s,
+            'long_low_gr_lvl_emphasis': np.sum(low_gray * run_lengths**2) / n_s,
+            'long_high_gr_lvl_emphasis': np.sum(matrix * run_lengths**2 * i**2) / n_s,
+            'non_uniformity': np.sum(row_sums**2) / n_s,
+            'norm_non_uniformity': np.sum(row_sums**2) / n_s**2,
+            'length_non_uniformity': np.sum(col_sums**2) / n_s,
+            'norm_length_non_uniformity': np.sum(col_sums**2) / n_s**2,
+            'percentage': n_s / voxel_count,
+            'gr_lvl_var': np.sum((i - mu_gray) ** 2 * probabilities),
+            'length_var': np.sum((j - mu_length) ** 2 * probabilities),
+            'entropy': np.sum(nz_probabilities * np.log2(nz_probabilities)) * (-1),
         }
         if include_energy:
-            values['energy'] = self._calc_energy(matrix)
+            values['energy'] = np.sum(nz_probabilities**2)
         return values
 
     @staticmethod
@@ -225,47 +245,25 @@ class ZoneMatrixFeatureBase(TextureFeatureBase):
     @classmethod
     def _calc_glsz_3d_matrix(cls, image, lvl):
         image = np.asarray(image)
-        flattened_array = image.flatten()
-        _, counts = np.unique(flattened_array[~np.isnan(flattened_array)], return_counts=True)
+        valid = ~np.isnan(image)
+        if not np.any(valid):
+            return np.zeros((lvl, 0), dtype=np.int64), 0
+
+        valid_values = image[valid].astype(int)
+        counts = np.bincount(valid_values, minlength=lvl)
         max_region_size = int(np.max(counts))
-        range_x, range_y, range_z = cls._range_indices(image)
-
         glszm = np.zeros((lvl, max_region_size), dtype=np.int64)
+        structure = np.ones((3, 3, 3), dtype=int)
 
-        def find_connected_region_3d(start, intensity, visited):
-            stack = [start]
-            size = 0
-            x_max, y_max, z_max = image.shape
+        for intensity in np.flatnonzero(counts):
+            labeled, num_features = label(image == intensity, structure=structure)
+            if num_features == 0:
+                continue
+            sizes = np.bincount(labeled.ravel())[1:]
+            unique_sizes, size_counts = np.unique(sizes, return_counts=True)
+            glszm[intensity, unique_sizes - 1] += size_counts
 
-            while stack:
-                x, y, z = stack.pop()
-                if 0 <= x < x_max and 0 <= y < y_max and 0 <= z < z_max:
-                    if visited[x, y, z] == 0 and image[x, y, z] == intensity:
-                        visited[x, y, z] = 1
-                        size += 1
-                        for dx in [-1, 0, 1]:
-                            for dy in [-1, 0, 1]:
-                                for dz in [-1, 0, 1]:
-                                    if dx == 0 and dy == 0 and dz == 0:
-                                        continue
-                                    nx, ny, nz = x + dx, y + dy, z + dz
-                                    if 0 <= nx < x_max and 0 <= ny < y_max and 0 <= nz < z_max:
-                                        if visited[nx, ny, nz] == 0 and image[nx, ny, nz] == intensity:
-                                            stack.append((nx, ny, nz))
-
-            return size
-
-        visited = np.zeros_like(image, dtype=int)
-        for x in range_x:
-            for y in range_y:
-                for z in range_z:
-                    if visited[x, y, z] == 0 and not np.isnan(image[x, y, z]):
-                        intensity = int(image[x, y, z])
-                        size = find_connected_region_3d((x, y, z), intensity, visited)
-                        if size > 0:
-                            glszm[intensity, size - 1] += 1
-
-        return glszm, int(np.sum(~np.isnan(image)))
+        return glszm, int(valid_values.size)
 
     @classmethod
     def _calc_glsz_2d_matrices(cls, image, lvl):
@@ -314,8 +312,9 @@ class ZoneMatrixFeatureBase(TextureFeatureBase):
     @classmethod
     def _calc_gldz_3d_matrix(cls, image, mask, lvl):
         image = np.asarray(image)
-        max_distance = int(np.max(image.shape))
-        range_x, range_y, range_z = cls._range_indices(image)
+        valid = ~np.isnan(image)
+        if not np.any(valid):
+            return np.zeros((lvl, 0), dtype=np.int64), 0
 
         def calc_dist_map_3d(image_orig):
             image_copy = image_orig.copy()
@@ -324,44 +323,23 @@ class ZoneMatrixFeatureBase(TextureFeatureBase):
             return distance_transform_cdt(larger_array, metric='taxicab')[1:-1, 1:-1, 1:-1].astype(float)
 
         dist_map = calc_dist_map_3d(mask)
-        gldzm = np.zeros((lvl, max_distance), dtype=np.int64)
+        gldzm = np.zeros((lvl, int(np.max(image.shape))), dtype=np.int64)
+        structure = np.ones((3, 3, 3), dtype=int)
+        valid_values = image[valid].astype(int)
 
-        def find_connected_region_3d(start, intensity, visited):
-            stack = [start]
-            size = 0
-            min_dist = np.inf
-            x_max, y_max, z_max = image.shape
+        for intensity in np.unique(valid_values):
+            labeled, num_features = label(image == intensity, structure=structure)
+            if num_features == 0:
+                continue
+            min_dists = np.full(num_features + 1, np.inf)
+            component_labels = labeled.ravel()
+            component_mask = component_labels != 0
+            np.minimum.at(min_dists, component_labels[component_mask], dist_map.ravel()[component_mask])
+            unique_dists, dist_counts = np.unique(min_dists[1:].astype(int), return_counts=True)
+            valid_dists = (unique_dists > 0) & (unique_dists <= gldzm.shape[1])
+            gldzm[intensity, unique_dists[valid_dists] - 1] += dist_counts[valid_dists]
 
-            while stack:
-                x, y, z = stack.pop()
-                if 0 <= x < x_max and 0 <= y < y_max and 0 <= z < z_max:
-                    if visited[x, y, z] == 0 and image[x, y, z] == intensity:
-                        visited[x, y, z] = 1
-                        size += 1
-                        min_dist = min(min_dist, dist_map[x, y, z])
-                        for dx in [-1, 0, 1]:
-                            for dy in [-1, 0, 1]:
-                                for dz in [-1, 0, 1]:
-                                    if dx == 0 and dy == 0 and dz == 0:
-                                        continue
-                                    nx, ny, nz = x + dx, y + dy, z + dz
-                                    if 0 <= nx < x_max and 0 <= ny < y_max and 0 <= nz < z_max:
-                                        if visited[nx, ny, nz] == 0 and image[nx, ny, nz] == intensity:
-                                            stack.append((nx, ny, nz))
-
-            return size, min_dist
-
-        visited = np.zeros_like(image, dtype=int)
-        for x in range_x:
-            for y in range_y:
-                for z in range_z:
-                    if visited[x, y, z] == 0 and not np.isnan(image[x, y, z]):
-                        intensity = int(image[x, y, z])
-                        size, min_dist = find_connected_region_3d((x, y, z), intensity, visited)
-                        if size > 0:
-                            gldzm[intensity, int(min_dist) - 1] += 1
-
-        return gldzm, int(np.sum(~np.isnan(image)))
+        return gldzm, int(valid_values.size)
 
     @classmethod
     def _calc_gldz_2d_matrices(cls, image, mask, lvl):
@@ -394,13 +372,13 @@ class ZoneMatrixFeatureBase(TextureFeatureBase):
                 labeled, num_features = label(comp_mask, structure=structure)
                 if num_features == 0:
                     continue
-                min_dists = minimum(dist_map, labeled, index=np.arange(1, num_features + 1))
-
-                min_dists_int = min_dists.astype(int)
-                unique_dists, counts_dists = np.unique(min_dists_int, return_counts=True)
-                for dist, count in zip(unique_dists, counts_dists):
-                    if dist - 1 < gldzm.shape[1]:
-                        gldzm[intensity, dist - 1] += count
+                min_dists = np.full(num_features + 1, np.inf)
+                component_labels = labeled.ravel()
+                component_mask = component_labels != 0
+                np.minimum.at(min_dists, component_labels[component_mask], dist_map.ravel()[component_mask])
+                unique_dists, counts_dists = np.unique(min_dists[1:].astype(int), return_counts=True)
+                valid_dists = (unique_dists > 0) & (unique_dists <= gldzm.shape[1])
+                gldzm[intensity, unique_dists[valid_dists] - 1] += counts_dists[valid_dists]
 
             gldzm_matrices.append(gldzm)
 

@@ -1,5 +1,5 @@
 import numpy as np
-from scipy.ndimage import distance_transform_cdt, label, minimum
+from scipy.ndimage import distance_transform_cdt, label
 
 from ..exceptions import DataStructureError
 
@@ -26,6 +26,7 @@ def crop_to_valid_bbox_pair(image, mask):
         return image, mask
     bbox = tuple(slice(int(coords.min()), int(coords.max()) + 1) for coords in valid_coords)
     return image[bbox], mask[bbox]
+
 
 TEXTURE_ATTRIBUTE_NAMES = (
     'short_runs_emphasis',

@@ -3,7 +3,7 @@ import numpy as np
 from ..exceptions import DataStructureError
 from .base import BaseFeatureGroup
 from .texture_aggregation import format_cm_rlm_feature_names
-from .texture_base import TEXTURE_ATTRIBUTE_NAMES, TextureFeatureBase
+from .texture_base import TEXTURE_ATTRIBUTE_NAMES, TextureFeatureBase, crop_to_valid_bbox
 
 GLRLM_FEATURE_NAMES = (
     'rlm_sre',

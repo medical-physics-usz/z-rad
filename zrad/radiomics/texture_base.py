@@ -3,6 +3,15 @@ from scipy.ndimage import distance_transform_cdt, label, minimum
 
 from ..exceptions import DataStructureError
 
+
+def crop_to_valid_bbox(image):
+    """Return the smallest subarray containing non-NaN voxels."""
+    valid_coords = np.where(~np.isnan(image))
+    if valid_coords[0].size == 0:
+        return image
+    bbox = tuple(slice(int(coords.min()), int(coords.max()) + 1) for coords in valid_coords)
+    return image[bbox]
+
 TEXTURE_ATTRIBUTE_NAMES = (
     'short_runs_emphasis',
     'long_runs_emphasis',

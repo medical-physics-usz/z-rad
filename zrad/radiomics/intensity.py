@@ -1,5 +1,3 @@
-import weakref
-
 import numpy as np
 from scipy.ndimage import convolve
 from scipy.stats import iqr
@@ -8,6 +6,7 @@ from ..exceptions import DataStructureError
 from .base import BaseFeatureGroup
 
 _LOCAL_MEANS_CACHE = {}
+_LOCAL_MEANS_CACHE_MAX_SIZE = 4
 
 
 def _cache_key(array, spacing):
@@ -18,8 +17,8 @@ def _get_cached_local_means(array, spacing):
     key = _cache_key(array, spacing)
     cached = _LOCAL_MEANS_CACHE.get(key)
     if cached is not None:
-        array_ref, local_means = cached
-        if array_ref() is array:
+        cached_array, local_means = cached
+        if cached_array is array:
             return local_means
         _LOCAL_MEANS_CACHE.pop(key, None)
     return None
@@ -27,7 +26,9 @@ def _get_cached_local_means(array, spacing):
 
 def _set_cached_local_means(array, spacing, local_means):
     key = _cache_key(array, spacing)
-    _LOCAL_MEANS_CACHE[key] = (weakref.ref(array), local_means)
+    _LOCAL_MEANS_CACHE[key] = (array, local_means)
+    while len(_LOCAL_MEANS_CACHE) > _LOCAL_MEANS_CACHE_MAX_SIZE:
+        _LOCAL_MEANS_CACHE.pop(next(iter(_LOCAL_MEANS_CACHE)))
 
 
 class LocalIntensityFeatures:

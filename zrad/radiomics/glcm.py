@@ -3,6 +3,7 @@ import numpy as np
 from ..exceptions import DataStructureError
 from .base import BaseFeatureGroup
 from .texture_aggregation import format_cm_rlm_feature_names
+from .texture_base import crop_to_valid_bbox
 
 GLCM_FEATURE_NAMES = (
     'cm_joint_max',
@@ -167,6 +168,7 @@ class GLCM:
 
     @staticmethod
     def _calc_3d_matrices(image, lvl):
+        image = crop_to_valid_bbox(image)
         glcm_3d_matrices = []
         for direction_3d in (
             [0, 0, 1],
@@ -202,8 +204,13 @@ class GLCM:
             y_cm_values = arr1[not_nan_mask].astype(int)
             x_cm_values = arr2[not_nan_mask].astype(int)
 
-            np.add.at(co_matrix, (y_cm_values, x_cm_values), 1)
-            np.add.at(co_matrix, (x_cm_values, y_cm_values), 1)
+            if y_cm_values.size:
+                flat_indices = y_cm_values * lvl + x_cm_values
+                reverse_flat_indices = x_cm_values * lvl + y_cm_values
+                co_matrix += np.bincount(
+                    np.concatenate((flat_indices, reverse_flat_indices)),
+                    minlength=lvl * lvl,
+                ).reshape(lvl, lvl)
             glcm_3d_matrices.append(co_matrix)
 
         return np.array(glcm_3d_matrices)

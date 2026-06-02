@@ -12,6 +12,21 @@ def crop_to_valid_bbox(image):
     bbox = tuple(slice(int(coords.min()), int(coords.max()) + 1) for coords in valid_coords)
     return image[bbox]
 
+
+def crop_to_valid_bbox_pair(image, mask):
+    """Return aligned image and mask subarrays cropped to valid image voxels.
+
+    GLDZM needs the discretized intensity image and morphological mask to stay
+    spatially aligned while trimming the NaN-only padding outside the intensity
+    ROI. The image defines the valid bounding box because re-segmentation can
+    make the intensity ROI smaller than the morphological mask.
+    """
+    valid_coords = np.where(~np.isnan(image))
+    if valid_coords[0].size == 0:
+        return image, mask
+    bbox = tuple(slice(int(coords.min()), int(coords.max()) + 1) for coords in valid_coords)
+    return image[bbox], mask[bbox]
+
 TEXTURE_ATTRIBUTE_NAMES = (
     'short_runs_emphasis',
     'long_runs_emphasis',

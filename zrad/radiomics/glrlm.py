@@ -3,7 +3,7 @@ import numpy as np
 from ..exceptions import DataStructureError
 from .base import BaseFeatureGroup
 from .texture_aggregation import format_cm_rlm_feature_names
-from .texture_base import TEXTURE_ATTRIBUTE_NAMES, TextureFeatureBase, crop_to_valid_bbox
+from .texture_base import TEXTURE_ATTRIBUTE_NAMES, TextureFeatureBase
 
 GLRLM_FEATURE_NAMES = (
     'rlm_sre',
@@ -173,9 +173,7 @@ class GLRLM(TextureFeatureBase):
         current_slices = tuple(current_slices)
         neighbor_slices = tuple(neighbor_slices)
         same_neighbor[current_slices] = (
-            valid_mask[current_slices]
-            & valid_mask[neighbor_slices]
-            & (image[current_slices] == image[neighbor_slices])
+            valid_mask[current_slices] & valid_mask[neighbor_slices] & (image[current_slices] == image[neighbor_slices])
         )
         return same_neighbor
 

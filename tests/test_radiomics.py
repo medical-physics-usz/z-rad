@@ -198,7 +198,7 @@ def test_explicit_roi_cropping_preserves_feature_values():
     image = _make_image(image_array)
     mask = _make_image(mask_array)
 
-    families = ['intensity_statistics', 'intensity_histogram', 'glcm']
+    families = ['intensity_statistics', 'intensity_histogram', 'glcm', 'gldzm']
     roi_data = TextureDiscretizer(number_of_bins=4).apply(_roi_data(image, mask))
     uncropped = Radiomics().extract_features(roi_data=roi_data, families=families)
     cropped = Radiomics().extract_features(

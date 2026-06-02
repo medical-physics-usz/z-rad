@@ -1,7 +1,31 @@
 import numpy as np
-from scipy.ndimage import distance_transform_cdt, label
+from scipy.ndimage import distance_transform_cdt, label, minimum
 
 from ..exceptions import DataStructureError
+
+
+def valid_bbox(image):
+    """Return slices for the smallest subarray containing non-NaN voxels."""
+    valid_coords = np.where(~np.isnan(image))
+    if valid_coords[0].size == 0:
+        return None
+    return tuple(slice(int(coords.min()), int(coords.max()) + 1) for coords in valid_coords)
+
+
+def crop_to_valid_bbox(image):
+    """Return the smallest subarray containing non-NaN voxels."""
+    bbox = valid_bbox(image)
+    if bbox is None:
+        return image
+    return image[bbox]
+
+
+def crop_to_valid_bbox_pair(image, paired_array):
+    """Crop an image and aligned array to the image's non-NaN bounding box."""
+    bbox = valid_bbox(image)
+    if bbox is None:
+        return image, paired_array
+    return image[bbox], paired_array[bbox]
 
 TEXTURE_ATTRIBUTE_NAMES = (
     'short_runs_emphasis',
@@ -244,7 +268,7 @@ class ZoneMatrixFeatureBase(TextureFeatureBase):
 
     @classmethod
     def _calc_glsz_3d_matrix(cls, image, lvl):
-        image = np.asarray(image)
+        image = crop_to_valid_bbox(np.asarray(image))
         valid = ~np.isnan(image)
         if not np.any(valid):
             return np.zeros((lvl, 0), dtype=np.int64), 0
@@ -312,6 +336,12 @@ class ZoneMatrixFeatureBase(TextureFeatureBase):
     @classmethod
     def _calc_gldz_3d_matrix(cls, image, mask, lvl):
         image = np.asarray(image)
+        mask = np.asarray(mask)
+        valid_coords = np.where(~np.isnan(image))
+        if valid_coords[0].size:
+            bbox = tuple(slice(int(coords.min()), int(coords.max()) + 1) for coords in valid_coords)
+            image = image[bbox]
+            mask = mask[bbox]
         valid = ~np.isnan(image)
         if not np.any(valid):
             return np.zeros((lvl, 0), dtype=np.int64), 0
@@ -331,8 +361,11 @@ class ZoneMatrixFeatureBase(TextureFeatureBase):
             labeled, num_features = label(image == intensity, structure=structure)
             if num_features == 0:
                 continue
-            min_dists = minimum(dist_map, labeled, index=np.arange(1, num_features + 1)).astype(int)
-            unique_dists, dist_counts = np.unique(min_dists, return_counts=True)
+            min_dists = np.full(num_features + 1, np.inf)
+            component_labels = labeled.ravel()
+            component_mask = component_labels != 0
+            np.minimum.at(min_dists, component_labels[component_mask], dist_map.ravel()[component_mask])
+            unique_dists, dist_counts = np.unique(min_dists[1:].astype(int), return_counts=True)
             valid_dists = (unique_dists > 0) & (unique_dists <= gldzm.shape[1])
             gldzm[intensity, unique_dists[valid_dists] - 1] += dist_counts[valid_dists]
 

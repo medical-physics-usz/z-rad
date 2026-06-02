@@ -3,7 +3,7 @@ import numpy as np
 from ..exceptions import DataStructureError
 from .base import BaseFeatureGroup
 from .texture_aggregation import format_cm_rlm_feature_names
-from .texture_base import TEXTURE_ATTRIBUTE_NAMES, TextureFeatureBase
+from .texture_base import TEXTURE_ATTRIBUTE_NAMES, TextureFeatureBase, crop_to_valid_bbox
 
 GLRLM_FEATURE_NAMES = (
     'rlm_sre',
@@ -157,60 +157,86 @@ class GLRLM(TextureFeatureBase):
         return np.array(glrlm_2d_matrices, dtype=np.int64), np.array(roi_voxel_counts, dtype=float)
 
     @staticmethod
-    def _calc_3d_matrices(image, lvl):
-        x, y, z = image.shape
-        directions = np.array(
-            [
-                (0, 0, 1),
-                (0, 1, -1),
-                (0, 1, 0),
-                (0, 1, 1),
-                (1, -1, -1),
-                (1, -1, 0),
-                (1, -1, 1),
-                (1, 0, -1),
-                (1, 0, 0),
-                (1, 0, 1),
-                (1, 1, -1),
-                (1, 1, 0),
-                (1, 1, 1),
-            ]
+    def _same_neighbor_mask(image, valid_mask, direction):
+        same_neighbor = np.zeros(image.shape, dtype=bool)
+        current_slices = [slice(None)] * image.ndim
+        neighbor_slices = [slice(None)] * image.ndim
+
+        for axis, delta in enumerate(direction):
+            if delta > 0:
+                current_slices[axis] = slice(1, None)
+                neighbor_slices[axis] = slice(None, -1)
+            elif delta < 0:
+                current_slices[axis] = slice(None, -1)
+                neighbor_slices[axis] = slice(1, None)
+
+        current_slices = tuple(current_slices)
+        neighbor_slices = tuple(neighbor_slices)
+        same_neighbor[current_slices] = (
+            valid_mask[current_slices]
+            & valid_mask[neighbor_slices]
+            & (image[current_slices] == image[neighbor_slices])
+        )
+        return same_neighbor
+
+    @staticmethod
+    def _line_ids_and_positions(coords, shape, direction):
+        distances = []
+        for axis, delta in enumerate(direction):
+            if delta > 0:
+                distances.append(coords[axis])
+            elif delta < 0:
+                distances.append(shape[axis] - 1 - coords[axis])
+        positions = np.minimum.reduce(distances)
+        line_start_coords = [coords[axis] - positions * direction[axis] for axis in range(len(shape))]
+        line_ids = np.ravel_multi_index(line_start_coords, shape)
+        return line_ids, positions
+
+    @classmethod
+    def _rlm_for_direction(cls, image, valid_mask, direction, lvl, max_dim):
+        same_previous = cls._same_neighbor_mask(image, valid_mask, direction)
+        same_next = cls._same_neighbor_mask(image, valid_mask, tuple(-delta for delta in direction))
+        run_start_coords = np.where(valid_mask & ~same_previous)
+        run_end_coords = np.where(valid_mask & ~same_next)
+
+        if run_start_coords[0].size == 0:
+            return np.zeros((lvl, max_dim), dtype=np.int64)
+
+        start_line_ids, start_positions = cls._line_ids_and_positions(run_start_coords, image.shape, direction)
+        end_line_ids, end_positions = cls._line_ids_and_positions(run_end_coords, image.shape, direction)
+        start_order = np.lexsort((start_positions, start_line_ids))
+        end_order = np.lexsort((end_positions, end_line_ids))
+
+        run_lengths = end_positions[end_order] - start_positions[start_order] + 1
+        gray_levels = image[tuple(coord[start_order] for coord in run_start_coords)].astype(int)
+        flat_indices = gray_levels * max_dim + run_lengths - 1
+        return np.bincount(flat_indices, minlength=lvl * max_dim).reshape(lvl, max_dim)
+
+    @classmethod
+    def _calc_3d_matrices(cls, image, lvl):
+        image = crop_to_valid_bbox(image)
+        directions = (
+            (0, 0, 1),
+            (0, 1, -1),
+            (0, 1, 0),
+            (0, 1, 1),
+            (1, -1, -1),
+            (1, -1, 0),
+            (1, -1, 1),
+            (1, 0, -1),
+            (1, 0, 0),
+            (1, 0, 1),
+            (1, 1, -1),
+            (1, 1, 0),
+            (1, 1, 1),
         )
 
-        max_dim = max(x, y, z)
+        max_dim = max(image.shape)
+        valid_mask = ~np.isnan(image)
         glrlm_3d_matrix = np.zeros((len(directions), lvl, max_dim), dtype=np.int64)
-        nan_mask = np.isnan(image)
 
-        for d_idx, (dx, dy, dz) in enumerate(directions):
-            rlm = np.zeros((lvl, max_dim), dtype=np.int64)
-            visited = np.zeros((x, y, z), dtype=bool)
-            i_idx, j_idx, k_idx = np.where(~nan_mask)
-
-            for i, j, k in zip(i_idx, j_idx, k_idx):
-                if visited[i, j, k]:
-                    continue
-
-                gr_lvl = int(image[i, j, k])
-                run_len = 1
-                visited[i, j, k] = True
-                new_i, new_j, new_k = i + dx, j + dy, k + dz
-                while (
-                    0 <= new_i < x
-                    and 0 <= new_j < y
-                    and 0 <= new_k < z
-                    and image[new_i, new_j, new_k] == gr_lvl
-                    and not visited[new_i, new_j, new_k]
-                    and not nan_mask[new_i, new_j, new_k]
-                ):
-                    visited[new_i, new_j, new_k] = True
-                    run_len += 1
-                    new_i += dx
-                    new_j += dy
-                    new_k += dz
-
-                rlm[gr_lvl, run_len - 1] += 1
-
-            glrlm_3d_matrix[d_idx] = rlm
+        for d_idx, direction in enumerate(directions):
+            glrlm_3d_matrix[d_idx] = cls._rlm_for_direction(image, valid_mask, direction, lvl, max_dim)
 
         return glrlm_3d_matrix
 

@@ -214,7 +214,6 @@ class GLRLM(TextureFeatureBase):
 
     @classmethod
     def _calc_3d_matrices(cls, image, lvl):
-        image = crop_to_valid_bbox(image)
         directions = (
             (0, 0, 1),
             (0, 1, -1),

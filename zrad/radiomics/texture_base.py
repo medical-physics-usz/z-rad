@@ -1,5 +1,5 @@
 import numpy as np
-from scipy.ndimage import distance_transform_cdt, label
+from scipy.ndimage import distance_transform_cdt, label, minimum
 
 from ..exceptions import DataStructureError
 

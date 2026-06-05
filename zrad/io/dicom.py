@@ -264,40 +264,6 @@ def process_dicom_series(dicom_files):
     return image
 
 
-def _metadata_value(sitk_image, keys):
-    for key in keys:
-        if sitk_image.HasMetaDataKey(key):
-            value = sitk_image.GetMetaData(key).strip()
-            if value:
-                return value
-    return None
-
-
-def _reference_frame_uid(sitk_image):
-    return _metadata_value(sitk_image, [FRAME_OF_REFERENCE_UID_KEY, FRAME_OF_REFERENCE_UID_NAME])
-
-
-def _validate_rtstruct_frame_of_reference(rt_struct, sitk_image, roi_name):
-    rtstruct_frame_uid = rt_struct.get("referenced_frame")
-    if rtstruct_frame_uid:
-        rtstruct_frame_uid = str(rtstruct_frame_uid).strip()
-    image_frame_uid = _reference_frame_uid(sitk_image)
-
-    if rtstruct_frame_uid and image_frame_uid:
-        if rtstruct_frame_uid != image_frame_uid:
-            raise DataStructureError(
-                f"RTSTRUCT ROI '{roi_name}' references FrameOfReferenceUID {rtstruct_frame_uid}, "
-                f"but the image references {image_frame_uid}."
-            )
-        return
-
-    warnings.warn(
-        f"FrameOfReferenceUID could not be verified for RTSTRUCT ROI '{roi_name}'. "
-        "Mask generation will proceed using physical coordinates.",
-        DataStructureWarning,
-    )
-
-
 def _normalized_contour_type(contour):
     return contour["type"].upper().replace("_", "").strip()
 
@@ -394,7 +360,6 @@ def extract_dicom_mask(rtstruct_path, roi_name, image):
 
     rt_struct = get_contour_data(rtstruct_path, roi_name)
     if rt_struct and "sequence" in rt_struct:
-        _validate_rtstruct_frame_of_reference(rt_struct, image, roi_name)
         mask, skipped_outside_fov, _supported_contours = _generate_rtstruct_mask_array(rt_struct["sequence"], image)
         if skipped_outside_fov > 0 and np.any(mask):
             warnings.warn(

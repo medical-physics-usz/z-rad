@@ -1,3 +1,5 @@
+import warnings
+
 import numpy as np
 import pydicom
 import pytest
@@ -7,7 +9,7 @@ from pydicom.sequence import Sequence
 from pydicom.uid import ExplicitVRLittleEndian, generate_uid
 
 import zrad.io.dicom as dicom
-from zrad.exceptions import DataStructureError, DataStructureWarning
+from zrad.exceptions import DataStructureWarning
 
 
 def _make_sitk_image(size=(5, 5, 3), frame_uid="1.2.826.0.1.3680043.8.498.1"):
@@ -165,26 +167,17 @@ def test_extract_dicom_mask_returns_empty_image_when_roi_has_no_target_fov_overl
 
 
 @pytest.mark.unit
-def test_rtstruct_matching_frame_of_reference_uid_passes():
-    image = _make_sitk_image(frame_uid="1.2.3")
+def test_extract_dicom_mask_does_not_validate_frame_of_reference_uid(tmp_path):
+    rtstruct_path = tmp_path / "rtstruct.dcm"
+    _write_rtstruct(rtstruct_path, "GTV", "1.2.826.0.1.3680043.8.498.5", [_square_contour()])
+    image = _make_sitk_image(frame_uid="1.2.826.0.1.3680043.8.498.6")
 
-    dicom._validate_rtstruct_frame_of_reference({"referenced_frame": "1.2.3"}, image, "GTV")
+    with warnings.catch_warnings(record=True) as caught_warnings:
+        mask = dicom.extract_dicom_mask(rtstruct_path, "GTV", image)
 
-
-@pytest.mark.unit
-def test_rtstruct_mismatched_frame_of_reference_uid_raises():
-    image = _make_sitk_image(frame_uid="1.2.3")
-
-    with pytest.raises(DataStructureError, match="FrameOfReferenceUID"):
-        dicom._validate_rtstruct_frame_of_reference({"referenced_frame": "4.5.6"}, image, "GTV")
-
-
-@pytest.mark.unit
-def test_rtstruct_missing_frame_of_reference_uid_warns_and_continues():
-    image = _make_sitk_image(frame_uid=None)
-
-    with pytest.warns(DataStructureWarning, match="could not be verified"):
-        dicom._validate_rtstruct_frame_of_reference({"referenced_frame": "1.2.3"}, image, "GTV")
+    assert mask.array is not None
+    assert mask.array.any()
+    assert not any(issubclass(warning.category, DataStructureWarning) for warning in caught_warnings)
 
 
 @pytest.mark.unit

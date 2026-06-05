@@ -10,6 +10,9 @@ from skimage import draw
 from ..exceptions import DataStructureError, DataStructureWarning
 from .pet_suv import apply_suv_correction, validate_pet_dicom_tags
 
+FRAME_OF_REFERENCE_UID_KEY = "0020|0052"
+FRAME_OF_REFERENCE_UID_NAME = "FrameOfReferenceUID"
+
 
 def read_dicom_image(dicom_dir, modality):
     """Read a DICOM image series as a SimpleITK image."""
@@ -243,6 +246,17 @@ def process_dicom_series(dicom_files):
 
     image.SetSpacing((float(pixel_spacing[0]), float(pixel_spacing[1]), float(slice_thickness)))
     image.SetDirection(direction)
+    frame_of_reference_uid = next(
+        (
+            getattr(dicom_file["ds"], "FrameOfReferenceUID", None)
+            for dicom_file in dicom_files
+            if getattr(dicom_file["ds"], "FrameOfReferenceUID", None)
+        ),
+        None,
+    )
+    if frame_of_reference_uid:
+        image.SetMetaData(FRAME_OF_REFERENCE_UID_KEY, str(frame_of_reference_uid))
+        image.SetMetaData(FRAME_OF_REFERENCE_UID_NAME, str(frame_of_reference_uid))
     if dicom_files[0]["ds"].Modality == "CT" and np.min(sitk.GetArrayFromImage(image)) >= 0:
         error_msg = f'Non-negative CT intensity. SITK failed to convert CT into HU for {dicom_files[0]["file_path"]}. The patient is excluded from analysis'
         raise DataStructureError(error_msg)
@@ -250,36 +264,89 @@ def process_dicom_series(dicom_files):
     return image
 
 
-def extract_dicom_mask(rtstruct_path, roi_name, image):
-    def generate_mask_array(contours, sitk_image):
-        width, height, depth = sitk_image.GetSize()
-        mask_array = np.zeros((depth, height, width), dtype=np.uint8)
+def _metadata_value(sitk_image, keys):
+    for key in keys:
+        if sitk_image.HasMetaDataKey(key):
+            value = sitk_image.GetMetaData(key).strip()
+            if value:
+                return value
+    return None
 
-        for contour in contours:
-            contour_type = contour["type"].upper().replace("_", "").strip()
-            if contour_type not in ["CLOSEDPLANAR", "INTERPOLATEDPLANAR", "CLOSEDPLANARXOR"]:
-                continue
 
-            points = contour["points"]
-            num_points = len(points["x"])
-            transformed_points = np.array(
-                [
-                    sitk_image.TransformPhysicalPointToContinuousIndex((points["x"][i], points["y"][i], points["z"][i]))
-                    for i in range(num_points)
-                ]
+def _reference_frame_uid(sitk_image):
+    return _metadata_value(sitk_image, [FRAME_OF_REFERENCE_UID_KEY, FRAME_OF_REFERENCE_UID_NAME])
+
+
+def _validate_rtstruct_frame_of_reference(rt_struct, sitk_image, roi_name):
+    rtstruct_frame_uid = rt_struct.get("referenced_frame")
+    if rtstruct_frame_uid:
+        rtstruct_frame_uid = str(rtstruct_frame_uid).strip()
+    image_frame_uid = _reference_frame_uid(sitk_image)
+
+    if rtstruct_frame_uid and image_frame_uid:
+        if rtstruct_frame_uid != image_frame_uid:
+            raise DataStructureError(
+                f"RTSTRUCT ROI '{roi_name}' references FrameOfReferenceUID {rtstruct_frame_uid}, "
+                f"but the image references {image_frame_uid}."
             )
+        return
 
-            z_indices = np.rint(transformed_points[:, 2]).astype(int)
-            polygon_coords = np.column_stack((transformed_points[:, 1], transformed_points[:, 0]))
-            mask_layer = draw.polygon2mask((height, width), polygon_coords)
+    warnings.warn(
+        f"FrameOfReferenceUID could not be verified for RTSTRUCT ROI '{roi_name}'. "
+        "Mask generation will proceed using physical coordinates.",
+        DataStructureWarning,
+    )
 
-            for z in z_indices:
-                if contour_type == "CLOSEDPLANARXOR":
-                    mask_array[z] = np.logical_xor(mask_array[z], mask_layer).astype(np.uint8)
-                else:
-                    mask_array[z] = np.logical_or(mask_array[z], mask_layer).astype(np.uint8)
 
-        return mask_array
+def _normalized_contour_type(contour):
+    return contour["type"].upper().replace("_", "").strip()
+
+
+def _generate_rtstruct_mask_array(contours, sitk_image):
+    width, height, depth = sitk_image.GetSize()
+    mask_array = np.zeros((depth, height, width), dtype=np.uint8)
+    skipped_outside_fov = 0
+    supported_contours = 0
+
+    for contour in contours:
+        contour_type = _normalized_contour_type(contour)
+        if contour_type not in ["CLOSEDPLANAR", "INTERPOLATEDPLANAR", "CLOSEDPLANARXOR"]:
+            continue
+
+        supported_contours += 1
+        points = contour["points"]
+        num_points = len(points["x"])
+        if num_points == 0:
+            skipped_outside_fov += 1
+            continue
+
+        transformed_points = np.array(
+            [
+                sitk_image.TransformPhysicalPointToContinuousIndex((points["x"][i], points["y"][i], points["z"][i]))
+                for i in range(num_points)
+            ]
+        )
+
+        z = int(np.rint(np.median(transformed_points[:, 2])))
+        if z < 0 or z >= depth:
+            skipped_outside_fov += 1
+            continue
+
+        polygon_coords = np.column_stack((transformed_points[:, 1], transformed_points[:, 0]))
+        mask_layer = draw.polygon2mask((height, width), polygon_coords)
+        if not mask_layer.any():
+            skipped_outside_fov += 1
+            continue
+
+        if contour_type == "CLOSEDPLANARXOR":
+            mask_array[z] = np.logical_xor(mask_array[z], mask_layer).astype(np.uint8)
+        else:
+            mask_array[z] = np.logical_or(mask_array[z], mask_layer).astype(np.uint8)
+
+    return mask_array, skipped_outside_fov, supported_contours
+
+
+def extract_dicom_mask(rtstruct_path, roi_name, image):
 
     def get_contour_data(file_path, selected_roi):
         def get_contour_coord(metadata, current_roi_sequence, skip_contours_bool=False):
@@ -289,7 +356,7 @@ def extract_dicom_mask(rtstruct_path, roi_name, image):
                 "referenced_frame": getattr(
                     metadata[current_roi_sequence.ReferencedROINumber],
                     "ReferencedFrameOfReferenceUID",
-                    "unknown",
+                    None,
                 ),
                 "display_color": getattr(current_roi_sequence, "ROIDisplayColor", []),
             }
@@ -327,7 +394,20 @@ def extract_dicom_mask(rtstruct_path, roi_name, image):
 
     rt_struct = get_contour_data(rtstruct_path, roi_name)
     if rt_struct and "sequence" in rt_struct:
-        mask = generate_mask_array(rt_struct["sequence"], image)
+        _validate_rtstruct_frame_of_reference(rt_struct, image, roi_name)
+        mask, skipped_outside_fov, _supported_contours = _generate_rtstruct_mask_array(rt_struct["sequence"], image)
+        if skipped_outside_fov > 0 and np.any(mask):
+            warnings.warn(
+                f"Skipped {skipped_outside_fov} RTSTRUCT contour(s) for ROI '{roi_name}' because they fall outside "
+                "the target image field of view.",
+                DataStructureWarning,
+            )
+        if not np.any(mask):
+            warnings.warn(
+                f"RTSTRUCT ROI '{roi_name}' has no overlap with the target image field of view. ROI skipped.",
+                DataStructureWarning,
+            )
+            return Image()
         return Image(
             array=mask,
             origin=image.GetOrigin(),

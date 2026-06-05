@@ -518,4 +518,6 @@ def apply_suv_correction(dicom_files, suv_image):
     intensity_image.SetOrigin(suv_image.GetOrigin())
     intensity_image.SetSpacing(np.array(suv_image.GetSpacing()))
     intensity_image.SetDirection(np.array(suv_image.GetDirection()))
+    for key in suv_image.GetMetaDataKeys():
+        intensity_image.SetMetaData(key, suv_image.GetMetaData(key))
     return intensity_image

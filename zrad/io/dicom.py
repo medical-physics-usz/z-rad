@@ -10,9 +10,6 @@ from skimage import draw
 from ..exceptions import DataStructureError, DataStructureWarning
 from .pet_suv import apply_suv_correction, validate_pet_dicom_tags
 
-FRAME_OF_REFERENCE_UID_KEY = "0020|0052"
-FRAME_OF_REFERENCE_UID_NAME = "FrameOfReferenceUID"
-
 
 def read_dicom_image(dicom_dir, modality):
     """Read a DICOM image series as a SimpleITK image."""
@@ -246,17 +243,6 @@ def process_dicom_series(dicom_files):
 
     image.SetSpacing((float(pixel_spacing[0]), float(pixel_spacing[1]), float(slice_thickness)))
     image.SetDirection(direction)
-    frame_of_reference_uid = next(
-        (
-            getattr(dicom_file["ds"], "FrameOfReferenceUID", None)
-            for dicom_file in dicom_files
-            if getattr(dicom_file["ds"], "FrameOfReferenceUID", None)
-        ),
-        None,
-    )
-    if frame_of_reference_uid:
-        image.SetMetaData(FRAME_OF_REFERENCE_UID_KEY, str(frame_of_reference_uid))
-        image.SetMetaData(FRAME_OF_REFERENCE_UID_NAME, str(frame_of_reference_uid))
     if dicom_files[0]["ds"].Modality == "CT" and np.min(sitk.GetArrayFromImage(image)) >= 0:
         error_msg = f'Non-negative CT intensity. SITK failed to convert CT into HU for {dicom_files[0]["file_path"]}. The patient is excluded from analysis'
         raise DataStructureError(error_msg)
@@ -319,11 +305,6 @@ def extract_dicom_mask(rtstruct_path, roi_name, image):
             contour_info = {
                 "name": getattr(metadata[current_roi_sequence.ReferencedROINumber], "ROIName", "unknown"),
                 "roi_number": current_roi_sequence.ReferencedROINumber,
-                "referenced_frame": getattr(
-                    metadata[current_roi_sequence.ReferencedROINumber],
-                    "ReferencedFrameOfReferenceUID",
-                    None,
-                ),
                 "display_color": getattr(current_roi_sequence, "ROIDisplayColor", []),
             }
 

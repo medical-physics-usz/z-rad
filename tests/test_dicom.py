@@ -1,5 +1,3 @@
-import warnings
-
 import numpy as np
 import pydicom
 import pytest
@@ -12,15 +10,12 @@ import zrad.io.dicom as dicom
 from zrad.exceptions import DataStructureWarning
 
 
-def _make_sitk_image(size=(5, 5, 3), frame_uid="1.2.826.0.1.3680043.8.498.1"):
+def _make_sitk_image(size=(5, 5, 3)):
     width, height, depth = size
     image = sitk.GetImageFromArray(np.zeros((depth, height, width), dtype=np.int16))
     image.SetOrigin((0.0, 0.0, 0.0))
     image.SetSpacing((1.0, 1.0, 1.0))
     image.SetDirection((1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0))
-    if frame_uid is not None:
-        image.SetMetaData(dicom.FRAME_OF_REFERENCE_UID_KEY, frame_uid)
-        image.SetMetaData(dicom.FRAME_OF_REFERENCE_UID_NAME, frame_uid)
     return image
 
 
@@ -44,7 +39,7 @@ def _square_contour(z=1.0, contour_type="CLOSED_PLANAR"):
     )
 
 
-def _write_rtstruct(path, roi_name, frame_uid, contours):
+def _write_rtstruct(path, roi_name, contours):
     file_meta = FileMetaDataset()
     file_meta.TransferSyntaxUID = ExplicitVRLittleEndian
     file_meta.MediaStorageSOPClassUID = generate_uid()
@@ -61,8 +56,6 @@ def _write_rtstruct(path, roi_name, frame_uid, contours):
     structure = Dataset()
     structure.ROINumber = 1
     structure.ROIName = roi_name
-    if frame_uid is not None:
-        structure.ReferencedFrameOfReferenceUID = frame_uid
     ds.StructureSetROISequence = Sequence([structure])
 
     roi_contour = Dataset()
@@ -141,10 +134,9 @@ def test_rtstruct_xor_contour_is_applied_once_per_contour():
 
 @pytest.mark.unit
 def test_extract_dicom_mask_warns_when_some_contours_are_outside_target_fov(tmp_path):
-    frame_uid = "1.2.826.0.1.3680043.8.498.2"
     rtstruct_path = tmp_path / "rtstruct.dcm"
-    _write_rtstruct(rtstruct_path, "GTV", frame_uid, [_square_contour(), _square_contour(z=10.0)])
-    image = _make_sitk_image(frame_uid=frame_uid)
+    _write_rtstruct(rtstruct_path, "GTV", [_square_contour(), _square_contour(z=10.0)])
+    image = _make_sitk_image()
 
     with pytest.warns(DataStructureWarning, match="Skipped 1 RTSTRUCT contour"):
         mask = dicom.extract_dicom_mask(rtstruct_path, "GTV", image)
@@ -155,58 +147,12 @@ def test_extract_dicom_mask_warns_when_some_contours_are_outside_target_fov(tmp_
 
 @pytest.mark.unit
 def test_extract_dicom_mask_returns_empty_image_when_roi_has_no_target_fov_overlap(tmp_path):
-    frame_uid = "1.2.826.0.1.3680043.8.498.3"
     rtstruct_path = tmp_path / "rtstruct.dcm"
-    _write_rtstruct(rtstruct_path, "GTV", frame_uid, [_square_contour(z=10.0)])
-    image = _make_sitk_image(frame_uid=frame_uid)
+    _write_rtstruct(rtstruct_path, "GTV", [_square_contour(z=10.0)])
+    image = _make_sitk_image()
 
     with pytest.warns(DataStructureWarning, match="has no overlap"):
         mask = dicom.extract_dicom_mask(rtstruct_path, "GTV", image)
 
     assert mask.array is None
 
-
-@pytest.mark.unit
-def test_extract_dicom_mask_does_not_validate_frame_of_reference_uid(tmp_path):
-    rtstruct_path = tmp_path / "rtstruct.dcm"
-    _write_rtstruct(rtstruct_path, "GTV", "1.2.826.0.1.3680043.8.498.5", [_square_contour()])
-    image = _make_sitk_image(frame_uid="1.2.826.0.1.3680043.8.498.6")
-
-    with warnings.catch_warnings(record=True) as caught_warnings:
-        mask = dicom.extract_dicom_mask(rtstruct_path, "GTV", image)
-
-    assert mask.array is not None
-    assert mask.array.any()
-    assert not any(issubclass(warning.category, DataStructureWarning) for warning in caught_warnings)
-
-
-@pytest.mark.unit
-def test_process_dicom_series_preserves_frame_of_reference_uid(monkeypatch):
-    frame_uid = "1.2.826.0.1.3680043.8.498.4"
-
-    class FakeReader:
-        def SetFileNames(self, file_names):
-            self.file_names = file_names
-
-        def Execute(self):
-            return sitk.GetImageFromArray(np.full((2, 2, 2), -1000, dtype=np.int16))
-
-    def make_ds(z):
-        ds = Dataset()
-        ds.Modality = "CT"
-        ds.PixelSpacing = [1.0, 1.0]
-        ds.ImageOrientationPatient = [1.0, 0.0, 0.0, 0.0, 1.0, 0.0]
-        ds.ImagePositionPatient = [0.0, 0.0, z]
-        ds.FrameOfReferenceUID = frame_uid
-        return ds
-
-    monkeypatch.setattr(dicom.sitk, "ImageSeriesReader", FakeReader)
-    dicom_files = [
-        {"file_path": "slice-1.dcm", "ds": make_ds(0.0)},
-        {"file_path": "slice-2.dcm", "ds": make_ds(2.0)},
-    ]
-
-    image = dicom.process_dicom_series(dicom_files)
-
-    assert image.GetMetaData(dicom.FRAME_OF_REFERENCE_UID_KEY) == frame_uid
-    assert image.GetMetaData(dicom.FRAME_OF_REFERENCE_UID_NAME) == frame_uid

@@ -129,8 +129,8 @@ class BatchRadiomicsExtractor:
         if self.slice_weighting and self.slice_median:
             raise InvalidInputParametersError("slice_weighting and slice_median cannot both be enabled.")
 
-        self._validate_discretization()
         self.intensity_range = _normalize_intensity_range(self.intensity_range)
+        self._validate_discretization()
         self.outlier_range = _normalize_positive_float(self.outlier_range, "outlier_range must be positive.")
 
     def plan(self) -> list[str]:
@@ -215,7 +215,9 @@ class BatchRadiomicsExtractor:
             return result, feature_rows
 
         result.status = 'skipped'
-        if not result.skipped_structures:
+        if result.skipped_structures:
+            result.error = "No structures were successfully processed for radiomics extraction."
+        else:
             result.error = "No structures were available for radiomics extraction."
         return result, feature_rows
 
@@ -296,6 +298,8 @@ class BatchRadiomicsExtractor:
             self.bin_size = None
         elif self.discretization_method == 'Bin Size':
             self.bin_size = _require_positive_float(self.bin_size, "bin_size is required.")
+            if self.intensity_range is None:
+                raise InvalidInputParametersError("Bin Size discretization requires intensity_range.")
             self.number_of_bins = None
         else:
             raise InvalidInputParametersError("discretization_method must be 'Number of Bins' or 'Bin Size'.")

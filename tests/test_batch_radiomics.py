@@ -72,7 +72,13 @@ def test_batch_public_api_exposes_radiomics_classes():
         ({'use_all_structures': True}, "use_all_structures"),
         ({'discretization_method': 'Number of Bins', 'number_of_bins': None}, "number_of_bins"),
         ({'discretization_method': 'Bin Size', 'bin_size': None}, "bin_size"),
+        ({'discretization_method': 'Bin Size', 'bin_size': 25.0, 'intensity_range': None}, "intensity_range"),
+        (
+            {'discretization_method': 'Bin Size', 'bin_size': 25.0, 'intensity_range': [float('-inf'), 100.0]},
+            "intensity_range",
+        ),
         ({'aggregation_method': 'BAD'}, "aggregation_method"),
+        ({'slice_weighting': True, 'slice_median': True}, "slice_weighting"),
     ],
 )
 def test_batch_radiomics_validates_inputs(tmp_path, kwargs, message):
@@ -124,6 +130,28 @@ def test_batch_radiomics_validate_normalizes_public_attributes(tmp_path):
     assert extractor.number_of_bins == 8
     assert extractor.intensity_range == (0.0, 100.0)
     assert extractor.parallel_backend == 'threads'
+
+
+@pytest.mark.unit
+def test_batch_radiomics_plan_then_run_is_safe_after_normalization(monkeypatch, tmp_path):
+    input_dir = tmp_path / 'input'
+    output_dir = tmp_path / 'output'
+    _write_case(input_dir, 'case_a', masks=['mask'])
+    monkeypatch.setattr(BatchRadiomicsExtractor, '_extract_structure_features', lambda *args, **kwargs: {'f': 1})
+
+    extractor = _extractor(
+        str(input_dir),
+        str(output_dir),
+        patient_folders='case_a',
+        structures='mask',
+        number_of_threads='1',
+    )
+
+    assert extractor.plan() == ['case_a']
+    result = extractor.run()
+
+    assert result.processed_count == 1
+    assert (output_dir / 'radiomics.csv').exists()
 
 
 @pytest.mark.unit
@@ -205,6 +233,20 @@ def test_filtered_nifti_image_is_loaded_when_provided(monkeypatch, tmp_path):
 
 
 @pytest.mark.unit
+def test_missing_filtered_nifti_image_is_recorded_as_skipped_case(tmp_path):
+    input_dir = tmp_path / 'input'
+    output_dir = tmp_path / 'output'
+    _write_case(input_dir, 'case_a', masks=['mask'])
+
+    result = _extractor(input_dir, output_dir, nifti_filtered_image_name='filtered').run()
+
+    case_result = result.case_results[0]
+    assert case_result.status == 'skipped'
+    assert case_result.error
+    assert result.skipped_count == 1
+
+
+@pytest.mark.unit
 def test_missing_nifti_image_is_recorded_as_skipped_case(tmp_path):
     input_dir = tmp_path / 'input'
     output_dir = tmp_path / 'output'
@@ -229,6 +271,36 @@ def test_missing_nifti_mask_is_recorded_as_skipped_structure(tmp_path):
     case_result = result.case_results[0]
     assert case_result.status == 'skipped'
     assert case_result.skipped_structures == ['mask']
+    assert case_result.error == "No structures were successfully processed for radiomics extraction."
+
+
+@pytest.mark.unit
+def test_empty_nifti_mask_is_recorded_as_skipped_structure(tmp_path):
+    input_dir = tmp_path / 'input'
+    output_dir = tmp_path / 'output'
+    _write_case(input_dir, 'case_a')
+    _make_image(np.zeros((3, 3, 3), dtype=np.float64)).save_as_nifti(input_dir / 'case_a' / 'mask.nii.gz')
+
+    result = _extractor(input_dir, output_dir).run()
+
+    case_result = result.case_results[0]
+    assert case_result.status == 'skipped'
+    assert case_result.skipped_structures == ['mask']
+    assert case_result.error == "No structures were successfully processed for radiomics extraction."
+
+
+@pytest.mark.unit
+def test_empty_radiomics_csv_is_created_when_no_feature_rows_are_extracted(tmp_path):
+    input_dir = tmp_path / 'input'
+    output_dir = tmp_path / 'output'
+    _write_case(input_dir, 'case_a')
+
+    result = _extractor(input_dir, output_dir).run()
+
+    csv_path = output_dir / 'radiomics.csv'
+    assert result.skipped_count == 1
+    assert csv_path.exists()
+    assert csv_path.read_text() == ''
 
 
 @pytest.mark.unit
@@ -312,6 +384,58 @@ def test_dicom_radiomics_uses_all_structures(monkeypatch, tmp_path):
     ).run()
 
     assert result.case_results[0].processed_structures == ['GTV', 'CTV']
+
+
+@pytest.mark.unit
+def test_dicom_missing_rtstruct_is_recorded_as_skipped_case(monkeypatch, tmp_path):
+    input_dir = tmp_path / 'input'
+    output_dir = tmp_path / 'output'
+    (input_dir / 'case_a').mkdir(parents=True)
+    monkeypatch.setattr(batch_radiomics.Image, 'from_dicom', staticmethod(lambda *args, **kwargs: _make_image()))
+    monkeypatch.setattr(batch_radiomics, 'get_dicom_files', lambda *args, **kwargs: [])
+
+    result = BatchRadiomicsExtractor(
+        input_directory=input_dir,
+        output_directory=output_dir,
+        input_data_type='dicom',
+        modality='CT',
+        structures=['GTV'],
+        aggregation_dimension='3D',
+        aggregation_method='MERG',
+        discretization_method='Number of Bins',
+        number_of_bins=4,
+    ).run()
+
+    case_result = result.case_results[0]
+    assert case_result.status == 'skipped'
+    assert case_result.skipped_structures == ['GTV']
+    assert case_result.error == "No structures were successfully processed for radiomics extraction."
+
+
+@pytest.mark.unit
+def test_dicom_all_structures_without_rtstruct_is_recorded_as_skipped_case(monkeypatch, tmp_path):
+    input_dir = tmp_path / 'input'
+    output_dir = tmp_path / 'output'
+    (input_dir / 'case_a').mkdir(parents=True)
+    monkeypatch.setattr(batch_radiomics.Image, 'from_dicom', staticmethod(lambda *args, **kwargs: _make_image()))
+    monkeypatch.setattr(batch_radiomics, 'get_dicom_files', lambda *args, **kwargs: [])
+
+    result = BatchRadiomicsExtractor(
+        input_directory=input_dir,
+        output_directory=output_dir,
+        input_data_type='dicom',
+        modality='CT',
+        use_all_structures=True,
+        aggregation_dimension='3D',
+        aggregation_method='MERG',
+        discretization_method='Number of Bins',
+        number_of_bins=4,
+    ).run()
+
+    case_result = result.case_results[0]
+    assert case_result.status == 'skipped'
+    assert case_result.skipped_structures == []
+    assert case_result.error == "No structures were available for radiomics extraction."
 
 
 @pytest.mark.unit

@@ -119,6 +119,26 @@ that means your workflow needs to provide:
 For correct feature extraction, images and masks must refer to the same spatial
 frame and voxel grid.
 
+Batch APIs
+----------
+
+Use ``zrad.batch`` when you want to process a folder cohort and write results
+to disk. The lower-level modules remain the single-image or single-ROI APIs:
+
+* ``BatchPreprocessor`` writes preprocessed images and masks.
+* ``BatchFilter`` writes filtered images.
+* ``BatchRadiomicsExtractor`` writes one ``radiomics.csv`` file.
+
+All batch workflows return ``BatchResult``:
+
+.. code-block:: python
+
+   result = batch.run()
+
+   print(result.processed_count, result.skipped_count, result.failed_count)
+   for case in result.errors:
+       print(case.case_name, case.error)
+
 Batch Preprocessing
 -------------------
 

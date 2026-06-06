@@ -119,5 +119,58 @@ that means your workflow needs to provide:
 For correct feature extraction, images and masks must refer to the same spatial
 frame and voxel grid.
 
+Batch Preprocessing
+-------------------
+
+Use ``zrad.batch.BatchPreprocessor`` when you want to run the preprocessing
+workflow over many case folders and write the processed images and masks to
+disk. The lower-level ``zrad.preprocessing`` classes remain the recommended API
+for single image/mask pairs and interactive experiments.
+
+DICOM example:
+
+.. code-block:: python
+
+   from zrad.batch import BatchPreprocessor
+
+   result = BatchPreprocessor(
+       input_directory="path/to/dicom_cases",
+       output_directory="path/to/preprocessed_cases",
+       input_data_type="dicom",
+       modality="CT",
+       number_of_threads=8,
+       structures=["CTV", "liver"],
+       resample_resolution=1.0,
+       resample_dimension="3D",
+       image_interpolation_method="linear",
+       mask_interpolation_method="linear",
+       mask_interpolation_threshold=0.5,
+   ).run()
+
+   print(result.processed_count, result.failed_count)
+
+NIfTI example:
+
+.. code-block:: python
+
+   from zrad.batch import BatchPreprocessor
+
+   result = BatchPreprocessor(
+       input_directory="path/to/nifti_cases",
+       output_directory="path/to/preprocessed_cases",
+       input_data_type="nifti",
+       modality="CT",
+       nifti_image_name="imageCT",
+       structures=["CTV", "liver"],
+       resample_resolution=1.0,
+       resample_dimension="2D",
+       image_interpolation_method="linear",
+       mask_interpolation_method="NN",
+   ).run()
+
+``BatchPreprocessor`` is a save-to-disk batch API. It reports per-case status
+through ``BatchResult``. Batch filtering and batch radiomics extraction are
+planned follow-up concepts and are not part of the first batch API.
+
 For parameter details, combine this quickstart with the dedicated user-guide
 pages and the API reference.

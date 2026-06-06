@@ -4,15 +4,12 @@ import os
 import sys
 from datetime import datetime
 
-import numpy as np
-from joblib import Parallel, delayed
 from PyQt5.QtCore import QThread
 
-from ..exceptions import DataStructureError, InvalidInputParametersError
-from ..io.dicom import get_all_structure_names, get_dicom_files
-from ..preprocessing import ImageResampler, MaskResampler
-from ..toolbox_logic import close_all_loggers, get_logger, joblib_progress
-from ._base_tab import BaseTab, load_images, load_mask
+from ..batch import BatchPreprocessor
+from ..exceptions import InvalidInputParametersError
+from ..toolbox_logic import close_all_loggers, get_logger
+from ._base_tab import BaseTab
 from .toolbox_gui import (
     CustomBox,
     CustomCheckBox,
@@ -28,95 +25,6 @@ from .toolbox_gui import (
 logging.captureWarnings(True)
 
 IS_FROZEN = getattr(sys, 'frozen', False)
-
-
-def _target_resolution(image, resolution, dimension):
-    if dimension == '3D':
-        return (resolution, resolution, resolution)
-    if dimension == '2D':
-        return (resolution, resolution, image.spacing[2])
-    raise ValueError(f"Resample dimension '{dimension}' is not supported.")
-
-
-def process_patient_folder(input_params, patient_folder, structure_set):
-
-    local_params = dict(input_params)
-
-    """Function to process each patient folder, used for parallel processing."""
-    # Logger
-    logger_date_time = datetime.now().strftime("%Y-%m-%d_%H%M%S")
-    logger = get_logger(logger_date_time + '_Preprocessing')
-    logger.info(f"Processing patient's {patient_folder} image.")
-    try:
-        image = load_images(local_params, patient_folder)
-    except (DataStructureError, ValueError) as e:
-        logger.error(e)
-        logger.error(f"Patient {patient_folder} could not be loaded and is skipped.")
-        return
-
-    if local_params["just_save_as_nifti"]:
-        image_new = image.copy()
-    else:
-        prep_image = ImageResampler(
-            resolution=_target_resolution(
-                image,
-                local_params["resample_resolution"],
-                local_params["resample_dimension"],
-            ),
-            method=local_params["image_interpolation_method"],
-            intensity_rounding=("nearest_integer" if local_params["input_imaging_modality"] == "CT" else None),
-        )
-        image_new = prep_image.apply(image)
-
-    # Save new image
-    output_path = os.path.join(local_params["output_directory"], patient_folder, 'image.nii.gz')
-    image_new.save_as_nifti(output_path)
-
-    # Process masks
-    if local_params["input_data_type"] == 'dicom':
-        input_directory = os.path.join(local_params["input_directory"], patient_folder)
-        rtstruct_paths = get_dicom_files(input_directory, modality='RTSTRUCT')
-
-        if rtstruct_paths:
-            local_params['rtstruct_path'] = rtstruct_paths[0]['file_path']
-            if local_params["use_all_structures"]:
-                structure_set = get_all_structure_names(local_params['rtstruct_path'])
-        else:
-            local_params['rtstruct_path'] = None
-
-    if structure_set:
-        mask_union = None
-        for mask_name in structure_set:
-            mask = load_mask(local_params, patient_folder, mask_name, image)
-            if mask and mask.array is not None:
-                logger.info(f"Processing patient's {patient_folder} ROI: {mask_name}.")
-                if local_params["just_save_as_nifti"]:
-                    mask_new = mask.copy()
-                else:
-                    prep_mask = MaskResampler(
-                        resolution=_target_resolution(
-                            mask,
-                            local_params["resample_resolution"],
-                            local_params["resample_dimension"],
-                        ),
-                        method=local_params["mask_interpolation_method"],
-                        partial_volume_threshold=local_params["mask_interpolation_threshold"],
-                    )
-                    mask_new = prep_mask.apply(mask)
-
-                # Save new mask
-                output_path = os.path.join(local_params["output_directory"], patient_folder, f'{mask_name}.nii.gz')
-                mask_new.save_as_nifti(output_path)
-
-                if local_params["mask_union"]:
-                    if mask_union:
-                        mask_union.array = np.bitwise_or(mask_union.array, mask_new.array).astype(np.int16)
-                    else:
-                        mask_union = mask_new.copy()
-
-        if mask_union:
-            output_path = os.path.join(local_params["output_directory"], patient_folder, 'mask_union.nii.gz')
-            mask_union.save_as_nifti(output_path)
 
 
 class PreprocessingTab(BaseTab):
@@ -388,6 +296,34 @@ class PreprocessingTab(BaseTab):
         }
         self.input_params = input_parameters
 
+    def _create_batch_preprocessor(self, parallel_backend):
+        if self.input_params["input_data_type"] == "nifti":
+            structures = self.input_params.get("nifti_structures")
+        else:
+            structures = None if self.input_params["use_all_structures"] else self.input_params["dicom_structures"]
+
+        return BatchPreprocessor(
+            input_directory=self.input_params["input_directory"],
+            output_directory=self.input_params["output_directory"],
+            input_data_type=self.input_params["input_data_type"],
+            modality=self.input_params["input_imaging_modality"],
+            number_of_threads=self.input_params["number_of_threads"],
+            patient_folders=self.input_params["list_of_patient_folders"],
+            start_folder=self.input_params["start_folder"],
+            stop_folder=self.input_params["stop_folder"],
+            structures=structures,
+            use_all_structures=bool(self.input_params["use_all_structures"]),
+            nifti_image_name=self.input_params["nifti_image_name"],
+            just_save_as_nifti=bool(self.input_params["just_save_as_nifti"]),
+            resample_resolution=self.input_params["resample_resolution"],
+            resample_dimension=self.input_params["resample_dimension"],
+            image_interpolation_method=self.input_params["image_interpolation_method"],
+            mask_interpolation_method=self.input_params["mask_interpolation_method"],
+            mask_interpolation_threshold=self.input_params["mask_interpolation_threshold"],
+            mask_union=bool(self.input_params["mask_union"]),
+            parallel_backend=parallel_backend,
+        )
+
     def run_selection(self):
         """Executes preprocessing based on user-selected options."""
         close_all_loggers()
@@ -407,40 +343,27 @@ class PreprocessingTab(BaseTab):
             CustomWarningBox(str(e)).response()
             return
 
-        # Get patient folders
-        list_of_patient_folders = self.get_patient_folders()
-
-        # Determine structure set based on data type
-        structure_set = None
-        if self.input_params["input_data_type"].lower() == "nifti":
-            structure_set = self.input_params.get("nifti_structures")
-        elif self.input_params["input_data_type"].lower() == "dicom":
-            if not self.input_params["use_all_structures"]:
-                structure_set = self.input_params["dicom_structures"]
-
-        # Process each patient folder
         if IS_FROZEN:
             backend_hint = "threads"
             self.logger.info("Frozen state. Set backend_hint to threads")
         else:
             backend_hint = "processes"
             self.logger.info("Not frozen state. Set backend_hint to processes")
+
+        batch_preprocessor = self._create_batch_preprocessor(backend_hint)
+        try:
+            list_of_patient_folders = batch_preprocessor.plan()
+        except InvalidInputParametersError as e:
+            self.logger.error(e)
+            CustomWarningBox(str(e)).response()
+            return
+
         if list_of_patient_folders:
             progress_dialog = ProcessingProgressDialog("Preprocessing Progress", len(list_of_patient_folders), self)
             progress_dialog.start()
-            n_jobs = self.input_params["number_of_threads"]
 
             def work(progress_callback):
-                if n_jobs == 1:
-                    for patient_folder in list_of_patient_folders:
-                        process_patient_folder(self.input_params, patient_folder, structure_set)
-                        progress_callback(1)
-                else:
-                    with joblib_progress(progress_callback=progress_callback):
-                        Parallel(n_jobs=n_jobs, prefer=backend_hint)(
-                            delayed(process_patient_folder)(self.input_params, patient_folder, structure_set)
-                            for patient_folder in list_of_patient_folders
-                        )
+                return batch_preprocessor.run(progress_callback=progress_callback)
 
             worker = ProcessingWorker(work)
             thread = QThread(self)
@@ -454,7 +377,14 @@ class PreprocessingTab(BaseTab):
 
             def handle_finished(_result):
                 cleanup()
-                self.logger.info("Preprocessing finished!")
+                self.logger.info(
+                    "Preprocessing finished! Processed: %s, skipped: %s, failed: %s",
+                    _result.processed_count,
+                    _result.skipped_count,
+                    _result.failed_count,
+                )
+                for case_result in _result.errors:
+                    self.logger.error("%s: %s", case_result.case_name, case_result.error)
                 CustomInfoBox("Preprocessing finished!").response()
 
             def handle_error(exc):

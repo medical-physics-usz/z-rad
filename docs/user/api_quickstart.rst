@@ -148,6 +148,8 @@ DICOM example:
    ).run()
 
    print(result.processed_count, result.failed_count)
+   for case in result.errors:
+       print(case.case_name, case.error)
 
 NIfTI example:
 
@@ -169,8 +171,37 @@ NIfTI example:
    ).run()
 
 ``BatchPreprocessor`` is a save-to-disk batch API. It reports per-case status
-through ``BatchResult``. Batch filtering and batch radiomics extraction are
-planned follow-up concepts and are not part of the first batch API.
+through ``BatchResult``.
+
+Batch Filtering
+---------------
+
+Use ``zrad.batch.BatchFilter`` when you want to apply one configured image
+filter to every selected case folder and write the filtered images to disk.
+The lower-level ``zrad.filtering`` classes remain the recommended API for
+single-image filtering.
+
+.. code-block:: python
+
+   from zrad.batch import BatchFilter
+
+   result = BatchFilter(
+       input_directory="path/to/preprocessed_cases",
+       output_directory="path/to/filtered_cases",
+       input_data_type="nifti",
+       modality="CT",
+       nifti_image_name="image",
+       number_of_threads=8,
+       filter_type="Mean",
+       filter_dimension="3D",
+       padding_type="reflect",
+       mean_support=3,
+   ).run()
+
+   print(result.processed_count, result.failed_count)
+
+``BatchFilter`` is a save-to-disk batch API. Batch radiomics extraction is a
+planned follow-up concept and is not part of the first batch API.
 
 For parameter details, combine this quickstart with the dedicated user-guide
 pages and the API reference.

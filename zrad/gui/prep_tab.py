@@ -27,6 +27,36 @@ logging.captureWarnings(True)
 IS_FROZEN = getattr(sys, 'frozen', False)
 
 
+def create_batch_preprocessor_from_input_params(input_params, parallel_backend):
+    input_data_type = str(input_params["input_data_type"]).strip().lower()
+    if input_data_type == "nifti":
+        structures = input_params.get("nifti_structures")
+    else:
+        structures = None if input_params["use_all_structures"] else input_params["dicom_structures"]
+
+    return BatchPreprocessor(
+        input_directory=input_params["input_directory"],
+        output_directory=input_params["output_directory"],
+        input_data_type=input_params["input_data_type"],
+        modality=input_params["input_imaging_modality"],
+        number_of_threads=input_params["number_of_threads"],
+        patient_folders=input_params["list_of_patient_folders"],
+        start_folder=input_params["start_folder"],
+        stop_folder=input_params["stop_folder"],
+        structures=structures,
+        use_all_structures=bool(input_params["use_all_structures"]),
+        nifti_image_name=input_params["nifti_image_name"],
+        just_save_as_nifti=bool(input_params["just_save_as_nifti"]),
+        resample_resolution=input_params["resample_resolution"],
+        resample_dimension=input_params["resample_dimension"],
+        image_interpolation_method=input_params["image_interpolation_method"],
+        mask_interpolation_method=input_params["mask_interpolation_method"],
+        mask_interpolation_threshold=input_params["mask_interpolation_threshold"],
+        mask_union=bool(input_params["mask_union"]),
+        parallel_backend=parallel_backend,
+    )
+
+
 class PreprocessingTab(BaseTab):
     def __init__(self):
         super().__init__()
@@ -297,32 +327,7 @@ class PreprocessingTab(BaseTab):
         self.input_params = input_parameters
 
     def _create_batch_preprocessor(self, parallel_backend):
-        if self.input_params["input_data_type"] == "nifti":
-            structures = self.input_params.get("nifti_structures")
-        else:
-            structures = None if self.input_params["use_all_structures"] else self.input_params["dicom_structures"]
-
-        return BatchPreprocessor(
-            input_directory=self.input_params["input_directory"],
-            output_directory=self.input_params["output_directory"],
-            input_data_type=self.input_params["input_data_type"],
-            modality=self.input_params["input_imaging_modality"],
-            number_of_threads=self.input_params["number_of_threads"],
-            patient_folders=self.input_params["list_of_patient_folders"],
-            start_folder=self.input_params["start_folder"],
-            stop_folder=self.input_params["stop_folder"],
-            structures=structures,
-            use_all_structures=bool(self.input_params["use_all_structures"]),
-            nifti_image_name=self.input_params["nifti_image_name"],
-            just_save_as_nifti=bool(self.input_params["just_save_as_nifti"]),
-            resample_resolution=self.input_params["resample_resolution"],
-            resample_dimension=self.input_params["resample_dimension"],
-            image_interpolation_method=self.input_params["image_interpolation_method"],
-            mask_interpolation_method=self.input_params["mask_interpolation_method"],
-            mask_interpolation_threshold=self.input_params["mask_interpolation_threshold"],
-            mask_union=bool(self.input_params["mask_union"]),
-            parallel_backend=parallel_backend,
-        )
+        return create_batch_preprocessor_from_input_params(self.input_params, parallel_backend)
 
     def run_selection(self):
         """Executes preprocessing based on user-selected options."""

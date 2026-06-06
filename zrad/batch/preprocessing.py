@@ -1,10 +1,8 @@
-import contextlib
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable, Sequence
 
-import joblib
 import numpy as np
 from joblib import Parallel, delayed
 
@@ -12,6 +10,15 @@ from ..exceptions import DataStructureError, InvalidInputParametersError
 from ..image import Image
 from ..io import get_all_structure_names, get_dicom_files
 from ..preprocessing import ImageResampler, MaskResampler
+from ._utils import (
+    find_nifti_file,
+    joblib_progress,
+    normalize_names,
+    normalize_optional_text,
+    require_text,
+    resolve_patient_folders,
+)
+from .results import BatchResult
 
 logger = logging.getLogger(__name__)
 
@@ -29,33 +36,14 @@ class PreprocessingCaseResult:
 
 
 @dataclass
-class BatchResult:
-    workflow: str
-    case_results: list
-
-    @property
-    def total_count(self) -> int:
-        return len(self.case_results)
-
-    @property
-    def processed_count(self) -> int:
-        return sum(result.status == 'processed' for result in self.case_results)
-
-    @property
-    def skipped_count(self) -> int:
-        return sum(result.status == 'skipped' for result in self.case_results)
-
-    @property
-    def failed_count(self) -> int:
-        return sum(result.status == 'failed' for result in self.case_results)
-
-    @property
-    def errors(self) -> list:
-        return [result for result in self.case_results if result.error]
-
-
-@dataclass
 class BatchPreprocessor:
+    """Run preprocessing over many case folders and write NIfTI outputs.
+
+    ``validate()`` normalizes public attributes in place. After validation,
+    directories are ``Path`` objects, ``input_data_type`` is lower-case, modality
+    is upper-case, and comma-separated folders/structures are stored as lists.
+    """
+
     input_directory: str | Path
     output_directory: str | Path
     input_data_type: str
@@ -81,6 +69,7 @@ class BatchPreprocessor:
         self.output_directory = Path(self.output_directory)
         self.input_data_type = str(self.input_data_type).strip().lower()
         self.modality = str(self.modality).strip().upper()
+        self.parallel_backend = str(self.parallel_backend).strip().lower()
 
         if self.input_data_type not in ['dicom', 'nifti']:
             raise InvalidInputParametersError("input_data_type must be 'dicom' or 'nifti'.")
@@ -102,16 +91,16 @@ class BatchPreprocessor:
             raise InvalidInputParametersError("parallel_backend must be 'processes' or 'threads'.")
 
         if self.input_data_type == 'nifti':
-            self.nifti_image_name = _normalize_optional_text(self.nifti_image_name)
+            self.nifti_image_name = normalize_optional_text(self.nifti_image_name)
             if not self.nifti_image_name:
                 raise InvalidInputParametersError("nifti_image_name is required for NIfTI preprocessing.")
             if self.use_all_structures:
                 raise InvalidInputParametersError("use_all_structures is only supported for DICOM preprocessing.")
 
-        self.structures = _normalize_structure_names(self.structures)
-        self.patient_folders = _normalize_structure_names(self.patient_folders)
-        self.start_folder = _normalize_optional_text(self.start_folder)
-        self.stop_folder = _normalize_optional_text(self.stop_folder)
+        self.structures = normalize_names(self.structures)
+        self.patient_folders = normalize_names(self.patient_folders)
+        self.start_folder = normalize_optional_text(self.start_folder)
+        self.stop_folder = normalize_optional_text(self.stop_folder)
 
         if not self.just_save_as_nifti:
             if self.resample_resolution is None:
@@ -126,11 +115,11 @@ class BatchPreprocessor:
             self.resample_dimension = str(self.resample_dimension).strip().upper()
             if self.resample_dimension not in ['2D', '3D']:
                 raise InvalidInputParametersError("resample_dimension must be '2D' or '3D'.")
-            self.image_interpolation_method = _require_text(
+            self.image_interpolation_method = require_text(
                 self.image_interpolation_method,
                 "image_interpolation_method is required when resampling is enabled.",
             )
-            self.mask_interpolation_method = _require_text(
+            self.mask_interpolation_method = require_text(
                 self.mask_interpolation_method,
                 "mask_interpolation_method is required when resampling is enabled.",
             )
@@ -155,7 +144,7 @@ class BatchPreprocessor:
                 if progress_callback:
                     progress_callback(1)
         else:
-            with _joblib_progress(progress_callback):
+            with joblib_progress(progress_callback):
                 case_results = Parallel(n_jobs=self.number_of_threads, prefer=self.parallel_backend)(
                     delayed(self._process_case)(patient_folder) for patient_folder in patient_folders
                 )
@@ -163,29 +152,12 @@ class BatchPreprocessor:
         return BatchResult(workflow='preprocessing', case_results=case_results)
 
     def _resolve_patient_folders(self) -> list[str]:
-        if self.start_folder and self.stop_folder:
-            try:
-                start = int(self.start_folder)
-                stop = int(self.stop_folder)
-            except ValueError:
-                raise InvalidInputParametersError("start_folder and stop_folder must be integers.")
-            return [
-                path.name
-                for path in sorted(self.input_directory.iterdir())
-                if path.is_dir() and path.name.isdigit() and start <= int(path.name) <= stop
-            ]
-
-        if self.patient_folders:
-            return list(self.patient_folders)
-
-        if self.start_folder or self.stop_folder:
-            raise InvalidInputParametersError("start_folder and stop_folder must be provided together.")
-
-        return [
-            path.name
-            for path in sorted(self.input_directory.iterdir())
-            if path.is_dir() and not path.name.startswith('.')
-        ]
+        return resolve_patient_folders(
+            self.input_directory,
+            self.patient_folders,
+            self.start_folder,
+            self.stop_folder,
+        )
 
     def _process_case(self, case_name: str) -> PreprocessingCaseResult:
         case_dir = self.input_directory / case_name
@@ -221,7 +193,7 @@ class BatchPreprocessor:
         if self.input_data_type == 'dicom':
             return Image.from_dicom(case_dir, modality=self.modality)
 
-        image_path = _find_nifti_file(case_dir, self.nifti_image_name)
+        image_path = find_nifti_file(case_dir, self.nifti_image_name)
         if image_path is None:
             raise FileNotFoundError(case_dir / self.nifti_image_name)
         return Image.from_nifti(image_path)
@@ -294,7 +266,7 @@ class BatchPreprocessor:
                 return None
             return Image.from_dicom_mask(rtstruct_path=rtstruct_path, structure_name=structure_name, reference=image)
 
-        mask_path = _find_nifti_file(case_dir, structure_name)
+        mask_path = find_nifti_file(case_dir, structure_name)
         if mask_path is None:
             return None
         return Image.from_nifti_mask(mask_path, reference=image)
@@ -321,57 +293,5 @@ class BatchPreprocessor:
         raise ValueError(f"Resample dimension '{self.resample_dimension}' is not supported.")
 
 
-def _normalize_optional_text(value) -> str | None:
-    if value is None:
-        return None
-    text = str(value).strip()
-    return text or None
-
-
-def _require_text(value, message: str) -> str:
-    text = _normalize_optional_text(value)
-    if not text:
-        raise InvalidInputParametersError(message)
-    return text
-
-
-def _normalize_structure_names(values: Sequence[str] | str | None) -> list[str] | None:
-    if values is None:
-        return None
-    if isinstance(values, str):
-        values = values.split(',')
-    normalized = [str(value).strip() for value in values if str(value).strip()]
-    return normalized or None
-
-
-def _find_nifti_file(directory: Path, name: str | None) -> Path | None:
-    if name is None:
-        return None
-    base_path = directory / name
-    for candidate in [base_path.with_suffix(base_path.suffix + '.gz'), base_path.with_suffix('.nii'), base_path]:
-        if candidate.exists():
-            return candidate
-    nii_gz_path = directory / f'{name}.nii.gz'
-    if nii_gz_path.exists():
-        return nii_gz_path
-    return None
-
-
 def _binary_mask_array(array):
     return np.where(array > 0, 1, 0).astype(np.int16)
-
-
-@contextlib.contextmanager
-def _joblib_progress(progress_callback: Callable[[int], None] | None = None):
-    class ProgressBatchCompletionCallback(joblib.parallel.BatchCompletionCallBack):
-        def __call__(self, *args, **kwargs):
-            if progress_callback:
-                progress_callback(self.batch_size)
-            return super().__call__(*args, **kwargs)
-
-    old_batch_callback = joblib.parallel.BatchCompletionCallBack
-    joblib.parallel.BatchCompletionCallBack = ProgressBatchCompletionCallback
-    try:
-        yield
-    finally:
-        joblib.parallel.BatchCompletionCallBack = old_batch_callback

@@ -53,9 +53,11 @@ def test_batch_public_api_exposes_preprocessing_classes():
     assert set(batch.__all__) == {
         'BatchFilter',
         'BatchPreprocessor',
+        'BatchRadiomicsExtractor',
         'BatchResult',
         'FilteringCaseResult',
         'PreprocessingCaseResult',
+        'RadiomicsCaseResult',
     }
     assert BatchPreprocessor is batch.BatchPreprocessor
     assert BatchResult is batch.BatchResult

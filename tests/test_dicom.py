@@ -66,11 +66,7 @@ def _write_rtstruct(path, roi_name, contours):
         contour_ds.ContourGeometricType = contour["type"]
         points = contour["points"]
         contour_ds.NumberOfContourPoints = len(points["x"])
-        contour_ds.ContourData = [
-            value
-            for point in zip(points["x"], points["y"], points["z"])
-            for value in point
-        ]
+        contour_ds.ContourData = [value for point in zip(points["x"], points["y"], points["z"]) for value in point]
         roi_contour.ContourSequence.append(contour_ds)
     ds.ROIContourSequence = Sequence([roi_contour])
 
@@ -155,4 +151,3 @@ def test_extract_dicom_mask_returns_empty_image_when_roi_has_no_target_fov_overl
         mask = dicom.extract_dicom_mask(rtstruct_path, "GTV", image)
 
     assert mask.array is None
-

@@ -232,7 +232,7 @@ class VisualizationTab(BaseTab):
 
         list_of_patient_folders = self.get_patient_folders()
         if not list_of_patient_folders:
-            CustomWarningBox("No patients to calculate preprocess from.").response()
+            CustomWarningBox("No patients to visualize.").response()
             return
 
         # Determine structure set

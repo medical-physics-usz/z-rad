@@ -75,7 +75,7 @@ and neighbouring gray level dependance matrix (NGLDM) features families.
 
 ## Error and Warning Handling
 
-- **GUI**: Uses warning pop-up messages for immediate feedback.
+- **GUI**: Uses info, warning, and error pop-up messages for immediate feedback.
 - **API**: Records processes in log files for comprehensive documentation.
 
 ## Installation and Get Started

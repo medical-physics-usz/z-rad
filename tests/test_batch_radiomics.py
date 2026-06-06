@@ -26,9 +26,7 @@ def _make_image(array=None):
 def _write_case(input_dir, case_name, image_name='image', masks=None, filtered_name=None):
     case_dir = input_dir / case_name
     case_dir.mkdir(parents=True)
-    _make_image(np.arange(1, 28, dtype=np.float64).reshape(3, 3, 3)).save_as_nifti(
-        case_dir / f'{image_name}.nii.gz'
-    )
+    _make_image(np.arange(1, 28, dtype=np.float64).reshape(3, 3, 3)).save_as_nifti(case_dir / f'{image_name}.nii.gz')
     if filtered_name:
         _make_image(np.full((3, 3, 3), 2.0)).save_as_nifti(case_dir / f'{filtered_name}.nii.gz')
     for mask_name in masks or []:

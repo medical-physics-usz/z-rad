@@ -90,9 +90,7 @@ class BatchRadiomicsExtractor:
         if self.aggregation_dimension not in ['2D', '2.5D', '3D']:
             raise InvalidInputParametersError("aggregation_dimension must be '2D', '2.5D', or '3D'.")
         if self.aggregation_method not in ['MERG', 'AVER', 'SLICE_MERG', 'DIR_MERG']:
-            raise InvalidInputParametersError(
-                "aggregation_method must be one of MERG, AVER, SLICE_MERG, or DIR_MERG."
-            )
+            raise InvalidInputParametersError("aggregation_method must be one of MERG, AVER, SLICE_MERG, or DIR_MERG.")
         if not self.input_directory.exists():
             raise InvalidInputParametersError(f"Input directory '{self.input_directory}' does not exist.")
         if not self.input_directory.is_dir():

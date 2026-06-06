@@ -49,11 +49,7 @@ def resolve_patient_folders(input_directory: Path, patient_folders, start_folder
     if start_folder or stop_folder:
         raise InvalidInputParametersError("start_folder and stop_folder must be provided together.")
 
-    return [
-        path.name
-        for path in sorted(input_directory.iterdir())
-        if path.is_dir() and not path.name.startswith('.')
-    ]
+    return [path.name for path in sorted(input_directory.iterdir()) if path.is_dir() and not path.name.startswith('.')]
 
 
 def find_nifti_file(directory: Path, name: str | None) -> Path | None:

@@ -26,6 +26,30 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class PreprocessingCaseResult:
+    """Per-case result returned by ``BatchPreprocessor``.
+
+    Attributes
+    ----------
+    case_name : str
+        Name of the case folder.
+    status : {"processed", "skipped", "failed"}
+        Processing status for the case.
+    image_output_path : pathlib.Path or None, optional
+        Path to the written image file, if image export succeeded.
+    mask_output_paths : dict of str to pathlib.Path
+        Written mask paths keyed by structure name.
+    mask_union_output_path : pathlib.Path or None, optional
+        Path to ``mask_union.nii.gz`` when mask union output is enabled and
+        at least one mask was written.
+    processed_structures : list of str
+        Structure names that were loaded and written successfully.
+    skipped_structures : list of str
+        Structure names that were requested but could not be written.
+    error : str or None, optional
+        Case-level error message. Structure-level mask failures are usually
+        recorded in ``skipped_structures`` instead.
+    """
+
     case_name: str
     status: str
     image_output_path: Path | None = None
@@ -40,9 +64,60 @@ class PreprocessingCaseResult:
 class BatchPreprocessor:
     """Run preprocessing over many case folders and write NIfTI outputs.
 
+    ``BatchPreprocessor`` is the batch counterpart to the lower-level
+    preprocessing classes. It discovers case folders, loads DICOM or NIfTI
+    images and masks, optionally resamples them, and writes one output folder
+    per case. The API is save-to-disk only; images and masks are summarized in
+    the returned ``BatchResult`` rather than returned in memory.
+
+    Parameters
+    ----------
+    input_directory : str or pathlib.Path
+        Directory containing one subfolder per case.
+    output_directory : str or pathlib.Path
+        Directory where preprocessed case folders are written.
+    input_data_type : {"dicom", "nifti"}
+        Input format. Values are normalized to lower-case during validation.
+    modality : {"CT", "MRI", "PET", "MG", "RTDOSE"}
+        Image modality used by the image reader. Values are normalized to
+        upper-case during validation.
+    number_of_threads : int, optional
+        Number of cases to process in parallel. The default is ``1``.
+    patient_folders : sequence of str or str, optional
+        Explicit case folders to process. Comma-separated strings are accepted.
+    start_folder, stop_folder : str or int, optional
+        Inclusive numeric folder range. Both values must be provided together.
+    structures : sequence of str or str, optional
+        Structure names to process. For NIfTI input these are mask file names.
+    use_all_structures : bool, optional
+        For DICOM input, process all structures found in the RTSTRUCT.
+    nifti_image_name : str, optional
+        Image file name or stem used for NIfTI input.
+    just_save_as_nifti : bool, optional
+        If ``True``, convert inputs to NIfTI without resampling.
+    resample_resolution : float, optional
+        Target in-plane or isotropic resolution in millimetres when resampling.
+    resample_dimension : {"2D", "3D"}, optional
+        Use ``"2D"`` to keep the original slice spacing or ``"3D"`` for
+        isotropic resampling.
+    image_interpolation_method : str, optional
+        Interpolation method for images when resampling.
+    mask_interpolation_method : str, optional
+        Interpolation method for masks when resampling.
+    mask_interpolation_threshold : float, optional
+        Threshold applied to interpolated masks. The default is ``0.5``.
+    mask_union : bool, optional
+        If ``True``, write a binary union of all successfully processed masks.
+    parallel_backend : {"processes", "threads"}, optional
+        Joblib backend preference used when ``number_of_threads`` is greater
+        than one. The default is ``"processes"``.
+
+    Notes
+    -----
     ``validate()`` normalizes public attributes in place. After validation,
-    directories are ``Path`` objects, ``input_data_type`` is lower-case, modality
-    is upper-case, and comma-separated folders/structures are stored as lists.
+    directories are ``Path`` objects, ``input_data_type`` is lower-case,
+    modality is upper-case, and comma-separated folders or structures are
+    stored as lists.
     """
 
     input_directory: str | Path
@@ -66,6 +141,15 @@ class BatchPreprocessor:
     parallel_backend: str = 'processes'
 
     def validate(self) -> None:
+        """Validate and normalize preprocessing configuration.
+
+        Raises
+        ------
+        InvalidInputParametersError
+            If the input directory, data type, modality, folder selection,
+            structure selection, threading, backend, or resampling settings are
+            invalid.
+        """
         normalize_common_batch_options(self)
 
         if self.input_data_type == 'nifti':
@@ -104,10 +188,45 @@ class BatchPreprocessor:
                 raise InvalidInputParametersError("mask_interpolation_threshold must be a number.")
 
     def plan(self) -> list[str]:
+        """Return the case folders selected for preprocessing.
+
+        Returns
+        -------
+        folders : list of str
+            Deterministically ordered case folder names selected by
+            ``patient_folders`` or the numeric ``start_folder`` /
+            ``stop_folder`` range. If neither option is set, all non-hidden
+            subfolders are returned.
+
+        Raises
+        ------
+        InvalidInputParametersError
+            If validation fails before folder selection.
+        """
         self.validate()
         return self._resolve_patient_folders()
 
     def run(self, progress_callback: Callable[[int], None] | None = None) -> BatchResult:
+        """Run preprocessing and write NIfTI outputs.
+
+        Parameters
+        ----------
+        progress_callback : callable, optional
+            Function called as ``progress_callback(step_count)`` after cases
+            complete. ``step_count`` may be greater than one during parallel
+            execution.
+
+        Returns
+        -------
+        result : BatchResult
+            Aggregate result with one ``PreprocessingCaseResult`` per selected
+            case.
+
+        Notes
+        -----
+        Case-level failures are recorded in the returned result and do not stop
+        the batch.
+        """
         self.validate()
         self.output_directory.mkdir(parents=True, exist_ok=True)
         patient_folders = self._resolve_patient_folders()

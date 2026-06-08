@@ -28,6 +28,27 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class RadiomicsCaseResult:
+    """Per-case result returned by ``BatchRadiomicsExtractor``.
+
+    Attributes
+    ----------
+    case_name : str
+        Name of the case folder.
+    status : {"processed", "skipped", "failed"}
+        Radiomics status for the case. A case is processed when at least one
+        structure produces features.
+    processed_structures : list of str
+        Structure names that produced feature rows.
+    skipped_structures : list of str
+        Structure names that were requested but did not produce feature rows.
+    feature_count : int
+        Number of features extracted across all processed structures for the
+        case.
+    error : str or None, optional
+        Case-level error message. Per-structure extraction failures are usually
+        recorded in ``skipped_structures`` instead.
+    """
+
     case_name: str
     status: str
     processed_structures: list[str] = field(default_factory=list)
@@ -38,7 +59,73 @@ class RadiomicsCaseResult:
 
 @dataclass
 class BatchRadiomicsExtractor:
-    """Extract radiomics features for many case folders and write one CSV."""
+    """Extract radiomics features for many case folders and write one CSV.
+
+    ``BatchRadiomicsExtractor`` is the batch counterpart to
+    ``zrad.radiomics.Radiomics``. It discovers case folders, loads images and
+    masks, prepares ROI data, extracts radiomics features for each requested
+    structure, and writes one CSV file for the whole batch. The API is
+    save-to-disk first; feature rows are written to disk and only summaries are
+    returned in memory.
+
+    Parameters
+    ----------
+    input_directory : str or pathlib.Path
+        Directory containing one subfolder per case.
+    output_directory : str or pathlib.Path
+        Directory where the radiomics CSV is written.
+    input_data_type : {"dicom", "nifti"}
+        Input format. Values are normalized to lower-case during validation.
+    modality : {"CT", "MRI", "PET", "MG", "RTDOSE"}
+        Image modality used by the image reader.
+    aggregation_dimension : {"2D", "2.5D", "3D"}
+        Spatial aggregation dimensionality for texture features.
+    aggregation_method : {"MERG", "AVER", "SLICE_MERG", "DIR_MERG"}
+        Texture aggregation strategy across directions and slices.
+    discretization_method : {"Number of Bins", "Bin Size"}
+        Texture discretization strategy.
+    number_of_threads : int, optional
+        Number of cases to process in parallel. The default is ``1``.
+    patient_folders : sequence of str or str, optional
+        Explicit case folders to process. Comma-separated strings are accepted.
+    start_folder, stop_folder : str or int, optional
+        Inclusive numeric folder range. Both values must be provided together.
+    structures : sequence of str or str, optional
+        Structure names to extract. For NIfTI input these are mask file names
+        and are required.
+    use_all_structures : bool, optional
+        For DICOM input, extract all structures found in the RTSTRUCT.
+    nifti_image_name : str, optional
+        Image file name or stem used for NIfTI input.
+    nifti_filtered_image_name : str, optional
+        Optional filtered-image file name or stem used for NIfTI input.
+    slice_weighting : bool, optional
+        Weight 2D slice-wise texture averages by slice ROI size.
+    slice_median : bool, optional
+        Aggregate 2D slice-wise texture values by median instead of mean.
+    number_of_bins : int, optional
+        Number of bins used with ``"Number of Bins"`` discretization.
+    bin_size : float, optional
+        Bin size used with ``"Bin Size"`` discretization.
+    intensity_range : sequence of float, optional
+        Two-value lower and upper intensity range used for re-segmentation and
+        bin-size discretization.
+    outlier_range : float, optional
+        Positive outlier range used during re-segmentation.
+    output_filename : str, optional
+        CSV file name written in ``output_directory``. The default is
+        ``"radiomics.csv"``.
+    parallel_backend : {"processes", "threads"}, optional
+        Joblib backend preference used when ``number_of_threads`` is greater
+        than one. The default is ``"processes"``.
+
+    Notes
+    -----
+    ``validate()`` normalizes public attributes in place. After validation,
+    directories are ``Path`` objects, ``input_data_type`` is lower-case,
+    modality and aggregation values are upper-case where applicable, and
+    numeric settings are converted to numeric Python values.
+    """
 
     input_directory: str | Path
     output_directory: str | Path
@@ -65,6 +152,15 @@ class BatchRadiomicsExtractor:
     parallel_backend: str = 'processes'
 
     def validate(self) -> None:
+        """Validate and normalize radiomics batch configuration.
+
+        Raises
+        ------
+        InvalidInputParametersError
+            If the input directory, data type, modality, folder selection,
+            structure selection, threading, backend, aggregation, or
+            discretization settings are invalid.
+        """
         normalize_common_batch_options(self)
         self.aggregation_dimension = require_text(
             self.aggregation_dimension,
@@ -109,10 +205,47 @@ class BatchRadiomicsExtractor:
         self.outlier_range = _normalize_positive_float(self.outlier_range, "outlier_range must be positive.")
 
     def plan(self) -> list[str]:
+        """Return the case folders selected for radiomics extraction.
+
+        Returns
+        -------
+        folders : list of str
+            Deterministically ordered case folder names selected by
+            ``patient_folders`` or the numeric ``start_folder`` /
+            ``stop_folder`` range. If neither option is set, all non-hidden
+            subfolders are returned.
+
+        Raises
+        ------
+        InvalidInputParametersError
+            If validation fails before folder selection.
+        """
         self.validate()
         return self._resolve_patient_folders()
 
     def run(self, progress_callback: Callable[[int], None] | None = None) -> BatchResult:
+        """Run radiomics extraction and write the output CSV.
+
+        Parameters
+        ----------
+        progress_callback : callable, optional
+            Function called as ``progress_callback(step_count)`` after cases
+            complete. ``step_count`` may be greater than one during parallel
+            execution.
+
+        Returns
+        -------
+        result : BatchResult
+            Aggregate result with one ``RadiomicsCaseResult`` per selected
+            case.
+
+        Notes
+        -----
+        Missing masks and per-structure extraction failures are recorded as
+        skipped structures. Case-level failures are recorded in the returned
+        result and do not stop the batch. If no feature rows are produced, an
+        empty CSV file is still created.
+        """
         self.validate()
         self.output_directory.mkdir(parents=True, exist_ok=True)
         patient_folders = self._resolve_patient_folders()

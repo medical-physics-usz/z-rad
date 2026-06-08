@@ -23,6 +23,20 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class FilteringCaseResult:
+    """Per-case result returned by ``BatchFilter``.
+
+    Attributes
+    ----------
+    case_name : str
+        Name of the case folder.
+    status : {"processed", "skipped", "failed"}
+        Filtering status for the case.
+    output_path : pathlib.Path or None, optional
+        Path to the written filtered image when filtering succeeds.
+    error : str or None, optional
+        Case-level error message when image loading or filtering fails.
+    """
+
     case_name: str
     status: str
     output_path: Path | None = None
@@ -31,7 +45,59 @@ class FilteringCaseResult:
 
 @dataclass
 class BatchFilter:
-    """Run image filtering over many case folders and write NIfTI outputs."""
+    """Run one image filter over many case folders and write NIfTI outputs.
+
+    ``BatchFilter`` is the batch counterpart to the lower-level filtering
+    classes. It discovers case folders, loads one image per case, applies the
+    configured filter, and writes one filtered NIfTI image per processed case.
+    The API is save-to-disk only.
+
+    Parameters
+    ----------
+    input_directory : str or pathlib.Path
+        Directory containing one subfolder per case.
+    output_directory : str or pathlib.Path
+        Directory where filtered case folders are written.
+    input_data_type : {"dicom", "nifti"}
+        Input format. Values are normalized to lower-case during validation.
+    modality : {"CT", "MRI", "PET", "MG", "RTDOSE"}
+        Image modality used by the image reader.
+    filter_type : {"Mean", "Laplacian of Gaussian", "Laws Kernels", "Gabor", "Wavelets"}
+        Filter family to apply.
+    filter_dimension : {"2D", "3D"}
+        Apply the filter slice-wise in 2D or volumetrically in 3D.
+    padding_type : str
+        Boundary handling mode passed to the selected filter.
+    number_of_threads : int, optional
+        Number of cases to process in parallel. The default is ``1``.
+    patient_folders : sequence of str or str, optional
+        Explicit case folders to process. Comma-separated strings are accepted.
+    start_folder, stop_folder : str or int, optional
+        Inclusive numeric folder range. Both values must be provided together.
+    nifti_image_name : str, optional
+        Image file name or stem used for NIfTI input.
+    filter-specific settings : optional
+        Numeric and text settings required by the selected ``filter_type``:
+        ``mean_support``, ``log_sigma``, ``log_cutoff``,
+        ``laws_response_map``, ``laws_pooling``, ``laws_distance``,
+        ``wavelet_response_map``, ``wavelet_type``,
+        ``wavelet_decomposition_level``, ``gabor_res_mm``,
+        ``gabor_sigma_mm``, ``gabor_lambda_mm``, ``gabor_gamma``, and
+        ``gabor_theta``.
+    filter-specific enable settings : bool or str, optional
+        Enable/disable settings for Laws, Wavelets, and Gabor filters.
+        GUI-style ``"Enable"`` and ``"Disable"`` values are accepted.
+    parallel_backend : {"processes", "threads"}, optional
+        Joblib backend preference used when ``number_of_threads`` is greater
+        than one. The default is ``"processes"``.
+
+    Notes
+    -----
+    ``validate()`` normalizes public attributes in place. After validation,
+    directories are ``Path`` objects, ``input_data_type`` is lower-case,
+    modality is upper-case, and numeric filter settings are converted to
+    numeric Python values.
+    """
 
     input_directory: str | Path
     output_directory: str | Path
@@ -67,6 +133,15 @@ class BatchFilter:
     parallel_backend: str = 'processes'
 
     def validate(self) -> None:
+        """Validate and normalize filtering configuration.
+
+        Raises
+        ------
+        InvalidInputParametersError
+            If the input directory, data type, modality, folder selection,
+            threading, backend, filter type, or filter-specific settings are
+            invalid.
+        """
         normalize_common_batch_options(self)
         self.filter_type = require_text(self.filter_type, "filter_type is required.")
         self.filter_dimension = require_text(self.filter_dimension, "filter_dimension is required.").upper()
@@ -83,10 +158,45 @@ class BatchFilter:
         self._validate_filter_parameters()
 
     def plan(self) -> list[str]:
+        """Return the case folders selected for filtering.
+
+        Returns
+        -------
+        folders : list of str
+            Deterministically ordered case folder names selected by
+            ``patient_folders`` or the numeric ``start_folder`` /
+            ``stop_folder`` range. If neither option is set, all non-hidden
+            subfolders are returned.
+
+        Raises
+        ------
+        InvalidInputParametersError
+            If validation fails before folder selection.
+        """
         self.validate()
         return self._resolve_patient_folders()
 
     def run(self, progress_callback: Callable[[int], None] | None = None) -> BatchResult:
+        """Run filtering and write filtered NIfTI images.
+
+        Parameters
+        ----------
+        progress_callback : callable, optional
+            Function called as ``progress_callback(step_count)`` after cases
+            complete. ``step_count`` may be greater than one during parallel
+            execution.
+
+        Returns
+        -------
+        result : BatchResult
+            Aggregate result with one ``FilteringCaseResult`` per selected
+            case.
+
+        Notes
+        -----
+        Case-level failures are recorded in the returned result and do not stop
+        the batch.
+        """
         self.validate()
         self.output_directory.mkdir(parents=True, exist_ok=True)
         patient_folders = self._resolve_patient_folders()
@@ -106,6 +216,18 @@ class BatchFilter:
         return BatchResult(workflow='filtering', case_results=case_results)
 
     def get_output_filename(self) -> str:
+        """Return the GUI-compatible output file name for the configured filter.
+
+        Returns
+        -------
+        filename : str
+            File name ending in ``.nii.gz``.
+
+        Raises
+        ------
+        InvalidInputParametersError
+            If ``filter_type`` is not supported.
+        """
         values = self._filename_values()
         filter_formats = {
             'Mean': "{filter_type}_{filter_dimension}_{filter_mean_support}support_{filter_padding_type}",

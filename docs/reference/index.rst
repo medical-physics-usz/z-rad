@@ -9,6 +9,7 @@ navigation.
    :maxdepth: 2
 
    preprocessing
+   batch
    filtering
    radiomics
    image

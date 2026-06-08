@@ -306,7 +306,7 @@ class BatchRadiomicsExtractor:
 def _write_radiomics_csv(file_path: Path, features: list[dict]) -> None:
     file_path.parent.mkdir(parents=True, exist_ok=True)
     if not features:
-        file_path.touch()
+        file_path.write_text('')
         return
 
     fieldnames = []

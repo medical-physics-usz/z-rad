@@ -302,6 +302,22 @@ def test_empty_radiomics_csv_is_created_when_no_feature_rows_are_extracted(tmp_p
 
 
 @pytest.mark.unit
+def test_empty_radiomics_csv_truncates_stale_content(tmp_path):
+    input_dir = tmp_path / 'input'
+    output_dir = tmp_path / 'output'
+    _write_case(input_dir, 'case_a')
+    output_dir.mkdir()
+    csv_path = output_dir / 'radiomics.csv'
+    csv_path.write_text('pat_id,mask_id,old_feature\ncase_old,mask,1\n')
+
+    result = _extractor(input_dir, output_dir).run()
+
+    assert result.skipped_count == 1
+    assert csv_path.exists()
+    assert csv_path.read_text() == ''
+
+
+@pytest.mark.unit
 def test_per_structure_failure_skips_only_that_structure(monkeypatch, tmp_path):
     input_dir = tmp_path / 'input'
     output_dir = tmp_path / 'output'

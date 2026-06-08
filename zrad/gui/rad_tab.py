@@ -14,6 +14,7 @@ from ._base_tab import BaseTab
 from .toolbox_gui import (
     CustomBox,
     CustomCheckBox,
+    CustomErrorBox,
     CustomInfo,
     CustomInfoBox,
     CustomLabel,
@@ -329,7 +330,7 @@ class RadiomicsTab(BaseTab):
             def handle_error(exc):
                 cleanup()
                 self.logger.error(exc, exc_info=True)
-                CustomWarningBox(str(exc)).response()
+                CustomErrorBox(str(exc)).response()
 
             worker.moveToThread(thread)
             worker.progress.connect(progress_dialog.update_progress)
@@ -340,7 +341,7 @@ class RadiomicsTab(BaseTab):
             self._processing_worker = worker
             thread.start()
         else:
-            CustomWarningBox("No patients to calculate radiomics from.")
+            CustomWarningBox("No patients to calculate radiomics from.").response()
             return
 
     def _get_outlier_sigma(self):

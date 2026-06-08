@@ -13,6 +13,7 @@ from ._base_tab import BaseTab
 from .toolbox_gui import (
     CustomBox,
     CustomButton,
+    CustomErrorBox,
     CustomInfo,
     CustomInfoBox,
     CustomLabel,
@@ -452,7 +453,7 @@ class FilteringTab(BaseTab):
             def handle_error(exc):
                 cleanup()
                 self.logger.error(exc, exc_info=True)
-                CustomWarningBox(str(exc)).response()
+                CustomErrorBox(str(exc)).response()
 
             worker.moveToThread(thread)
             worker.progress.connect(progress_dialog.update_progress)
@@ -463,7 +464,7 @@ class FilteringTab(BaseTab):
             self._processing_worker = worker
             thread.start()
         else:
-            CustomWarningBox("No patients to filter.")
+            CustomWarningBox("No patients to filter.").response()
             return
 
     def save_settings(self):

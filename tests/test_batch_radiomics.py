@@ -533,6 +533,28 @@ def test_gui_mapping_creates_nifti_batch_radiomics_extractor():
 
 
 @pytest.mark.unit
+def test_gui_mapping_ignores_stale_all_structures_for_nifti(tmp_path):
+    input_dir = tmp_path / 'input'
+    output_dir = tmp_path / 'output'
+    input_dir.mkdir()
+
+    extractor = create_batch_radiomics_extractor_from_input_params(
+        _gui_input_params(
+            input_directory=str(input_dir),
+            output_directory=str(output_dir),
+            input_data_type='nifti',
+            nifti_structures=['mask_a', 'mask_b'],
+            use_all_structures=True,
+        ),
+        parallel_backend='threads',
+    )
+
+    assert extractor.use_all_structures is False
+    assert extractor.structures == ['mask_a', 'mask_b']
+    extractor.validate()
+
+
+@pytest.mark.unit
 def test_gui_mapping_creates_dicom_batch_radiomics_extractor_with_explicit_structures():
     extractor = create_batch_radiomics_extractor_from_input_params(
         _gui_input_params(input_data_type='dicom', weighting='Mean'),

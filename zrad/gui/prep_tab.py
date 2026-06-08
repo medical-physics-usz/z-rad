@@ -29,10 +29,11 @@ IS_FROZEN = getattr(sys, 'frozen', False)
 
 def create_batch_preprocessor_from_input_params(input_params, parallel_backend):
     input_data_type = str(input_params["input_data_type"]).strip().lower()
+    use_all_structures = input_data_type == "dicom" and bool(input_params["use_all_structures"])
     if input_data_type == "nifti":
         structures = input_params.get("nifti_structures")
     else:
-        structures = None if input_params["use_all_structures"] else input_params["dicom_structures"]
+        structures = None if use_all_structures else input_params["dicom_structures"]
 
     return BatchPreprocessor(
         input_directory=input_params["input_directory"],
@@ -44,7 +45,7 @@ def create_batch_preprocessor_from_input_params(input_params, parallel_backend):
         start_folder=input_params["start_folder"],
         stop_folder=input_params["stop_folder"],
         structures=structures,
-        use_all_structures=bool(input_params["use_all_structures"]),
+        use_all_structures=use_all_structures,
         nifti_image_name=input_params["nifti_image_name"],
         just_save_as_nifti=bool(input_params["just_save_as_nifti"]),
         resample_resolution=input_params["resample_resolution"],

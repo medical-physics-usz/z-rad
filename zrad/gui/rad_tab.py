@@ -30,8 +30,9 @@ IS_FROZEN = getattr(sys, 'frozen', False)
 
 def create_batch_radiomics_extractor_from_input_params(input_params, parallel_backend):
     input_data_type = str(input_params["input_data_type"]).strip().lower()
+    use_all_structures = input_data_type == "dicom" and bool(input_params["use_all_structures"])
     structures = input_params["nifti_structures"] if input_data_type == "nifti" else input_params["dicom_structures"]
-    if input_data_type == "dicom" and input_params["use_all_structures"]:
+    if use_all_structures:
         structures = None
 
     aggregation_dimension, aggregation_method = input_params["aggregation_method"]
@@ -48,7 +49,7 @@ def create_batch_radiomics_extractor_from_input_params(input_params, parallel_ba
         start_folder=input_params["start_folder"],
         stop_folder=input_params["stop_folder"],
         structures=structures,
-        use_all_structures=bool(input_params["use_all_structures"]),
+        use_all_structures=use_all_structures,
         nifti_image_name=input_params["nifti_image_name"],
         nifti_filtered_image_name=input_params["nifti_filtered_image_name"],
         aggregation_dimension=aggregation_dimension,

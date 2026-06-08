@@ -250,47 +250,61 @@ def process_dicom_series(dicom_files):
     return image
 
 
+def _normalized_contour_type(contour):
+    return contour["type"].upper().replace("_", "").strip()
+
+
+def _generate_rtstruct_mask_array(contours, sitk_image):
+    width, height, depth = sitk_image.GetSize()
+    mask_array = np.zeros((depth, height, width), dtype=np.uint8)
+    skipped_outside_fov = 0
+    supported_contours = 0
+
+    for contour in contours:
+        contour_type = _normalized_contour_type(contour)
+        if contour_type not in ["CLOSEDPLANAR", "INTERPOLATEDPLANAR", "CLOSEDPLANARXOR"]:
+            continue
+
+        supported_contours += 1
+        points = contour["points"]
+        num_points = len(points["x"])
+        if num_points == 0:
+            skipped_outside_fov += 1
+            continue
+
+        transformed_points = np.array(
+            [
+                sitk_image.TransformPhysicalPointToContinuousIndex((points["x"][i], points["y"][i], points["z"][i]))
+                for i in range(num_points)
+            ]
+        )
+
+        z = int(np.rint(np.median(transformed_points[:, 2])))
+        if z < 0 or z >= depth:
+            skipped_outside_fov += 1
+            continue
+
+        polygon_coords = np.column_stack((transformed_points[:, 1], transformed_points[:, 0]))
+        mask_layer = draw.polygon2mask((height, width), polygon_coords)
+        if not mask_layer.any():
+            skipped_outside_fov += 1
+            continue
+
+        if contour_type == "CLOSEDPLANARXOR":
+            mask_array[z] = np.logical_xor(mask_array[z], mask_layer).astype(np.uint8)
+        else:
+            mask_array[z] = np.logical_or(mask_array[z], mask_layer).astype(np.uint8)
+
+    return mask_array, skipped_outside_fov, supported_contours
+
+
 def extract_dicom_mask(rtstruct_path, roi_name, image):
-    def generate_mask_array(contours, sitk_image):
-        width, height, depth = sitk_image.GetSize()
-        mask_array = np.zeros((depth, height, width), dtype=np.uint8)
-
-        for contour in contours:
-            contour_type = contour["type"].upper().replace("_", "").strip()
-            if contour_type not in ["CLOSEDPLANAR", "INTERPOLATEDPLANAR", "CLOSEDPLANARXOR"]:
-                continue
-
-            points = contour["points"]
-            num_points = len(points["x"])
-            transformed_points = np.array(
-                [
-                    sitk_image.TransformPhysicalPointToContinuousIndex((points["x"][i], points["y"][i], points["z"][i]))
-                    for i in range(num_points)
-                ]
-            )
-
-            z_indices = np.rint(transformed_points[:, 2]).astype(int)
-            polygon_coords = np.column_stack((transformed_points[:, 1], transformed_points[:, 0]))
-            mask_layer = draw.polygon2mask((height, width), polygon_coords)
-
-            for z in z_indices:
-                if contour_type == "CLOSEDPLANARXOR":
-                    mask_array[z] = np.logical_xor(mask_array[z], mask_layer).astype(np.uint8)
-                else:
-                    mask_array[z] = np.logical_or(mask_array[z], mask_layer).astype(np.uint8)
-
-        return mask_array
 
     def get_contour_data(file_path, selected_roi):
         def get_contour_coord(metadata, current_roi_sequence, skip_contours_bool=False):
             contour_info = {
                 "name": getattr(metadata[current_roi_sequence.ReferencedROINumber], "ROIName", "unknown"),
                 "roi_number": current_roi_sequence.ReferencedROINumber,
-                "referenced_frame": getattr(
-                    metadata[current_roi_sequence.ReferencedROINumber],
-                    "ReferencedFrameOfReferenceUID",
-                    "unknown",
-                ),
                 "display_color": getattr(current_roi_sequence, "ROIDisplayColor", []),
             }
 
@@ -327,7 +341,19 @@ def extract_dicom_mask(rtstruct_path, roi_name, image):
 
     rt_struct = get_contour_data(rtstruct_path, roi_name)
     if rt_struct and "sequence" in rt_struct:
-        mask = generate_mask_array(rt_struct["sequence"], image)
+        mask, skipped_outside_fov, _supported_contours = _generate_rtstruct_mask_array(rt_struct["sequence"], image)
+        if skipped_outside_fov > 0 and np.any(mask):
+            warnings.warn(
+                f"Skipped {skipped_outside_fov} RTSTRUCT contour(s) for ROI '{roi_name}' because they fall outside "
+                "the target image field of view.",
+                DataStructureWarning,
+            )
+        if not np.any(mask):
+            warnings.warn(
+                f"RTSTRUCT ROI '{roi_name}' has no overlap with the target image field of view. ROI skipped.",
+                DataStructureWarning,
+            )
+            return Image()
         return Image(
             array=mask,
             origin=image.GetOrigin(),

@@ -6,6 +6,8 @@ import joblib
 
 from ..exceptions import InvalidInputParametersError
 
+VALID_MODALITIES = ['CT', 'MRI', 'PET', 'MG', 'RTDOSE']
+
 
 def normalize_optional_text(value) -> str | None:
     if value is None:
@@ -28,6 +30,36 @@ def normalize_names(values: Sequence[str] | str | None) -> list[str] | None:
         values = values.split(',')
     normalized = [str(value).strip() for value in values if str(value).strip()]
     return normalized or None
+
+
+def normalize_common_batch_options(batch) -> None:
+    batch.input_directory = Path(batch.input_directory)
+    batch.output_directory = Path(batch.output_directory)
+    batch.input_data_type = str(batch.input_data_type).strip().lower()
+    batch.modality = str(batch.modality).strip().upper()
+    batch.parallel_backend = str(batch.parallel_backend).strip().lower()
+    batch.patient_folders = normalize_names(batch.patient_folders)
+    batch.start_folder = normalize_optional_text(batch.start_folder)
+    batch.stop_folder = normalize_optional_text(batch.stop_folder)
+
+    if batch.input_data_type not in ['dicom', 'nifti']:
+        raise InvalidInputParametersError("input_data_type must be 'dicom' or 'nifti'.")
+    if batch.modality not in VALID_MODALITIES:
+        raise InvalidInputParametersError("modality must be one of CT, MRI, PET, MG, or RTDOSE.")
+    if not batch.input_directory.exists():
+        raise InvalidInputParametersError(f"Input directory '{batch.input_directory}' does not exist.")
+    if not batch.input_directory.is_dir():
+        raise InvalidInputParametersError(f"Input directory '{batch.input_directory}' is not a directory.")
+
+    try:
+        batch.number_of_threads = int(batch.number_of_threads)
+    except (TypeError, ValueError):
+        raise InvalidInputParametersError("number_of_threads must be a positive integer.")
+    if batch.number_of_threads < 1:
+        raise InvalidInputParametersError("number_of_threads must be a positive integer.")
+
+    if batch.parallel_backend not in ['processes', 'threads']:
+        raise InvalidInputParametersError("parallel_backend must be 'processes' or 'threads'.")
 
 
 def resolve_patient_folders(input_directory: Path, patient_folders, start_folder, stop_folder) -> list[str]:

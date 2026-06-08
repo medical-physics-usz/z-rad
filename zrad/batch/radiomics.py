@@ -15,6 +15,7 @@ from ..radiomics import Radiomics
 from ._utils import (
     find_nifti_file,
     joblib_progress,
+    normalize_common_batch_options,
     normalize_names,
     normalize_optional_text,
     require_text,
@@ -64,11 +65,7 @@ class BatchRadiomicsExtractor:
     parallel_backend: str = 'processes'
 
     def validate(self) -> None:
-        self.input_directory = Path(self.input_directory)
-        self.output_directory = Path(self.output_directory)
-        self.input_data_type = str(self.input_data_type).strip().lower()
-        self.modality = str(self.modality).strip().upper()
-        self.parallel_backend = str(self.parallel_backend).strip().lower()
+        normalize_common_batch_options(self)
         self.aggregation_dimension = require_text(
             self.aggregation_dimension,
             "aggregation_dimension is required.",
@@ -83,32 +80,12 @@ class BatchRadiomicsExtractor:
         )
         self.output_filename = require_text(self.output_filename, "output_filename is required.")
 
-        if self.input_data_type not in ['dicom', 'nifti']:
-            raise InvalidInputParametersError("input_data_type must be 'dicom' or 'nifti'.")
-        if self.modality not in ['CT', 'MRI', 'PET', 'MG', 'RTDOSE']:
-            raise InvalidInputParametersError("modality must be one of CT, MRI, PET, MG, or RTDOSE.")
         if self.aggregation_dimension not in ['2D', '2.5D', '3D']:
             raise InvalidInputParametersError("aggregation_dimension must be '2D', '2.5D', or '3D'.")
         if self.aggregation_method not in ['MERG', 'AVER', 'SLICE_MERG', 'DIR_MERG']:
             raise InvalidInputParametersError("aggregation_method must be one of MERG, AVER, SLICE_MERG, or DIR_MERG.")
-        if not self.input_directory.exists():
-            raise InvalidInputParametersError(f"Input directory '{self.input_directory}' does not exist.")
-        if not self.input_directory.is_dir():
-            raise InvalidInputParametersError(f"Input directory '{self.input_directory}' is not a directory.")
-
-        try:
-            self.number_of_threads = int(self.number_of_threads)
-        except (TypeError, ValueError):
-            raise InvalidInputParametersError("number_of_threads must be a positive integer.")
-        if self.number_of_threads < 1:
-            raise InvalidInputParametersError("number_of_threads must be a positive integer.")
-        if self.parallel_backend not in ['processes', 'threads']:
-            raise InvalidInputParametersError("parallel_backend must be 'processes' or 'threads'.")
 
         self.structures = normalize_names(self.structures)
-        self.patient_folders = normalize_names(self.patient_folders)
-        self.start_folder = normalize_optional_text(self.start_folder)
-        self.stop_folder = normalize_optional_text(self.stop_folder)
         self.nifti_filtered_image_name = normalize_optional_text(self.nifti_filtered_image_name)
 
         if self.input_data_type == 'nifti':

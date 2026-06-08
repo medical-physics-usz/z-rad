@@ -11,7 +11,7 @@ from ..image import Image
 from ._utils import (
     find_nifti_file,
     joblib_progress,
-    normalize_names,
+    normalize_common_batch_options,
     normalize_optional_text,
     require_text,
     resolve_patient_folders,
@@ -67,43 +67,19 @@ class BatchFilter:
     parallel_backend: str = 'processes'
 
     def validate(self) -> None:
-        self.input_directory = Path(self.input_directory)
-        self.output_directory = Path(self.output_directory)
-        self.input_data_type = str(self.input_data_type).strip().lower()
-        self.modality = str(self.modality).strip().upper()
-        self.parallel_backend = str(self.parallel_backend).strip().lower()
+        normalize_common_batch_options(self)
         self.filter_type = require_text(self.filter_type, "filter_type is required.")
         self.filter_dimension = require_text(self.filter_dimension, "filter_dimension is required.").upper()
         self.padding_type = require_text(self.padding_type, "padding_type is required.")
 
-        if self.input_data_type not in ['dicom', 'nifti']:
-            raise InvalidInputParametersError("input_data_type must be 'dicom' or 'nifti'.")
-        if self.modality not in ['CT', 'MRI', 'PET', 'MG', 'RTDOSE']:
-            raise InvalidInputParametersError("modality must be one of CT, MRI, PET, MG, or RTDOSE.")
         if self.filter_dimension not in ['2D', '3D']:
             raise InvalidInputParametersError("filter_dimension must be '2D' or '3D'.")
-        if not self.input_directory.exists():
-            raise InvalidInputParametersError(f"Input directory '{self.input_directory}' does not exist.")
-        if not self.input_directory.is_dir():
-            raise InvalidInputParametersError(f"Input directory '{self.input_directory}' is not a directory.")
-
-        try:
-            self.number_of_threads = int(self.number_of_threads)
-        except (TypeError, ValueError):
-            raise InvalidInputParametersError("number_of_threads must be a positive integer.")
-        if self.number_of_threads < 1:
-            raise InvalidInputParametersError("number_of_threads must be a positive integer.")
-        if self.parallel_backend not in ['processes', 'threads']:
-            raise InvalidInputParametersError("parallel_backend must be 'processes' or 'threads'.")
 
         if self.input_data_type == 'nifti':
             self.nifti_image_name = normalize_optional_text(self.nifti_image_name)
             if not self.nifti_image_name:
                 raise InvalidInputParametersError("nifti_image_name is required for NIfTI filtering.")
 
-        self.patient_folders = normalize_names(self.patient_folders)
-        self.start_folder = normalize_optional_text(self.start_folder)
-        self.stop_folder = normalize_optional_text(self.stop_folder)
         self._validate_filter_parameters()
 
     def plan(self) -> list[str]:

@@ -88,12 +88,14 @@ def find_nifti_file(directory: Path, name: str | None) -> Path | None:
     if name is None:
         return None
     base_path = directory / name
-    for candidate in [base_path.with_suffix(base_path.suffix + '.gz'), base_path.with_suffix('.nii'), base_path]:
+    if str(name).endswith(('.nii.gz', '.nii')):
+        candidates = [base_path]
+    else:
+        candidates = [directory / f'{name}.nii.gz', directory / f'{name}.nii', base_path]
+
+    for candidate in candidates:
         if candidate.exists():
             return candidate
-    nii_gz_path = directory / f'{name}.nii.gz'
-    if nii_gz_path.exists():
-        return nii_gz_path
     return None
 
 

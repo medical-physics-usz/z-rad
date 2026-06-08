@@ -4,6 +4,7 @@ import pytest
 import zrad.batch as batch
 import zrad.batch.preprocessing as batch_preprocessing
 from zrad.batch import BatchPreprocessor, BatchResult, PreprocessingCaseResult
+from zrad.batch._utils import find_nifti_file
 from zrad.exceptions import InvalidInputParametersError
 from zrad.gui.prep_tab import create_batch_preprocessor_from_input_params
 from zrad.image import Image
@@ -46,6 +47,56 @@ def _nifti_preprocessor(input_dir, output_dir, **kwargs):
     }
     params.update(kwargs)
     return BatchPreprocessor(**params)
+
+
+@pytest.mark.unit
+def test_find_nifti_file_prefers_nii_gz_for_extensionless_stem(tmp_path):
+    case_dir = tmp_path / 'case_a'
+    case_dir.mkdir()
+    nii_path = case_dir / 'image.nii'
+    nii_gz_path = case_dir / 'image.nii.gz'
+    nii_path.touch()
+    nii_gz_path.touch()
+
+    assert find_nifti_file(case_dir, 'image') == nii_gz_path
+
+
+@pytest.mark.unit
+def test_find_nifti_file_returns_nii_for_extensionless_stem_when_nii_gz_is_missing(tmp_path):
+    case_dir = tmp_path / 'case_a'
+    case_dir.mkdir()
+    nii_path = case_dir / 'image.nii'
+    nii_path.touch()
+
+    assert find_nifti_file(case_dir, 'image') == nii_path
+
+
+@pytest.mark.unit
+def test_find_nifti_file_returns_explicit_nii_gz_path(tmp_path):
+    case_dir = tmp_path / 'case_a'
+    case_dir.mkdir()
+    nii_gz_path = case_dir / 'image.nii.gz'
+    nii_gz_path.touch()
+
+    assert find_nifti_file(case_dir, 'image.nii.gz') == nii_gz_path
+
+
+@pytest.mark.unit
+def test_find_nifti_file_returns_explicit_nii_path(tmp_path):
+    case_dir = tmp_path / 'case_a'
+    case_dir.mkdir()
+    nii_path = case_dir / 'image.nii'
+    nii_path.touch()
+
+    assert find_nifti_file(case_dir, 'image.nii') == nii_path
+
+
+@pytest.mark.unit
+def test_find_nifti_file_returns_none_for_missing_file(tmp_path):
+    case_dir = tmp_path / 'case_a'
+    case_dir.mkdir()
+
+    assert find_nifti_file(case_dir, 'image') is None
 
 
 @pytest.mark.unit
@@ -189,6 +240,30 @@ def test_nifti_convert_only_writes_image_and_masks(tmp_path):
     assert case_result.mask_output_paths == {'mask': output_dir / 'case_a' / 'mask.nii.gz'}
     assert (output_dir / 'case_a' / 'image.nii.gz').exists()
     assert (output_dir / 'case_a' / 'mask.nii.gz').exists()
+
+
+@pytest.mark.unit
+def test_nifti_convert_only_prefers_nii_gz_when_stem_matches_multiple_files(monkeypatch, tmp_path):
+    input_dir = tmp_path / 'input'
+    output_dir = tmp_path / 'output'
+    case_dir = input_dir / 'case_a'
+    case_dir.mkdir(parents=True)
+    (case_dir / 'image.nii').touch()
+    (case_dir / 'image.nii.gz').touch()
+
+    loaded_paths = []
+
+    def load_nifti(path):
+        loaded_paths.append(path)
+        return _make_image()
+
+    monkeypatch.setattr(batch_preprocessing.Image, 'from_nifti', staticmethod(load_nifti))
+
+    result = _nifti_preprocessor(input_dir, output_dir, structures=None).run()
+
+    assert result.processed_count == 1
+    assert loaded_paths == [case_dir / 'image.nii.gz']
+    assert (output_dir / 'case_a' / 'image.nii.gz').exists()
 
 
 @pytest.mark.unit

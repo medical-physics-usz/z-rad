@@ -5,6 +5,31 @@ from scipy.stats import iqr
 from ..exceptions import DataStructureError
 from .base import BaseFeatureGroup
 
+_LOCAL_MEANS_CACHE = {}
+_LOCAL_MEANS_CACHE_MAX_SIZE = 4
+
+
+def _cache_key(array, spacing):
+    return (id(array), array.shape, array.dtype.str, tuple(float(value) for value in spacing))
+
+
+def _get_cached_local_means(array, spacing):
+    key = _cache_key(array, spacing)
+    cached = _LOCAL_MEANS_CACHE.get(key)
+    if cached is not None:
+        cached_array, local_means = cached
+        if cached_array is array:
+            return local_means
+        _LOCAL_MEANS_CACHE.pop(key, None)
+    return None
+
+
+def _set_cached_local_means(array, spacing, local_means):
+    key = _cache_key(array, spacing)
+    _LOCAL_MEANS_CACHE[key] = (array, local_means)
+    while len(_LOCAL_MEANS_CACHE) > _LOCAL_MEANS_CACHE_MAX_SIZE:
+        _LOCAL_MEANS_CACHE.pop(next(iter(_LOCAL_MEANS_CACHE)))
+
 
 class LocalIntensityFeatures:
     """Local intensity peak features derived from the ROI and surrounding image.
@@ -45,34 +70,45 @@ class LocalIntensityFeatures:
         """
         return list(LOCAL_INTENSITY_FEATURE_NAMES)
 
-    def _calc_local_intensity_peak(self, image, masked_image):
-        radius_mm = 6.2
-        max_intensity = np.nanmax(masked_image)
-        max_voxels = np.argwhere(masked_image == max_intensity)
-        highest_peak = []
-        for voxel in max_voxels:
-            distances = np.sqrt(
-                ((np.indices(masked_image.shape).T * self.spacing - voxel * self.spacing) ** 2).sum(axis=3)
-            )
-            sphere_mask = distances <= radius_mm
-            selected_voxels = image[sphere_mask.T]
-            mean_intensity = np.mean(selected_voxels)
-            highest_peak.append(mean_intensity)
-        return max(highest_peak)
-
-    def _calc_global_intensity_peak(self, image, masked_image):
-        radius_mm = 6.2
-        spacing = np.array(self.spacing)
+    def _spherical_kernel(self, radius_mm=6.2):
+        spacing = np.asarray(self.spacing, dtype=float)
         half_sizes = np.ceil(radius_mm / spacing).astype(int)
         grid_ranges = [np.arange(-hs, hs + 1) for hs in half_sizes]
-        zz, yy, xx = np.meshgrid(grid_ranges[0], grid_ranges[1], grid_ranges[2], indexing='ij')
-        distances = np.sqrt((zz * spacing[0]) ** 2 + (yy * spacing[1]) ** 2 + (xx * spacing[2]) ** 2)
-        spherical_mask = distances <= radius_mm
+        grids = np.meshgrid(*grid_ranges, indexing='ij')
+        distances_squared = sum((grid * axis_spacing) ** 2 for grid, axis_spacing in zip(grids, spacing))
+        spherical_mask = distances_squared <= radius_mm**2
         n_s = np.sum(spherical_mask)
         if n_s == 0:
             raise DataStructureError("Ns is zero in global int. mask.")
-        kernel = spherical_mask.astype(float) / n_s
-        local_means = convolve(image, kernel, mode='constant', cval=0.0)
+        return spherical_mask
+
+    def _calc_local_intensity_peak(self, image, masked_image):
+        radius_mm = 6.2
+        spacing = np.asarray(self.spacing, dtype=float)
+        half_sizes = np.ceil(radius_mm / spacing).astype(int)
+        max_intensity = np.nanmax(masked_image)
+        max_voxels = np.argwhere(masked_image == max_intensity)
+        highest_peak = -np.inf
+
+        for voxel in max_voxels:
+            lower = np.maximum(voxel - half_sizes, 0)
+            upper = np.minimum(voxel + half_sizes + 1, image.shape)
+            slices = tuple(slice(start, stop) for start, stop in zip(lower, upper))
+            patch = image[slices]
+            grid_ranges = [np.arange(start - center, stop - center) for start, stop, center in zip(lower, upper, voxel)]
+            grids = np.meshgrid(*grid_ranges, indexing='ij')
+            distances_squared = sum((grid * axis_spacing) ** 2 for grid, axis_spacing in zip(grids, spacing))
+            mean_intensity = np.mean(patch[distances_squared <= radius_mm**2])
+            highest_peak = max(highest_peak, mean_intensity)
+        return highest_peak
+
+    def _calc_global_intensity_peak(self, image, masked_image):
+        spherical_mask = self._spherical_kernel()
+        kernel = spherical_mask.astype(float) / np.sum(spherical_mask)
+        local_means = _get_cached_local_means(image, self.spacing)
+        if local_means is None:
+            local_means = convolve(image, kernel, mode='constant', cval=0.0)
+            _set_cached_local_means(image, self.spacing, local_means)
         roi_mask = ~np.isnan(masked_image)
         return np.max(local_means[roi_mask])
 

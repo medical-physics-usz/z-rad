@@ -107,7 +107,35 @@ class CustomCheckBox(QCheckBox):
         """)
 
 
-class CustomWarningBox(QMessageBox):
+class _CustomMessageBox(QMessageBox):
+    def _apply_message_box_style(self):
+        self.setStyleSheet(
+            "QPushButton {"
+            "background-color: #FFD700;"
+            "color: black;"
+            "border-style: solid;"
+            "border-width: 2px;"
+            "border-radius: 10px;"
+            "border-color: #606060;"
+            "font: bold 16px;"
+            "padding: 10px;"
+            "}"
+            "QPushButton:hover {"
+            "background-color: #FF8C00;"
+            "}"
+            "QPushButton:pressed {"
+            "background-color: #505050;"
+            "}"
+        )
+        font = QFont('Verdana')
+        self.setFont(font)
+
+    def response(self) -> bool:
+        get_response = self.exec_()
+        return get_response == QMessageBox.Ok
+
+
+class CustomWarningBox(_CustomMessageBox):
     def __init__(self, text: str, warning: bool = True):
         super().__init__()
         self.warning_key = warning
@@ -125,33 +153,10 @@ class CustomWarningBox(QMessageBox):
             self.setText(text)
             self.setStandardButtons(QMessageBox.Close)
 
-        self.setStyleSheet(
-            "QPushButton {"
-            "background-color: #FFD700;"
-            "color: black;"
-            "border-style: solid;"
-            "border-width: 2px;"
-            "border-radius: 10px;"
-            "border-color: #606060;"
-            "font: bold 16px;"
-            "padding: 10px;"
-            "}"
-            "QPushButton:hover {"
-            "background-color: #FF8C00;"
-            "}"
-            "QPushButton:pressed {"
-            "background-color: #505050;"
-            "}"
-        )
-        font = QFont('Verdana')
-        self.setFont(font)
-
-    def response(self) -> bool:
-        get_response = self.exec_()
-        return get_response == QMessageBox.Ok
+        self._apply_message_box_style()
 
 
-class CustomInfoBox(QMessageBox):
+class CustomInfoBox(_CustomMessageBox):
     def __init__(self, text: str, info: bool = True):
         super().__init__()
         self.info_key = info
@@ -159,7 +164,7 @@ class CustomInfoBox(QMessageBox):
 
     def setup_message_box(self, text: str):
         if self.info_key:
-            self.setIcon(QMessageBox.Warning)
+            self.setIcon(QMessageBox.Information)
             self.setWindowTitle('Info!')
             self.setText(text)
             self.setStandardButtons(QMessageBox.Ok)
@@ -169,30 +174,20 @@ class CustomInfoBox(QMessageBox):
             self.setText(text)
             self.setStandardButtons(QMessageBox.Close)
 
-        self.setStyleSheet(
-            "QPushButton {"
-            "background-color: #FFD700;"
-            "color: black;"
-            "border-style: solid;"
-            "border-width: 2px;"
-            "border-radius: 10px;"
-            "border-color: #606060;"
-            "font: bold 16px;"
-            "padding: 10px;"
-            "}"
-            "QPushButton:hover {"
-            "background-color: #FF8C00;"
-            "}"
-            "QPushButton:pressed {"
-            "background-color: #505050;"
-            "}"
-        )
-        font = QFont('Verdana')
-        self.setFont(font)
+        self._apply_message_box_style()
 
-    def response(self) -> bool:
-        get_response = self.exec_()
-        return get_response == QMessageBox.Ok
+
+class CustomErrorBox(_CustomMessageBox):
+    def __init__(self, text: str):
+        super().__init__()
+        self.setup_message_box(text)
+
+    def setup_message_box(self, text: str):
+        self.setIcon(QMessageBox.Critical)
+        self.setWindowTitle('Error!')
+        self.setText(text)
+        self.setStandardButtons(QMessageBox.Ok)
+        self._apply_message_box_style()
 
 
 class ProcessingProgressDialog(QDialog):

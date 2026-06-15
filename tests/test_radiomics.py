@@ -213,18 +213,12 @@ def test_explicit_roi_cropping_preserves_feature_values():
 
 
 @pytest.mark.unit
-def test_gldzm_distance_uses_morphology_mask_after_edge_resegmentation():
-    discretized_image = np.full((3, 3, 5), np.nan, dtype=np.float64)
-    discretized_image[1, 1, 2] = 1.0
-    morphological_mask = np.ones((3, 3, 5), dtype=np.int8)
+def test_gldzm_distances_use_morphological_mask_after_resegmentation_edges_are_excluded():
+    discretized_image = np.full((3, 3, 3), np.nan, dtype=np.float64)
+    discretized_image[1, 1, 1] = 1.0
+    morphological_mask = np.ones((3, 3, 3), dtype=np.float64)
 
-    matrix, voxel_count = GLDZM._calc_gldz_3d_matrix(
-        discretized_image,
-        morphological_mask,
-        lvl=2,
-    )
+    features = GLDZM(aggr_dim='3D').calculate_features(discretized_image, morphological_mask)
 
-    assert voxel_count == 1
-    assert matrix.shape == (2, 5)
-    assert matrix[1, 1] == 1
-    assert matrix[1, 0] == 0
+    assert features['dzm_sde'] == pytest.approx(0.25)
+    assert features['dzm_lde'] == pytest.approx(4.0)

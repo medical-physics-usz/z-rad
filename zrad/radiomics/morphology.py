@@ -68,7 +68,9 @@ class MorphologicalFeatures:
         return list(MORPHOLOGY_FEATURE_NAMES)
 
     def _calc_mesh(self, mask_array):
-        mesh_verts, mesh_faces, _, _ = measure.marching_cubes(mask_array, level=0.5)
+        padded_mask = np.pad(mask_array, 1, mode='constant')
+        mesh_verts, mesh_faces, _, _ = measure.marching_cubes(padded_mask, level=0.5)
+        mesh_verts -= np.array([1, 1, 1])
         return mesh_verts * self.spacing, mesh_faces
 
     @staticmethod

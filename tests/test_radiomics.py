@@ -11,6 +11,7 @@ from zrad.preprocessing import (
     TextureDiscretizer,
 )
 from zrad.radiomics import Radiomics
+from zrad.radiomics.gldzm import GLDZM
 
 
 def _make_image(array):
@@ -209,3 +210,20 @@ def test_explicit_roi_cropping_preserves_feature_values():
     assert set(cropped) == set(uncropped)
     for name, value in uncropped.items():
         assert cropped[name] == pytest.approx(value)
+
+@pytest.mark.unit
+def test_gldzm_distance_uses_morphology_mask_after_edge_resegmentation():
+    discretized_image = np.full((3, 3, 5), np.nan, dtype=np.float64)
+    discretized_image[1, 1, 2] = 1.0
+    morphological_mask = np.ones((3, 3, 5), dtype=np.int8)
+
+    matrix, voxel_count = GLDZM._calc_gldz_3d_matrix(
+        discretized_image,
+        morphological_mask,
+        lvl=2,
+    )
+
+    assert voxel_count == 1
+    assert matrix.shape == (2, 5)
+    assert matrix[1, 1] == 1
+    assert matrix[1, 0] == 0

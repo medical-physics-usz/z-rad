@@ -20,8 +20,10 @@ def read_dicom_image(dicom_dir, modality):
     image = None
     if modality in ["CT", "MRI", "PET"]:
         validate_z_spacing(dicom_files)
-    if modality in ["CT", "MRI", "PET", "MG"]:
-        image = process_dicom_series(dicom_files)
+    if modality == 'US':
+        validate_ultrasound_dicom_tags(dicom_files)
+    if modality in ["CT", "MRI", "PET", "MG", "US"]:
+        image = process_dicom_series(dicom_files, modality)
     if modality == "PET":
         validate_pet_dicom_tags(dicom_files)
         image = apply_suv_correction(dicom_files, image)
@@ -192,6 +194,24 @@ def validate_z_spacing(dicom_files):
             error_msg = f"Inconsistent z-spacing. Absolute deviation is {spacing_difference:.3f} which is greater than {spacing_threshold:.3f} mm."
             raise DataStructureError(error_msg)
 
+def validate_ultrasound_dicom_tags(dicom_files):
+    if len(dicom_files) != 1:
+        error_msg = f'Ultrasound volume should be stored as one dicom file, image excluded.'
+        raise DataStructureError(error_msg)
+    ds = dicom_files[0]['ds']
+    if ds.Modality != 'US':
+        error_msg = f'Ultrasound DICOM modality should be "US", but {ds.Modality} is provided, image excluded.'
+        raise DataStructureError(error_msg)
+
+    if 'PixelSpacing' not in ds:
+        raise DataStructureError(
+            'Ultrasound volume does not have PixelSpacing specified, image excluded.'
+        )
+
+    if 'SliceThickness' not in ds:
+        raise DataStructureError(
+            'Ultrasound volume does not have slice SliceThickness specified, image excluded.'
+        )
 
 def modality_mapping(modality):
     modality_map = {
@@ -199,17 +219,22 @@ def modality_mapping(modality):
         "CT": "CT",
         "MRI": "MR",
         "RTSTRUCT": "RTSTRUCT",
+        "US": "US",
         "MG": "MG",
         "RTDOSE": "RTDOSE",
     }
     return modality_map[modality]
 
 
-def process_dicom_series(dicom_files):
-    reader = sitk.ImageSeriesReader()
-    file_names = [i["file_path"] for i in dicom_files]
-    reader.SetFileNames(file_names)
-    image = reader.Execute()
+def process_dicom_series(dicom_files, modality):
+    if modality in ["CT", "MRI", "PET", "MG"]:
+        reader = sitk.ImageSeriesReader()
+        file_names = [i["file_path"] for i in dicom_files]
+        reader.SetFileNames(file_names)
+        image = reader.Execute()
+
+    elif modality == "US":
+        image = sitk.ReadImage(dicom_files[0]["file_path"])
 
     slice_z_origin = []
     direction = None
@@ -234,6 +259,11 @@ def process_dicom_series(dicom_files):
             image.SetOrigin([0, 0, 0])
             direction = [1, 0, 0, 0, 1, 0, 0, 0, 1]
 
+        elif ds.Modality == "US":
+            pixel_spacing = ds.PixelSpacing
+            slice_z_origin.append(ds.SliceThickness)
+            image.SetOrigin([0, 0, 0])
+            direction = [1, 0, 0, 0, 1, 0, 0, 0, 1]
     slice_z_origin = sorted(slice_z_origin)
     if len(slice_z_origin) > 1:
         slice_thickness = np.median(np.abs(np.diff(np.asarray(slice_z_origin, float))))

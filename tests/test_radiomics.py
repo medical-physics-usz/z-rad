@@ -49,6 +49,19 @@ def test_radiomics_extract_features_returns_dict_from_roi_data():
 
 
 @pytest.mark.unit
+def test_morphology_mesh_handles_roi_touching_image_border():
+    mask_array = np.ones((3, 3, 3), dtype=np.float64)
+
+    mesh_verts, mesh_faces = MorphologicalFeatures(spacing=(1.0, 1.0, 1.0))._calc_mesh(mask_array)
+
+    assert mesh_verts.shape[1] == 3
+    assert mesh_faces.shape[1] == 3
+    assert mesh_faces.size > 0
+    assert np.min(mesh_verts) == pytest.approx(-0.5)
+    assert np.max(mesh_verts) == pytest.approx(2.5)
+
+
+@pytest.mark.unit
 def test_radiomics_rejects_direct_image_mask_inputs():
     image = _make_image(np.arange(27, dtype=np.float64).reshape(3, 3, 3))
     mask = _make_image(np.ones((3, 3, 3), dtype=np.float64))

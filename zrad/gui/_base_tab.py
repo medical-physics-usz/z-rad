@@ -151,7 +151,7 @@ class BaseTab(QWidget, ABC, metaclass=BaseTabMeta):
     def init_io_elements(self):
         # Imaging Modality selector
         self.input_imaging_mod_combo_box = CustomBox(
-            200, 140, 160, 50, self, item_list=["Imaging Modality:", "CT", "MRI", "PET", "MG", "RTDOSE"]
+            200, 140, 160, 50, self, item_list=["Imaging Modality:", "CT", "MRI", "PET", "MG", "US", "RTDOSE"]
         )
 
         # Load Directory Button and Label

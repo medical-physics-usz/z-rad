@@ -202,7 +202,7 @@ def validate_ultrasound_dicom_tags(dicom_files):
 
     ds = dicom_files[0]["ds"]
     if ds.Modality != "US":
-        error_msg = f"Ultrasound DICOM modality should be "US", but {ds.Modality} is provided, image excluded."
+        error_msg = f'Ultrasound DICOM modality should be "US", but {ds.Modality} is provided, image excluded.'
         raise DataStructureError(error_msg)
 
     if "PixelSpacing" not in ds:

@@ -11,6 +11,7 @@ from zrad.preprocessing import (
     TextureDiscretizer,
 )
 from zrad.radiomics import Radiomics
+from zrad.radiomics.gldzm import GLDZM
 from zrad.radiomics.morphology import MorphologicalFeatures
 
 
@@ -212,7 +213,7 @@ def test_explicit_roi_cropping_preserves_feature_values():
     image = _make_image(image_array)
     mask = _make_image(mask_array)
 
-    families = ['intensity_statistics', 'intensity_histogram', 'glcm']
+    families = ['intensity_statistics', 'intensity_histogram', 'glcm', 'gldzm']
     roi_data = TextureDiscretizer(number_of_bins=4).apply(_roi_data(image, mask))
     uncropped = Radiomics().extract_features(roi_data=roi_data, families=families)
     cropped = Radiomics().extract_features(
@@ -223,3 +224,15 @@ def test_explicit_roi_cropping_preserves_feature_values():
     assert set(cropped) == set(uncropped)
     for name, value in uncropped.items():
         assert cropped[name] == pytest.approx(value)
+
+
+@pytest.mark.unit
+def test_gldzm_distances_use_morphological_mask_after_resegmentation_edges_are_excluded():
+    discretized_image = np.full((3, 3, 3), np.nan, dtype=np.float64)
+    discretized_image[1, 1, 1] = 1.0
+    morphological_mask = np.ones((3, 3, 3), dtype=np.float64)
+
+    features = GLDZM(aggr_dim='3D').calculate_features(discretized_image, morphological_mask)
+
+    assert features['dzm_sde'] == pytest.approx(0.25)
+    assert features['dzm_lde'] == pytest.approx(4.0)

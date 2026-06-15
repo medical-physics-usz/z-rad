@@ -12,6 +12,7 @@ from zrad.preprocessing import (
 )
 from zrad.radiomics import Radiomics
 from zrad.radiomics.gldzm import GLDZM
+from zrad.radiomics.morphology import MorphologicalFeatures
 
 
 def _make_image(array):

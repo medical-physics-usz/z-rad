@@ -196,7 +196,7 @@ def validate_z_spacing(dicom_files):
 
 def validate_ultrasound_dicom_tags(dicom_files):
     if len(dicom_files) != 1:
-        error_msg = f'Ultrasound volume should be stored as one dicom file, image excluded.'
+        error_msg = 'Ultrasound volume should be stored as one dicom file, image excluded.'
         raise DataStructureError(error_msg)
     ds = dicom_files[0]['ds']
     if ds.Modality != 'US':

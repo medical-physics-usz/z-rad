@@ -211,6 +211,7 @@ def test_explicit_roi_cropping_preserves_feature_values():
     for name, value in uncropped.items():
         assert cropped[name] == pytest.approx(value)
 
+
 @pytest.mark.unit
 def test_gldzm_distance_uses_morphology_mask_after_edge_resegmentation():
     discretized_image = np.full((3, 3, 5), np.nan, dtype=np.float64)

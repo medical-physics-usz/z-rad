@@ -20,7 +20,7 @@ def read_dicom_image(dicom_dir, modality):
     image = None
     if modality in ["CT", "MRI", "PET"]:
         validate_z_spacing(dicom_files)
-    if modality == 'US':
+    if modality == "US":
         validate_ultrasound_dicom_tags(dicom_files)
     if modality in ["CT", "MRI", "PET", "MG", "US"]:
         image = process_dicom_series(dicom_files, modality)
@@ -188,30 +188,29 @@ def validate_z_spacing(dicom_files):
     slice_z_origin = sorted(slice_z_origin)
     slice_thickness = [abs(slice_z_origin[i] - slice_z_origin[i + 1]) for i in range(len(slice_z_origin) - 1)]
     for i in range(len(slice_thickness) - 1):
-        spacing_difference = abs((slice_thickness[i] - slice_thickness[i + 1]))
+        spacing_difference = abs(slice_thickness[i] - slice_thickness[i + 1])
         spacing_threshold = 0.1
         if spacing_difference > spacing_threshold:
             error_msg = f"Inconsistent z-spacing. Absolute deviation is {spacing_difference:.3f} which is greater than {spacing_threshold:.3f} mm."
             raise DataStructureError(error_msg)
 
+
 def validate_ultrasound_dicom_tags(dicom_files):
     if len(dicom_files) != 1:
-        error_msg = 'Ultrasound volume should be stored as one dicom file, image excluded.'
-        raise DataStructureError(error_msg)
-    ds = dicom_files[0]['ds']
-    if ds.Modality != 'US':
-        error_msg = f'Ultrasound DICOM modality should be "US", but {ds.Modality} is provided, image excluded.'
+        error_msg = "Ultrasound volume should be stored as one dicom file, image excluded."
         raise DataStructureError(error_msg)
 
-    if 'PixelSpacing' not in ds:
-        raise DataStructureError(
-            'Ultrasound volume does not have PixelSpacing specified, image excluded.'
-        )
+    ds = dicom_files[0]["ds"]
+    if ds.Modality != "US":
+        error_msg = f"Ultrasound DICOM modality should be "US", but {ds.Modality} is provided, image excluded."
+        raise DataStructureError(error_msg)
 
-    if 'SliceThickness' not in ds:
-        raise DataStructureError(
-            'Ultrasound volume does not have slice SliceThickness specified, image excluded.'
-        )
+    if "PixelSpacing" not in ds:
+        raise DataStructureError("Ultrasound volume does not have PixelSpacing specified, image excluded.")
+
+    if "SliceThickness" not in ds:
+        raise DataStructureError("Ultrasound volume does not have slice SliceThickness specified, image excluded.")
+
 
 def modality_mapping(modality):
     modality_map = {
@@ -329,7 +328,6 @@ def _generate_rtstruct_mask_array(contours, sitk_image):
 
 
 def extract_dicom_mask(rtstruct_path, roi_name, image):
-
     def get_contour_data(file_path, selected_roi):
         def get_contour_coord(metadata, current_roi_sequence, skip_contours_bool=False):
             contour_info = {

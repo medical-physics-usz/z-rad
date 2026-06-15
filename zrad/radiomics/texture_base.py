@@ -14,17 +14,19 @@ def crop_to_valid_bbox(image):
 
 
 def crop_to_valid_bbox_pair(image, mask):
-    """Return aligned image and mask subarrays cropped to valid image voxels.
+    """Return aligned image and mask subarrays cropped to mask ROI voxels.
 
     GLDZM needs the discretized intensity image and morphological mask to stay
-    spatially aligned while trimming the NaN-only padding outside the intensity
-    ROI. The image defines the valid bounding box because re-segmentation can
-    make the intensity ROI smaller than the morphological mask.
+    spatially aligned while trimming padding outside the morphology ROI. The
+    morphology mask defines the distance map, so it also defines the safe
+    bounding box: re-segmentation can make the intensity ROI smaller than the
+    morphology ROI, and cropping to the re-segmented intensity ROI would remove
+    morphology voxels that are needed for correct distance-to-edge values.
     """
-    valid_coords = np.where(~np.isnan(image))
-    if valid_coords[0].size == 0:
+    roi_coords = np.where(mask > 0)
+    if roi_coords[0].size == 0:
         return image, mask
-    bbox = tuple(slice(int(coords.min()), int(coords.max()) + 1) for coords in valid_coords)
+    bbox = tuple(slice(int(coords.min()), int(coords.max()) + 1) for coords in roi_coords)
     return image[bbox], mask[bbox]
 
 

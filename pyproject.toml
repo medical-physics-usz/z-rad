@@ -48,7 +48,7 @@ test = [
     "pytest-xdist",
 ]
 lint = [
-    "ruff==0.15.18",
+    "ruff==0.15.20",
 ]
 dev = [
     "sphinx>=8",
@@ -57,7 +57,7 @@ dev = [
     "pytest",
     "pytest-cov",
     "pytest-xdist",
-    "ruff==0.15.18",
+    "ruff==0.15.20",
 ]
 
 [tool.setuptools]

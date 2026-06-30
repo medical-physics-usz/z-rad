@@ -119,5 +119,142 @@ that means your workflow needs to provide:
 For correct feature extraction, images and masks must refer to the same spatial
 frame and voxel grid.
 
+Batch APIs
+----------
+
+Use ``zrad.batch`` when you want to process a folder cohort and write results
+to disk. The lower-level modules remain the single-image or single-ROI APIs:
+
+* ``BatchPreprocessor`` writes preprocessed images and masks.
+* ``BatchFilter`` writes filtered images.
+* ``BatchRadiomicsExtractor`` writes one ``radiomics.csv`` file.
+
+All batch workflows return ``BatchResult``:
+
+.. code-block:: python
+
+   result = batch.run()
+
+   print(result.processed_count, result.skipped_count, result.failed_count)
+   for case in result.errors:
+       print(case.case_name, case.error)
+
+Batch Preprocessing
+-------------------
+
+Use ``zrad.batch.BatchPreprocessor`` when you want to run the preprocessing
+workflow over many case folders and write the processed images and masks to
+disk. The lower-level ``zrad.preprocessing`` classes remain the recommended API
+for single image/mask pairs and interactive experiments.
+
+DICOM example:
+
+.. code-block:: python
+
+   from zrad.batch import BatchPreprocessor
+
+   result = BatchPreprocessor(
+       input_directory="path/to/dicom_cases",
+       output_directory="path/to/preprocessed_cases",
+       input_data_type="dicom",
+       modality="CT",
+       number_of_threads=8,
+       structures=["CTV", "liver"],
+       resample_resolution=1.0,
+       resample_dimension="3D",
+       image_interpolation_method="linear",
+       mask_interpolation_method="linear",
+       mask_interpolation_threshold=0.5,
+   ).run()
+
+   print(result.processed_count, result.failed_count)
+   for case in result.errors:
+       print(case.case_name, case.error)
+
+NIfTI example:
+
+.. code-block:: python
+
+   from zrad.batch import BatchPreprocessor
+
+   result = BatchPreprocessor(
+       input_directory="path/to/nifti_cases",
+       output_directory="path/to/preprocessed_cases",
+       input_data_type="nifti",
+       modality="CT",
+       nifti_image_name="imageCT",
+       structures=["CTV", "liver"],
+       resample_resolution=1.0,
+       resample_dimension="2D",
+       image_interpolation_method="linear",
+       mask_interpolation_method="NN",
+   ).run()
+
+``BatchPreprocessor`` is a save-to-disk batch API. It reports per-case status
+through ``BatchResult``.
+
+Batch Filtering
+---------------
+
+Use ``zrad.batch.BatchFilter`` when you want to apply one configured image
+filter to every selected case folder and write the filtered images to disk.
+The lower-level ``zrad.filtering`` classes remain the recommended API for
+single-image filtering.
+
+.. code-block:: python
+
+   from zrad.batch import BatchFilter
+
+   result = BatchFilter(
+       input_directory="path/to/preprocessed_cases",
+       output_directory="path/to/filtered_cases",
+       input_data_type="nifti",
+       modality="CT",
+       nifti_image_name="image",
+       number_of_threads=8,
+       filter_type="Mean",
+       filter_dimension="3D",
+       padding_type="reflect",
+       mean_support=3,
+   ).run()
+
+   print(result.processed_count, result.failed_count)
+
+``BatchFilter`` is a save-to-disk batch API.
+
+Batch Radiomics
+---------------
+
+Use ``zrad.batch.BatchRadiomicsExtractor`` when you want to extract radiomics
+features for many case folders and write one ``radiomics.csv`` file. The
+lower-level ``zrad.radiomics.Radiomics`` class remains the recommended API for
+single prepared ROIs.
+
+.. code-block:: python
+
+   from zrad.batch import BatchRadiomicsExtractor
+
+   result = BatchRadiomicsExtractor(
+       input_directory="path/to/preprocessed_cases",
+       output_directory="path/to/radiomics_output",
+       input_data_type="nifti",
+       modality="CT",
+       nifti_image_name="image",
+       structures=["CTV", "liver"],
+       number_of_threads=8,
+       aggregation_dimension="3D",
+       aggregation_method="MERG",
+       discretization_method="Number of Bins",
+       number_of_bins=64,
+   ).run()
+
+   print(result.processed_count, result.skipped_count, result.failed_count)
+   for case in result.errors:
+       print(case.case_name, case.error)
+
+``BatchPreprocessor``, ``BatchFilter``, and ``BatchRadiomicsExtractor`` are
+save-to-disk batch APIs. They all report aggregate and per-case status through
+``BatchResult``.
+
 For parameter details, combine this quickstart with the dedicated user-guide
 pages and the API reference.

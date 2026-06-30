@@ -4,13 +4,12 @@ import os
 import sys
 from datetime import datetime
 
-from joblib import Parallel, delayed
 from PyQt5.QtCore import QThread
 
-from ..exceptions import DataStructureError, InvalidInputParametersError
-from ..filtering import create_filter
-from ..toolbox_logic import close_all_loggers, get_logger, joblib_progress
-from ._base_tab import BaseTab, load_images
+from ..batch import BatchFilter
+from ..exceptions import InvalidInputParametersError
+from ..toolbox_logic import close_all_loggers, get_logger
+from ._base_tab import BaseTab
 from .toolbox_gui import (
     CustomBox,
     CustomButton,
@@ -29,146 +28,46 @@ logging.captureWarnings(True)
 IS_FROZEN = getattr(sys, 'frozen', False)
 
 
-def _get_filtering(input_params):
-    if input_params["filter_type"] == 'Mean':
-        filtering = create_filter(
-            filtering_method=input_params["filter_type"],
-            padding_type=input_params["filter_padding_type"],
-            support=int(input_params["filter_mean_support"]),
-            dimensionality=input_params["filter_dimension"],
-        )
-
-    elif input_params["filter_type"] == 'Laplacian of Gaussian':
-        filtering = create_filter(
-            filtering_method=input_params["filter_type"],
-            padding_type=input_params["filter_padding_type"],
-            sigma_mm=float(input_params["filter_log_sigma"]),
-            cutoff=float(input_params["filter_log_cutoff"]),
-            dimensionality=input_params["filter_dimension"],
-        )
-    elif input_params["filter_type"] == 'Laws Kernels':
-        filtering = create_filter(
-            filtering_method=input_params["filter_type"],
-            response_map=input_params["filter_laws_response_map"],
-            padding_type=input_params["filter_padding_type"],
-            dimensionality=input_params["filter_dimension"],
-            rotation_invariance=input_params["filter_laws_rot_inv"] == 'Enable',
-            pooling=input_params["filter_laws_pooling"],
-            energy_map=input_params["filter_laws_energy_map"] == 'Enable',
-            distance=int(input_params["filter_laws_distance"]),
-        )
-    elif input_params["filter_type"] == 'Gabor':
-        filtering = create_filter(
-            filtering_method='Gabor',
-            padding_type=input_params["filter_padding_type"],
-            res_mm=float(input_params["filter_gabor_res_mm"]),
-            sigma_mm=float(input_params["filter_gabor_sigma_mm"]),
-            lambda_mm=float(input_params["filter_gabor_lambda_mm"]),
-            gamma=float(input_params["filter_gabor_gamma"]),
-            theta=float(input_params["filter_gabor_theta"]),
-            rotation_invariance=input_params["filter_gabor_rotinv"] == 'Enable',
-            orthogonal_planes=input_params["filter_gabor_ortho"] == 'Enable',
-        )
-    elif input_params["filter_type"] == 'Wavelets':
-        if input_params["filter_dimension"] == '2D':
-            filtering = create_filter(
-                filtering_method=input_params["filter_type"],
-                dimensionality=input_params["filter_dimension"],
-                padding_type=input_params["filter_padding_type"],
-                wavelet_type=input_params["filter_wavelet_type"],
-                response_map=input_params["filter_wavelet_resp_map_2D"],
-                decomposition_level=int(input_params["filter_wavelet_decomp_lvl"]),
-                rotation_invariance=input_params["filter_wavelet_rot_inv"] == 'Enable',
-            )
-        elif input_params["filter_dimension"] == '3D':
-            filtering = create_filter(
-                filtering_method=input_params["filter_type"],
-                dimensionality=input_params["filter_dimension"],
-                padding_type=input_params["filter_padding_type"],
-                wavelet_type=input_params["filter_wavelet_type"],
-                response_map=input_params["filter_wavelet_resp_map_3D"],
-                decomposition_level=int(input_params["filter_wavelet_decomp_lvl"]),
-                rotation_invariance=input_params["filter_wavelet_rot_inv"] == 'Enable',
-            )
-        else:
-            raise InvalidInputParametersError(f"Filter_dimension {input_params['filter_dimension']} is not supported.")
-    else:
-        raise InvalidInputParametersError(f"Filter_type {input_params['filter_type']} not supported.")
-
-    return filtering
-
-
-def _get_filename(input_params):
-    # Base formats for all filters except Wavelets
-    filter_formats = {
-        'Mean': "{filter_type}_{filter_dimension}_{filter_mean_support}support_{filter_padding_type}",
-        'Laplacian of Gaussian': "{filter_type}_{filter_dimension}_{filter_log_sigma}sigma_"
-        "{filter_log_cutoff}cutoff_{filter_padding_type}",
-        'Laws Kernels': "{filter_type}_{filter_dimension}_{filter_laws_response_map}_"
-        "{filter_laws_rot_inv}_{filter_laws_pooling}_"
-        "{filter_laws_energy_map}_{filter_laws_distance}_{filter_padding_type}",
-        'Gabor': "Gabor_{filter_dimension}_"
-        "{filter_gabor_res_mm}resmm_"
-        "{filter_gabor_sigma_mm}sigmm_"
-        "{filter_gabor_lambda_mm}lambmm_"
-        "g{filter_gabor_gamma}_"
-        "t{filter_gabor_theta}_"
-        "{filter_gabor_rotinv}_"
-        "{filter_gabor_ortho}_"
-        "{filter_padding_type}",
-    }
-
-    def format_wavelets():
-        base = (
-            "{filter_wavelet_type}_{filter_dimension}_"
-            "{filter_wavelet_resp_map}_"
-            "{filter_wavelet_decomp_lvl}_"
-            "{filter_wavelet_rot_inv}_"
-            "{filter_padding_type}"
-        )
-        resp = (
-            input_params["filter_wavelet_resp_map_3D"]
-            if input_params["filter_dimension"] == '3D'
-            else input_params["filter_wavelet_resp_map_2D"]
-        )
-        return base.format(filter_wavelet_resp_map=resp, **input_params)
-
-    ft = input_params["filter_type"]
-    if ft == 'Wavelets':
-        filename = format_wavelets()
-    elif ft in filter_formats:
-        filename = filter_formats[ft].format(**input_params)
-    else:
-        raise InvalidInputParametersError(f"Unknown filter type: {ft}")
-
-    return f"{filename}.nii.gz"
-
-
-def process_patient_folder(input_params, patient_folder):
-
-    local_params = dict(input_params)
-
-    # Logger
-    logger_date_time = datetime.now().strftime("%Y-%m-%d_%H%M%S")
-    logger = get_logger(logger_date_time + '_Filtering')
-
-    # Initialize Filtering instance
-    filtering = _get_filtering(local_params)
-
-    logger.info(f"Filtering patient's {patient_folder} image.")
-
-    try:
-        image = load_images(local_params, patient_folder)
-    except DataStructureError as e:
-        logger.error(e)
-        logger.error(f"Patient {patient_folder} could not be loaded and is skipped.")
-        return
-    image_new = filtering.apply(image)
-
-    # Save new image
-    filename = _get_filename(local_params)
-    output_path = os.path.join(local_params["output_directory"], patient_folder, filename)
-    image_new.save_as_nifti(output_path)
+def create_batch_filter_from_input_params(input_params, parallel_backend):
+    response_map = (
+        input_params["filter_wavelet_resp_map_3D"]
+        if input_params["filter_dimension"] == '3D'
+        else input_params["filter_wavelet_resp_map_2D"]
+    )
+    return BatchFilter(
+        input_directory=input_params["input_directory"],
+        output_directory=input_params["output_directory"],
+        input_data_type=input_params["input_data_type"],
+        modality=input_params["input_image_modality"],
+        number_of_threads=input_params["number_of_threads"],
+        patient_folders=input_params["list_of_patient_folders"],
+        start_folder=input_params["start_folder"],
+        stop_folder=input_params["stop_folder"],
+        nifti_image_name=input_params["nifti_image_name"],
+        filter_type=input_params["filter_type"],
+        filter_dimension=input_params["filter_dimension"],
+        padding_type=input_params["filter_padding_type"],
+        mean_support=input_params["filter_mean_support"],
+        log_sigma=input_params["filter_log_sigma"],
+        log_cutoff=input_params["filter_log_cutoff"],
+        laws_response_map=input_params["filter_laws_response_map"],
+        laws_rotation_invariance=input_params["filter_laws_rot_inv"],
+        laws_pooling=input_params["filter_laws_pooling"],
+        laws_energy_map=input_params["filter_laws_energy_map"],
+        laws_distance=input_params["filter_laws_distance"],
+        wavelet_response_map=response_map,
+        wavelet_type=input_params["filter_wavelet_type"],
+        wavelet_decomposition_level=input_params["filter_wavelet_decomp_lvl"],
+        wavelet_rotation_invariance=input_params["filter_wavelet_rot_inv"],
+        gabor_res_mm=input_params["filter_gabor_res_mm"],
+        gabor_sigma_mm=input_params["filter_gabor_sigma_mm"],
+        gabor_lambda_mm=input_params["filter_gabor_lambda_mm"],
+        gabor_gamma=input_params["filter_gabor_gamma"],
+        gabor_theta=input_params["filter_gabor_theta"],
+        gabor_rotation_invariance=input_params["filter_gabor_rotinv"],
+        gabor_orthogonal_planes=input_params["filter_gabor_ortho"],
+        parallel_backend=parallel_backend,
+    )
 
 
 class FilteringTab(BaseTab):
@@ -507,32 +406,27 @@ class FilteringTab(BaseTab):
             CustomWarningBox(str(e)).response()
             return
 
-        # Get patient folders
-        list_of_patient_folders = self.get_patient_folders()
-
-        # Process each patient folder
         if IS_FROZEN:
             backend_hint = "threads"
             self.logger.info("Frozen state. Set backend_hint to threads")
         else:
             backend_hint = "processes"
             self.logger.info("Not frozen state. Set backend_hint to processes")
+
+        batch_filter = create_batch_filter_from_input_params(self.input_params, backend_hint)
+        try:
+            list_of_patient_folders = batch_filter.plan()
+        except InvalidInputParametersError as e:
+            self.logger.error(e)
+            CustomWarningBox(str(e)).response()
+            return
+
         if list_of_patient_folders:
             progress_dialog = ProcessingProgressDialog("Filtering Progress", len(list_of_patient_folders), self)
             progress_dialog.start()
-            n_jobs = self.input_params["number_of_threads"]
 
             def work(progress_callback):
-                if n_jobs == 1:
-                    for patient_folder in list_of_patient_folders:
-                        process_patient_folder(self.input_params, patient_folder)
-                        progress_callback(1)
-                else:
-                    with joblib_progress(progress_callback=progress_callback):
-                        Parallel(n_jobs=n_jobs, prefer=backend_hint)(
-                            delayed(process_patient_folder)(self.input_params, patient_folder)
-                            for patient_folder in list_of_patient_folders
-                        )
+                return batch_filter.run(progress_callback=progress_callback)
 
             worker = ProcessingWorker(work)
             thread = QThread(self)
@@ -546,7 +440,14 @@ class FilteringTab(BaseTab):
 
             def handle_finished(_result):
                 cleanup()
-                self.logger.info("Filtering finished!")
+                self.logger.info(
+                    "Filtering finished! Processed: %s, skipped: %s, failed: %s",
+                    _result.processed_count,
+                    _result.skipped_count,
+                    _result.failed_count,
+                )
+                for case_result in _result.errors:
+                    self.logger.error("%s: %s", case_result.case_name, case_result.error)
                 CustomInfoBox("Filtering finished!").response()
 
             def handle_error(exc):

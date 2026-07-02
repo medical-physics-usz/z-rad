@@ -20,7 +20,8 @@ Run The Release Executable
 The simplest way to run the GUI is to start the executable attached to each
 release.
 
-On Windows, use the ``z-rad.exe`` asset distributed with the release package.
+On Windows, use the versioned ``z-rad-<release-tag>.exe`` asset distributed
+with the release package.
 
 Run From A Repository Checkout
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

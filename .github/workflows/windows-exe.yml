@@ -1,0 +1,43 @@
+---
+name: Build Windows executable
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows-exe:
+    name: Build and attach Windows executable
+    runs-on: windows-latest
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e . pyinstaller
+          python -m pip check
+
+      - name: Build executable
+        run: python generate_executable.py
+
+      - name: Attach executable to release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $assetName = "z-rad-${{ github.event.release.tag_name }}.exe"
+          if (-not (Test-Path "dist/z-rad.exe")) {
+            throw "Expected executable dist/z-rad.exe was not created."
+          }
+          Copy-Item "dist/z-rad.exe" "dist/$assetName"
+          gh release upload "${{ github.event.release.tag_name }}" "dist/$assetName" --clobber

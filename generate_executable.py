@@ -24,6 +24,7 @@ PyInstaller.__main__.run(
     [
         'main.py',
         '--onefile',
+        '--name=z-rad',
         f'--icon={icon_path}',
         f'--add-data=docs/logos/icon.ico{add_data_sep}docs/logos',
         f'--add-data=docs/logos/USZLogo.png{add_data_sep}docs/logos',

@@ -30,7 +30,9 @@ def get_runtime_data_dir():
 
 
 def get_config_path():
-    return get_runtime_data_dir() / "config.json"
+    config_path = get_runtime_data_dir() / "config.json"
+    config_path.parent.mkdir(parents=True, exist_ok=True)
+    return config_path
 
 
 def get_logs_dir():

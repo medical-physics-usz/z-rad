@@ -25,6 +25,17 @@ def test_runtime_data_dir_uses_macos_app_support_when_frozen(monkeypatch, tmp_pa
     assert toolbox_logic.get_logs_dir() == app_support_dir / "logs"
 
 
+def test_config_path_creates_parent_directory_for_frozen_macos_first_launch(monkeypatch, tmp_path):
+    monkeypatch.setattr(sys, "frozen", True, raising=False)
+    monkeypatch.setattr(sys, "platform", "darwin")
+    monkeypatch.setattr(Path, "home", classmethod(lambda cls: tmp_path))
+
+    config_path = toolbox_logic.get_config_path()
+
+    assert config_path == tmp_path / "Library" / "Application Support" / "Z-Rad" / "config.json"
+    assert config_path.parent.is_dir()
+
+
 def test_logger_creates_log_file_under_frozen_macos_app_support(monkeypatch, tmp_path):
     monkeypatch.setattr(sys, "frozen", True, raising=False)
     monkeypatch.setattr(sys, "platform", "darwin")

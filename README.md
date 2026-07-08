@@ -80,8 +80,13 @@ and neighbouring gray level dependance matrix (NGLDM) features families.
 
 ## Installation and Get Started
 
-### Windows executable file:
-The simplest way to run Z-Rad on Windows is to start the versioned `z-rad-<release-tag>.exe` attached to every Z-Rad release.
+### Release executable files
+The simplest way to run Z-Rad is to start the platform-specific asset attached to every Z-Rad release.
+
+- Windows: download and run `z-rad-<release-tag>-windows.exe`.
+- Apple Silicon macOS: download `z-rad-<release-tag>-macos-arm64.zip`, extract it, and start `Z-Rad.app`.
+
+The macOS release app is currently unsigned and unnotarized. macOS may show a Gatekeeper warning when opening it.
 
 ### Windows, Linux, and macOS
 For users familiar with Python programming language, we recommend Python 3.11 or newer:

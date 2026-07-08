@@ -1,45 +1,81 @@
-import os
 import sys
+from pathlib import Path
 
 import pydicom
-import PyInstaller.__main__
 
-# Detect platform
-is_windows = sys.platform.startswith('win')
-is_mac = sys.platform.startswith('darwin')
+HIDDEN_IMPORTS = [
+    'pydicom.pixels.decoders.gdcm',
+    'pydicom.pixels.decoders.pylibjpeg',
+    'pydicom.pixels.decoders.pillow',
+    'pydicom.pixels.decoders.pyjpegls',
+    'pydicom.pixels.decoders.rle',
+    'pydicom.pixels.encoders.gdcm',
+    'pydicom.pixels.encoders.pylibjpeg',
+    'pydicom.pixels.encoders.native',
+    'pydicom.pixels.encoders.pyjpegls',
+]
 
-# Choose icon format based on OS
-icon_path = 'docs/logos/icon.icns' if is_mac else 'docs/logos/icon.ico'
+LOGO_DATA_FILES = [
+    ('docs/logos/icon.ico', 'docs/logos'),
+    ('docs/logos/USZLogo.png', 'docs/logos'),
+    ('docs/logos/ZRadLogo.jpg', 'docs/logos'),
+]
 
-# Choose add-data separator based on OS
-add_data_sep = ';' if is_windows else ':'
+PROJECT_ROOT = Path(__file__).resolve().parent
 
-# Get the path to the pydicom data directory
-pydicom_data_dir = os.path.join(os.path.dirname(pydicom.__file__), 'data')
 
-# Print pydicom data directory for verification
-print(f"Pydicom data directory: {pydicom_data_dir}")
+def _add_data_arg(source: str | Path, destination: str, separator: str) -> str:
+    return f'--add-data={source}{separator}{destination}'
 
-PyInstaller.__main__.run(
-    [
+
+def build_pyinstaller_args(platform: str = sys.platform) -> list[str]:
+    """Build PyInstaller arguments for the current release target."""
+    is_windows = platform.startswith('win')
+    is_macos = platform == 'darwin'
+    add_data_sep = ';' if is_windows else ':'
+    pydicom_data_dir = Path(pydicom.__file__).parent / 'data'
+
+    args = [
         'main.py',
-        '--onefile',
-        '--name=z-rad',
-        f'--icon={icon_path}',
-        f'--add-data=docs/logos/icon.ico{add_data_sep}docs/logos',
-        f'--add-data=docs/logos/USZLogo.png{add_data_sep}docs/logos',
-        f'--add-data=docs/logos/ZRadLogo.jpg{add_data_sep}docs/logos',
-        f'--add-data={pydicom_data_dir}{add_data_sep}pydicom/data',
-        '--hidden-import=pydicom.pixels.decoders.gdcm',
-        '--hidden-import=pydicom.pixels.decoders.pylibjpeg',
-        '--hidden-import=pydicom.pixels.decoders.pillow',
-        '--hidden-import=pydicom.pixels.decoders.pyjpegls',
-        '--hidden-import=pydicom.pixels.decoders.rle',
-        '--hidden-import=pydicom.pixels.encoders.gdcm',
-        '--hidden-import=pydicom.pixels.encoders.pylibjpeg',
-        '--hidden-import=pydicom.pixels.encoders.native',
-        '--hidden-import=pydicom.pixels.encoders.pyjpegls',
-        '--log-level=DEBUG',
         '--clean',
+        '--noconfirm',
+        '--log-level=DEBUG',
+        '--specpath=build/pyinstaller',
     ]
-)
+
+    if is_macos:
+        args.extend(
+            [
+                '--windowed',
+                '--name=Z-Rad',
+                f'--icon={PROJECT_ROOT / "docs/logos/icon.icns"}',
+                '--osx-bundle-identifier=ch.usz.medphys.zrad',
+            ]
+        )
+    else:
+        args.extend(
+            [
+                '--onefile',
+                '--name=z-rad',
+                f'--icon={PROJECT_ROOT / "docs/logos/icon.ico"}',
+            ]
+        )
+
+    args.extend(
+        _add_data_arg(PROJECT_ROOT / source, destination, add_data_sep) for source, destination in LOGO_DATA_FILES
+    )
+    args.append(_add_data_arg(pydicom_data_dir, 'pydicom/data', add_data_sep))
+    args.extend(f'--hidden-import={hidden_import}' for hidden_import in HIDDEN_IMPORTS)
+    return args
+
+
+def main() -> None:
+    import PyInstaller.__main__
+
+    pydicom_data_dir = Path(pydicom.__file__).parent / 'data'
+    print(f'Pydicom data directory: {pydicom_data_dir}')
+    PyInstaller.__main__.run(build_pyinstaller_args())
+
+
+if __name__ == '__main__':
+    main()

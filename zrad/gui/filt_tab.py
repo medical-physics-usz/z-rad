@@ -1,6 +1,5 @@
 import json
 import logging
-import os
 import sys
 from datetime import datetime
 
@@ -8,7 +7,7 @@ from PyQt5.QtCore import QThread
 
 from ..batch import BatchFilter
 from ..exceptions import InvalidInputParametersError
-from ..toolbox_logic import close_all_loggers, get_logger
+from ..toolbox_logic import close_all_loggers, get_config_path, get_logger
 from ._base_tab import BaseTab
 from .toolbox_gui import (
     CustomBox,
@@ -474,7 +473,7 @@ class FilteringTab(BaseTab):
         """
         self.get_input_parameters()
         data = {'filtering_' + key: value for key, value in self.input_params.items()}
-        file_path = os.path.join(os.getcwd(), 'config.json')
+        file_path = get_config_path()
 
         # Attempt to read the existing data from the file
         try:
@@ -491,7 +490,7 @@ class FilteringTab(BaseTab):
             json.dump(existing_data, file, indent=4)
 
     def load_settings(self):
-        file_path = os.path.join(os.getcwd(), 'config.json')
+        file_path = get_config_path()
         try:
             with open(file_path, 'r') as file:
                 data = json.load(file)

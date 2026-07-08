@@ -62,6 +62,13 @@ def normalize_common_batch_options(batch) -> None:
         raise InvalidInputParametersError("parallel_backend must be 'processes' or 'threads'.")
 
 
+def joblib_parallel_kwargs(n_jobs: int, parallel_backend: str) -> dict[str, int | str]:
+    kwargs = {'n_jobs': n_jobs, 'prefer': parallel_backend}
+    if parallel_backend == 'threads':
+        kwargs['require'] = 'sharedmem'
+    return kwargs
+
+
 def resolve_patient_folders(input_directory: Path, patient_folders, start_folder, stop_folder) -> list[str]:
     if start_folder and stop_folder:
         try:

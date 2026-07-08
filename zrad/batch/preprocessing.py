@@ -12,6 +12,7 @@ from ..io import get_all_structure_names, get_dicom_files
 from ..preprocessing import ImageResampler, MaskResampler
 from ._utils import (
     find_nifti_file,
+    joblib_parallel_kwargs,
     joblib_progress,
     normalize_common_batch_options,
     normalize_names,
@@ -239,7 +240,7 @@ class BatchPreprocessor:
                     progress_callback(1)
         else:
             with joblib_progress(progress_callback):
-                case_results = Parallel(n_jobs=self.number_of_threads, prefer=self.parallel_backend)(
+                case_results = Parallel(**joblib_parallel_kwargs(self.number_of_threads, self.parallel_backend))(
                     delayed(self._process_case)(patient_folder) for patient_folder in patient_folders
                 )
 

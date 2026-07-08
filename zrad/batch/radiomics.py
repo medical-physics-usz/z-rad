@@ -14,6 +14,7 @@ from ..preprocessing import IntensityMaskBuilder, Resegmenter, RoiData, TextureD
 from ..radiomics import Radiomics
 from ._utils import (
     find_nifti_file,
+    joblib_parallel_kwargs,
     joblib_progress,
     normalize_common_batch_options,
     normalize_names,
@@ -258,7 +259,7 @@ class BatchRadiomicsExtractor:
                     progress_callback(1)
         else:
             with joblib_progress(progress_callback):
-                processed = Parallel(n_jobs=self.number_of_threads, prefer=self.parallel_backend)(
+                processed = Parallel(**joblib_parallel_kwargs(self.number_of_threads, self.parallel_backend))(
                     delayed(self._process_case)(patient_folder) for patient_folder in patient_folders
                 )
 

@@ -161,10 +161,10 @@ For DICOM workflows, the ``Data Type`` selection ``(8)`` exposes the following
 controls:
 
 ``(8.1)`` ``Structures``
-   Enter the names of structures defined in RTSTRUCT files that should be extracted and processed.
+   Enter the ROI names from RTSTRUCT files or ``SegmentLabel`` values from DICOM SEG files that should be extracted and processed.
 
 ``(8.2)`` ``All structures``
-   Process every non-empty structure available in the RTSTRUCT file.
+   Process every non-empty structure available in the RTSTRUCT or SEG file.
 
 ``(8.3)`` ``Convert to NIfTI without resampling``
    Export the DICOM image and selected structures as NIfTI files without

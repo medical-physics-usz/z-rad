@@ -34,8 +34,11 @@ def read_dicom_image(dicom_dir, modality):
     return image
 
 
-def read_dicom_mask(rtstruct_path, structure_name, reference_image):
-    """Read an RTSTRUCT mask as an Image aligned to a reference SimpleITK image."""
+def read_dicom_mask(rtstruct_path, structure_name, reference_image, dicom_dir=None):
+    """Read an RTSTRUCT or DICOM SEG mask aligned to a reference image."""
+    dicom_data = pydicom.dcmread(rtstruct_path, stop_before_pixels=True)
+    if getattr(dicom_data, "Modality", None) == "SEG":
+        return extract_dicom_seg_mask(rtstruct_path, structure_name, reference_image, dicom_dir)
     return extract_dicom_mask(rtstruct_path, structure_name, reference_image)
 
 
@@ -218,6 +221,7 @@ def modality_mapping(modality):
         "CT": "CT",
         "MRI": "MR",
         "RTSTRUCT": "RTSTRUCT",
+        "SEG": "SEG",
         "US": "US",
         "MG": "MG",
         "RTDOSE": "RTDOSE",
@@ -392,9 +396,124 @@ def extract_dicom_mask(rtstruct_path, roi_name, image):
     return Image()
 
 
+def _segment_labels(dicom_data):
+    """Return a SegmentNumber-to-SegmentLabel mapping for a DICOM SEG."""
+    if not hasattr(dicom_data, "SegmentSequence"):
+        raise InvalidDicomError("The DICOM file does not contain a SegmentSequence.")
+    return {
+        int(segment.SegmentNumber): str(getattr(segment, "SegmentLabel", "unknown"))
+        for segment in dicom_data.SegmentSequence
+    }
+
+
+def _source_uid_to_slice(dicom_dir, image):
+    """Map source SOP Instance UIDs to z indices on the reference grid."""
+    uid_to_slice = {}
+    if not dicom_dir:
+        return uid_to_slice
+    for filename in (os.path.join(dicom_dir, name) for name in os.listdir(dicom_dir)):
+        if not os.path.isfile(filename):
+            continue
+        try:
+            source = pydicom.dcmread(filename, stop_before_pixels=True)
+            if not hasattr(source, "SOPInstanceUID") or not hasattr(source, "ImagePositionPatient"):
+                continue
+            index = image.TransformPhysicalPointToContinuousIndex(tuple(map(float, source.ImagePositionPatient)))
+            uid_to_slice[str(source.SOPInstanceUID)] = int(np.rint(index[2]))
+        except (InvalidDicomError, AttributeError, ValueError, RuntimeError):
+            continue
+    return uid_to_slice
+
+
+def _seg_frame_z_index(functional_group, uid_to_slice, image):
+    referenced_uid = None
+    try:
+        referenced_uid = str(
+            functional_group.DerivationImageSequence[0]
+            .SourceImageSequence[0]
+            .ReferencedSOPInstanceUID
+        )
+        if referenced_uid in uid_to_slice:
+            return uid_to_slice[referenced_uid], None
+    except (AttributeError, IndexError):
+        pass
+
+    try:
+        position = tuple(map(float, functional_group.PlanePositionSequence[0].ImagePositionPatient))
+        index = image.TransformPhysicalPointToContinuousIndex(position)
+        return int(np.rint(index[2])), None
+    except (AttributeError, IndexError, ValueError, RuntimeError) as exc:
+        if referenced_uid is not None:
+            return None, referenced_uid
+        raise DataStructureError("SEG frame has neither a usable source-image UID nor image position.") from exc
+
+
+def extract_dicom_seg_mask(seg_path, segment_name, image, dicom_dir=None):
+    """Extract one named segment from a DICOM SEG onto ``image``'s grid."""
+    from ..image import Image
+
+    seg = pydicom.dcmread(seg_path)
+    labels = _segment_labels(seg)
+    matching_numbers = {number for number, label in labels.items() if label == segment_name}
+    if not matching_numbers:
+        return Image()
+
+    frames = np.asarray(seg.pixel_array)
+    if frames.ndim == 2:
+        frames = frames[np.newaxis, ...]
+    width, height, depth = image.GetSize()
+    if frames.shape[1:] != (height, width):
+        raise DataStructureError(
+            f"SEG frame dimensions do not match the image dimensions: SEG={frames.shape[1:]}, "
+            f"image={(height, width)}."
+        )
+    groups = getattr(seg, "PerFrameFunctionalGroupsSequence", None)
+    if groups is None or len(groups) != len(frames):
+        raise DataStructureError("SEG PerFrameFunctionalGroupsSequence does not match its pixel frames.")
+
+    uid_to_slice = _source_uid_to_slice(dicom_dir, image)
+    volume = np.zeros((depth, height, width), dtype=np.uint8)
+    missing_uids = set()
+    for frame, group in zip(frames, groups):
+        try:
+            segment_number = int(group.SegmentIdentificationSequence[0].ReferencedSegmentNumber)
+        except (AttributeError, IndexError, TypeError, ValueError) as exc:
+            raise DataStructureError("SEG frame does not identify its referenced segment.") from exc
+        if segment_number not in matching_numbers:
+            continue
+        z_index, missing_uid = _seg_frame_z_index(group, uid_to_slice, image)
+        if missing_uid is not None:
+            missing_uids.add(missing_uid)
+            continue
+        if z_index < 0 or z_index >= depth:
+            continue
+        volume[z_index] = np.maximum(volume[z_index], (frame > 0).astype(np.uint8))
+
+    if missing_uids:
+        raise DataStructureError(
+            f"{len(missing_uids)} referenced SEG source image(s) were not found in the selected DICOM series."
+        )
+    if not np.any(volume):
+        warnings.warn(
+            f"DICOM SEG segment '{segment_name}' has no overlap with the target image field of view. Segment skipped.",
+            DataStructureWarning,
+        )
+        return Image()
+    return Image(
+        array=volume,
+        origin=image.GetOrigin(),
+        spacing=np.array(image.GetSpacing()),
+        direction=image.GetDirection(),
+        shape=image.GetSize(),
+    )
+
+
 def get_all_structure_names(rtstruct_path):
-    """Extract all structure names from an RTSTRUCT DICOM file."""
+    """Extract all structure names from an RTSTRUCT or DICOM SEG file."""
     dicom_data = pydicom.dcmread(rtstruct_path)
+
+    if getattr(dicom_data, "Modality", None) == "SEG":
+        return list(_segment_labels(dicom_data).values())
 
     if not hasattr(dicom_data, "StructureSetROISequence"):
         raise InvalidDicomError(f"The DICOM file at {rtstruct_path} is not a valid RTSTRUCT file.")

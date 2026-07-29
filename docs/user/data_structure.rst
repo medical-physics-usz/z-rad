@@ -62,7 +62,7 @@ DICOM Folder Contents
 For DICOM workflows, each case folder should contain:
 
 * exactly one image series for the selected modality
-* zero or one RTSTRUCT file when ROI-based processing is required
+* zero or one RTSTRUCT or DICOM SEG file when ROI-based processing is required
 
 In practice, a DICOM case folder is expected to look like this:
 
@@ -78,10 +78,13 @@ In practice, a DICOM case folder is expected to look like this:
 Notes:
 
 * Z-Rad reads the image series directly from the case folder.
-* For preprocessing, if multiple RTSTRUCT files are present, the first detected
-  file is used.
+* If both RTSTRUCT and SEG objects are present, the first detected RTSTRUCT is
+  used; otherwise, the first detected SEG is used.
+* SEG objects use ``SegmentLabel`` as the structure name. Selected segments are
+  aligned to the source image series using referenced SOP Instance UIDs (with
+  per-frame image position as a fallback).
 * For radiomics extraction, ROI-based DICOM workflows assume that an RTSTRUCT
-  file is available in the case folder.
+  or SEG file is available in the case folder.
 
 NIfTI Folder Contents
 ---------------------

@@ -39,7 +39,9 @@ def process_patient_folder(input_params, patient_folder, structure_set):
 
     if local_params["input_data_type"] == "dicom":
         input_directory = os.path.join(local_params["input_directory"], patient_folder)
-        rtstruct_paths = get_dicom_files(input_directory, modality="RTSTRUCT")
+        rtstruct_paths = get_dicom_files(input_directory, modality="RTSTRUCT") or get_dicom_files(
+            input_directory, modality="SEG"
+        )
 
         if rtstruct_paths:
             local_params["rtstruct_path"] = rtstruct_paths[0]["file_path"]
@@ -49,7 +51,8 @@ def process_patient_folder(input_params, patient_folder, structure_set):
             local_params["rtstruct_path"] = None
             if current_structure_set or local_params["use_all_structures"]:
                 logger.warning(
-                    f"Patient {patient_folder} has no RTSTRUCT file. Skipping structure/mask loading for this patient."
+                    f"Patient {patient_folder} has no RTSTRUCT or SEG file. "
+                    "Skipping structure/mask loading for this patient."
                 )
             current_structure_set = []
 

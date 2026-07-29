@@ -96,8 +96,8 @@ class Image:
         return cls._from_sitk_image(dicom.read_dicom_image(dicom_dir, modality))
 
     @classmethod
-    def from_dicom_mask(cls, rtstruct_path, structure_name, reference):
-        """Create a DICOM RTSTRUCT mask aligned to a reference image.
+    def from_dicom_mask(cls, rtstruct_path, structure_name, reference, dicom_dir=None):
+        """Create a DICOM RTSTRUCT or SEG mask aligned to a reference image.
 
         Parameters
         ----------
@@ -113,7 +113,7 @@ class Image:
         mask : Image
             Binary mask image aligned to the reference geometry.
         """
-        return dicom.read_dicom_mask(rtstruct_path, structure_name, reference.sitk_image)
+        return dicom.read_dicom_mask(rtstruct_path, structure_name, reference.sitk_image, dicom_dir=dicom_dir)
 
     @classmethod
     def _from_sitk_image(cls, image):

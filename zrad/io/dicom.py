@@ -429,9 +429,7 @@ def _seg_frame_z_index(functional_group, uid_to_slice, image):
     referenced_uid = None
     try:
         referenced_uid = str(
-            functional_group.DerivationImageSequence[0]
-            .SourceImageSequence[0]
-            .ReferencedSOPInstanceUID
+            functional_group.DerivationImageSequence[0].SourceImageSequence[0].ReferencedSOPInstanceUID
         )
         if referenced_uid in uid_to_slice:
             return uid_to_slice[referenced_uid], None
@@ -464,8 +462,7 @@ def extract_dicom_seg_mask(seg_path, segment_name, image, dicom_dir=None):
     width, height, depth = image.GetSize()
     if frames.shape[1:] != (height, width):
         raise DataStructureError(
-            f"SEG frame dimensions do not match the image dimensions: SEG={frames.shape[1:]}, "
-            f"image={(height, width)}."
+            f"SEG frame dimensions do not match the image dimensions: SEG={frames.shape[1:]}, image={(height, width)}."
         )
     groups = getattr(seg, "PerFrameFunctionalGroupsSequence", None)
     if groups is None or len(groups) != len(frames):

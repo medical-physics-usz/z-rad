@@ -437,7 +437,14 @@ def _seg_frame_z_index(functional_group, uid_to_slice, image):
         pass
 
     try:
-        position = tuple(map(float, functional_group.PlanePositionSequence[0].ImagePositionPatient))
+        plane_positions = getattr(functional_group, "PlanePositionSequence", None)
+        if plane_positions:
+            position = plane_positions[0].ImagePositionPatient
+        else:
+            # Some producers put Image Position (Patient) directly in the
+            # per-frame item instead of wrapping it in Plane Position Sequence.
+            position = functional_group.ImagePositionPatient
+        position = tuple(map(float, position))
         index = image.TransformPhysicalPointToContinuousIndex(position)
         return int(np.rint(index[2])), None
     except (AttributeError, IndexError, ValueError, RuntimeError) as exc:
@@ -455,6 +462,14 @@ def extract_dicom_seg_mask(seg_path, segment_name, image, dicom_dir=None):
     matching_numbers = {number for number, label in labels.items() if label == segment_name}
     if not matching_numbers:
         return Image()
+
+    raw_segmentation_type = getattr(seg, "SegmentationType", None)
+    segmentation_type = str(raw_segmentation_type).strip().upper() if raw_segmentation_type is not None else ""
+    if segmentation_type != "BINARY":
+        displayed_type = segmentation_type or "missing"
+        raise DataStructureError(
+            f"Unsupported DICOM SEG SegmentationType '{displayed_type}'. Only BINARY segmentations are supported."
+        )
 
     frames = np.asarray(seg.pixel_array)
     if frames.ndim == 2:

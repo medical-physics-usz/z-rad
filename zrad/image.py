@@ -180,8 +180,11 @@ class Image:
         resampler = sitk.ResampleImageFilter()
         resampler.SetReferenceImage(target_image)
         resampler.SetInterpolator(interpolator)
-        resampler.SetOutputPixelType(moving_image.GetPixelID())
-        resampler.SetDefaultPixelValue(float(np.min(self.array)))
+        output_pixel_type = moving_image.GetPixelID()
+        if interpolator != sitk.sitkNearestNeighbor:
+            output_pixel_type = sitk.sitkFloat64
+        resampler.SetOutputPixelType(output_pixel_type)
+        resampler.SetDefaultPixelValue(float(np.nanmin(self.array)))
 
         return self._from_sitk_image(resampler.Execute(moving_image))
 

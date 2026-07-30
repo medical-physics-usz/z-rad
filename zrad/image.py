@@ -144,6 +144,47 @@ class Image:
             shape=copy.deepcopy(self.shape),
         )
 
+    def resample_to_target(self, target, interpolator=sitk.sitkLinear):
+        """Resample this image onto the physical grid of another image.
+
+        Values outside this image's physical extent are filled with its minimum
+        intensity. The returned image has the target's origin, spacing,
+        direction, and shape; neither input image is modified.
+
+        Parameters
+        ----------
+        target : Image
+            Image whose physical grid defines the resampling output.
+        interpolator : int, optional
+            SimpleITK interpolator enum, such as ``sitk.sitkLinear`` or
+            ``sitk.sitkNearestNeighbor``. The default is linear interpolation.
+
+        Returns
+        -------
+        image : Image
+            A new image containing this image resampled onto ``target``.
+        """
+        if not isinstance(target, Image):
+            raise TypeError(f"Expected target to be Image, got {type(target)}.")
+
+        moving_image = sitk.GetImageFromArray(self.array)
+        moving_image.SetOrigin(self.origin)
+        moving_image.SetSpacing(self.spacing)
+        moving_image.SetDirection(self.direction)
+
+        target_image = sitk.GetImageFromArray(target.array)
+        target_image.SetOrigin(target.origin)
+        target_image.SetSpacing(target.spacing)
+        target_image.SetDirection(target.direction)
+
+        resampler = sitk.ResampleImageFilter()
+        resampler.SetReferenceImage(target_image)
+        resampler.SetInterpolator(interpolator)
+        resampler.SetOutputPixelType(moving_image.GetPixelID())
+        resampler.SetDefaultPixelValue(float(np.min(self.array)))
+
+        return self._from_sitk_image(resampler.Execute(moving_image))
+
     def save_as_nifti(self, output_path):
         """Write the image to a NIfTI file.
 

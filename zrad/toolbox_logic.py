@@ -5,9 +5,38 @@ import os
 import sys
 import time
 import urllib.request
+from pathlib import Path
 
 import joblib
 import numpy as np
+
+APP_NAME = "Z-Rad"
+
+
+def get_runtime_data_dir():
+    """Return the writable directory for GUI runtime files."""
+    if not getattr(sys, "frozen", False):
+        return Path(os.getcwd())
+
+    if sys.platform == "darwin":
+        return Path.home() / "Library" / "Application Support" / APP_NAME
+
+    if sys.platform.startswith("win"):
+        app_data_root = os.environ.get("LOCALAPPDATA") or os.environ.get("APPDATA")
+        if app_data_root:
+            return Path(app_data_root) / APP_NAME
+
+    return Path.home() / f".{APP_NAME.lower().replace('-', '')}"
+
+
+def get_config_path():
+    config_path = get_runtime_data_dir() / "config.json"
+    config_path.parent.mkdir(parents=True, exist_ok=True)
+    return config_path
+
+
+def get_logs_dir():
+    return get_runtime_data_dir() / "logs"
 
 
 def get_bounding_box(arr):
@@ -56,11 +85,11 @@ def get_logger(logger_date_time):
 
     if not logger.handlers:
         # Ensure the logs directory exists
-        logs_path = os.path.join(os.getcwd(), 'logs')
-        os.makedirs(logs_path, exist_ok=True)
+        logs_path = get_logs_dir()
+        logs_path.mkdir(parents=True, exist_ok=True)
 
         # File handler with UTF-8 encoding
-        file_handler = logging.FileHandler(os.path.join(logs_path, f'{logger_date_time}.log'), encoding='utf-8')
+        file_handler = logging.FileHandler(logs_path / f'{logger_date_time}.log', encoding='utf-8')
         formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
         file_handler.setFormatter(formatter)
         file_handler.setLevel(logging.DEBUG)

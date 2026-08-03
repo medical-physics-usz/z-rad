@@ -20,8 +20,15 @@ Run The Release Executable
 The simplest way to run the GUI is to start the executable attached to each
 release.
 
-On Windows, use the versioned ``z-rad-<release-tag>.exe`` asset distributed
-with the release package.
+Use the platform-specific release asset:
+
+* On Windows, download and run ``z-rad-<release-tag>-windows.exe``.
+* On Apple Silicon macOS, download ``z-rad-<release-tag>-macos-arm64.zip``,
+  extract it, and start ``Z-Rad.app``.
+
+The macOS release app is currently unsigned and unnotarized. macOS may show a
+Gatekeeper warning when opening it. Intel macOS release binaries are not
+provided; Intel Mac users should run Z-Rad from a Python environment.
 
 Run From A Repository Checkout
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

@@ -35,3 +35,17 @@ Publishing
 Publishing to PyPI is maintainer-focused. The publish workflow runs when a
 GitHub release is published. It builds the package and uploads the distribution
 artifacts with Twine.
+
+Release Executables
+-------------------
+
+The release executable workflow runs when a GitHub release is published. It
+builds native PyInstaller artifacts on each target runner and uploads them to
+the release:
+
+* ``windows-latest`` builds ``z-rad-<release-tag>-windows.exe``.
+* ``macos-latest`` builds the Apple Silicon ``Z-Rad.app`` bundle and uploads
+  ``z-rad-<release-tag>-macos-arm64.zip``.
+
+The macOS app is currently unsigned and unnotarized. Signing and notarization
+should be added only after Apple Developer credentials are available in CI.

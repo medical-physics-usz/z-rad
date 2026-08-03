@@ -16,8 +16,9 @@ Start the GUI from the repository root:
 
    python main.py
 
-On Windows, you can also start the packaged executable attached to each
-release.
+On Windows and Apple Silicon macOS, you can also start the packaged release
+asset attached to each release. The macOS release app is unsigned and
+unnotarized, so macOS may show a Gatekeeper warning when opening it.
 
 The application opens three main tabs:
 

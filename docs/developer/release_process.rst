@@ -56,7 +56,19 @@ rather than ``26.05.0``. Python packaging normalizes leading zeroes away, so
 storing the normalized form avoids ambiguity.
 
 Executable generation
------------------------
+---------------------
 
-Executable-generation policies will be documented here once those processes are defined in the
-repository workflow.
+The release executable workflow is defined in
+``.github/workflows/release-executables.yml``. When a GitHub release is
+published, GitHub Actions builds and attaches:
+
+* ``z-rad-<release-tag>-windows.exe`` from ``windows-latest``
+* ``z-rad-<release-tag>-macos-arm64.zip`` from ``macos-latest``
+
+Both artifacts are generated with ``generate_executable.py`` and PyInstaller.
+The macOS asset contains an Apple Silicon ``Z-Rad.app`` bundle compressed with
+``ditto --keepParent``. Intel macOS binaries are not produced.
+
+The macOS app is currently unsigned and unnotarized, so Gatekeeper warnings are
+expected. Once Apple Developer credentials are available, signing and
+notarization should be added to the macOS release job before upload.

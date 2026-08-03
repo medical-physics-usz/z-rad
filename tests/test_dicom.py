@@ -1,3 +1,5 @@
+from types import SimpleNamespace
+
 import numpy as np
 import pydicom
 import pytest
@@ -7,7 +9,7 @@ from pydicom.sequence import Sequence
 from pydicom.uid import ExplicitVRLittleEndian, generate_uid
 
 import zrad.io.dicom as dicom
-from zrad.exceptions import DataStructureWarning
+from zrad.exceptions import DataStructureError, DataStructureWarning
 
 
 def _make_sitk_image(size=(5, 5, 3)):
@@ -151,3 +153,77 @@ def test_extract_dicom_mask_returns_empty_image_when_roi_has_no_target_fov_overl
         mask = dicom.extract_dicom_mask(rtstruct_path, "GTV", image)
 
     assert mask.array is None
+
+
+@pytest.mark.unit
+def test_dicom_seg_selects_segment_by_label_and_places_frames(monkeypatch):
+    segment = SimpleNamespace(SegmentNumber=2, SegmentLabel="Tumor lesions")
+    other_segment = SimpleNamespace(SegmentNumber=1, SegmentLabel="Background")
+    group = SimpleNamespace(
+        SegmentIdentificationSequence=[SimpleNamespace(ReferencedSegmentNumber=2)],
+        PlanePositionSequence=[SimpleNamespace(ImagePositionPatient=[0.0, 0.0, 1.0])],
+    )
+    seg = SimpleNamespace(
+        Modality="SEG",
+        SegmentationType="BINARY",
+        SegmentSequence=[other_segment, segment],
+        PerFrameFunctionalGroupsSequence=[group],
+        pixel_array=np.array([[[0, 1, 0, 0, 0]] * 5], dtype=np.uint8),
+    )
+    monkeypatch.setattr(pydicom, "dcmread", lambda *_args, **_kwargs: seg)
+
+    mask = dicom.read_dicom_mask("seg.dcm", "Tumor lesions", _make_sitk_image())
+
+    assert mask.array.shape == (3, 5, 5)
+    assert mask.array[1, 0, 1] == 1
+    assert np.count_nonzero(mask.array[0]) == 0
+
+
+@pytest.mark.unit
+def test_dicom_seg_accepts_image_position_directly_in_per_frame_group(monkeypatch):
+    group = SimpleNamespace(
+        SegmentIdentificationSequence=[SimpleNamespace(ReferencedSegmentNumber=1)],
+        ImagePositionPatient=[0.0, 0.0, 2.0],
+    )
+    seg = SimpleNamespace(
+        Modality="SEG",
+        SegmentationType="BINARY",
+        SegmentSequence=[SimpleNamespace(SegmentNumber=1, SegmentLabel="Tumor")],
+        PerFrameFunctionalGroupsSequence=[group],
+        pixel_array=np.array([[[1, 0, 0, 0, 0]] * 5], dtype=np.uint8),
+    )
+    monkeypatch.setattr(pydicom, "dcmread", lambda *_args, **_kwargs: seg)
+
+    mask = dicom.read_dicom_mask("seg.dcm", "Tumor", _make_sitk_image())
+
+    assert mask.array.shape == (3, 5, 5)
+    assert mask.array[2, 0, 0] == 1
+    assert np.count_nonzero(mask.array[:2]) == 0
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("segmentation_type", ["FRACTIONAL", "LABELMAP", None])
+def test_dicom_seg_rejects_non_binary_segmentation_types(monkeypatch, segmentation_type):
+    seg = SimpleNamespace(
+        Modality="SEG",
+        SegmentSequence=[SimpleNamespace(SegmentNumber=1, SegmentLabel="Tumor")],
+        SegmentationType=segmentation_type,
+    )
+    monkeypatch.setattr(pydicom, "dcmread", lambda *_args, **_kwargs: seg)
+
+    with pytest.raises(DataStructureError, match="Only BINARY segmentations are supported"):
+        dicom.read_dicom_mask("seg.dcm", "Tumor", _make_sitk_image())
+
+
+@pytest.mark.unit
+def test_get_all_structure_names_supports_dicom_seg(monkeypatch):
+    seg = SimpleNamespace(
+        Modality="SEG",
+        SegmentSequence=[
+            SimpleNamespace(SegmentNumber=1, SegmentLabel="Tumor lesions"),
+            SimpleNamespace(SegmentNumber=2, SegmentLabel="Liver"),
+        ],
+    )
+    monkeypatch.setattr(pydicom, "dcmread", lambda *_args, **_kwargs: seg)
+
+    assert dicom.get_all_structure_names("seg.dcm") == ["Tumor lesions", "Liver"]

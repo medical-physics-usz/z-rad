@@ -28,6 +28,31 @@ The typical Python workflow is:
 6. Keep the exact preprocessing, filtering, and discretization settings next
    to the extracted features so the run remains reproducible.
 
+Resampling to an Existing Image Grid
+------------------------------------
+
+To align one ``Image`` directly to the complete physical grid of another
+``Image`` (rather than selecting a new voxel spacing), use
+``Image.resample_to_target``. The operation returns a new image, uses the
+moving image's minimum intensity outside its physical extent, and leaves both
+input images unchanged. Save the result separately when a NIfTI file is
+needed.
+
+.. code-block:: python
+
+   import SimpleITK as sitk
+
+   from zrad.image import Image
+
+   moving = Image.from_nifti("path/to/moving.nii.gz")
+   target = Image.from_nifti("path/to/target.nii.gz")
+
+   resampled = moving.resample_to_target(
+       target,
+       interpolator=sitk.sitkLinear,
+   )
+   resampled.save_as_nifti("path/to/resampled.nii.gz")
+
 Canonical Full Pipeline Example
 -------------------------------
 

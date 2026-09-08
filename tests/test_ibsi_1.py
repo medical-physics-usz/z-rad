@@ -27,6 +27,15 @@ def ibsi_i_validation(ibsi_features, features, config_a=False):
     for raw_tag, feature_info in ibsi_features.items():
         tag = str(raw_tag)
         if config_a and tag == 'ih_qcod':
+            # The zero-tolerance reference is published to four decimal places:
+            # configuration A gives (23 - 21) / (23 + 21) = 1/22, reported as 0.0455.
+            if tag not in features:
+                pytest.fail(f"Missing required feature {tag} for configuration A")
+            val = float(feature_info['reference value'])
+            if round(features[tag], 4) != val:
+                pytest.fail(
+                    f"Feature {tag} does not match reference at four decimal places: {features[tag]} != {val}"
+                )
             continue
 
         if tag in features:
@@ -39,6 +48,35 @@ def ibsi_i_validation(ibsi_features, features, config_a=False):
                 pytest.fail(
                     f"Feature {tag} out of tolerance: {features[tag]} not in range ({lower_boundary}, {upper_boundary})"
                 )
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize('value', [1 / 22, 0.0455])
+def test_config_a_qcod_matches_published_precision(value):
+    reference = {'ih_qcod': ibsi_i_feature_tolerances('config_A')['ih_qcod']}
+    ibsi_i_validation(reference, {'ih_qcod': value}, config_a=True)
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize('value', [0.0454, 0.0456, float('nan'), float('inf')])
+def test_config_a_qcod_rejects_mismatch(value):
+    reference = {'ih_qcod': ibsi_i_feature_tolerances('config_A')['ih_qcod']}
+    with pytest.raises(pytest.fail.Exception, match='four decimal places'):
+        ibsi_i_validation(reference, {'ih_qcod': value}, config_a=True)
+
+
+@pytest.mark.unit
+def test_config_a_qcod_requires_feature():
+    reference = {'ih_qcod': ibsi_i_feature_tolerances('config_A')['ih_qcod']}
+    with pytest.raises(pytest.fail.Exception, match='Missing required feature ih_qcod'):
+        ibsi_i_validation(reference, {}, config_a=True)
+
+
+@pytest.mark.unit
+def test_qcod_rounding_is_limited_to_config_a():
+    reference = {'ih_qcod': ibsi_i_feature_tolerances('config_A')['ih_qcod']}
+    with pytest.raises(pytest.fail.Exception, match='out of tolerance'):
+        ibsi_i_validation(reference, {'ih_qcod': 1 / 22})
 
 
 @pytest.fixture()

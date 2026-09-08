@@ -1222,7 +1222,7 @@ def _enhanced_administration_datetime(ds, reference_datetime, half_life, rph=Non
     minimum_offset_seconds = 0 if decay_corrected == "NO" else -3600
     offset_seconds = (reference_datetime - administration).total_seconds()
     if minimum_offset_seconds <= offset_seconds < 2 * half_life:
-        return administration
+        return reference_datetime, administration
 
     if half_life >= 41400:
         raise DataStructureError(
@@ -1240,7 +1240,7 @@ def _enhanced_administration_datetime(ds, reference_datetime, half_life, rph=Non
 
     reconstructed_offset_seconds = (reference_datetime - administration).total_seconds()
     if minimum_offset_seconds <= reconstructed_offset_seconds < 2 * half_life:
-        return administration
+        return reference_datetime, administration
     raise DataStructureError(
         "Radiopharmaceutical Start DateTime remains inconsistent with the decay-correction reference datetime "
         "after date reconstruction."
@@ -1332,7 +1332,13 @@ def _enhanced_frame_administration_context(ds, frame_index, half_life, rph):
 
     decay_constant = np.log(2) / half_life
     reference_datetime = _enhanced_decay_reference_datetime(ds, frame_index, decay_constant)
-    return _enhanced_administration_datetime(ds, reference_datetime, half_life, rph=rph)
+    _reference_datetime, administration_datetime = _enhanced_administration_datetime(
+        ds,
+        reference_datetime,
+        half_life,
+        rph=rph,
+    )
+    return administration_datetime
 
 
 def _coded_sequence_identity(item, sequence_keyword):
@@ -1426,7 +1432,7 @@ def _enhanced_bqml_to_suvbw_factor(ds, frame_index, context):
     half_life = administration["half_life"]
     decay_constant = np.log(2) / half_life
     reference_datetime = _enhanced_decay_reference_datetime(ds, frame_index, decay_constant)
-    administration_datetime = _enhanced_administration_datetime(
+    reference_datetime, administration_datetime = _enhanced_administration_datetime(
         ds,
         reference_datetime,
         half_life,

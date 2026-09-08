@@ -2,9 +2,10 @@ from datetime import datetime, timedelta, timezone
 
 import numpy as np
 import pytest
+from pydicom.dataset import Dataset
 
 from zrad.image import Image
-from zrad.io.pet_suv import parse_time
+from zrad.io.pet_suv import _enhanced_bqml_to_suvbw_factor, parse_time
 
 VALID_IBSI_SUV_DROS = (
     "DRO_0_0",
@@ -112,3 +113,35 @@ def test_parse_time_preserves_offsets_for_instant_comparison():
     reference = parse_time("20250330030000+0200")
 
     assert reference - injection == timedelta(minutes=30)
+
+
+@pytest.mark.parametrize(
+    ("reference", "administration", "dataset_offset", "elapsed_seconds"),
+    [
+        ("20250330030000+0200", "20250330013000+0100", None, 1800),
+        ("20250101110000", "20250101100000", "+0200", 3600),
+        ("20250101120000", "20250101103000+0100", "+0200", 1800),
+    ],
+)
+def test_enhanced_bqml_normalizes_reference_and_administration_timezones(
+    reference,
+    administration,
+    dataset_offset,
+    elapsed_seconds,
+):
+    ds = Dataset()
+    ds.SOPClassUID = "1.2.840.10008.5.1.4.1.1.130"
+    ds.DecayCorrected = "YES"
+    ds.DecayCorrectionDateTime = reference
+    if dataset_offset is not None:
+        ds.TimezoneOffsetFromUTC = dataset_offset
+    rph = Dataset()
+    rph.RadiopharmaceuticalStartDateTime = administration
+    context = {
+        "patient_weight": 50.0,
+        "administrations": [{"rph": rph, "injected_dose": 100000.0, "half_life": 3600.0}],
+    }
+
+    factor = _enhanced_bqml_to_suvbw_factor(ds, 0, context)
+
+    assert factor == pytest.approx(0.5 * 2 ** (elapsed_seconds / 3600.0))

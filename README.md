@@ -22,6 +22,18 @@
   <a href="#ibsi-validation-and-reproducibility">Validation</a>
 </p>
 
+## From images to a feature table
+
+```mermaid
+flowchart LR
+    A[Images + ROI masks] --> B[Preprocessing]
+    B --> C[Optional filtering]
+    C --> D[Feature extraction]
+    D --> E[Feature dictionary or CSV]
+```
+
+Use the same processing stages interactively through the desktop application or automate them with Python. See the [workflow guide](https://medical-physics-usz.github.io/z-rad/user/gui_workflows.html) for data preparation and processing choices.
+
 ## Full IBSI implementation coverage
 
 Z-Rad supports **all IBSI I preprocessing operations and radiomic features, and all IBSI II filters** defined by the Image Biomarker Standardisation Initiative (IBSI).
@@ -32,7 +44,7 @@ Z-Rad supports **all IBSI I preprocessing operations and radiomic features, and 
 | **IBSI I · Features** | All feature families, including morphology, local intensity, intensity statistics, histograms, intensity-volume histograms, and texture | [Feature guide](https://medical-physics-usz.github.io/z-rad/user/radiomics.html) |
 | **IBSI II · Filters** | All filters, including mean, LoG, Laws, Gabor, separable wavelets, Simoncelli, and Riesz transforms | [Filtering guide](https://medical-physics-usz.github.io/z-rad/user/filtering.html) |
 
-Implementation coverage and benchmark validation are distinct: see [validation and reproducibility](#ibsi-validation-and-reproducibility) for reference tests, tolerances, and current testing limitations.
+See [validation and reproducibility](#ibsi-validation-and-reproducibility) for reference tests, tolerances, and current testing limitations.
 
 ## See what you can do
 
@@ -123,18 +135,6 @@ Z-Rad includes automated comparisons against IBSI reference material. The implem
 
 - **IBSI I:** digital and CT phantom tests cover preprocessing configurations and feature comparisons using the reference tables' per-feature tolerances. [Inspect the tests](tests/test_ibsi_1.py).
 - **IBSI II:** digital phantom tests compare filter response maps, and CT phantom tests compare features from filtered images. Response-map comparisons use a tolerance of 1% of the reference map's intensity range; feature comparisons use the reference tables' tolerances. [Inspect the tests](tests/test_ibsi_2.py).
-
-## From images to a feature table
-
-```mermaid
-flowchart LR
-    A[Images + ROI masks] --> B[Preprocessing]
-    B --> C[Optional filtering]
-    C --> D[Feature extraction]
-    D --> E[Feature dictionary or CSV]
-```
-
-Use the same processing stages interactively through the desktop application or automate them with Python. See the [workflow guide](https://medical-physics-usz.github.io/z-rad/user/gui_workflows.html) for data preparation and processing choices.
 
 ## Contribute and get in touch
 

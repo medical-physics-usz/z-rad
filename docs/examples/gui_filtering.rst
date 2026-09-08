@@ -49,4 +49,13 @@ Wavelet Filter Example
 
    Example configuration for a ``3D`` Daubechies 3 wavelet filter.
 
+Additional Filter Controls
+--------------------------
+
+The filter selector also provides ``Riesz-transformed LoG`` and
+``Simoncelli``. Riesz-transformed LoG exposes the LoG scale and cutoff, a
+Riesz multi-index, and an optional structure-tensor scale. Simoncelli exposes
+the decomposition level and an optional Riesz multi-index; its padding choices
+are ``nearest`` and ``wrap``.
+
 See also :doc:`../user/filtering` for the full filtering guide.

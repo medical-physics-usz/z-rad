@@ -248,6 +248,8 @@ def _gui_input_params(**kwargs):
         'filter_gabor_theta': '0',
         'filter_gabor_rotinv': 'Enable',
         'filter_gabor_ortho': 'Disable',
+        'filter_riesz_order': '1,0,0',
+        'filter_structure_tensor_sigma_mm': '',
     }
     params.update(kwargs)
     return params
@@ -262,6 +264,8 @@ def _gui_input_params(**kwargs):
         ('Laws Kernels', {'laws_response_map': 'L5E5', 'laws_rotation_invariance': 'Enable'}),
         ('Gabor', {'gabor_res_mm': '1', 'gabor_rotation_invariance': 'Enable'}),
         ('Wavelets', {'wavelet_type': 'haar', 'wavelet_response_map': 'LLL'}),
+        ('Riesz-transformed LoG', {'riesz_order': '1,0,0', 'log_sigma': '2'}),
+        ('Simoncelli', {'riesz_order': '1,0,0', 'wavelet_decomposition_level': '1'}),
     ],
 )
 def test_gui_mapping_creates_batch_filter_for_filter_families(filter_type, expected):

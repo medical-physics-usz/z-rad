@@ -61,8 +61,10 @@ neighbors, linear, B-spline, and Gaussian strategies.
 
 ### Filtering
 This tab requires users to define the desired filter settings. 
-The current version of Z-Rad supports mean, Laplace of Gaussian, Laws kernels, 
-and wavelet (Daubechies 2, Daubechies 3, first-order Coiflet, and Haar) filters.
+The current version of Z-Rad supports mean, Laplacian of Gaussian,
+Riesz-transformed LoG, Laws kernels, Gabor, separable wavelet (Daubechies 2,
+Daubechies 3, first-order Coiflet, and Haar), and non-separable Simoncelli
+filters.
 
 ### Radiomics Feature Extraction
 Parameters for radiomics feature extraction include the intensity re-segmentation 

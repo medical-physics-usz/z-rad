@@ -11,7 +11,8 @@
 
 <p align="center">
   <strong>Extract quantitative features from medical images with a desktop interface or Python API.</strong><br />
-  CT, PET, MR, MG, US, and RTDOSE · DICOM and NIfTI · Windows, macOS, and Linux
+  CT, PET, MR, MG, US, and RTDOSE · DICOM and NIfTI · Windows, macOS, and Linux<br />
+  Developed by the Department of Radiation Oncology at University Hospital Zurich
 </p>
 
 <p align="center">
@@ -40,6 +41,7 @@ Use the same processing stages interactively through the desktop application or 
 | --- | --- |
 | Inspect images | View images and ROI masks together in the [desktop viewer](https://medical-physics-usz.github.io/z-rad/user/visualization.html). |
 | Prepare images | Convert DICOM to NIfTI, resample images and masks, resegment intensities, and configure discretization. |
+| Filter images | Apply standardized spatial and wavelet filters before feature extraction. |
 | Extract features | Calculate shape, intensity, and texture features with 2D, 2.5D, and 3D aggregation options. |
 | Process cohorts | Use the GUI or Python batch APIs to preprocess, filter, and extract features across case folders. |
 | Use the results | Collect feature dictionaries in Python or export batch radiomics results to a CSV file. |
@@ -48,7 +50,7 @@ Use the same processing stages interactively through the desktop application or 
   <img src="https://raw.githubusercontent.com/medical-physics-usz/z-rad/master/docs/images/Filtering_Res.png" width="380" alt="Four CT views comparing an unfiltered image with mean, Laplacian-of-Gaussian, and wavelet filtering" />
 </p>
 
-*Explore different image representations: (A) unfiltered CT, (B) mean filtering, (C) Laplacian-of-Gaussian filtering, and (D) wavelet filtering. Follow the [worked filtering example](https://medical-physics-usz.github.io/z-rad/examples/gui_filtering.html) for settings and workflow.*
+*IBSI II CT phantom: (A) unfiltered, (B) mean, (C) Laplacian-of-Gaussian, and (D) Daubechies 3 wavelet filtering. See [filter settings and the worked example](https://medical-physics-usz.github.io/z-rad/examples/gui_filtering.html).*
 
 ## Supported images and masks
 
@@ -59,7 +61,7 @@ Use the same processing stages interactively through the desktop application or 
 | NIfTI | Image | Scalar image volumes with spatial geometry. |
 | NIfTI | Mask | One binary ROI mask per file, paired with its reference image. |
 
-Use scalar image volumes with masks on the same physical voxel grid. Python arrays use `(z, y, x)` order; 2D and 2.5D aggregation operate slice-wise. DICOM SEG support excludes fractional and label-map segmentations. Ultrasound input must be a single DICOM file with `PixelSpacing` and `SliceThickness` metadata.
+Use scalar image volumes with masks on the same physical voxel grid. DICOM SEG support excludes fractional and label-map segmentations. Ultrasound input must be a single DICOM file with `PixelSpacing` and `SliceThickness` metadata.
 
 See the [data-format and folder-layout guide](https://medical-physics-usz.github.io/z-rad/user/data_structure.html) for organizing cases, naming masks, and selecting DICOM structures, and the [Python image reference](https://medical-physics-usz.github.io/z-rad/reference/image.html) for in-memory inputs.
 
@@ -92,7 +94,16 @@ The macOS app is currently unsigned and unnotarized, so Gatekeeper may show a wa
 
 ### Python quickstart
 
-**Requires Python 3.11 or newer.** For the published package, run `python -m pip install z-rad` and follow the documentation for that release.
+**Requires Python 3.11 or newer.** Install the published package:
+
+```sh
+python -m pip install z-rad
+```
+
+Follow the documentation for your installed release. The [full Python workflow](https://medical-physics-usz.github.io/z-rad/user/api_quickstart.html) covers resampling, filtering, texture discretization, and batch extraction.
+
+<details>
+<summary>Run an example with bundled data</summary>
 
 To try the example below with the current source and bundled IBSI phantom, clone the repository and install it in a virtual environment:
 
@@ -139,7 +150,9 @@ Expected output:
 Mean intensity: -46.88 HU
 ```
 
-The result is a dictionary of feature names and values; this example prints the ROI's mean CT intensity. The [full Python workflow](https://medical-physics-usz.github.io/z-rad/user/api_quickstart.html) adds resampling, filtering, texture discretization, and batch extraction.
+The result is a dictionary of feature names and values; this example prints the ROI's mean CT intensity.
+
+</details>
 
 ## IBSI validation and reproducibility
 

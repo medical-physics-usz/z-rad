@@ -21,6 +21,115 @@ def _make_sitk_image(size=(5, 5, 3)):
     return image
 
 
+@pytest.mark.unit
+def test_get_dicom_files_rejects_enhanced_pet_before_geometry_sorting(monkeypatch, tmp_path):
+    enhanced_pet = Dataset()
+    enhanced_pet.Modality = "PT"
+    enhanced_pet.SOPClassUID = "1.2.840.10008.5.1.4.1.1.130"
+
+    class FakeSeriesReader:
+        def GetGDCMSeriesIDs(self, directory):
+            return ["enhanced-pet"]
+
+        def GetGDCMSeriesFileNames(self, directory, series_id):
+            return [str(tmp_path / "enhanced-pet.dcm")]
+
+    monkeypatch.setattr(dicom.sitk, "ImageSeriesReader", FakeSeriesReader)
+    monkeypatch.setattr(dicom.pydicom, "dcmread", lambda *args, **kwargs: enhanced_pet)
+
+    def fail_if_sorted(_files):
+        raise AssertionError("Enhanced PET must not use classic slice geometry")
+
+    monkeypatch.setattr(dicom, "sort_by_geometric_position", fail_if_sorted)
+
+    with pytest.raises(DataStructureError, match="Enhanced PET Image Storage is not supported"):
+        dicom.get_dicom_files(str(tmp_path), "PET")
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    "modality, orientation",
+    [
+        ("CT", (1, 0, 0, 0, 1, 0)),
+        ("MRI", (1, 0, 0, 0, 1, 0)),
+        ("PET", (1, 0, 0, 0, 1, 0)),
+        ("MG", (1, 0, 0, 0, 1, 0)),
+        ("US", (1, 0, 0, 0, 1, 0)),
+        ("CT", (0.6, 0.8, 0, 0, 0, 1)),
+        ("MRI", (0.6, 0.8, 0, 0, 0, 1)),
+        ("PET", (0.6, 0.8, 0, 0, 0, 1)),
+    ],
+    ids=["CT", "MRI", "PET", "MG", "US", "CT-oblique", "MRI-oblique", "PET-oblique"],
+)
+def test_process_dicom_series_maps_row_column_spacing_to_physical_axes(monkeypatch, modality, orientation):
+    row_spacing, column_spacing, slice_spacing = 0.8, 0.3, 2.5
+    x_direction = np.array(orientation[:3])
+    y_direction = np.array(orientation[3:])
+    normal = np.cross(x_direction, y_direction)
+    origin = np.array([10.0, 20.0, 30.0]) if modality in ("CT", "MRI", "PET") else np.zeros(3)
+    depth = 1 if modality == "MG" else 2
+    pixels = np.arange(depth * 3 * 4, dtype=np.int16).reshape(depth, 3, 4) - 1000
+    reader_image = sitk.GetImageFromArray(pixels)
+    reader_image.SetOrigin(origin)
+    dicom_files = []
+    for index in range(2 if modality in ("CT", "MRI", "PET") else 1):
+        ds = Dataset()
+        ds.Modality = dicom.modality_mapping(modality)
+        if modality == "MG":
+            ds.ImagerPixelSpacing = [row_spacing, column_spacing]
+            ds.BodyPartThickness = slice_spacing
+        else:
+            ds.PixelSpacing = [row_spacing, column_spacing]
+            if modality == "US":
+                ds.SliceThickness = slice_spacing
+            else:
+                ds.ImageOrientationPatient = list(orientation)
+                ds.ImagePositionPatient = (origin + index * slice_spacing * normal).tolist()
+        dicom_files.append({"file_path": f"slice-{index}.dcm", "ds": ds})
+
+    class FakeSeriesReader:
+        def SetFileNames(self, names):
+            assert names == [item["file_path"] for item in dicom_files]
+
+        def Execute(self):
+            return reader_image
+
+    monkeypatch.setattr(dicom.sitk, "ImageSeriesReader", FakeSeriesReader)
+    monkeypatch.setattr(dicom.sitk, "ReadImage", lambda _path: reader_image)
+
+    image = dicom.process_dicom_series(dicom_files, modality)
+
+    assert image.GetSpacing() == pytest.approx((column_spacing, row_spacing, slice_spacing))
+    # Check actual physical displacements, including when image axes are rotated.
+    assert image.TransformIndexToPhysicalPoint((1, 0, 0)) == pytest.approx(origin + column_spacing * x_direction)
+    assert image.TransformIndexToPhysicalPoint((0, 1, 0)) == pytest.approx(origin + row_spacing * y_direction)
+    assert image.TransformIndexToPhysicalPoint((0, 0, 1)) == pytest.approx(origin + slice_spacing * normal)
+    np.testing.assert_array_equal(sitk.GetArrayFromImage(image), pixels)
+
+
+@pytest.mark.unit
+def test_read_dicom_dose_preserves_reader_spacing_during_scaling(monkeypatch):
+    pixels = np.arange(24, dtype=np.uint16).reshape(2, 3, 4)
+    reader_image = sitk.GetImageFromArray(pixels)
+    reader_image.SetSpacing((0.3, 0.8, 2.5))
+    reader_image.SetOrigin((10.0, 20.0, 30.0))
+    reader_image.SetDirection((0, -1, 0, 1, 0, 0, 0, 0, 1))
+    ds = Dataset()
+    ds.DoseUnits = "GY"
+    ds.DoseType = "PHYSICAL"
+    ds.DoseGridScaling = 0.01
+    ds.PixelSpacing = [0.8, 0.3]
+    monkeypatch.setattr(dicom.pydicom, "dcmread", lambda _path: ds)
+    monkeypatch.setattr(dicom.sitk, "ReadImage", lambda _path: reader_image)
+
+    image = dicom.read_dicom_dose("dose.dcm")
+
+    assert image.GetSpacing() == pytest.approx((0.3, 0.8, 2.5))
+    assert image.GetOrigin() == reader_image.GetOrigin()
+    assert image.GetDirection() == reader_image.GetDirection()
+    np.testing.assert_allclose(sitk.GetArrayFromImage(image), pixels * 0.01, rtol=1e-12, atol=0)
+
+
 def _contour(x, y, z, contour_type="CLOSED_PLANAR"):
     return {
         "type": contour_type,

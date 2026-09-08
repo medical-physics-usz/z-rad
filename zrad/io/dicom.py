@@ -647,7 +647,8 @@ def process_dicom_series(dicom_files, modality, reorder_enhanced_frames=True):
     elif len(slice_z_origin) == 1:
         slice_thickness = slice_z_origin[0]
 
-    image.SetSpacing((float(pixel_spacing[0]), float(pixel_spacing[1]), float(slice_thickness)))
+    # DICOM PixelSpacing and ImagerPixelSpacing are (row, column); SimpleITK uses (x, y, z).
+    image.SetSpacing((float(pixel_spacing[1]), float(pixel_spacing[0]), float(slice_thickness)))
     image.SetDirection(direction)
     if dicom_files[0]["ds"].Modality == "CT" and np.min(sitk.GetArrayFromImage(image)) >= 0:
         error_msg = f'Non-negative CT intensity. SITK failed to convert CT into HU for {dicom_files[0]["file_path"]}. The patient is excluded from analysis'

@@ -1,123 +1,143 @@
-# Z-RAD
+<p>
+  <a href="https://pypi.org/project/z-rad/"><img src="https://img.shields.io/pypi/v/z-rad.svg" alt="PyPI version" /></a>
+  <a href="https://pypi.org/project/z-rad/"><img src="https://img.shields.io/pypi/pyversions/z-rad.svg" alt="Supported Python versions" /></a>
+  <a href="https://github.com/medical-physics-usz/z-rad/actions/workflows/test.yml"><img src="https://github.com/medical-physics-usz/z-rad/actions/workflows/test.yml/badge.svg?branch=master" alt="Tests" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/pypi/l/z-rad.svg" alt="MIT license" /></a>
+</p>
 
-[![Tests](https://github.com/medical-physics-usz/z-rad/actions/workflows/test.yml/badge.svg?branch=master)](https://github.com/medical-physics-usz/z-rad/actions/workflows/test.yml)
-[![Ruff](https://github.com/medical-physics-usz/z-rad/actions/workflows/python-lint.yml/badge.svg?branch=master)](https://github.com/medical-physics-usz/z-rad/actions/workflows/python-lint.yml)
-[![Docs](https://github.com/medical-physics-usz/z-rad/actions/workflows/docs.yml/badge.svg?branch=master)](https://github.com/medical-physics-usz/z-rad/actions/workflows/docs.yml)
-[![PyPI](https://img.shields.io/pypi/v/z-rad.svg)](https://pypi.org/project/z-rad/)
-[![Python](https://img.shields.io/pypi/pyversions/z-rad.svg)](https://pypi.org/project/z-rad/)
-[![License](https://img.shields.io/pypi/l/z-rad.svg)](https://github.com/medical-physics-usz/z-rad/blob/master/LICENSE)
+<p align="center">
+  <img src="https://raw.githubusercontent.com/medical-physics-usz/z-rad/master/docs/logos/ZRadLogo.jpg" width="320" alt="Z-Rad — Zurich Radiomics" />
+</p>
 
-<img src="https://raw.githubusercontent.com/medical-physics-usz/z-rad/master/docs/logos/ZRadLogo.jpg" width="600" alt="Z-Rad logo"/>
+<p align="center">
+  <strong>Extract quantitative features from medical images with a desktop interface or Python API.</strong><br />
+  CT, PET, MR, US, and RTDOSE · DICOM and NIfTI · Windows, macOS, and Linux
+</p>
 
-Radiomics is the high-throughput extraction of quantitative features from medical images, 
-revolutionizing personalized medicine and enhancing clinical decision-making. 
-Despite its potential, radiomics faces several challenges, including the need for programming skills 
-and lack of standardization.
+<p align="center">
+  <a href="https://github.com/medical-physics-usz/z-rad/releases">Download</a> ·
+  <a href="https://medical-physics-usz.github.io/z-rad/">Documentation</a> ·
+  <a href="#python-quickstart">Python quickstart</a> ·
+  <a href="https://medical-physics-usz.github.io/z-rad/examples/">Examples</a> ·
+  <a href="#ibsi-validation-and-reproducibility">Validation</a>
+</p>
 
-**Z-Rad (Zurich Radiomics)**, developed by the Radiation Oncology Department at the University Hospital Zurich, 
-addresses these issues by offering a user-friendly, IBSI-compliant, and open-source solution for radiomics analysis.
+## Full IBSI implementation coverage
 
-## Z-Rad Features
-<img src="https://raw.githubusercontent.com/medical-physics-usz/z-rad/master/docs/images/zrad_screenshot.png" width="600" alt="Z-Rad screenshot"/>
+Z-Rad supports **all IBSI I preprocessing operations and radiomic features, and all IBSI II filters** defined by the Image Biomarker Standardisation Initiative (IBSI).
 
-### User-Friendly Interface
-- **Graphical User Interface (GUI)**: Designed for medical professionals with no programming skills.
-- **Application Programming Interface (API)**: Allows researchers to customize, automate, and extend Z-Rad functionalities using Python.
+| Standard | Implementation coverage | Explore |
+| --- | --- | --- |
+| **IBSI I · Preprocessing** | All operations, including image and mask interpolation, resegmentation, and intensity discretization | [Preprocessing guide](https://medical-physics-usz.github.io/z-rad/user/preprocessing.html) |
+| **IBSI I · Features** | All feature families, including morphology, local intensity, intensity statistics, histograms, intensity-volume histograms, and texture | [Feature guide](https://medical-physics-usz.github.io/z-rad/user/radiomics.html) |
+| **IBSI II · Filters** | All filters, including mean, LoG, Laws, Gabor, separable wavelets, Simoncelli, and Riesz transforms | [Filtering guide](https://medical-physics-usz.github.io/z-rad/user/filtering.html) |
 
-### Compatibility
-- **Medical Data Formats**: Supports CT, PET, and MR imaging modalities in both DICOM and NIfTI formats.
-- **Operating Systems**: Windows, macOS, and Linux.
+Implementation coverage and benchmark validation are distinct: see [validation and reproducibility](#ibsi-validation-and-reproducibility) for reference tests, tolerances, and current testing limitations.
 
-### Standard Compliance
-- **IBSI Compliance**: Adheres to [IBSI I](https://arxiv.org/abs/1612.07003) and [IBSI II](https://arxiv.org/abs/2006.05470) standards for reproducible and comparable radiomics features.
+## See what you can do
 
+<p align="center">
+  <img src="https://raw.githubusercontent.com/medical-physics-usz/z-rad/master/docs/images/Filtering_Res.png" width="380" alt="Four CT views comparing an unfiltered image with mean, Laplacian-of-Gaussian, and wavelet filtering" />
+</p>
 
-## Software Architecture and Design
+*Explore different image representations: (A) unfiltered CT, (B) mean filtering, (C) Laplacian-of-Gaussian filtering, and (D) wavelet filtering. Follow the [worked filtering example](https://medical-physics-usz.github.io/z-rad/examples/gui_filtering.html) for settings and workflow.*
 
-### Backend
-- **Programming Language**: Python.
-- **Dependencies**:
-  - Joblib
-  - NumPy
-  - OpenCV
-  - Pandas
-  - PyDicom
-  - PyQt5
-  - PyWavelets
-  - Scikit-image
-  - SciPy
-  - SimpleITK
+| Capability | What you can do |
+| --- | --- |
+| **Load and inspect** | Work with CT, PET, and MR images in DICOM or NIfTI format; inspect images and ROI masks in the [desktop viewer](https://medical-physics-usz.github.io/z-rad/user/visualization.html). |
+| **Prepare images** | Convert DICOM to NIfTI, resample images and masks, resegment intensities, and configure discretization. |
+| **Extract features** | Calculate shape, intensity, and texture features with 2D, 2.5D, and 3D aggregation options. |
+| **Process cohorts** | Use the GUI or Python batch APIs to preprocess, filter, and extract features across case folders. |
+| **Use the results** | Collect feature dictionaries in Python or export batch radiomics results to a CSV file. |
 
-### Radiomics Extraction Pathways
-<img src="https://raw.githubusercontent.com/medical-physics-usz/z-rad/master/docs/images/ZRadExtractionPathways.png" width="600" alt="Z-Rad Pathways"/>
+## Get started
 
-## Graphical User Interface (GUI) and Application Programming Interface (API)
-Both GUI and API are structured into three primary classes: **Resampling**, **Filtering**, and **Radiomics**:
+### Desktop application
 
-### Resampling
-Z-Rad supports image resampling alone, alongside regions of interest (ROI) masks, or converting DICOM files to NIfTI 
-images and masks without resampling. Resampling can be performed in 3D or 2D (axial slice-wise), with nearest 
-neighbors, linear, B-spline, and Gaussian strategies.
+1. Open [Z-Rad releases](https://github.com/medical-physics-usz/z-rad/releases) and choose a release.
+2. Download the asset for your platform:
 
-### Filtering
-This tab requires users to define the desired filter settings. 
-The current version of Z-Rad supports mean, Laplacian of Gaussian,
-Riesz-transformed LoG, Laws kernels, Gabor, separable wavelet (Daubechies 2,
-Daubechies 3, first-order Coiflet, and Haar), and non-separable Simoncelli
-filters.
+   | Platform | Release asset | Launch |
+   | --- | --- | --- |
+   | Windows | `z-rad-<release-tag>-windows.exe` | Run the executable. |
+   | Apple Silicon macOS | `z-rad-<release-tag>-macos-arm64.zip` | Extract the archive and open `Z-Rad.app`. |
 
-### Radiomics Feature Extraction
-Parameters for radiomics feature extraction include the intensity re-segmentation 
-(e.g., HU for CT or SUV for PET within ROIs) and intensity outlier filtering, 
-discretisation strategies, and a variety of radiomics feature aggregation methods covering 2D, 2.5D, and 3D options. 
-Radiomic features include shape, intensity, grey level co-occurrence matrix (GLCM), 
-grey level run length matrix (GLRLM), grey level distance zone matrix (GLDZM), 
-neighbouring gray tone difference matrix (NGTDM), 
-and neighbouring gray level dependance matrix (NGLDM) features families.
+3. Follow the [GUI quickstart](https://medical-physics-usz.github.io/z-rad/user/gui_quickstart.html) to select your input data, configure processing, and run your first analysis.
 
-## Error and Warning Handling
+The macOS app is currently unsigned and unnotarized, so Gatekeeper may show a warning. For Linux and Intel Macs, or to run the current source version, use the Python setup below and launch `python main.py`. See the [installation guide](https://medical-physics-usz.github.io/z-rad/user/installation.html) for details.
 
-- **GUI**: Uses info, warning, and error pop-up messages for immediate feedback.
-- **API**: Records processes in log files for comprehensive documentation.
+### Python quickstart
 
-## Installation and Get Started
+**Requires Python 3.11 or newer.** For the published package, run `python -m pip install z-rad` and follow the documentation for that release.
 
-### Release executable files
-The simplest way to run Z-Rad is to start the platform-specific asset attached to every Z-Rad release.
-
-- Windows: download and run `z-rad-<release-tag>-windows.exe`.
-- Apple Silicon macOS: download `z-rad-<release-tag>-macos-arm64.zip`, extract it, and start `Z-Rad.app`.
-
-The macOS release app is currently unsigned and unnotarized. macOS may show a Gatekeeper warning when opening it.
-
-### Windows, Linux, and macOS
-For users familiar with Python programming language, we recommend Python 3.11 or newer:
-
-1. Download the Z-Rad repository
-2. Open the terminal and navigate to the project directory
-3. Install Z-Rad from the source checkout by typing in the terminal:
+To try the example below with the current source and bundled IBSI phantom, clone the repository and install it in a virtual environment:
 
 ```sh
-pip install -e .
+git clone https://github.com/medical-physics-usz/z-rad.git
+cd z-rad
+python -m venv .venv
 ```
 
-4. Run the `main.py` file:
+Activate the environment with `source .venv/bin/activate` on macOS/Linux or `.venv\Scripts\Activate.ps1` in Windows PowerShell, then install:
 
 ```sh
-python main.py
+python -m pip install -e .
 ```
 
-### API
-```sh
-pip install z-rad
+Run this example from the repository root. It loads the bundled CT phantom and ROI mask, then extracts intensity statistics without resampling or filtering:
+
+```python
+from pathlib import Path
+from tempfile import TemporaryDirectory
+from zipfile import ZipFile
+
+from zrad.image import Image
+from zrad.preprocessing import IntensityMaskBuilder, RoiData
+from zrad.radiomics import Radiomics
+
+with TemporaryDirectory() as folder:
+    with ZipFile("tests/data/IBSI_I.zip") as archive:
+        for name in ("image/phantom.nii.gz", "mask/mask.nii.gz"):
+            archive.extract(f"IBSI_I/nifti/{name}", folder)
+
+    data = Path(folder) / "IBSI_I/nifti"
+    image = Image.from_nifti(data / "image/phantom.nii.gz")
+    mask = Image.from_nifti_mask(data / "mask/mask.nii.gz", reference=image)
+    roi = IntensityMaskBuilder().apply(RoiData(image=image, morphological_mask=mask))
+    features = Radiomics().extract_features(roi_data=roi, families=["intensity_statistics"])
+
+    print(f"Mean intensity: {features['stat_mean']:.2f} HU")
 ```
 
-## License
+Expected output:
 
-Z-Rad is an open-source project licensed under the MIT License.
+```text
+Mean intensity: -46.88 HU
+```
 
-## Contact
+The result is a dictionary of feature names and values; this example prints the ROI's mean CT intensity. The [full Python workflow](https://medical-physics-usz.github.io/z-rad/user/api_quickstart.html) adds resampling, filtering, texture discretization, and batch extraction.
 
-For any questions or feedback, please contact us at [zrad@usz.ch](mailto:zrad@usz.ch).
+## IBSI validation and reproducibility
 
----
+Z-Rad includes automated comparisons against IBSI reference material. The implementation follows [IBSI I](https://arxiv.org/abs/1612.07003) and [IBSI II](https://arxiv.org/abs/2006.05470); the benchmark suites make numerical agreement inspectable:
+
+- **IBSI I:** digital and CT phantom tests cover preprocessing configurations and feature comparisons using the reference tables' per-feature tolerances. [Inspect the tests](tests/test_ibsi_1.py).
+- **IBSI II:** digital phantom tests compare filter response maps, and CT phantom tests compare features from filtered images. Response-map comparisons use a tolerance of 1% of the reference map's intensity range; feature comparisons use the reference tables' tolerances. [Inspect the tests](tests/test_ibsi_2.py).
+
+## From images to a feature table
+
+```mermaid
+flowchart LR
+    A[Images + ROI masks] --> B[Preprocessing]
+    B --> C[Optional filtering]
+    C --> D[Feature extraction]
+    D --> E[Feature dictionary or CSV]
+```
+
+Use the same processing stages interactively through the desktop application or automate them with Python. See the [workflow guide](https://medical-physics-usz.github.io/z-rad/user/gui_workflows.html) for data preparation and processing choices.
+
+## Contribute and get in touch
+
+Found a bug or have a feature request? [Open an issue](https://github.com/medical-physics-usz/z-rad/issues). To contribute code or documentation, start with the [contributing guide](https://medical-physics-usz.github.io/z-rad/developer/contributing.html).
+
+For questions or research collaborations, contact [zrad@usz.ch](mailto:zrad@usz.ch). Z-Rad is developed at University Hospital Zurich and released under the [MIT License](LICENSE).

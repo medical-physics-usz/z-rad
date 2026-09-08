@@ -68,9 +68,11 @@ numbering below matches the annotated screenshots used for this workflow.
 
    * Mean
    * Laplacian of Gaussian
+   * Riesz-transformed LoG
    * Gabor
    * Laws kernels
    * Wavelets
+   * Simoncelli
 
    Once a filter is selected, Z-Rad displays the corresponding
    filter-specific parameters.
@@ -95,10 +97,12 @@ The available filter families are:
 
 * Mean
 * Laplacian of Gaussian
+* Riesz-transformed LoG
 * Gabor
 * Laws kernels
 * Wavelets, including Daubechies 2, Daubechies 3, first-order Coiflet, and
   Haar filters
+* non-separable Simoncelli wavelets
 
 Wavelet filtering additionally requires:
 
@@ -106,6 +110,40 @@ Wavelet filtering additionally requires:
 * ``response_map``
 * ``decomposition_level``
 * optional rotation invariance
+
+Riesz-transformed LoG additionally requires a non-negative ``riesz_order``
+multi-index with two entries for 2D filtering or three entries for 3D
+filtering. The entries follow physical ``(x, y)`` or ``(x, y, z)`` axis order,
+and their sum must be positive. The optional ``structure_tensor_sigma_mm``
+locally aligns a pure second-order 3D response, such as ``(2, 0, 0)``.
+
+Simoncelli filtering requires a positive ``decomposition_level`` and supports
+``nearest`` or periodic (``wrap``) padding. Its optional ``riesz_order`` has
+the same dimensionality and axis-order rules as the Riesz-transformed LoG
+index. If the index is omitted or contains only zeros, the filter returns the
+isotropic Simoncelli band-pass response.
+
+The concrete filters can be configured directly in Python:
+
+.. code-block:: python
+
+   from zrad.filtering import RieszLoG, Simoncelli
+
+   riesz_log = RieszLoG(
+       padding_type="reflect",
+       sigma_mm=1.5,
+       cutoff=4.0,
+       dimensionality="3D",
+       riesz_order=(2, 0, 0),
+       structure_tensor_sigma_mm=1.0,
+   )
+
+   simoncelli = Simoncelli(
+       padding_type="nearest",
+       decomposition_level=2,
+       dimensionality="3D",
+       riesz_order=(1, 0, 0),
+   )
 
 The implementation follows IBSI II definitions, so physical scales, response
 maps, decomposition levels, and rotation-invariance settings should be chosen
@@ -123,6 +161,11 @@ Practical Notes
   chosen filter family.
 * Laplacian-of-Gaussian filtering derives the working resolution from the input
   image spacing.
+* Riesz-transformed LoG uses the same physical LoG scale and applies the Riesz
+  transform to that response.
+* The Simoncelli GUI offers decomposition levels 1 through 3. The Python API
+  accepts any positive integer level, subject to the available image-frequency
+  support.
 * Input configurations can be saved from the GUI and loaded again for repeated
   experiments, which is useful when comparing several filter settings.
 * If you are comparing multiple filter families, keep the preprocessing and

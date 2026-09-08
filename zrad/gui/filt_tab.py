@@ -65,6 +65,8 @@ def create_batch_filter_from_input_params(input_params, parallel_backend):
         gabor_theta=input_params["filter_gabor_theta"],
         gabor_rotation_invariance=input_params["filter_gabor_rotinv"],
         gabor_orthogonal_planes=input_params["filter_gabor_ortho"],
+        riesz_order=input_params.get("filter_riesz_order"),
+        structure_tensor_sigma_mm=input_params.get("filter_structure_tensor_sigma_mm"),
         parallel_backend=parallel_backend,
     )
 
@@ -122,7 +124,16 @@ class FilteringTab(BaseTab):
             160,
             50,
             self,
-            item_list=["Filter Type:", "Mean", "Laplacian of Gaussian", "Laws Kernels", "Gabor", "Wavelets"],
+            item_list=[
+                "Filter Type:",
+                "Mean",
+                "Laplacian of Gaussian",
+                "Riesz-transformed LoG",
+                "Laws Kernels",
+                "Gabor",
+                "Wavelets",
+                "Simoncelli",
+            ],
         )
 
         self.padding_type_combo_box = CustomBox(
@@ -265,6 +276,18 @@ class FilteringTab(BaseTab):
         )
         self.gabor_ortho_box.hide()
 
+        # Riesz and Simoncelli
+        self.riesz_order_label = CustomLabel(
+            'Riesz order:', 510, pos_y_row1, 100, element_height, self, style="color: white;"
+        )
+        self.riesz_order_field = CustomTextField("E.g. 1,0,0", 610, pos_y_row1, 110, element_height, self)
+        self.structure_tensor_sigma_label = CustomLabel(
+            'Tensor σ (mm):', 570, pos_y_row2, 120, element_height, self, style="color: white;"
+        )
+        self.structure_tensor_sigma_field = CustomTextField("Optional", 690, pos_y_row2, 90, element_height, self)
+        for widget in self._new_filter_widgets():
+            widget.hide()
+
         self.run_button = CustomButton(
             'RUN',
             600,
@@ -292,6 +315,18 @@ class FilteringTab(BaseTab):
             if not self.log_filter_cutoff_text_field.text().strip():
                 error_msg = "Enter Cutoff"
                 raise InvalidInputParametersError(error_msg)
+
+        if self.input_params['filter_type'] == 'Riesz-transformed LoG':
+            if not self.log_filter_sigma_text_field.text().strip():
+                raise InvalidInputParametersError("Enter Sigma")
+            if not self.log_filter_cutoff_text_field.text().strip():
+                raise InvalidInputParametersError("Enter Cutoff")
+            if not self.riesz_order_field.text().strip():
+                raise InvalidInputParametersError("Enter Riesz order")
+
+        if self.input_params['filter_type'] == 'Simoncelli':
+            if self.wavelet_filter_decomposition_level_combo_box.currentText() == 'Decomposition level:':
+                raise InvalidInputParametersError("Select Simoncelli decomposition level")
 
         if self.input_params['filter_type'] == 'Laws Kernels':
             if not self.laws_filter_response_map_text_field.text().strip():
@@ -383,6 +418,8 @@ class FilteringTab(BaseTab):
             'filter_gabor_theta': self.gabor_theta_field.text(),
             'filter_gabor_rotinv': self.gabor_rotinv_box.currentText(),
             'filter_gabor_ortho': self.gabor_ortho_box.currentText(),
+            'filter_riesz_order': self.riesz_order_field.text(),
+            'filter_structure_tensor_sigma_mm': self.structure_tensor_sigma_field.text(),
         }
         self.input_params = input_parameters
 
@@ -543,11 +580,19 @@ class FilteringTab(BaseTab):
                 self.gabor_theta_field.setText(data.get('filtering_filter_gabor_theta', ''))
                 self.gabor_rotinv_box.setCurrentText(data.get('filtering_filter_gabor_rotinv', 'Rotation invariance:'))
                 self.gabor_ortho_box.setCurrentText(data.get('filtering_filter_gabor_ortho', 'Orthogonal planes:'))
+                self.riesz_order_field.setText(data.get('filtering_filter_riesz_order', ''))
+                self.structure_tensor_sigma_field.setText(data.get('filtering_filter_structure_tensor_sigma_mm', ''))
 
         except FileNotFoundError:
             print("No previous data found!")
 
     def _filter_combo_box_changed(self, text):
+        self._set_combo_box_items(
+            self.padding_type_combo_box, ['Padding Type:', 'constant', 'nearest', 'wrap', 'reflect']
+        )
+        self._set_combo_box_items(self.wavelet_filter_decomposition_level_combo_box, ['Decomposition level:', '1', '2'])
+        for widget in self._new_filter_widgets():
+            widget.hide()
         if text == 'Mean':
             if self.wavelet_filter_response_map_connected:
                 self.filter_dimension_combo_box.currentTextChanged.disconnect()
@@ -764,6 +809,29 @@ class FilteringTab(BaseTab):
             self.gabor_rotinv_box.show()
             self.gabor_ortho_box.show()
 
+        elif text in ('Riesz-transformed LoG', 'Simoncelli'):
+            if self.wavelet_filter_response_map_connected:
+                self.filter_dimension_combo_box.currentTextChanged.disconnect()
+                self.wavelet_filter_response_map_connected = False
+            self._hide_existing_filter_parameter_widgets()
+            self.padding_type_combo_box.show()
+            self.filter_dimension_combo_box.show()
+            self.riesz_order_label.show()
+            self.riesz_order_field.show()
+            if text == 'Riesz-transformed LoG':
+                self.log_filter_sigma_label.show()
+                self.log_filter_sigma_text_field.show()
+                self.log_filter_cutoff_label.show()
+                self.log_filter_cutoff_text_field.show()
+                self.structure_tensor_sigma_label.show()
+                self.structure_tensor_sigma_field.show()
+            else:
+                self._set_combo_box_items(self.padding_type_combo_box, ['Padding Type:', 'nearest', 'wrap'])
+                self._set_combo_box_items(
+                    self.wavelet_filter_decomposition_level_combo_box, ['Decomposition level:', '1', '2', '3']
+                )
+                self.wavelet_filter_decomposition_level_combo_box.show()
+
         else:
             if self.wavelet_filter_response_map_connected:
                 self.filter_dimension_combo_box.currentTextChanged.disconnect()
@@ -792,6 +860,60 @@ class FilteringTab(BaseTab):
             self.laws_filter_distance_text_field.hide()
             self.laws_filter_pooling_combo_box.hide()
             self.laws_filter_energy_map_combo_box.hide()
+
+    def _new_filter_widgets(self):
+        return (
+            self.riesz_order_label,
+            self.riesz_order_field,
+            self.structure_tensor_sigma_label,
+            self.structure_tensor_sigma_field,
+        )
+
+    @staticmethod
+    def _set_combo_box_items(combo_box, items):
+        """Replace a combo box's choices while retaining a still-valid selection."""
+        selected = combo_box.currentText()
+        combo_box.clear()
+        combo_box.addItems(items)
+        if selected in items:
+            combo_box.setCurrentText(selected)
+
+    def _hide_existing_filter_parameter_widgets(self):
+        widgets = (
+            self.mean_filter_support_text_field,
+            self.mean_filter_support_label,
+            self.log_filter_sigma_label,
+            self.log_filter_sigma_text_field,
+            self.log_filter_cutoff_label,
+            self.log_filter_cutoff_text_field,
+            self.wavelet_filter_type_combo_box,
+            self.wavelet_filter_response_map_3d_combo_box,
+            self.wavelet_filter_response_map_2d_combo_box,
+            self.wavelet_filter_response_map_combo_box,
+            self.wavelet_filter_decomposition_level_combo_box,
+            self.wavelet_filter_rot_inv_combo_box,
+            self.laws_filter_response_map_label,
+            self.laws_filter_response_map_text_field,
+            self.laws_filter_rot_inv_combo_box,
+            self.laws_filter_distance_label,
+            self.laws_filter_distance_text_field,
+            self.laws_filter_pooling_combo_box,
+            self.laws_filter_energy_map_combo_box,
+            self.gabor_res_label,
+            self.gabor_res_field,
+            self.gabor_sigma_label,
+            self.gabor_sigma_field,
+            self.gabor_lambda_label,
+            self.gabor_lambda_field,
+            self.gabor_gamma_label,
+            self.gabor_gamma_field,
+            self.gabor_theta_label,
+            self.gabor_theta_field,
+            self.gabor_rotinv_box,
+            self.gabor_ortho_box,
+        )
+        for widget in widgets:
+            widget.hide()
 
     def _wavelet_response_map_combo_box_changed(self, text):
         if text == '2D':

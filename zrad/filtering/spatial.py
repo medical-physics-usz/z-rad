@@ -1,8 +1,10 @@
 from functools import lru_cache
 from itertools import permutations
+from math import factorial
 
 import cv2
 import numpy as np
+from scipy import fft as sp_fft
 from scipy import ndimage as ndi
 
 from .base import BaseFilter
@@ -139,6 +141,273 @@ class LoG(BaseFilter):
         else:
             filtered_img = None
         return filtered_img
+
+
+class RieszLoG(LoG):
+    """Laplacian-of-Gaussian followed by a normalized Riesz transform.
+
+    This is a composition of the spatial LoG filter and the Fourier-domain
+    Riesz operator. A second-order
+    response can optionally be steered along the local structure-tensor
+    direction.
+
+    Parameters
+    ----------
+    padding_type : {"constant", "nearest", "wrap", "reflect"}
+        Boundary handling mode used by the LoG and Riesz operations.
+    sigma_mm : float
+        Gaussian standard deviation of the LoG filter in millimetres.
+    cutoff : float
+        LoG kernel truncation radius in standard deviations.
+    dimensionality : {"2D", "3D"}
+        Apply the composed filter slice-wise in 2D or volumetrically in 3D.
+    riesz_order : tuple of int
+        Non-negative Riesz multi-index in physical ``(x, y)`` or
+        ``(x, y, z)`` axis order. Its length must match ``dimensionality`` and
+        its total order must be positive.
+    structure_tensor_sigma_mm : float, optional
+        Gaussian scale in millimetres used to estimate the local structure
+        tensor and steer the response. This is supported only for pure
+        second-order 3D indices such as ``(2, 0, 0)``. If omitted, the Riesz
+        response is evaluated along the fixed image axes.
+    """
+
+    def __init__(self, padding_type, sigma_mm, cutoff, dimensionality, riesz_order, structure_tensor_sigma_mm=None):
+        super().__init__(padding_type, sigma_mm, cutoff, dimensionality)
+        dimensions = int(dimensionality[0])
+        if len(riesz_order) != dimensions or any(
+            not isinstance(order, (int, np.integer)) or isinstance(order, (bool, np.bool_)) or order < 0
+            for order in riesz_order
+        ):
+            raise ValueError(f'riesz_order must contain {dimensions} non-negative integers.')
+        if sum(riesz_order) == 0:
+            raise ValueError('riesz_order must have a positive total order.')
+        if structure_tensor_sigma_mm is not None and (
+            not isinstance(structure_tensor_sigma_mm, (int, float)) or structure_tensor_sigma_mm <= 0
+        ):
+            raise ValueError('structure_tensor_sigma_mm must be a positive number.')
+        if structure_tensor_sigma_mm is not None and (dimensions != 3 or sum(riesz_order) != 2):
+            raise ValueError('Structure-tensor alignment is supported for second-order 3D Riesz transforms only.')
+        if structure_tensor_sigma_mm is not None and 2 not in riesz_order:
+            raise ValueError(
+                'Structure-tensor alignment supports pure second-order Riesz indices only; '
+                'mixed-order indices have sign-ambiguous eigenvector steering.'
+            )
+
+        self.filtering_method = 'Riesz-transformed LoG'
+        self.riesz_order = tuple(int(order) for order in riesz_order)
+        self.structure_tensor_sigma_mm = structure_tensor_sigma_mm
+        self.filtering_params.update(riesz_order=self.riesz_order, structure_tensor_sigma_mm=structure_tensor_sigma_mm)
+
+    @staticmethod
+    def _riesz_transform(image, order):
+        total_order = sum(order)
+        spectrum = sp_fft.rfftn(image)
+        frequency_axes = [2.0 * np.pi * np.fft.fftfreq(size) for size in image.shape[:-1]]
+        last_axis = 2.0 * np.pi * np.fft.rfftfreq(image.shape[-1])
+        if image.shape[-1] % 2 == 0:
+            last_axis[-1] *= -1.0
+        frequency_axes.append(last_axis)
+        coordinates = np.meshgrid(*frequency_axes, indexing='ij', sparse=True)
+        radius = np.zeros(spectrum.shape, dtype=np.float64)
+        for coordinate in coordinates:
+            radius += coordinate**2
+        np.sqrt(radius, out=radius)
+        np.power(radius, total_order, out=radius)
+        radius[(0,) * image.ndim] = np.inf
+
+        coefficient = np.sqrt(factorial(total_order) / np.prod([factorial(value) for value in order]))
+        spectrum *= (-1j) ** total_order * coefficient
+        for coordinate, value in zip(coordinates, order):
+            if value:
+                spectrum *= coordinate**value
+        spectrum /= radius
+
+        # At self-conjugate Nyquist coordinates, an odd number of odd-axis
+        # powers contributes only to the imaginary part of a full inverse FFT.
+        cancel = np.zeros(spectrum.shape, dtype=bool)
+        for axis, (size, value) in enumerate(zip(image.shape, order)):
+            if size % 2 == 0 and value % 2:
+                axis_shape = [1] * image.ndim
+                axis_shape[axis] = spectrum.shape[axis]
+                cancel ^= np.arange(spectrum.shape[axis]).reshape(axis_shape) == size // 2
+        spectrum[cancel] = 0.0
+
+        return sp_fft.irfftn(spectrum, s=image.shape)
+
+    def _boundary_aware_riesz_transform(self, image, order):
+        """Apply the Riesz transform without imposing unintended periodicity."""
+        if self.padding_type == 'wrap':
+            return self._riesz_transform(image, order)
+
+        if self.padding_type in ('constant', 'nearest'):
+            # These boundary modes do not have a cosine-transform
+            # representation. Extend the domain according to the selected
+            # mode before applying the periodic Riesz transform.
+            padding = tuple((size // 2, size - size // 2) for size in image.shape)
+            mode = 'edge' if self.padding_type == 'nearest' else 'constant'
+            padded = np.pad(image, padding, mode=mode)
+            transformed = self._riesz_transform(padded, order)
+            crop = tuple(slice(before, before + size) for (before, _), size in zip(padding, image.shape))
+            return transformed[crop]
+
+        # A DCT represents the same even, non-periodic extension without
+        # materializing a volume twice as large along every axis. Odd powers
+        # map cosine modes into their sine/quadrature counterparts, while even
+        # powers remain in the cosine basis.
+        frequencies = np.meshgrid(*(np.pi * np.arange(size) / size for size in image.shape), indexing='ij', sparse=True)
+        radius = np.sqrt(sum(frequency**2 for frequency in frequencies))
+        total_order = sum(order)
+        coefficient = np.sqrt(factorial(total_order) / np.prod([factorial(value) for value in order]))
+        multiplier = np.ones(image.shape, dtype=np.float64)
+        for frequency, value in zip(frequencies, order):
+            multiplier *= frequency**value
+        nonzero = radius > 0
+        multiplier[nonzero] *= coefficient / radius[nonzero] ** total_order
+        multiplier[~nonzero] = 0.0
+        multiplier *= (-1) ** sum(value // 2 for value in order)
+
+        coefficients = sp_fft.dctn(image, type=2, norm='ortho') * multiplier
+        for axis, value in enumerate(order):
+            if value % 2:
+                shifted = np.zeros_like(coefficients)
+                source = [slice(None)] * image.ndim
+                destination = [slice(None)] * image.ndim
+                source[axis] = slice(1, None)
+                destination[axis] = slice(None, -1)
+                shifted[tuple(destination)] = coefficients[tuple(source)]
+                coefficients = shifted
+
+        result = coefficients
+        for axis, value in enumerate(order):
+            transform = sp_fft.idst if value % 2 else sp_fft.idct
+            result = transform(result, type=2, axis=axis, norm='ortho')
+        return result
+
+    def _smooth_tensor_component(self, component, sigma, row, column):
+        if self.padding_type != 'reflect' or row == column:
+            return ndi.gaussian_filter(component, sigma=sigma, mode=self.padding_type)
+
+        # Cross-components are odd across the two Riesz axes and even across
+        # the remaining axis. Extend only a kernel halo along each odd axis,
+        # with a sign change at every half-sample reflection (also for small
+        # images whose smoothing kernel spans multiple reflections).
+        if sigma <= 1e-15:
+            return component.copy()
+        radius = int(4.0 * sigma + 0.5)
+        for axis, size in enumerate(component.shape):
+            if axis not in (row, column) or radius == 0:
+                component = ndi.gaussian_filter1d(component, sigma=sigma, axis=axis, mode='reflect')
+                continue
+            positions = np.arange(-radius, size + radius)
+            reflected = (positions // size) % 2 != 0
+            indices = positions % size
+            indices[reflected] = size - 1 - indices[reflected]
+            extended = np.take(component, indices, axis=axis)
+            axis_shape = [1] * component.ndim
+            axis_shape[axis] = positions.size
+            extended *= np.where(reflected, -1.0, 1.0).reshape(axis_shape)
+            smoothed = ndi.gaussian_filter1d(extended, sigma=sigma, axis=axis, mode='constant')
+            crop = [slice(None)] * component.ndim
+            crop[axis] = slice(radius, radius + size)
+            component = smoothed[tuple(crop)].copy()
+        return component
+
+    def _aligned_second_order_response(self, image, log_response, riesz_transform, crop=None):
+        if crop is None:
+            crop = (slice(None),) * image.ndim
+        output_shape = image[crop].shape
+        sigma = self.structure_tensor_sigma_mm / self.res_mm
+        first_order_responses = []
+        for axis in range(3):
+            order = [0, 0, 0]
+            order[axis] = 1
+            first_order_responses.append(riesz_transform(image, order))
+
+        # Smooth on the full domain, then retain only the final field of view.
+        # Eigensystems and steering are voxel-local and need no exterior tail.
+        tensor = np.empty(output_shape + (3, 3))
+        for row in range(3):
+            for column in range(row, 3):
+                value = self._smooth_tensor_component(
+                    first_order_responses[row] * first_order_responses[column],
+                    sigma=sigma,
+                    row=row,
+                    column=column,
+                )
+                tensor[..., row, column] = value[crop]
+                tensor[..., column, row] = value[crop]
+        del value, first_order_responses
+        eigenvectors = np.linalg.eigh(tensor)[1]
+        del tensor
+        rotation = np.swapaxes(eigenvectors[..., ::-1], -1, -2)
+
+        target_axes = np.repeat(np.arange(3), self.riesz_order)
+        first_direction = rotation[..., target_axes[0], :]
+        second_direction = rotation[..., target_axes[1], :]
+        target_coefficient = np.sqrt(factorial(2) / np.prod([factorial(order) for order in self.riesz_order]))
+
+        response = np.zeros(output_shape, dtype=image.dtype)
+        for row in range(3):
+            order = [0, 0, 0]
+            order[row] = 2
+            response += (
+                target_coefficient
+                * first_direction[..., row]
+                * second_direction[..., row]
+                * riesz_transform(log_response, order)[crop]
+            )
+            for column in range(row + 1, 3):
+                order = [0, 0, 0]
+                order[row] = order[column] = 1
+                response += (
+                    target_coefficient
+                    / np.sqrt(2.0)
+                    * (
+                        first_direction[..., row] * second_direction[..., column]
+                        + first_direction[..., column] * second_direction[..., row]
+                    )
+                    * riesz_transform(log_response, order)[crop]
+                )
+        return response
+
+    def _apply_composed(self, image, order):
+        """Apply LoG and Riesz on one consistently bounded domain."""
+        crop = None
+        if self.padding_type in ('constant', 'nearest'):
+            padding = tuple((size // 2, size - size // 2) for size in image.shape)
+            mode = 'edge' if self.padding_type == 'nearest' else 'constant'
+            domain = np.pad(image, padding, mode=mode)
+            crop = tuple(slice(before, before + size) for (before, _), size in zip(padding, image.shape))
+            riesz_transform = self._riesz_transform
+        else:
+            domain = image
+            riesz_transform = self._boundary_aware_riesz_transform
+
+        sigma = self.sigma_mm / self.res_mm
+        log_response = ndi.gaussian_laplace(
+            domain,
+            sigma=sigma,
+            mode=self.padding_type,
+            cval=self.padding_constant,
+            truncate=self.cutoff,
+        )
+        if self.structure_tensor_sigma_mm is not None:
+            return self._aligned_second_order_response(domain, log_response, riesz_transform, crop=crop)
+        response = riesz_transform(log_response, order)
+        return response if crop is None else response[crop].copy()
+
+    def _apply_array(self, img):
+        # Image arrays are handled internally as (y, x, z), while the public
+        # multi-index follows the physical image axes (x, y, z).
+        order = (self.riesz_order[1], self.riesz_order[0], *self.riesz_order[2:])
+        if self.dimensionality == '3D':
+            return self._apply_composed(img, order)
+
+        response = np.empty_like(img, dtype=np.result_type(img.dtype, np.float64))
+        for index in range(img.shape[2]):
+            response[:, :, index] = self._apply_composed(img[:, :, index], order)
+        return response
 
 
 class Laws(BaseFilter):

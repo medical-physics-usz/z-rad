@@ -11,7 +11,7 @@
 
 <p align="center">
   <strong>Extract quantitative features from medical images with a desktop interface or Python API.</strong><br />
-  CT, PET, MR, US, and RTDOSE · DICOM and NIfTI · Windows, macOS, and Linux
+  CT, PET, MR, MG, US, and RTDOSE · DICOM and NIfTI · Windows, macOS, and Linux
 </p>
 
 <p align="center">
@@ -34,19 +34,15 @@ flowchart LR
 
 Use the same processing stages interactively through the desktop application or automate them with Python. See the [workflow guide](https://medical-physics-usz.github.io/z-rad/user/gui_workflows.html) for data preparation and processing choices.
 
-## Full IBSI implementation coverage
-
-Z-Rad supports **all IBSI I preprocessing operations and radiomic features, and all IBSI II filters** defined by the Image Biomarker Standardisation Initiative (IBSI).
-
-| Standard | Implementation coverage | Explore |
-| --- | --- | --- |
-| **IBSI I · Preprocessing** | All operations, including image and mask interpolation, resegmentation, and intensity discretization | [Preprocessing guide](https://medical-physics-usz.github.io/z-rad/user/preprocessing.html) |
-| **IBSI I · Features** | All feature families, including morphology, local intensity, intensity statistics, histograms, intensity-volume histograms, and texture | [Feature guide](https://medical-physics-usz.github.io/z-rad/user/radiomics.html) |
-| **IBSI II · Filters** | All filters, including mean, LoG, Laws, Gabor, separable wavelets, Simoncelli, and Riesz transforms | [Filtering guide](https://medical-physics-usz.github.io/z-rad/user/filtering.html) |
-
-See [validation and reproducibility](#ibsi-validation-and-reproducibility) for reference tests, tolerances, and current testing limitations.
-
 ## See what you can do
+
+| Capability | What you can do |
+| --- | --- |
+| Inspect images | View images and ROI masks together in the [desktop viewer](https://medical-physics-usz.github.io/z-rad/user/visualization.html). |
+| Prepare images | Convert DICOM to NIfTI, resample images and masks, resegment intensities, and configure discretization. |
+| Extract features | Calculate shape, intensity, and texture features with 2D, 2.5D, and 3D aggregation options. |
+| Process cohorts | Use the GUI or Python batch APIs to preprocess, filter, and extract features across case folders. |
+| Use the results | Collect feature dictionaries in Python or export batch radiomics results to a CSV file. |
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/medical-physics-usz/z-rad/master/docs/images/Filtering_Res.png" width="380" alt="Four CT views comparing an unfiltered image with mean, Laplacian-of-Gaussian, and wavelet filtering" />
@@ -54,13 +50,29 @@ See [validation and reproducibility](#ibsi-validation-and-reproducibility) for r
 
 *Explore different image representations: (A) unfiltered CT, (B) mean filtering, (C) Laplacian-of-Gaussian filtering, and (D) wavelet filtering. Follow the [worked filtering example](https://medical-physics-usz.github.io/z-rad/examples/gui_filtering.html) for settings and workflow.*
 
-| Capability | What you can do |
-| --- | --- |
-| **Load and inspect** | Work with CT, PET, and MR images in DICOM or NIfTI format; inspect images and ROI masks in the [desktop viewer](https://medical-physics-usz.github.io/z-rad/user/visualization.html). |
-| **Prepare images** | Convert DICOM to NIfTI, resample images and masks, resegment intensities, and configure discretization. |
-| **Extract features** | Calculate shape, intensity, and texture features with 2D, 2.5D, and 3D aggregation options. |
-| **Process cohorts** | Use the GUI or Python batch APIs to preprocess, filter, and extract features across case folders. |
-| **Use the results** | Collect feature dictionaries in Python or export batch radiomics results to a CSV file. |
+## Supported images and masks
+
+| Data format | Data type | Supported types and notes |
+| --- | --- | --- |
+| DICOM | Image | CT, MR, PET (PT), mammography (MG), ultrasound (US), and RTDOSE. |
+| DICOM | Mask | RTSTRUCT contours and BINARY DICOM SEG objects; select ROIs by structure name or segment label. |
+| NIfTI | Image | Scalar image volumes with spatial geometry. |
+| NIfTI | Mask | One binary ROI mask per file, paired with its reference image. |
+
+Use scalar image volumes with masks on the same physical voxel grid. Python arrays use `(z, y, x)` order; 2D and 2.5D aggregation operate slice-wise. DICOM SEG support excludes fractional and label-map segmentations. Ultrasound input must be a single DICOM file with `PixelSpacing` and `SliceThickness` metadata.
+
+See the [data-format and folder-layout guide](https://medical-physics-usz.github.io/z-rad/user/data_structure.html) for organizing cases, naming masks, and selecting DICOM structures, and the [Python image reference](https://medical-physics-usz.github.io/z-rad/reference/image.html) for in-memory inputs.
+
+## Full IBSI implementation coverage
+
+Z-Rad supports **all IBSI I preprocessing operations and radiomic features, and all IBSI II filters** defined by the Image Biomarker Standardisation Initiative (IBSI).
+
+| Standard | Implementation coverage | Explore |
+| --- | --- | --- |
+| IBSI I · Preprocessing | All operations, including image and mask interpolation, resegmentation, and intensity discretization | [Preprocessing guide](https://medical-physics-usz.github.io/z-rad/user/preprocessing.html) |
+| IBSI I · Features | All feature families, including morphology, local intensity, intensity statistics, histograms, intensity-volume histograms, and texture | [Feature guide](https://medical-physics-usz.github.io/z-rad/user/radiomics.html) |
+| IBSI II · Filters | All filters, including mean, LoG, Laws, Gabor, separable wavelets, Simoncelli, and Riesz transforms | [Filtering guide](https://medical-physics-usz.github.io/z-rad/user/filtering.html) |
+
 
 ## Get started
 

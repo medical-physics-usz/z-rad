@@ -94,7 +94,7 @@ Z-Rad supports **all IBSI I preprocessing operations and radiomic features, and 
 
 3. Follow the [GUI quickstart](https://medical-physics-usz.github.io/z-rad/user/gui_quickstart.html) to select your input data, configure processing, and run your first analysis.
 
-The macOS app is currently unsigned and unnotarized, so Gatekeeper may show a warning. For Linux and Intel Macs, or to run the current source version, use the Python setup below and launch `python main.py`. See the [installation guide](https://medical-physics-usz.github.io/z-rad/user/installation.html) for details.
+The macOS app is currently unsigned and unnotarized, so Gatekeeper may show a warning. For Linux and Intel Macs, or to run the current source version, open **Install from source and run the bundled example** under [Python quickstart](#python-quickstart), follow the source installation steps, and launch `python main.py` from the repository root. See the [installation guide](https://medical-physics-usz.github.io/z-rad/user/installation.html) for details.
 
 ### Python quickstart
 
@@ -107,7 +107,7 @@ python -m pip install z-rad
 Follow the documentation for your installed release. The [full Python workflow](https://medical-physics-usz.github.io/z-rad/user/api_quickstart.html) covers resampling, filtering, texture discretization, and batch extraction.
 
 <details>
-<summary>Run an example with bundled data</summary>
+<summary>Install from source and run the bundled example</summary>
 
 To try the example below with the current source and bundled IBSI phantom, clone the repository and install it in a virtual environment:
 
@@ -154,7 +154,7 @@ Expected output:
 Mean intensity: -46.88 HU
 ```
 
-The result is a dictionary of feature names and values; this example prints the ROI's mean CT intensity.
+The result is a dictionary of feature names and values; this example prints the ROI's mean CT intensity. See the [bundled dataset attribution and license terms](tests/data/README.md) before reusing or redistributing the phantom data.
 
 </details>
 
@@ -162,7 +162,7 @@ The result is a dictionary of feature names and values; this example prints the 
 
 Z-Rad includes automated comparisons against IBSI reference material. The implementation follows [IBSI I](https://arxiv.org/abs/1612.07003) and [IBSI II](https://arxiv.org/abs/2006.05470); the benchmark suites make numerical agreement inspectable:
 
-- **IBSI I:** digital and CT phantom tests cover preprocessing configurations and feature comparisons using the reference tables' per-feature tolerances. [Inspect the tests](tests/test_ibsi_1.py).
+- **IBSI I:** CT phantom tests for configurations A–E cover preprocessing and feature comparisons using the reference tables' per-feature tolerances. [Inspect the tests](tests/test_ibsi_1.py).
 - **IBSI II:** digital phantom tests compare filter response maps, and CT phantom tests compare features from filtered images. Response-map comparisons use a tolerance of 1% of the reference map's intensity range; feature comparisons use the reference tables' tolerances. [Inspect the tests](tests/test_ibsi_2.py).
 
 See the [validation scope and current benchmark limitations](docs/ibsi/index.rst#current-benchmark-limitations) for excluded comparisons, unavailable reference data, and limits of the automated checks.

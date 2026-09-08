@@ -5,7 +5,8 @@ The Python API mirrors the main GUI workflows through public preprocessing,
 filtering, and radiomics interfaces:
 
 * preprocessing step classes such as ``ImageResampler`` and ``MaskResampler``
-* concrete filters such as ``Mean``, ``LoG``, ``Gabor``, ``Laws``, and wavelets
+* concrete filters such as ``Mean``, ``LoG``, ``RieszLoG``, ``Gabor``,
+  ``Laws``, separable wavelets, and ``Simoncelli``
 * ``Radiomics``
 
 Recommended Workflow
@@ -246,6 +247,44 @@ single-image filtering.
    print(result.processed_count, result.failed_count)
 
 ``BatchFilter`` is a save-to-disk batch API.
+
+Riesz and Simoncelli Filters
+----------------------------
+
+``RieszLoG`` composes a Laplacian-of-Gaussian response with a normalized Riesz
+transform. The Riesz multi-index follows physical axis order and must match the
+selected dimensionality. A structure-tensor scale can be supplied for locally
+aligned, pure second-order 3D responses.
+
+.. code-block:: python
+
+   from zrad.filtering import RieszLoG, Simoncelli
+   from zrad.image import Image
+
+   image = Image.from_nifti("path/to/image.nii.gz")
+
+   riesz_log = RieszLoG(
+       padding_type="reflect",
+       sigma_mm=1.5,
+       cutoff=4.0,
+       dimensionality="3D",
+       riesz_order=(2, 0, 0),
+       structure_tensor_sigma_mm=1.0,
+   )
+
+   simoncelli = Simoncelli(
+       padding_type="wrap",
+       decomposition_level=2,
+       dimensionality="3D",
+       riesz_order=(1, 0, 0),
+   )
+
+   riesz_log_image = riesz_log.apply(image)
+   simoncelli_image = simoncelli.apply(image)
+
+Omit ``riesz_order`` from ``Simoncelli`` to obtain its isotropic band-pass
+response. Simoncelli filtering supports ``nearest`` padding and periodic
+padding (``wrap``; ``periodic`` is accepted as an alias).
 
 Batch Radiomics
 ---------------

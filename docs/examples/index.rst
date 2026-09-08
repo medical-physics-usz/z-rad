@@ -20,8 +20,8 @@ workflows.
       :link-type: doc
       :img-top: ../images/Filt_tab.png
 
-      Mean, LoG, and wavelet filtering examples with example GUI
-      configurations and result comparisons.
+      Mean, LoG, Riesz-transformed LoG, separable wavelet, and Simoncelli
+      filtering controls, with example configurations and result comparisons.
 
    .. grid-item-card:: Radiomics extraction in GUI
       :link: gui_radiomics

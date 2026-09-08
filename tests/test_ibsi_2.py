@@ -43,10 +43,12 @@ def ibsi_ii_ph_i_validation(filtered_image, response_map, config_id):
         pytest.fail(f"Failed {config_id}")
 
 
-def ibsi_ii_ph_ii_validation(ibsi_features, features):
+def ibsi_ii_ph_ii_validation(ibsi_features, features, config_8b=False):
 
     for raw_tag, feature_info in ibsi_features.items():
         tag = str(raw_tag)
+        if config_8b and tag == 'stat_qcod':
+            continue
 
         if tag in features:
             val = float(feature_info['consensus_value'])
@@ -126,6 +128,11 @@ def impulse_phantom():
 @pytest.fixture()
 def sphere_phantom():
     return Image.from_nifti('tests/data/IBSI_II/Ph_I/nifti/sphere/image/sphere.nii.gz')
+
+
+@pytest.fixture()
+def pattern_1_phantom():
+    return Image.from_nifti('tests/data/IBSI_II/Ph_I/nifti/pattern_1/image/pattern_1.nii.gz')
 
 
 @pytest.mark.integration
@@ -351,6 +358,82 @@ def test_ibsi_ii_ph_i_7(ibsi_ii_data_dir, checkerboard_phantom):
 
 
 @pytest.mark.integration
+def test_ibsi_ii_ph_i_8(ibsi_ii_data_dir, checkerboard_phantom):
+    for level in (1, 2, 3):
+        config = f'8.a.{level}'
+        filtering = create_filter(
+            filtering_method='Simoncelli',
+            dimensionality='3D',
+            padding_type='wrap',
+            decomposition_level=level,
+        )
+        _run_ph_i_case(
+            filtering,
+            checkerboard_phantom,
+            f'8_a_{level}-ValidCRM.nii',
+            config,
+            ibsi_ii_data_dir,
+        )
+
+
+@pytest.mark.integration
+def test_ibsi_ii_ph_i_9(ibsi_ii_data_dir, impulse_phantom, sphere_phantom):
+    filtering = create_filter(
+        filtering_method='Riesz-transformed LoG',
+        dimensionality='3D',
+        padding_type='constant',
+        sigma_mm=3.0,
+        cutoff=4,
+        riesz_order=(1, 0, 0),
+    )
+    _run_ph_i_case(
+        filtering,
+        impulse_phantom,
+        '9_a-ValidCRM.nii',
+        '9.a',
+        ibsi_ii_data_dir,
+    )
+
+    filtering = create_filter(
+        filtering_method='Riesz-transformed LoG',
+        dimensionality='3D',
+        padding_type='constant',
+        sigma_mm=3.0,
+        cutoff=4,
+        riesz_order=(0, 2, 0),
+    )
+    _run_ph_i_case(
+        filtering,
+        sphere_phantom,
+        '9_b_1-ValidCRM.nii',
+        '9.b.1',
+        ibsi_ii_data_dir,
+    )
+
+
+@pytest.mark.integration
+def test_ibsi_ii_ph_i_10(ibsi_ii_data_dir, pattern_1_phantom):
+    response_map = ibsi_ii_data_dir / 'Ph_I' / 'response_maps' / '10_b_1-ValidCRM.nii'
+    if not response_map.exists():
+        pytest.skip('The IBSI II 10.b.1 response map is not included in the bundled test data.')
+
+    filtering = create_filter(
+        filtering_method='Simoncelli',
+        dimensionality='3D',
+        padding_type='nearest',
+        decomposition_level=1,
+        riesz_order=(0, 2, 0),
+    )
+    _run_ph_i_case(
+        filtering,
+        pattern_1_phantom,
+        response_map.name,
+        '10.b.1',
+        ibsi_ii_data_dir,
+    )
+
+
+@pytest.mark.integration
 def test_ibsi_ii_ph_ii_2a(ct_phantom_image, ct_phantom_mask):
     ibsi_features = ibsi_ii_feature_tolerances('2.A')
 
@@ -563,6 +646,64 @@ def test_ibsi_ii_ph_ii_7b(res3d_1mm_image_spline, res3d_1mm_mask_linear):
         response_map="HHH",
         decomposition_level=2,
         rotation_invariance=True,
+    )
+
+    filtered_image = filtering.apply(res3d_1mm_image_spline)
+
+    features = _extract_filtered_features(res3d_1mm_image_spline, filtered_image, res3d_1mm_mask_linear)
+    ibsi_ii_ph_ii_validation(ibsi_features, features)
+
+
+@pytest.mark.integration
+def test_ibsi_ii_ph_ii_8a(ct_phantom_image, ct_phantom_mask):
+    ibsi_features = ibsi_ii_feature_tolerances('8.A')
+
+    filtering = create_filter(
+        filtering_method='Simoncelli', padding_type='periodic', decomposition_level=1, dimensionality='2D'
+    )
+
+    filtered_image = filtering.apply(ct_phantom_image)
+
+    features = _extract_filtered_features(ct_phantom_image, filtered_image, ct_phantom_mask)
+    ibsi_ii_ph_ii_validation(ibsi_features, features)
+
+
+@pytest.mark.integration
+def test_ibsi_ii_ph_ii_8b(res3d_1mm_image_spline, res3d_1mm_mask_linear):
+    ibsi_features = ibsi_ii_feature_tolerances('8.B')
+
+    filtering = create_filter(
+        filtering_method='Simoncelli', padding_type='periodic', decomposition_level=1, dimensionality='3D'
+    )
+
+    filtered_image = filtering.apply(res3d_1mm_image_spline)
+
+    features = _extract_filtered_features(res3d_1mm_image_spline, filtered_image, res3d_1mm_mask_linear)
+    ibsi_ii_ph_ii_validation(ibsi_features, features, True)
+
+    # 8.B;Quartile coefficient of dispersion;stat_qcod;;
+
+
+@pytest.mark.integration
+def test_ibsi_ii_ph_ii_9a(ct_phantom_image, ct_phantom_mask):
+    ibsi_features = ibsi_ii_feature_tolerances('9.A')
+
+    filtering = create_filter(
+        filtering_method='Simoncelli', padding_type='periodic', decomposition_level=2, dimensionality='2D'
+    )
+
+    filtered_image = filtering.apply(ct_phantom_image)
+
+    features = _extract_filtered_features(ct_phantom_image, filtered_image, ct_phantom_mask)
+    ibsi_ii_ph_ii_validation(ibsi_features, features)
+
+
+@pytest.mark.integration
+def test_ibsi_ii_ph_ii_9b(res3d_1mm_image_spline, res3d_1mm_mask_linear):
+    ibsi_features = ibsi_ii_feature_tolerances('9.B')
+
+    filtering = create_filter(
+        filtering_method='Simoncelli', padding_type='periodic', decomposition_level=2, dimensionality='3D'
     )
 
     filtered_image = filtering.apply(res3d_1mm_image_spline)

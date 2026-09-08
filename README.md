@@ -16,6 +16,10 @@
 </p>
 
 <p align="center">
+  <a href="#full-ibsi-implementation-coverage"><strong>Full IBSI I preprocessing and feature coverage · All IBSI II filters</strong></a>
+</p>
+
+<p align="center">
   <a href="https://github.com/medical-physics-usz/z-rad/releases">Download</a> ·
   <a href="https://medical-physics-usz.github.io/z-rad/">Documentation</a> ·
   <a href="#python-quickstart">Python quickstart</a> ·
@@ -160,6 +164,8 @@ Z-Rad includes automated comparisons against IBSI reference material. The implem
 
 - **IBSI I:** digital and CT phantom tests cover preprocessing configurations and feature comparisons using the reference tables' per-feature tolerances. [Inspect the tests](tests/test_ibsi_1.py).
 - **IBSI II:** digital phantom tests compare filter response maps, and CT phantom tests compare features from filtered images. Response-map comparisons use a tolerance of 1% of the reference map's intensity range; feature comparisons use the reference tables' tolerances. [Inspect the tests](tests/test_ibsi_2.py).
+
+See the [validation scope and current benchmark limitations](docs/ibsi/index.rst#current-benchmark-limitations) for excluded comparisons, unavailable reference data, and limits of the automated checks.
 
 ## Contribute and get in touch
 

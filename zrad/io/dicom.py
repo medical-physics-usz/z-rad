@@ -8,7 +8,7 @@ from pydicom.errors import InvalidDicomError
 from skimage import draw
 
 from ..exceptions import DataStructureError, DataStructureWarning
-from .pet_suv import apply_suv_correction, reject_unsupported_enhanced_pet, validate_pet_dicom_tags
+from .pet_suv import apply_suv_correction, is_enhanced_pet, validate_pet_dicom_tags
 
 
 def read_dicom_image(dicom_dir, modality):
@@ -25,9 +25,16 @@ def read_dicom_image(dicom_dir, modality):
     if modality == "US":
         validate_ultrasound_dicom_tags(dicom_files)
     if modality in ["CT", "MRI", "PET", "MG", "US"]:
-        image = process_dicom_series(dicom_files, modality)
+        enhanced_pet = modality == "PET" and all(is_enhanced_pet(dcm_file["ds"]) for dcm_file in dicom_files)
+        image = process_dicom_series(
+            dicom_files,
+            modality,
+            reorder_enhanced_frames=not enhanced_pet,
+        )
     if modality == "PET":
         image = apply_suv_correction(dicom_files, image)
+        if enhanced_pet:
+            image = _reorder_enhanced_image_frames(dicom_files, image)
     if modality == "RTDOSE":
         image = read_dicom_dose(dicom_files[0]["file_path"])
     if image is None:
@@ -140,10 +147,12 @@ def get_dicom_files(directory, modality):
             warning_msg = f"An error occurred while processing file {file_path}: {str(e)}"
             warnings.warn(warning_msg, DataStructureWarning)
 
-    if modality_dicom == "PT":
-        reject_unsupported_enhanced_pet(dicom_files_info)
+    enhanced_flags = [is_enhanced_pet(item["ds"]) for item in dicom_files_info] if modality_dicom == "PT" else []
+    if any(enhanced_flags) and not all(enhanced_flags):
+        raise DataStructureError("A PET series cannot mix Enhanced and conventional PET instances.")
+    enhanced_series = bool(enhanced_flags) and all(enhanced_flags)
 
-    if len(dicom_files_info) > 1:
+    if len(dicom_files_info) > 1 and not enhanced_series:
         signatures = []
         for item in dicom_files_info:
             ds = item["ds"]
@@ -182,18 +191,357 @@ def get_dicom_files(directory, modality):
             )
 
         dicom_files_info = filtered
-    if modality_dicom in ["CT", "PT", "MR"]:
+    if modality_dicom in ["CT", "PT", "MR"] and not enhanced_series:
         dicom_files_info = remove_duplicate_slices(dicom_files_info)
         dicom_files_info = sort_by_geometric_position(dicom_files_info)
+    elif enhanced_series:
+        dicom_files_info = _sort_enhanced_instances(dicom_files_info)
     return dicom_files_info
 
 
-def validate_z_spacing(dicom_files):
-    slice_z_origin = []
+def _enhanced_functional_group_sequence(ds, frame_index, sequence_keyword):
+    per_frame = getattr(ds, "PerFrameFunctionalGroupsSequence", None)
+    if per_frame is not None and frame_index < len(per_frame):
+        frame_group = per_frame[frame_index]
+        if hasattr(frame_group, sequence_keyword):
+            sequence = getattr(frame_group, sequence_keyword)
+            if sequence:
+                return sequence
+    shared = getattr(ds, "SharedFunctionalGroupsSequence", None)
+    if shared and hasattr(shared[0], sequence_keyword):
+        return getattr(shared[0], sequence_keyword)
+    return None
+
+
+def _enhanced_frame_geometry(ds, frame_index):
+    orientation_sequence = _enhanced_functional_group_sequence(ds, frame_index, "PlaneOrientationSequence")
+    position_sequence = _enhanced_functional_group_sequence(ds, frame_index, "PlanePositionSequence")
+    orientation_source = orientation_sequence[0] if orientation_sequence else ds
+    position_source = position_sequence[0] if position_sequence else ds
+    try:
+        orientation = np.asarray(orientation_source.ImageOrientationPatient, dtype=float)
+        position = np.asarray(position_source.ImagePositionPatient, dtype=float)
+    except (AttributeError, IndexError, TypeError, ValueError):
+        raise DataStructureError("Enhanced PET frame geometry is missing or invalid.")
+    if orientation.shape != (6,) or position.shape != (3,) or not np.all(np.isfinite(position)):
+        raise DataStructureError("Enhanced PET frame geometry has invalid dimensions or values.")
+
+    row = orientation[:3]
+    column = orientation[3:]
+    row_norm = np.linalg.norm(row)
+    column_norm = np.linalg.norm(column)
+    if (
+        not np.all(np.isfinite(orientation))
+        or row_norm == 0
+        or column_norm == 0
+        or not np.isclose(np.dot(row / row_norm, column / column_norm), 0.0, rtol=0, atol=1e-4)
+    ):
+        raise DataStructureError("Enhanced PET Image Orientation (Patient) is invalid.")
+    row = row / row_norm
+    column = column / column_norm
+    normal = np.cross(row, column)
+    normal_norm = np.linalg.norm(normal)
+    if not np.isfinite(normal_norm) or normal_norm == 0:
+        raise DataStructureError("Enhanced PET Image Orientation (Patient) is invalid.")
+    return np.concatenate((row, column)), position, normal / normal_norm
+
+
+def _enhanced_frame_distances(dicom_files):
+    distances = []
+    reference_orientation = None
+    reference_position = None
+    reference_frame_of_reference_uid = None
     for dcm_file in dicom_files:
-        slice_z_origin.append(float(dcm_file["ds"].ImagePositionPatient[2]))
-    slice_z_origin = sorted(slice_z_origin)
-    slice_thickness = [abs(slice_z_origin[i] - slice_z_origin[i + 1]) for i in range(len(slice_z_origin) - 1)]
+        ds = dcm_file["ds"]
+        frame_of_reference_uid = str(getattr(ds, "FrameOfReferenceUID", "")).strip()
+        if not frame_of_reference_uid:
+            raise DataStructureError("Enhanced PET Frame of Reference UID (0020,0052) is missing or empty.")
+        if reference_frame_of_reference_uid is None:
+            reference_frame_of_reference_uid = frame_of_reference_uid
+        elif frame_of_reference_uid != reference_frame_of_reference_uid:
+            raise DataStructureError("Enhanced PET instances use inconsistent Frame of Reference UIDs.")
+        try:
+            frame_count = int(ds.NumberOfFrames)
+        except (AttributeError, TypeError, ValueError):
+            raise DataStructureError("Number of Frames (0028,0008) is missing or invalid for Enhanced PET.")
+        groups = getattr(ds, "PerFrameFunctionalGroupsSequence", None)
+        if groups is None or len(groups) != frame_count:
+            raise DataStructureError(
+                "Per-Frame Functional Groups Sequence (5200,9230) does not match the number of Enhanced PET frames."
+            )
+
+        for frame_index in range(frame_count):
+            orientation, position, normal = _enhanced_frame_geometry(ds, frame_index)
+            if reference_orientation is None:
+                reference_orientation = orientation
+                reference_position = position
+            elif not np.allclose(orientation, reference_orientation, rtol=0, atol=1e-6):
+                raise DataStructureError("Enhanced PET frame orientations are inconsistent.")
+            else:
+                displacement = position - reference_position
+                if (
+                    abs(np.dot(displacement, reference_orientation[:3])) > 1e-4
+                    or abs(np.dot(displacement, reference_orientation[3:])) > 1e-4
+                ):
+                    raise DataStructureError("Enhanced PET frames have inconsistent in-plane origins.")
+            distances.append(float(np.dot(position, normal)))
+    return distances
+
+
+def _validated_enhanced_slice_spacing(distances):
+    differences = np.diff(np.sort(np.asarray(distances, dtype=float)))
+    if len(differences) == 0:
+        return None, None
+    if np.any(np.abs(differences) <= 1e-6):
+        raise DataStructureError("Enhanced PET contains multiple frames at the same spatial position.")
+
+    slice_spacings = differences
+    reference_spacing = slice_spacings[0]
+    spacing_deviations = np.abs(slice_spacings - reference_spacing)
+    spacing_threshold = 0.1
+    if np.any(spacing_deviations > spacing_threshold):
+        maximum_deviation = float(np.max(spacing_deviations))
+        raise DataStructureError(
+            f"Inconsistent z-spacing. Absolute deviation is {maximum_deviation:.3f} which is greater than "
+            f"{spacing_threshold:.3f} mm."
+        )
+    return float(np.median(slice_spacings)), 1
+
+
+def _enhanced_frame_references(dicom_files):
+    references = []
+    for dcm_file in dicom_files:
+        for frame_index in range(_enhanced_instance_frame_count(dcm_file)):
+            references.append((dcm_file, frame_index))
+    return references
+
+
+def _enhanced_frame_order(dicom_files):
+    distances = np.asarray(_enhanced_frame_distances(dicom_files), dtype=float)
+    return np.argsort(distances, kind="stable")
+
+
+def _reorder_enhanced_image_frames(dicom_files, image):
+    frame_order = _enhanced_frame_order(dicom_files)
+    frames = sitk.GetArrayFromImage(image)
+    if frames.ndim == 2:
+        frames = frames[np.newaxis, ...]
+    if frames.ndim != 3 or frames.shape[0] != len(frame_order):
+        raise DataStructureError("Enhanced PET pixel data dimensions do not match its frame geometry.")
+    if np.array_equal(frame_order, np.arange(len(frame_order))):
+        return image
+    reordered = sitk.GetImageFromArray(frames[frame_order])
+    reordered.CopyInformation(image)
+    return reordered
+
+
+def _enhanced_instance_frame_count(dcm_file):
+    try:
+        frame_count = int(dcm_file["ds"].NumberOfFrames)
+    except (AttributeError, TypeError, ValueError):
+        raise DataStructureError("Number of Frames (0028,0008) is missing or invalid for Enhanced PET.")
+    if frame_count <= 0:
+        raise DataStructureError("Number of Frames (0028,0008) must be positive for Enhanced PET.")
+    return frame_count
+
+
+def _sort_enhanced_instances(dicom_files):
+    concatenation_uids = [str(getattr(item["ds"], "ConcatenationUID", "")).strip() for item in dicom_files]
+    offsets = [getattr(item["ds"], "ConcatenationFrameOffsetNumber", None) for item in dicom_files]
+    has_uid = [bool(value) for value in concatenation_uids]
+    has_offset = [value not in [None, ""] for value in offsets]
+
+    if any(has_uid) and not all(has_uid):
+        raise DataStructureError("Enhanced PET instances cannot mix concatenation and non-concatenation objects.")
+    if all(has_uid) and len(set(concatenation_uids)) != 1:
+        raise DataStructureError("Enhanced PET instances have inconsistent Concatenation UIDs (0020,9161).")
+    if any(has_offset) and not all(has_uid):
+        raise DataStructureError(
+            "Enhanced PET Concatenation Frame Offset Numbers require a consistent Concatenation UID."
+        )
+    if any(has_offset) and not all(has_offset):
+        raise DataStructureError("Enhanced PET instances have incomplete Concatenation Frame Offset Numbers.")
+
+    if all(has_offset):
+        parsed_instances = []
+        for item, offset in zip(dicom_files, offsets):
+            try:
+                offset = int(offset)
+            except (TypeError, ValueError):
+                raise DataStructureError("Concatenation Frame Offset Number (0020,9228) is invalid.")
+            if offset < 0:
+                raise DataStructureError("Concatenation Frame Offset Number (0020,9228) cannot be negative.")
+            parsed_instances.append((offset, item))
+
+        parsed_instances.sort(key=lambda entry: entry[0])
+        expected_offset = 0
+        for position, (offset, item) in enumerate(parsed_instances, start=1):
+            if offset != expected_offset:
+                raise DataStructureError("Enhanced PET concatenation has missing or overlapping frames.")
+            expected_offset += _enhanced_instance_frame_count(item)
+
+            in_concatenation_number = getattr(item["ds"], "InConcatenationNumber", None)
+            if in_concatenation_number not in [None, ""]:
+                try:
+                    if int(in_concatenation_number) != position:
+                        raise DataStructureError("Enhanced PET In-concatenation Numbers are inconsistent.")
+                except (TypeError, ValueError):
+                    raise DataStructureError("In-concatenation Number (0020,9162) is invalid.")
+
+            total = getattr(item["ds"], "InConcatenationTotalNumber", None)
+            if total not in [None, ""]:
+                try:
+                    if int(total) != len(dicom_files):
+                        raise DataStructureError("Enhanced PET In-concatenation Total Number is inconsistent.")
+                except (TypeError, ValueError):
+                    raise DataStructureError("In-concatenation Total Number (0020,9163) is invalid.")
+        return [item for _offset, item in parsed_instances]
+
+    if any(has_uid):
+        raise DataStructureError("Enhanced PET concatenation is missing Concatenation Frame Offset Numbers.")
+
+    instance_distances = []
+    for item in dicom_files:
+        distances = _enhanced_frame_distances([item])
+        instance_distances.append((min(distances), item))
+
+    return [item for _distance, item in sorted(instance_distances, key=lambda entry: entry[0])]
+
+
+def _dimension_index_values(frame_content, expected_count):
+    raw_values = getattr(frame_content, "DimensionIndexValues", None)
+    if raw_values in [None, ""]:
+        raise DataStructureError("Enhanced PET frame is missing Dimension Index Values (0020,9157).")
+    try:
+        values = tuple(raw_values)
+    except TypeError:
+        values = (raw_values,)
+    if len(values) != expected_count:
+        raise DataStructureError("Enhanced PET Dimension Index Values do not match Dimension Index Sequence.")
+    try:
+        return tuple(int(value) for value in values)
+    except (TypeError, ValueError):
+        raise DataStructureError("Enhanced PET Dimension Index Values are invalid.")
+
+
+def _validate_enhanced_spatial_dimensions(dicom_files):
+    spatial_pointers = {0x00200032, 0x00209057}  # Image Position (Patient), In-Stack Position Number
+    reference_pointers = None
+    reference_non_spatial_values = None
+    reference_stack_id = None
+    reference_temporal_position = None
+
+    for dcm_file in dicom_files:
+        ds = dcm_file["ds"]
+        organization_type = str(getattr(ds, "DimensionOrganizationType", "")).strip().upper()
+        if organization_type not in {"", "3D", "3D_TEMPORAL"}:
+            raise DataStructureError(
+                f"Enhanced PET Dimension Organization Type '{organization_type}' cannot be represented as one 3D volume."
+            )
+
+        dimension_sequence = getattr(ds, "DimensionIndexSequence", None)
+        if not dimension_sequence:
+            raise DataStructureError("Enhanced PET Dimension Index Sequence (0020,9222) is missing or empty.")
+        try:
+            pointers = tuple(int(item.DimensionIndexPointer) for item in dimension_sequence)
+        except (AttributeError, TypeError, ValueError):
+            raise DataStructureError("Enhanced PET Dimension Index Sequence contains an invalid pointer.")
+        if reference_pointers is None:
+            reference_pointers = pointers
+        elif pointers != reference_pointers:
+            raise DataStructureError("Enhanced PET instances use inconsistent Dimension Index Sequences.")
+
+        non_spatial_indices = tuple(index for index, pointer in enumerate(pointers) if pointer not in spatial_pointers)
+        for frame_index in range(_enhanced_instance_frame_count(dcm_file)):
+            frame_content_sequence = _enhanced_functional_group_sequence(ds, frame_index, "FrameContentSequence")
+            if not frame_content_sequence or len(frame_content_sequence) != 1:
+                raise DataStructureError("Enhanced PET frame must contain one Frame Content Sequence item.")
+            frame_content = frame_content_sequence[0]
+            index_values = _dimension_index_values(frame_content, len(pointers))
+            non_spatial_values = tuple(index_values[index] for index in non_spatial_indices)
+            if reference_non_spatial_values is None:
+                reference_non_spatial_values = non_spatial_values
+            elif non_spatial_values != reference_non_spatial_values:
+                raise DataStructureError("Enhanced PET contains multiple non-spatial frame dimensions.")
+
+            stack_id = getattr(frame_content, "StackID", None)
+            if stack_id not in [None, ""]:
+                stack_id = str(stack_id)
+                if reference_stack_id is None:
+                    reference_stack_id = stack_id
+                elif stack_id != reference_stack_id:
+                    raise DataStructureError("Enhanced PET contains multiple frame stacks.")
+
+            temporal_position = getattr(frame_content, "TemporalPositionIndex", None)
+            if temporal_position not in [None, ""]:
+                try:
+                    temporal_position = int(temporal_position)
+                except (TypeError, ValueError):
+                    raise DataStructureError("Enhanced PET Temporal Position Index (0020,9128) is invalid.")
+                if reference_temporal_position is None:
+                    reference_temporal_position = temporal_position
+                elif temporal_position != reference_temporal_position:
+                    raise DataStructureError("Enhanced PET contains multiple temporal positions.")
+
+
+def _enhanced_image_geometry(dicom_files):
+    _validate_enhanced_spatial_dimensions(dicom_files)
+    frame_references = _enhanced_frame_references(dicom_files)
+    frame_order = _enhanced_frame_order(dicom_files)
+    first_dcm_file, first_frame_index = frame_references[int(frame_order[0])]
+    orientation, position, normal = _enhanced_frame_geometry(first_dcm_file["ds"], first_frame_index)
+    pixel_spacing = None
+    pixel_measures = None
+    for dcm_file in dicom_files:
+        ds = dcm_file["ds"]
+        for frame_index in range(_enhanced_instance_frame_count(dcm_file)):
+            pixel_measures_sequence = _enhanced_functional_group_sequence(ds, frame_index, "PixelMeasuresSequence")
+            frame_pixel_measures = pixel_measures_sequence[0] if pixel_measures_sequence else ds
+            try:
+                frame_pixel_spacing = np.asarray(frame_pixel_measures.PixelSpacing, dtype=float)
+            except (AttributeError, TypeError, ValueError):
+                raise DataStructureError("Enhanced PET Pixel Spacing (0028,0030) is missing or invalid.")
+            if (
+                frame_pixel_spacing.shape != (2,)
+                or not np.all(np.isfinite(frame_pixel_spacing))
+                or np.any(frame_pixel_spacing <= 0)
+            ):
+                raise DataStructureError("Enhanced PET Pixel Spacing (0028,0030) must contain two positive values.")
+            if pixel_spacing is None:
+                pixel_spacing = frame_pixel_spacing
+                pixel_measures = frame_pixel_measures
+            elif not np.allclose(frame_pixel_spacing, pixel_spacing, rtol=0, atol=1e-6):
+                raise DataStructureError("Enhanced PET frames have inconsistent in-plane pixel spacing.")
+
+    distances = _enhanced_frame_distances(dicom_files)
+    if len(distances) > 1:
+        z_spacing, _direction_sign = _validated_enhanced_slice_spacing(distances)
+    else:
+        spacing_between_slices = getattr(pixel_measures, "SpacingBetweenSlices", None)
+        slice_thickness = getattr(pixel_measures, "SliceThickness", None)
+        try:
+            z_spacing = float(spacing_between_slices if spacing_between_slices not in [None, ""] else slice_thickness)
+        except (TypeError, ValueError):
+            raise DataStructureError("Enhanced PET slice spacing is missing or invalid.")
+        if not np.isfinite(z_spacing) or z_spacing <= 0:
+            raise DataStructureError("Enhanced PET slice spacing must be positive.")
+
+    direction = np.vstack((orientation[:3], orientation[3:], normal)).flatten(order="F")
+    spacing = (float(pixel_spacing[1]), float(pixel_spacing[0]), z_spacing)
+    return tuple(position), spacing, tuple(direction)
+
+
+def validate_z_spacing(dicom_files):
+    if dicom_files and all(is_enhanced_pet(dcm_file["ds"]) for dcm_file in dicom_files):
+        slice_z_origin = _enhanced_frame_distances(dicom_files)
+        _validated_enhanced_slice_spacing(slice_z_origin)
+        return
+    else:
+        slice_z_origin = []
+        for dcm_file in dicom_files:
+            slice_z_origin.append(float(dcm_file["ds"].ImagePositionPatient[2]))
+        slice_z_origin = sorted(slice_z_origin)
+        slice_thickness = [abs(slice_z_origin[i] - slice_z_origin[i + 1]) for i in range(len(slice_z_origin) - 1)]
     for i in range(len(slice_thickness) - 1):
         spacing_difference = abs(slice_thickness[i] - slice_thickness[i + 1])
         spacing_threshold = 0.1
@@ -233,7 +581,28 @@ def modality_mapping(modality):
     return modality_map[modality]
 
 
-def process_dicom_series(dicom_files, modality):
+def process_dicom_series(dicom_files, modality, reorder_enhanced_frames=True):
+    if modality == "PET" and dicom_files and all(is_enhanced_pet(item["ds"]) for item in dicom_files):
+        origin, spacing, direction = _enhanced_image_geometry(dicom_files)
+        enhanced_images = [sitk.ReadImage(item["file_path"]) for item in dicom_files]
+        reference = enhanced_images[0]
+        arrays = []
+        for image in enhanced_images:
+            if image.GetSize()[:2] != reference.GetSize()[:2]:
+                raise DataStructureError("Enhanced PET instances have incompatible in-plane dimensions.")
+            arrays.append(sitk.GetArrayFromImage(image))
+        frames = np.concatenate(arrays, axis=0)
+        frame_order = _enhanced_frame_order(dicom_files)
+        if frames.ndim != 3 or frames.shape[0] != len(frame_order):
+            raise DataStructureError("Enhanced PET pixel data dimensions do not match its frame geometry.")
+        if reorder_enhanced_frames:
+            frames = frames[frame_order]
+        image = sitk.GetImageFromArray(frames)
+        image.SetOrigin(origin)
+        image.SetSpacing(spacing)
+        image.SetDirection(direction)
+        return image
+
     if modality in ["CT", "MRI", "PET", "MG"]:
         reader = sitk.ImageSeriesReader()
         file_names = [i["file_path"] for i in dicom_files]
@@ -411,51 +780,273 @@ def _segment_labels(dicom_data):
     }
 
 
-def _source_uid_to_slice(dicom_dir, image):
-    """Map source SOP Instance UIDs to z indices on the reference grid."""
-    uid_to_slice = {}
+def _seg_functional_group_sequence(seg, functional_group, sequence_keyword):
+    sequence = getattr(functional_group, sequence_keyword, None)
+    if sequence:
+        return sequence
+    shared = getattr(seg, "SharedFunctionalGroupsSequence", None)
+    if shared and hasattr(shared[0], sequence_keyword):
+        sequence = getattr(shared[0], sequence_keyword)
+        if sequence:
+            return sequence
+    return None
+
+
+def _seg_geometry_descriptor(
+    orientation,
+    position,
+    pixel_spacing,
+    z_spacing,
+    frame_of_reference_uid=None,
+):
+    try:
+        orientation = np.asarray(orientation, dtype=float)
+        position = np.asarray(position, dtype=float)
+        pixel_spacing = np.asarray(pixel_spacing, dtype=float)
+        z_spacing = float(z_spacing)
+    except (TypeError, ValueError) as exc:
+        raise DataStructureError("DICOM SEG frame geometry is invalid.") from exc
+    if (
+        orientation.shape != (6,)
+        or position.shape != (3,)
+        or pixel_spacing.shape != (2,)
+        or not np.all(np.isfinite(orientation))
+        or not np.all(np.isfinite(position))
+        or not np.all(np.isfinite(pixel_spacing))
+        or np.any(pixel_spacing <= 0)
+        or not np.isfinite(z_spacing)
+        or z_spacing <= 0
+    ):
+        raise DataStructureError("DICOM SEG frame geometry is invalid.")
+
+    row = orientation[:3]
+    column = orientation[3:]
+    row_norm = np.linalg.norm(row)
+    column_norm = np.linalg.norm(column)
+    if (
+        row_norm == 0
+        or column_norm == 0
+        or not np.isclose(np.dot(row / row_norm, column / column_norm), 0.0, rtol=0, atol=1e-4)
+    ):
+        raise DataStructureError("DICOM SEG frame orientation is invalid.")
+    row = row / row_norm
+    column = column / column_norm
+    normal = np.cross(row, column)
+    normal_norm = np.linalg.norm(normal)
+    if not np.isfinite(normal_norm) or normal_norm == 0:
+        raise DataStructureError("DICOM SEG frame orientation is invalid.")
+    normal /= normal_norm
+    direction = np.vstack((row, column, normal)).flatten(order="F")
+    return {
+        "origin": tuple(position),
+        "spacing": (float(pixel_spacing[1]), float(pixel_spacing[0]), z_spacing),
+        "direction": tuple(direction),
+        "normal": normal,
+        "frame_of_reference_uid": frame_of_reference_uid,
+    }
+
+
+def _pixel_measures_geometry(pixel_measures, fallback_z_spacing):
+    pixel_spacing = getattr(pixel_measures, "PixelSpacing", None)
+    spacing_between_slices = getattr(pixel_measures, "SpacingBetweenSlices", None)
+    slice_thickness = getattr(pixel_measures, "SliceThickness", None)
+    z_spacing = spacing_between_slices if spacing_between_slices not in [None, ""] else slice_thickness
+    if z_spacing in [None, ""]:
+        z_spacing = fallback_z_spacing
+    return pixel_spacing, z_spacing
+
+
+def _source_frame_geometries(dicom_dir, image):
+    """Map source SOP Instance UID and frame number to physical frame geometry."""
+    geometries = {}
     if not dicom_dir:
-        return uid_to_slice
+        return geometries
+    fallback_z_spacing = float(image.GetSpacing()[2])
     for filename in (os.path.join(dicom_dir, name) for name in os.listdir(dicom_dir)):
         if not os.path.isfile(filename):
             continue
         try:
             source = pydicom.dcmread(filename, stop_before_pixels=True)
-            if not hasattr(source, "SOPInstanceUID") or not hasattr(source, "ImagePositionPatient"):
+            if not hasattr(source, "SOPInstanceUID"):
                 continue
-            index = image.TransformPhysicalPointToContinuousIndex(tuple(map(float, source.ImagePositionPatient)))
-            uid_to_slice[str(source.SOPInstanceUID)] = int(np.rint(index[2]))
-        except (InvalidDicomError, AttributeError, ValueError, RuntimeError):
+            uid = str(source.SOPInstanceUID)
+            frame_of_reference_uid = str(getattr(source, "FrameOfReferenceUID", "")).strip() or None
+            if is_enhanced_pet(source):
+                frame_count = _enhanced_instance_frame_count({"ds": source})
+                for frame_index in range(frame_count):
+                    orientation, position, _normal = _enhanced_frame_geometry(source, frame_index)
+                    pixel_measures_sequence = _enhanced_functional_group_sequence(
+                        source,
+                        frame_index,
+                        "PixelMeasuresSequence",
+                    )
+                    pixel_measures = pixel_measures_sequence[0] if pixel_measures_sequence else source
+                    pixel_spacing, z_spacing = _pixel_measures_geometry(pixel_measures, fallback_z_spacing)
+                    geometries[(uid, frame_index + 1)] = _seg_geometry_descriptor(
+                        orientation,
+                        position,
+                        pixel_spacing,
+                        z_spacing,
+                        frame_of_reference_uid,
+                    )
+            elif all(
+                hasattr(source, keyword)
+                for keyword in ("ImageOrientationPatient", "ImagePositionPatient", "PixelSpacing")
+            ):
+                pixel_spacing, z_spacing = _pixel_measures_geometry(source, fallback_z_spacing)
+                geometry = _seg_geometry_descriptor(
+                    source.ImageOrientationPatient,
+                    source.ImagePositionPatient,
+                    pixel_spacing,
+                    z_spacing,
+                    frame_of_reference_uid,
+                )
+                geometries[(uid, None)] = geometry
+                geometries[(uid, 1)] = geometry
+        except (InvalidDicomError, AttributeError, IndexError, TypeError, ValueError, RuntimeError, DataStructureError):
             continue
-    return uid_to_slice
+    return geometries
 
 
-def _seg_frame_z_index(functional_group, uid_to_slice, image):
-    referenced_uid = None
+def _referenced_frame_numbers(source_image):
+    raw_frame_numbers = getattr(source_image, "ReferencedFrameNumber", None)
+    if raw_frame_numbers in [None, ""]:
+        return (None,)
+    if isinstance(raw_frame_numbers, (str, bytes)) or not hasattr(raw_frame_numbers, "__iter__"):
+        raw_frame_numbers = (raw_frame_numbers,)
     try:
-        referenced_uid = str(
-            functional_group.DerivationImageSequence[0].SourceImageSequence[0].ReferencedSOPInstanceUID
+        return tuple(int(value) for value in raw_frame_numbers)
+    except (TypeError, ValueError) as exc:
+        raise DataStructureError("SEG Referenced Frame Number (0008,1160) is invalid.") from exc
+
+
+def _seg_referenced_geometries(functional_group, source_geometries):
+    geometries = []
+    missing_uids = set()
+    derivation_images = getattr(functional_group, "DerivationImageSequence", None) or []
+    for derivation_image in derivation_images:
+        for source_image in getattr(derivation_image, "SourceImageSequence", None) or []:
+            referenced_uid = str(getattr(source_image, "ReferencedSOPInstanceUID", "")).strip()
+            if not referenced_uid:
+                continue
+            for frame_number in _referenced_frame_numbers(source_image):
+                geometry = source_geometries.get((referenced_uid, frame_number))
+                if geometry is None and frame_number is None:
+                    matches = [
+                        value for (uid, _frame_number), value in source_geometries.items() if uid == referenced_uid
+                    ]
+                    unique_matches = []
+                    for match in matches:
+                        if not any(match is existing for existing in unique_matches):
+                            unique_matches.append(match)
+                    if len(unique_matches) == 1:
+                        geometry = unique_matches[0]
+                if geometry is None:
+                    missing_uids.add(referenced_uid)
+                elif not any(geometry is existing for existing in geometries):
+                    geometries.append(geometry)
+    return geometries, missing_uids
+
+
+def _reference_geometry_descriptor(image, position):
+    direction = np.asarray(image.GetDirection(), dtype=float).reshape(3, 3)
+    spacing = image.GetSpacing()
+    orientation = np.concatenate((direction[:, 0], direction[:, 1]))
+    return _seg_geometry_descriptor(
+        orientation,
+        position,
+        (spacing[1], spacing[0]),
+        spacing[2],
+    )
+
+
+def _seg_frame_geometry(seg, functional_group, source_geometries, image, frame_shape):
+    pixel_measures_sequence = _seg_functional_group_sequence(seg, functional_group, "PixelMeasuresSequence")
+    orientation_sequence = _seg_functional_group_sequence(seg, functional_group, "PlaneOrientationSequence")
+    position_sequence = _seg_functional_group_sequence(seg, functional_group, "PlanePositionSequence")
+    position = None
+    if position_sequence:
+        position = getattr(position_sequence[0], "ImagePositionPatient", None)
+    elif hasattr(functional_group, "ImagePositionPatient"):
+        position = functional_group.ImagePositionPatient
+
+    referenced_geometries, missing_uids = _seg_referenced_geometries(functional_group, source_geometries)
+    seg_frame_of_reference_uid = str(getattr(seg, "FrameOfReferenceUID", "")).strip() or None
+    for referenced_geometry in referenced_geometries:
+        source_uid = referenced_geometry["frame_of_reference_uid"]
+        if seg_frame_of_reference_uid and source_uid and seg_frame_of_reference_uid != source_uid:
+            raise DataStructureError("DICOM SEG and its referenced source image use different Frame of Reference UIDs.")
+
+    if pixel_measures_sequence and orientation_sequence and position is not None:
+        pixel_spacing, z_spacing = _pixel_measures_geometry(
+            pixel_measures_sequence[0],
+            image.GetSpacing()[2],
         )
-        if referenced_uid in uid_to_slice:
-            return uid_to_slice[referenced_uid], None
-    except (AttributeError, IndexError):
-        pass
+        return (
+            _seg_geometry_descriptor(
+                orientation_sequence[0].ImageOrientationPatient,
+                position,
+                pixel_spacing,
+                z_spacing,
+                seg_frame_of_reference_uid,
+            ),
+            None,
+        )
 
-    try:
-        plane_positions = getattr(functional_group, "PlanePositionSequence", None)
-        if plane_positions:
-            position = plane_positions[0].ImagePositionPatient
-        else:
-            # Some producers put Image Position (Patient) directly in the
-            # per-frame item instead of wrapping it in Plane Position Sequence.
-            position = functional_group.ImagePositionPatient
-        position = tuple(map(float, position))
-        index = image.TransformPhysicalPointToContinuousIndex(position)
-        return int(np.rint(index[2])), None
-    except (AttributeError, IndexError, ValueError, RuntimeError) as exc:
-        if referenced_uid is not None:
-            return None, referenced_uid
-        raise DataStructureError("SEG frame has neither a usable source-image UID nor image position.") from exc
+    if len(referenced_geometries) == 1:
+        return referenced_geometries[0], None
+    if len(referenced_geometries) > 1:
+        raise DataStructureError(
+            "SEG frame references multiple source frames but does not provide independent spatial geometry."
+        )
+    if position is not None:
+        if frame_shape != (image.GetSize()[1], image.GetSize()[0]):
+            raise DataStructureError(
+                "SEG frame dimensions differ from the image and the SEG does not provide complete spatial geometry."
+            )
+        return _reference_geometry_descriptor(image, position), None
+    if missing_uids:
+        return None, sorted(missing_uids)[0]
+    raise DataStructureError("SEG frame has neither usable spatial geometry nor a source-image reference.")
+
+
+def _resample_seg_frame(frame, geometry, image):
+    source = sitk.GetImageFromArray((frame > 0).astype(np.uint8)[np.newaxis, ...])
+    source.SetOrigin(geometry["origin"])
+    source.SetSpacing(geometry["spacing"])
+    source.SetDirection(geometry["direction"])
+
+    width, height, depth = image.GetSize()
+    target_direction = np.asarray(image.GetDirection(), dtype=float).reshape(3, 3)
+    target_normal = target_direction[:, 2]
+    if abs(float(np.dot(geometry["normal"], target_normal))) >= 1.0 - 1e-4:
+        continuous_index = image.TransformPhysicalPointToContinuousIndex(geometry["origin"])
+        z_index = int(np.rint(continuous_index[2]))
+        if z_index < 0 or z_index >= depth:
+            return None, None
+        target = sitk.Image((width, height, 1), sitk.sitkUInt8)
+        target.SetOrigin(image.TransformIndexToPhysicalPoint((0, 0, z_index)))
+        target.SetSpacing(image.GetSpacing())
+        target.SetDirection(image.GetDirection())
+        resampled = sitk.Resample(
+            source,
+            target,
+            sitk.Transform(),
+            sitk.sitkNearestNeighbor,
+            0,
+            sitk.sitkUInt8,
+        )
+        return z_index, sitk.GetArrayFromImage(resampled)[0]
+
+    resampled = sitk.Resample(
+        source,
+        image,
+        sitk.Transform(),
+        sitk.sitkNearestNeighbor,
+        0,
+        sitk.sitkUInt8,
+    )
+    return None, sitk.GetArrayFromImage(resampled)
 
 
 def extract_dicom_seg_mask(seg_path, segment_name, image, dicom_dir=None):
@@ -479,16 +1070,14 @@ def extract_dicom_seg_mask(seg_path, segment_name, image, dicom_dir=None):
     frames = np.asarray(seg.pixel_array)
     if frames.ndim == 2:
         frames = frames[np.newaxis, ...]
+    if frames.ndim != 3:
+        raise DataStructureError("DICOM SEG pixel data must contain two-dimensional frames.")
     width, height, depth = image.GetSize()
-    if frames.shape[1:] != (height, width):
-        raise DataStructureError(
-            f"SEG frame dimensions do not match the image dimensions: SEG={frames.shape[1:]}, image={(height, width)}."
-        )
     groups = getattr(seg, "PerFrameFunctionalGroupsSequence", None)
     if groups is None or len(groups) != len(frames):
         raise DataStructureError("SEG PerFrameFunctionalGroupsSequence does not match its pixel frames.")
 
-    uid_to_slice = _source_uid_to_slice(dicom_dir, image)
+    source_geometries = _source_frame_geometries(dicom_dir, image)
     volume = np.zeros((depth, height, width), dtype=np.uint8)
     missing_uids = set()
     for frame, group in zip(frames, groups):
@@ -498,13 +1087,17 @@ def extract_dicom_seg_mask(seg_path, segment_name, image, dicom_dir=None):
             raise DataStructureError("SEG frame does not identify its referenced segment.") from exc
         if segment_number not in matching_numbers:
             continue
-        z_index, missing_uid = _seg_frame_z_index(group, uid_to_slice, image)
+        geometry, missing_uid = _seg_frame_geometry(seg, group, source_geometries, image, frame.shape)
         if missing_uid is not None:
             missing_uids.add(missing_uid)
             continue
-        if z_index < 0 or z_index >= depth:
+        z_index, resampled = _resample_seg_frame(frame, geometry, image)
+        if resampled is None:
             continue
-        volume[z_index] = np.maximum(volume[z_index], (frame > 0).astype(np.uint8))
+        if z_index is None:
+            volume = np.maximum(volume, resampled)
+        else:
+            volume[z_index] = np.maximum(volume[z_index], resampled)
 
     if missing_uids:
         raise DataStructureError(

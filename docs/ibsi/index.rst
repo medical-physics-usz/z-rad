@@ -20,14 +20,19 @@ The repository includes:
 Reference Precision
 -------------------
 
-For IBSI I configuration A, the intensity-histogram quartile coefficient of
-dispersion (``ih_qcod``) is compared with the published value ``0.0455`` after
-rounding the computed value to four decimal places. The observed quartiles
-are 21 and 23, giving ``(23 - 21) / (23 + 21) = 1/22``. The reference table's
-zero tolerance is interpreted as exact agreement at its published precision,
-not equality between the unrounded result and the rounded reference value.
-This feature must be present for the comparison to pass. Other comparisons
-retain their existing reference-value and tolerance checks.
+For IBSI I configuration A, all participants submitted ``0.0455`` for the
+intensity-histogram quartile coefficient of dispersion (``ih_qcod``). This
+agreement at the reported precision accounts for the zero tolerance in the
+reference table.
+
+Z-Rad's observed quartiles are 21 and 23, giving
+``(23 - 21) / (23 + 21) = 1/22 = 0.0454545...``, which rounds to ``0.0455``.
+The validation therefore requires exact agreement with the reference after
+rounding the computed value to four decimal places. This checks agreement
+at the published precision; it does not require the unrounded value to equal
+the rounded reference. The feature must be present for the comparison to
+pass. Other comparisons retain their existing reference-value and tolerance
+checks.
 
 IBSI II Reference Availability
 ------------------------------

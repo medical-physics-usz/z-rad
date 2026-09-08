@@ -416,10 +416,6 @@ def test_ibsi_ii_ph_i_9(ibsi_ii_data_dir, impulse_phantom, sphere_phantom):
 
 @pytest.mark.integration
 def test_ibsi_ii_ph_i_10(ibsi_ii_data_dir, pattern_1_phantom):
-    response_map = ibsi_ii_data_dir / 'Ph_I' / 'response_maps' / '10_b_1-ValidCRM.nii'
-    if not response_map.exists():
-        pytest.skip('The IBSI II 10.b.1 response map is not included in the bundled test data.')
-
     filtering = create_filter(
         filtering_method='Simoncelli',
         dimensionality='3D',
@@ -430,7 +426,7 @@ def test_ibsi_ii_ph_i_10(ibsi_ii_data_dir, pattern_1_phantom):
     _run_ph_i_case(
         filtering,
         pattern_1_phantom,
-        response_map.name,
+        '10_b_1-ValidCRM.nii',
         '10.b.1',
         ibsi_ii_data_dir,
     )

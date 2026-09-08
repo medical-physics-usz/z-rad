@@ -48,6 +48,9 @@ def ibsi_ii_ph_ii_validation(ibsi_features, features, config_8b=False):
     for raw_tag, feature_info in ibsi_features.items():
         tag = str(raw_tag)
         if config_8b and tag == 'stat_qcod':
+            # IBSI II reference manual, Table 7.16: consensus is "none" for
+            # 8.B stat_qcod, so IBSI publishes no reference value or tolerance.
+            # https://doi.org/10.48550/arXiv.2006.05470
             continue
 
         if tag in features:
@@ -679,9 +682,7 @@ def test_ibsi_ii_ph_ii_8b(res3d_1mm_image_spline, res3d_1mm_mask_linear):
     filtered_image = filtering.apply(res3d_1mm_image_spline)
 
     features = _extract_filtered_features(res3d_1mm_image_spline, filtered_image, res3d_1mm_mask_linear)
-    ibsi_ii_ph_ii_validation(ibsi_features, features, True)
-
-    # 8.B;Quartile coefficient of dispersion;stat_qcod;;
+    ibsi_ii_ph_ii_validation(ibsi_features, features, config_8b=True)
 
 
 @pytest.mark.integration

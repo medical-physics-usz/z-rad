@@ -53,15 +53,51 @@ def ibsi_ii_ph_ii_validation(ibsi_features, features, config_8b=False):
             # https://doi.org/10.48550/arXiv.2006.05470
             continue
 
-        if tag in features:
-            val = float(feature_info['consensus_value'])
-            tol = float(feature_info['tolerance'])
-            upper_boundary = val + tol
-            lower_boundary = val - tol
-            if not (lower_boundary <= features[tag] <= upper_boundary):
-                pytest.fail(
-                    f"Feature {tag} out of tolerance: {features[tag]} not in range ({lower_boundary}, {upper_boundary})"
-                )
+        if tag not in features:
+            pytest.fail(f"Missing required feature {tag}")
+
+        val = float(feature_info['consensus_value'])
+        tol = float(feature_info['tolerance'])
+        upper_boundary = val + tol
+        lower_boundary = val - tol
+        if not (lower_boundary <= features[tag] <= upper_boundary):
+            pytest.fail(
+                f"Feature {tag} out of tolerance: {features[tag]} not in range ({lower_boundary}, {upper_boundary})"
+            )
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize('config_8b', [False, True])
+@pytest.mark.parametrize('features', [{}, {'stat_mean': 1.0}])
+def test_ibsi_ii_requires_all_reference_features(config_8b, features):
+    reference = {
+        'stat_mean': {'consensus_value': '1', 'tolerance': '0'},
+        'stat_var': {'consensus_value': '2', 'tolerance': '0'},
+    }
+    missing = 'stat_var' if features else 'stat_mean'
+    with pytest.raises(pytest.fail.Exception, match=f'Missing required feature {missing}'):
+        ibsi_ii_ph_ii_validation(reference, features, config_8b=config_8b)
+
+
+@pytest.mark.unit
+def test_ibsi_ii_8b_excludes_only_qcod():
+    reference = ibsi_ii_feature_tolerances('8.B')
+    features = {
+        tag: float(info['consensus_value'])
+        for tag, info in reference.items()
+        if tag != 'stat_qcod'
+    }
+    ibsi_ii_ph_ii_validation(reference, features, config_8b=True)
+    del features['stat_mean']
+    with pytest.raises(pytest.fail.Exception, match='Missing required feature stat_mean'):
+        ibsi_ii_ph_ii_validation(reference, features, config_8b=True)
+
+
+@pytest.mark.unit
+def test_ibsi_ii_requires_qcod_outside_8b():
+    reference = {'stat_qcod': ibsi_ii_feature_tolerances('8.A')['stat_qcod']}
+    with pytest.raises(pytest.fail.Exception, match='Missing required feature stat_qcod'):
+        ibsi_ii_ph_ii_validation(reference, {})
 
 
 def _extract_filtered_features(image, filtered_image, mask, aggr_dim='2D', aggr_method='AVER'):

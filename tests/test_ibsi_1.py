@@ -38,16 +38,31 @@ def ibsi_i_validation(ibsi_features, features, config_a=False):
                 )
             continue
 
-        if tag in features:
-            val = float(feature_info['reference value'])
-            tol = float(feature_info['tolerance'])
-            upper_boundary = val + tol
-            lower_boundary = val - tol
+        if tag not in features:
+            pytest.fail(f"Missing required feature {tag}")
 
-            if not (lower_boundary <= features[tag] <= upper_boundary):
-                pytest.fail(
-                    f"Feature {tag} out of tolerance: {features[tag]} not in range ({lower_boundary}, {upper_boundary})"
-                )
+        val = float(feature_info['reference value'])
+        tol = float(feature_info['tolerance'])
+        upper_boundary = val + tol
+        lower_boundary = val - tol
+
+        if not (lower_boundary <= features[tag] <= upper_boundary):
+            pytest.fail(
+                f"Feature {tag} out of tolerance: {features[tag]} not in range ({lower_boundary}, {upper_boundary})"
+            )
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize('config_a', [False, True])
+@pytest.mark.parametrize('features', [{}, {'stat_mean': 1.0}])
+def test_ibsi_i_requires_all_reference_features(config_a, features):
+    reference = {
+        'stat_mean': {'reference value': '1', 'tolerance': '0'},
+        'stat_var': {'reference value': '2', 'tolerance': '0'},
+    }
+    missing = 'stat_var' if features else 'stat_mean'
+    with pytest.raises(pytest.fail.Exception, match=f'Missing required feature {missing}'):
+        ibsi_i_validation(reference, features, config_a=config_a)
 
 
 @pytest.mark.unit

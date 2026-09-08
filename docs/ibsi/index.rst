@@ -17,6 +17,11 @@ The repository includes:
 * reference feature values for IBSI I and IBSI II
 * automated tests in ``tests/test_ibsi_1.py`` and ``tests/test_ibsi_2.py``
 
+The IBSI I and IBSI II phase II feature comparisons require every expected
+reference feature to be present in the extracted results. A missing feature
+fails validation; it is not silently omitted from the comparison. The sole
+feature exclusion is IBSI II 8.B ``stat_qcod``, documented below.
+
 Reference Precision
 -------------------
 

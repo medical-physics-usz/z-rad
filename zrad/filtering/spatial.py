@@ -147,9 +147,29 @@ class RieszLoG(LoG):
     """Laplacian-of-Gaussian followed by a normalized Riesz transform.
 
     This is a composition of the spatial LoG filter and the Fourier-domain
-    Riesz operator, rather than a separate filtering family.  A second-order
+    Riesz operator. A second-order
     response can optionally be steered along the local structure-tensor
     direction.
+
+    Parameters
+    ----------
+    padding_type : {"constant", "nearest", "wrap", "reflect"}
+        Boundary handling mode used by the LoG and Riesz operations.
+    sigma_mm : float
+        Gaussian standard deviation of the LoG filter in millimetres.
+    cutoff : float
+        LoG kernel truncation radius in standard deviations.
+    dimensionality : {"2D", "3D"}
+        Apply the composed filter slice-wise in 2D or volumetrically in 3D.
+    riesz_order : tuple of int
+        Non-negative Riesz multi-index in physical ``(x, y)`` or
+        ``(x, y, z)`` axis order. Its length must match ``dimensionality`` and
+        its total order must be positive.
+    structure_tensor_sigma_mm : float, optional
+        Gaussian scale in millimetres used to estimate the local structure
+        tensor and steer the response. This is supported only for pure
+        second-order 3D indices such as ``(2, 0, 0)``. If omitted, the Riesz
+        response is evaluated along the fixed image axes.
     """
 
     def __init__(self, padding_type, sigma_mm, cutoff, dimensionality, riesz_order, structure_tensor_sigma_mm=None):

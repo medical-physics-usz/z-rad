@@ -85,7 +85,10 @@ class BatchFilter:
         ``wavelet_response_map``, ``wavelet_type``,
         ``wavelet_decomposition_level``, ``gabor_res_mm``,
         ``gabor_sigma_mm``, ``gabor_lambda_mm``, ``gabor_gamma``, and
-        ``gabor_theta``.
+        ``gabor_theta``. ``riesz_order`` is required for Riesz-transformed LoG
+        and optional for Simoncelli filtering. ``structure_tensor_sigma_mm``
+        optionally enables local alignment for supported second-order 3D
+        Riesz-transformed LoG responses.
     filter-specific enable settings : bool or str, optional
         Enable/disable settings for Laws, Wavelets, and Gabor filters.
         GUI-style ``"Enable"`` and ``"Disable"`` values are accepted.

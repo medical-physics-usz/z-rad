@@ -28,8 +28,11 @@ def create_filter(filtering_method, **kwargs) -> BaseFilter:
     filtering_method : {"Mean", "Laplacian of Gaussian", "Riesz-transformed LoG", "Laws Kernels", "Gabor", "Wavelets", "Simoncelli"}
         Filter family to instantiate.
     **kwargs
-        Constructor parameters for the selected filter. For wavelets, include
-        ``dimensionality`` to choose between ``Wavelets2D`` and ``Wavelets3D``.
+        Constructor parameters for the selected filter. For separable
+        wavelets, include ``dimensionality`` to choose between ``Wavelets2D``
+        and ``Wavelets3D``. ``Riesz-transformed LoG`` accepts ``riesz_order``
+        and optional ``structure_tensor_sigma_mm``; ``Simoncelli`` accepts an
+        optional ``riesz_order``.
 
     Returns
     -------

@@ -11,6 +11,7 @@ Filter Classes
 
    ~filtering.spatial.Mean
    ~filtering.spatial.LoG
+   ~filtering.spatial.RieszLoG
    ~filtering.spatial.Laws
    ~filtering.spatial.Gabor
    ~filtering.wavelet.Wavelets2D

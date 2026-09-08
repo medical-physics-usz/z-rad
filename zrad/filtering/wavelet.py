@@ -11,10 +11,10 @@ from .base import BaseFilter
 class Simoncelli(BaseFilter):
     """IBSI non-separable Simoncelli band-pass wavelet.
 
-    The wavelet is evaluated directly in the Fourier domain. ``decomposition_level``
-    selects the B map; level one is the highest-
-    frequency band. An optional Riesz multi-index applies the normalized higher-order
-    Riesz transform to the B map.
+    The wavelet is evaluated directly in the Fourier domain.
+    ``decomposition_level`` selects the B map; level one is the
+    highest-frequency band. An optional Riesz multi-index applies the
+    normalized higher-order Riesz transform to the B map.
 
     Parameters
     ----------
@@ -25,8 +25,10 @@ class Simoncelli(BaseFilter):
     dimensionality : {"2D", "3D"}
         In 2D mode each slice is filtered independently.
     riesz_order : tuple of int, optional
-        Riesz multi-index, for example ``(0, 2)`` or ``(0, 2, 0)``. Its length must match
-        the filter dimensionality. Omitting it returns the isotropic B map.
+        Non-negative Riesz multi-index in physical ``(x, y)`` or
+        ``(x, y, z)`` axis order, for example ``(0, 2)`` or ``(0, 2, 0)``.
+        Its length must match ``dimensionality``. Omitting it or supplying an
+        all-zero index returns the isotropic B map.
     """
 
     def __init__(self, padding_type, decomposition_level, dimensionality='3D', riesz_order=None):

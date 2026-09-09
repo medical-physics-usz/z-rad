@@ -297,3 +297,16 @@ def test_failed_archive_rebuild_recovers_without_completion_marker(tmp_path, mon
     before = {p.name: (p.read_bytes(), p.stat().st_mtime_ns) for p in output.iterdir()}
     _prepare_data_dir(archive, output)
     assert {p.name: (p.read_bytes(), p.stat().st_mtime_ns) for p in output.iterdir()} == before
+
+
+@pytest.mark.parametrize(
+    'relative', ['IMAGE_ARCHIVES.sha256', 'ibsi_1_reference_data/SHA256SUMS', 'ibsi_2_reference_data/SHA256SUMS']
+)
+def test_distributed_ibsi_manifests_match_files(relative):
+    import hashlib
+    from pathlib import Path
+
+    manifest = Path(__file__).parent / 'data' / relative
+    for line in manifest.read_text().splitlines():
+        expected, name = line.split('  ', 1)
+        assert hashlib.sha256((manifest.parent / name).read_bytes()).hexdigest() == expected, name

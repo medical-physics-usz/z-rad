@@ -1,56 +1,68 @@
-# IBSI Test Data
+# IBSI test data
 
-This directory contains a collection of test data files from the **Image Biomarker Standardisation Initiative (IBSI)**. Different subsets of these data are governed by different open licenses. Below is an overview of each data component and its associated license terms.
+These assets come from the Image Biomarker Standardisation Initiative (IBSI).
+Their licenses apply separately from the MIT license for Z-Rad code.
 
----
+## Canonical datasets
 
-## Data Components & Licenses
+| Dataset | Asset | License |
+| --- | --- | --- |
+| Shared IBSI I and II CT radiomics phantom | [ibsi_ct_radiomics_phantom](ibsi_ct_radiomics_phantom.zip) | [CC BY-NC 3.0](https://creativecommons.org/licenses/by-nc/3.0/) |
+| IBSI I digital phantom | [ibsi_1_digital_phantom](ibsi_1_digital_phantom.zip) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
+| IBSI II digital phantoms | [ibsi_2_digital_phantom](ibsi_2_digital_phantom.zip) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
+| IBSI I reference values | [ibsi_1_reference_data](ibsi_1_reference_data/README.md) | [CC BY 4.0](ibsi_1_reference_data/LICENSE.md) |
+| IBSI II response maps and feature values | [ibsi_2_reference_data](ibsi_2_reference_data/README.md) | [CC0 1.0](ibsi_2_reference_data/LICENSE) |
 
-1. **IBSI 1 CT Radiomics Phantom**  
-   - **License:** Creative Commons Attribution-NonCommercial 3.0 Unported (CC BY-NC 3.0)
+Each image archive contains its source, local changes, and file-layout README,
+license notice, and `SHA256SUMS` integrity manifest. The readable reference-data
+directories also include their own notices and manifests. The shared CT phantom
+retains its attribution and noncommercial restriction. It is used with different
+benchmark configurations in IBSI I and II.
 
-2. **IBSI 1 Digital Phantom**  
-   - **Source:** https://github.com/theibsi/data_sets/tree/master/ibsi_1_digital_phantom
-   - **Files:** `ibsi_1_digital_phantom/image.nii.gz`, `mask.nii.gz`, and `LICENSE.md`
-   - **Benchmark settings:** no interpolation or resegmentation; six-bin discretization preserves the original grey levels; all six texture aggregation modes.
-   - **License:** Creative Commons Attribution 4.0 International (CC BY 4.0)
+The IBSI I digital phantom is stored at `nifti/image/phantom.nii.gz` and
+`nifti/mask/mask.nii.gz` within its archive directory. Benchmark settings use no
+interpolation or resegmentation, six-bin discretization preserving the original
+grey levels, and all six texture aggregation modes.
 
-3. **IBSI 2 CT Radiomics Phantom**  
-   - **License:** Creative Commons Attribution-NonCommercial 3.0 Unported (CC BY-NC 3.0)
+## Packaging and extraction
 
-4. **IBSI 2 Digital Phantom**  
-   - **License:** Creative Commons Attribution 4.0 International (CC BY 4.0)
+The canonical image archives are:
 
-5. **IBSI 2 Response Maps**  
-   - **License:** CC0 1.0 Universal (Public Domain Dedication)
+- [ibsi_ct_radiomics_phantom.zip](ibsi_ct_radiomics_phantom.zip)
+- [ibsi_1_digital_phantom.zip](ibsi_1_digital_phantom.zip)
+- [ibsi_2_digital_phantom.zip](ibsi_2_digital_phantom.zip)
+- [ibsi_2_response_maps.zip](ibsi_2_reference_data/ibsi_2_response_maps.zip)
 
-6. **IBSI 2 Reference Feature Values**  
-   - **License:** CC0 1.0 Universal (Public Domain Dedication)
+Each archive includes a README, the relevant license, and a `SHA256SUMS`
+manifest. It contains one top-level directory named after the archive. Entries
+are sorted, use fixed timestamps and permissions, and exclude packaging metadata.
+`IMAGE_ARCHIVES.sha256` records archive checksums; verify from this directory
+with `shasum -a 256 -c IMAGE_ARCHIVES.sha256`.
+Reference CSVs remain ordinary files in their respective reference directories.
 
-7. **IBSI-SUV v3.0.1 Digital Reference Objects**
-   - **Source:** https://github.com/oncoray/suv_computation
-   - **Authors:** Michael Vácha, Alex Zwanenburg, and the Image Biomarker Standardisation Initiative
-   - **License:** Creative Commons Attribution 4.0 International (CC BY 4.0)
+Tests now use separate fixtures for the shared CT phantom, each digital-phantom
+collection, and the response maps. The four archives extract into `tests/data/.cache/`,
+with archive fingerprinting, member integrity checks, and parallel-extraction
+locking. Reference loaders read the two canonical reference directories directly.
+Execution reports fingerprint these archives and reference CSVs.
 
+Superseded archives, top-level reference CSVs, and unpacked source copies have
+been removed. Extracted image files are disposable test caches and are not
+repository source assets. To inspect an archive independently, extract it into
+a temporary directory and read its included README and license. IBSI-SUV
+continues to extract into the ignored `tests/data/IBSI_SUV/` directory.
 
----
-    
-## Contact & References
+## IBSI-SUV
 
-- **IBSI Official Site:**  
-  https://theibsi.github.io
+`IBSI_SUV.zip` contains the IBSI-SUV v3.0.1 digital reference objects from
+[oncoray/suv_computation](https://github.com/oncoray/suv_computation), contributed
+by Michael Vácha, Alex Zwanenburg, and the Image Biomarker Standardisation
+Initiative. These data use [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
+They are outside the current canonical-directory preparation.
 
-- **Creative Commons Licenses:**  
-  - CC BY-NC 3.0: https://creativecommons.org/licenses/by-nc/3.0/  
-  - CC BY 4.0: https://creativecommons.org/licenses/by/4.0/  
-  - CC0 1.0: https://creativecommons.org/publicdomain/zero/1.0/
+## References
 
-If you have any questions regarding these datasets or their licensing, please refer to the License files in this directory or contact the repository maintainers.
-
-### Digital phantom provenance
-
-Downloaded unchanged from the official `theibsi/data_sets` repository on 2026-09-08.
-SHA-256 checksums of the bundled NIfTI files:
-
-- `image.nii.gz`: `83773ac2a288aa93cf819a98eaf301c18d35d5876182ec9c18733184e2b7a83a`
-- `mask.nii.gz`: `3032d340944b577b83bc559ea7ae9a6034b84633a840eff39570ec17aa1d6281`
+- [IBSI official site](https://theibsi.github.io/)
+- [CC BY-NC 3.0](https://creativecommons.org/licenses/by-nc/3.0/)
+- [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)
+- [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/)

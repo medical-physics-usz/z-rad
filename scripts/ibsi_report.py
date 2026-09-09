@@ -64,8 +64,18 @@ def build_report(xml_path):
         lines.append(f'- {package}: {importlib.metadata.version(package)}')
     lines += ['', '## Reference fingerprints (SHA-256)', '']
     data_dir = Path(__file__).resolve().parents[1] / 'tests' / 'data'
-    paths = sorted(data_dir.glob('ibsi_*reference*.csv')) + sorted(data_dir.glob('IBSI_*.zip'))
-    paths += sorted((data_dir / 'ibsi_1_digital_phantom').glob('*.nii.gz'))
+    paths = sorted((data_dir / 'ibsi_1_reference_data').glob('*.csv'))
+    paths += [
+        data_dir / relative
+        for relative in (
+            'ibsi_2_reference_data/reference_feature_values/reference_values.csv',
+            'ibsi_ct_radiomics_phantom.zip',
+            'ibsi_1_digital_phantom.zip',
+            'ibsi_2_digital_phantom.zip',
+            'ibsi_2_reference_data/ibsi_2_response_maps.zip',
+            'IBSI_SUV.zip',
+        )
+    ]
     for path in paths:
         lines.append(f'- `{path.relative_to(data_dir)}`: `{hashlib.sha256(path.read_bytes()).hexdigest()}`')
     lines.append('')

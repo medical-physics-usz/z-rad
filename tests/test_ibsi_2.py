@@ -19,13 +19,15 @@ from zrad.radiomics import Radiomics
 
 def _run_ph_i_case(filtering, phantom, filename, config, data_dir):
     filtered_image = filtering.apply(phantom)
-    response_map_path = data_dir / 'Ph_I' / 'response_maps' / filename
+    response_map_path = data_dir / 'reference_response_maps' / filename
     response_map = Image.from_nifti(str(response_map_path))
     ibsi_ii_ph_i_validation(filtered_image.array, response_map.array, config)
 
 
 def ibsi_ii_feature_tolerances(filter_id):
-    csv_path = Path(__file__).parent / 'data' / 'ibsi_2_reference_values.csv'
+    csv_path = (
+        Path(__file__).parent / 'data' / 'ibsi_2_reference_data' / 'reference_feature_values' / 'reference_values.csv'
+    )
     return load_references(csv_path, 'feature_tag', 'consensus_value', delimiter=';', phase='II', config=filter_id)
 
 
@@ -117,14 +119,14 @@ def _extract_filtered_features(image, filtered_image, mask, aggr_dim='2D', aggr_
 
 
 @pytest.fixture()
-def ct_phantom_image(ibsi_i_data_dir):
-    return Image.from_dicom(dicom_dir=str(ibsi_i_data_dir / 'dicom' / 'image'), modality='CT')
+def ct_phantom_image(ibsi_ct_data_dir):
+    return Image.from_dicom(dicom_dir=str(ibsi_ct_data_dir / 'dicom' / 'image'), modality='CT')
 
 
 @pytest.fixture()
-def ct_phantom_mask(ct_phantom_image, ibsi_i_data_dir):
+def ct_phantom_mask(ct_phantom_image, ibsi_ct_data_dir):
     return Image.from_dicom_mask(
-        rtstruct_path=str(ibsi_i_data_dir / 'dicom' / 'mask' / 'DCM_RS_00060.dcm'),
+        rtstruct_path=str(ibsi_ct_data_dir / 'dicom' / 'mask' / 'DCM_RS_00060.dcm'),
         structure_name='GTV-1',
         reference=ct_phantom_image,
     )
@@ -155,23 +157,23 @@ def res3d_1mm_mask_linear(ct_phantom_mask):
 
 
 @pytest.fixture()
-def checkerboard_phantom(ibsi_ii_data_dir):
-    return Image.from_nifti(ibsi_ii_data_dir / 'Ph_I/nifti/checkerboard/image/checkerboard.nii.gz')
+def checkerboard_phantom(ibsi_ii_digital_data_dir):
+    return Image.from_nifti(ibsi_ii_digital_data_dir / 'nifti/checkerboard/image/checkerboard.nii.gz')
 
 
 @pytest.fixture()
-def impulse_phantom(ibsi_ii_data_dir):
-    return Image.from_nifti(ibsi_ii_data_dir / 'Ph_I/nifti/impulse/image/impulse.nii.gz')
+def impulse_phantom(ibsi_ii_digital_data_dir):
+    return Image.from_nifti(ibsi_ii_digital_data_dir / 'nifti/impulse/image/impulse.nii.gz')
 
 
 @pytest.fixture()
-def sphere_phantom(ibsi_ii_data_dir):
-    return Image.from_nifti(ibsi_ii_data_dir / 'Ph_I/nifti/sphere/image/sphere.nii.gz')
+def sphere_phantom(ibsi_ii_digital_data_dir):
+    return Image.from_nifti(ibsi_ii_digital_data_dir / 'nifti/sphere/image/sphere.nii.gz')
 
 
 @pytest.fixture()
-def pattern_1_phantom(ibsi_ii_data_dir):
-    return Image.from_nifti(ibsi_ii_data_dir / 'Ph_I/nifti/pattern_1/image/pattern_1.nii.gz')
+def pattern_1_phantom(ibsi_ii_digital_data_dir):
+    return Image.from_nifti(ibsi_ii_digital_data_dir / 'nifti/pattern_1/image/pattern_1.nii.gz')
 
 
 @pytest.mark.integration
@@ -187,13 +189,13 @@ def pattern_1_phantom(ibsi_ii_data_dir):
         }.items()
     ),
 )
-def test_ibsi_ii_ph_i_1(ibsi_ii_data_dir, request, config, params_and_images):
+def test_ibsi_ii_ph_i_1(ibsi_ii_response_maps_dir, request, config, params_and_images):
     params_and_images = list(params_and_images)
     params_and_images[-2] = request.getfixturevalue(params_and_images[-2])
     filtering = create_filter(
         filtering_method='Mean', padding_type=params_and_images[0], dimensionality=params_and_images[1], support=15
     )
-    _run_ph_i_case(filtering, params_and_images[-2], params_and_images[-1], config, ibsi_ii_data_dir)
+    _run_ph_i_case(filtering, params_and_images[-2], params_and_images[-1], config, ibsi_ii_response_maps_dir)
 
 
 @pytest.mark.integration
@@ -207,7 +209,7 @@ def test_ibsi_ii_ph_i_1(ibsi_ii_data_dir, request, config, params_and_images):
         }.items()
     ),
 )
-def test_ibsi_ii_ph_i_2(ibsi_ii_data_dir, request, config, params_and_images):
+def test_ibsi_ii_ph_i_2(ibsi_ii_response_maps_dir, request, config, params_and_images):
     params_and_images = list(params_and_images)
     params_and_images[-2] = request.getfixturevalue(params_and_images[-2])
     filtering = create_filter(
@@ -217,7 +219,7 @@ def test_ibsi_ii_ph_i_2(ibsi_ii_data_dir, request, config, params_and_images):
         sigma_mm=params_and_images[2],
         cutoff=4,
     )
-    _run_ph_i_case(filtering, params_and_images[-2], params_and_images[-1], config, ibsi_ii_data_dir)
+    _run_ph_i_case(filtering, params_and_images[-2], params_and_images[-1], config, ibsi_ii_response_maps_dir)
 
 
 @pytest.mark.integration
@@ -237,7 +239,7 @@ def test_ibsi_ii_ph_i_2(ibsi_ii_data_dir, request, config, params_and_images):
         }.items()
     ),
 )
-def test_ibsi_ii_ph_i_3(ibsi_ii_data_dir, request, config, params_and_images):
+def test_ibsi_ii_ph_i_3(ibsi_ii_response_maps_dir, request, config, params_and_images):
     params_and_images = list(params_and_images)
     params_and_images[-2] = request.getfixturevalue(params_and_images[-2])
     filtering = create_filter(
@@ -250,7 +252,7 @@ def test_ibsi_ii_ph_i_3(ibsi_ii_data_dir, request, config, params_and_images):
         energy_map=params_and_images[5],
         distance=params_and_images[6],
     )
-    _run_ph_i_case(filtering, params_and_images[-2], params_and_images[-1], config, ibsi_ii_data_dir)
+    _run_ph_i_case(filtering, params_and_images[-2], params_and_images[-1], config, ibsi_ii_response_maps_dir)
 
 
 @pytest.mark.integration
@@ -331,7 +333,7 @@ def test_ibsi_ii_ph_i_4(
     truth_file,
     impulse_phantom,
     sphere_phantom,
-    ibsi_ii_data_dir,
+    ibsi_ii_response_maps_dir,
 ):
     # pick the right fixture
     phantom_data = {'impulse_phantom': impulse_phantom, 'sphere_phantom': sphere_phantom}[phantom]
@@ -348,7 +350,7 @@ def test_ibsi_ii_ph_i_4(
         orthogonal_planes=orth_planes,
         n_stds=n_stds,
     )
-    _run_ph_i_case(filtering, phantom_data, truth_file, config, ibsi_ii_data_dir)
+    _run_ph_i_case(filtering, phantom_data, truth_file, config, ibsi_ii_response_maps_dir)
 
 
 @pytest.mark.integration
@@ -361,7 +363,7 @@ def test_ibsi_ii_ph_i_4(
         }.items()
     ),
 )
-def test_ibsi_ii_ph_i_5(ibsi_ii_data_dir, request, config, params_and_images):
+def test_ibsi_ii_ph_i_5(ibsi_ii_response_maps_dir, request, config, params_and_images):
     params_and_images = list(params_and_images)
     params_and_images[-2] = request.getfixturevalue(params_and_images[-2])
     filtering = create_filter(
@@ -373,7 +375,7 @@ def test_ibsi_ii_ph_i_5(ibsi_ii_data_dir, request, config, params_and_images):
         decomposition_level=1,
         rotation_invariance=params_and_images[2],
     )
-    _run_ph_i_case(filtering, params_and_images[-2], params_and_images[-1], config, ibsi_ii_data_dir)
+    _run_ph_i_case(filtering, params_and_images[-2], params_and_images[-1], config, ibsi_ii_response_maps_dir)
 
 
 @pytest.mark.integration
@@ -386,7 +388,7 @@ def test_ibsi_ii_ph_i_5(ibsi_ii_data_dir, request, config, params_and_images):
         }.items()
     ),
 )
-def test_ibsi_ii_ph_i_6(ibsi_ii_data_dir, request, config, params_and_images):
+def test_ibsi_ii_ph_i_6(ibsi_ii_response_maps_dir, request, config, params_and_images):
     params_and_images = list(params_and_images)
     params_and_images[-2] = request.getfixturevalue(params_and_images[-2])
     filtering = create_filter(
@@ -398,7 +400,7 @@ def test_ibsi_ii_ph_i_6(ibsi_ii_data_dir, request, config, params_and_images):
         decomposition_level=1,
         rotation_invariance=params_and_images[2],
     )
-    _run_ph_i_case(filtering, params_and_images[-2], params_and_images[-1], config, ibsi_ii_data_dir)
+    _run_ph_i_case(filtering, params_and_images[-2], params_and_images[-1], config, ibsi_ii_response_maps_dir)
 
 
 @pytest.mark.integration
@@ -411,7 +413,7 @@ def test_ibsi_ii_ph_i_6(ibsi_ii_data_dir, request, config, params_and_images):
         }.items()
     ),
 )
-def test_ibsi_ii_ph_i_7(ibsi_ii_data_dir, request, config, params_and_images):
+def test_ibsi_ii_ph_i_7(ibsi_ii_response_maps_dir, request, config, params_and_images):
     params_and_images = list(params_and_images)
     params_and_images[-2] = request.getfixturevalue(params_and_images[-2])
     filtering = create_filter(
@@ -423,16 +425,18 @@ def test_ibsi_ii_ph_i_7(ibsi_ii_data_dir, request, config, params_and_images):
         decomposition_level=2,
         rotation_invariance=params_and_images[2],
     )
-    _run_ph_i_case(filtering, params_and_images[-2], params_and_images[-1], config, ibsi_ii_data_dir)
+    _run_ph_i_case(filtering, params_and_images[-2], params_and_images[-1], config, ibsi_ii_response_maps_dir)
 
 
 @pytest.mark.integration
 @pytest.mark.parametrize('level', [1, 2, 3], ids=['8.a.1', '8.a.2', '8.a.3'])
-def test_ibsi_ii_ph_i_8(ibsi_ii_data_dir, checkerboard_phantom, level):
+def test_ibsi_ii_ph_i_8(ibsi_ii_response_maps_dir, checkerboard_phantom, level):
     filtering = create_filter(
         filtering_method='Simoncelli', dimensionality='3D', padding_type='wrap', decomposition_level=level
     )
-    _run_ph_i_case(filtering, checkerboard_phantom, f'8_a_{level}-ValidCRM.nii', f'8.a.{level}', ibsi_ii_data_dir)
+    _run_ph_i_case(
+        filtering, checkerboard_phantom, f'8_a_{level}-ValidCRM.nii', f'8.a.{level}', ibsi_ii_response_maps_dir
+    )
 
 
 @pytest.mark.integration
@@ -443,7 +447,7 @@ def test_ibsi_ii_ph_i_8(ibsi_ii_data_dir, checkerboard_phantom, level):
         ('9.b.1', 'sphere_phantom', (0, 2, 0), '9_b_1-ValidCRM.nii'),
     ],
 )
-def test_ibsi_ii_ph_i_9(ibsi_ii_data_dir, request, config, phantom, order, filename):
+def test_ibsi_ii_ph_i_9(ibsi_ii_response_maps_dir, request, config, phantom, order, filename):
     filtering = create_filter(
         filtering_method='Riesz-transformed LoG',
         dimensionality='3D',
@@ -452,11 +456,11 @@ def test_ibsi_ii_ph_i_9(ibsi_ii_data_dir, request, config, phantom, order, filen
         cutoff=4,
         riesz_order=order,
     )
-    _run_ph_i_case(filtering, request.getfixturevalue(phantom), filename, config, ibsi_ii_data_dir)
+    _run_ph_i_case(filtering, request.getfixturevalue(phantom), filename, config, ibsi_ii_response_maps_dir)
 
 
 @pytest.mark.integration
-def test_ibsi_ii_ph_i_10(ibsi_ii_data_dir, pattern_1_phantom):
+def test_ibsi_ii_ph_i_10(ibsi_ii_response_maps_dir, pattern_1_phantom):
     filtering = create_filter(
         filtering_method='Simoncelli',
         dimensionality='3D',
@@ -469,7 +473,7 @@ def test_ibsi_ii_ph_i_10(ibsi_ii_data_dir, pattern_1_phantom):
         pattern_1_phantom,
         '10_b_1-ValidCRM.nii',
         '10.b.1',
-        ibsi_ii_data_dir,
+        ibsi_ii_response_maps_dir,
     )
 
 

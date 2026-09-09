@@ -126,27 +126,41 @@ def _prepare_data_dir(zip_path: Path, extract_dir: Path):
 
 
 @pytest.fixture(scope="session")
-def ibsi_i_data_dir():
-    """
-    Pytest fixture that provides the extracted IBSI_I data directory.
-
-    Ensures the IBSI_I.zip archive is unpacked once per test session.
-    """
-    zip_path = Path(__file__).parent / 'data' / 'IBSI_I.zip'
-    extract_dir = Path(__file__).parent / 'data' / 'IBSI_I'
-    return _prepare_data_dir(zip_path, extract_dir)
+def ibsi_ct_data_dir():
+    """Extract the ibsi_ct_radiomics_phantom archive into the shared test cache."""
+    data_dir = Path(__file__).parent / 'data'
+    cache_dir = data_dir / '.cache'
+    cache_dir.mkdir(exist_ok=True)
+    return _prepare_data_dir(data_dir / 'ibsi_ct_radiomics_phantom.zip', cache_dir / 'ibsi_ct_radiomics_phantom')
 
 
 @pytest.fixture(scope="session")
-def ibsi_ii_data_dir():
-    """
-    Pytest fixture that provides the extracted IBSI_II data directory.
+def ibsi_i_digital_data_dir():
+    """Extract the ibsi_1_digital_phantom archive into the shared test cache."""
+    data_dir = Path(__file__).parent / 'data'
+    cache_dir = data_dir / '.cache'
+    cache_dir.mkdir(exist_ok=True)
+    return _prepare_data_dir(data_dir / 'ibsi_1_digital_phantom.zip', cache_dir / 'ibsi_1_digital_phantom')
 
-    Ensures the IBSI_II.zip archive is unpacked once per test session.
-    """
-    zip_path = Path(__file__).parent / 'data' / 'IBSI_II.zip'
-    extract_dir = Path(__file__).parent / 'data' / 'IBSI_II'
-    return _prepare_data_dir(zip_path, extract_dir)
+
+@pytest.fixture(scope="session")
+def ibsi_ii_digital_data_dir():
+    """Extract the ibsi_2_digital_phantom archive into the shared test cache."""
+    data_dir = Path(__file__).parent / 'data'
+    cache_dir = data_dir / '.cache'
+    cache_dir.mkdir(exist_ok=True)
+    return _prepare_data_dir(data_dir / 'ibsi_2_digital_phantom.zip', cache_dir / 'ibsi_2_digital_phantom')
+
+
+@pytest.fixture(scope="session")
+def ibsi_ii_response_maps_dir():
+    """Extract the ibsi_2_response_maps archive into the shared test cache."""
+    data_dir = Path(__file__).parent / 'data'
+    cache_dir = data_dir / '.cache'
+    cache_dir.mkdir(exist_ok=True)
+    return _prepare_data_dir(
+        data_dir / 'ibsi_2_reference_data/ibsi_2_response_maps.zip', cache_dir / 'ibsi_2_response_maps'
+    )
 
 
 @pytest.fixture(scope="session")

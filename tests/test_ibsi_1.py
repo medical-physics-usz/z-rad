@@ -17,7 +17,7 @@ from zrad.radiomics import Radiomics
 
 
 def ibsi_i_feature_tolerances(sheet_name):
-    csv_path = Path(__file__).parent / 'data' / f'ibsi_1_reference_values_{sheet_name}.csv'
+    csv_path = Path(__file__).parent / 'data' / 'ibsi_1_reference_data' / f'ibsi_1_reference_values_{sheet_name}.csv'
     return load_references(csv_path, 'tag', 'reference value', delimiter=',', phase='I')
 
 
@@ -70,29 +70,29 @@ def test_config_a_qcod_requires_feature():
 
 
 @pytest.fixture()
-def dcm_ct_phantom_image(ibsi_i_data_dir):
-    return Image.from_dicom(dicom_dir=ibsi_i_data_dir / 'dicom' / 'image', modality='CT')
+def dcm_ct_phantom_image(ibsi_ct_data_dir):
+    return Image.from_dicom(dicom_dir=ibsi_ct_data_dir / 'dicom' / 'image', modality='CT')
 
 
 @pytest.fixture()
-def dcm_ct_phantom_mask(dcm_ct_phantom_image):
+def dcm_ct_phantom_mask(dcm_ct_phantom_image, ibsi_ct_data_dir):
     return Image.from_dicom_mask(
         reference=dcm_ct_phantom_image,
-        rtstruct_path='tests/data/IBSI_I/dicom/mask/DCM_RS_00060.dcm',
+        rtstruct_path=str(ibsi_ct_data_dir / 'dicom' / 'mask' / 'DCM_RS_00060.dcm'),
         structure_name='GTV-1',
     )
 
 
 @pytest.fixture()
-def nii_ct_phantom_image(ibsi_i_data_dir):
-    return Image.from_nifti(str(ibsi_i_data_dir / 'nifti' / 'image' / 'phantom.nii.gz'))
+def nii_ct_phantom_image(ibsi_ct_data_dir):
+    return Image.from_nifti(str(ibsi_ct_data_dir / 'nifti' / 'image' / 'phantom.nii.gz'))
 
 
 @pytest.fixture()
-def nii_ct_phantom_mask(nii_ct_phantom_image):
+def nii_ct_phantom_mask(nii_ct_phantom_image, ibsi_ct_data_dir):
     return Image.from_nifti_mask(
         reference=nii_ct_phantom_image,
-        mask_path='tests/data/IBSI_I/nifti/mask/mask.nii.gz',
+        mask_path=str(ibsi_ct_data_dir / 'nifti' / 'mask' / 'mask.nii.gz'),
     )
 
 
@@ -311,10 +311,9 @@ def test_ibsi_i_config_e(res3d_2mm_image_spline, res3d_2mm_mask_linear, aggr_dim
         ('3D', 'MERG'),
     ],
 )
-def test_ibsi_i_digital_phantom(aggr_dim, aggr_method):
-    root = Path(__file__).parent / 'data' / 'ibsi_1_digital_phantom'
-    image = Image.from_nifti(root / 'image.nii.gz')
-    mask = Image.from_nifti(root / 'mask.nii.gz')
+def test_ibsi_i_digital_phantom(ibsi_i_digital_data_dir, aggr_dim, aggr_method):
+    image = Image.from_nifti(ibsi_i_digital_data_dir / 'nifti' / 'image' / 'phantom.nii.gz')
+    mask = Image.from_nifti(ibsi_i_digital_data_dir / 'nifti' / 'mask' / 'mask.nii.gz')
     reference = select_ibsi_i_references(ibsi_i_feature_tolerances('digital_phantom'), aggr_dim, aggr_method)
     features = _extract_features(
         image, mask, aggr_dim, aggr_method, number_of_bins=6, ivh_method='direct', families='all'

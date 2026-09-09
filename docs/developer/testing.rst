@@ -69,8 +69,13 @@ To produce the same report locally:
 
 .. code-block:: bash
 
-   pytest tests/test_ibsi_1.py tests/test_ibsi_2.py tests/test_pet_suv.py -m integration --junitxml=reports/integration.xml
+   pytest -m integration --junitxml=reports/integration.xml
    python tests/ibsi_report.py reports/integration.xml reports/ibsi.md
+
+This uses the same integration-test selection as CI, including the 53
+supplemental IBSI asset and filter checks. The report selects IBSI benchmark
+and supplemental results from the JUnit file and lists their totals separately;
+unrelated integration tests are not included in the IBSI summary.
 
 The report records each executed benchmark case from JUnit. Revision,
 working-tree state, environment, dependency versions, and reference hashes

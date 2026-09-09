@@ -54,12 +54,17 @@ assert a separately verified license for the Excel workbook as a whole.
 The manual version is pinned to arXiv:1612.07003v11. No upstream Git revision
 has been established for the spreadsheet.
 
-On 2026-09-09, all six CSVs were compared with the existing Z-Rad reference
-CSVs: every retained field was identical, including numerical text and blanks.
-This comparison establishes preservation during migration; it is not an
-independent transcription audit against every table in the manual.
-The files contain 411 rows each for A and B, 275 each for C, D, and E, and
-487 for the digital phantom (excluding headers).
+[//]: # (On 2026-09-09, all six CSVs were compared with the existing Z-Rad reference)
+
+[//]: # (CSVs: every retained field was identical, including numerical text and blanks.)
+
+[//]: # (This comparison establishes preservation during migration; it is not an)
+
+[//]: # (independent transcription audit against every table in the manual.)
+
+[//]: # (The files contain 411 rows each for A and B, 275 each for C, D, and E, and)
+
+[//]: # (487 for the digital phantom &#40;excluding headers&#41;.)
 
 `SHA256SUMS` records every distributed file except itself, using paths relative
 to this directory. Verify with `shasum -a 256 -c SHA256SUMS` from here.

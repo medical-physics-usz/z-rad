@@ -34,31 +34,45 @@ The canonical image archives are:
 - [ibsi_2_response_maps.zip](ibsi_2_reference_data/ibsi_2_response_maps.zip)
 
 Each archive includes a README, the relevant license, and a `SHA256SUMS`
-manifest. It contains one top-level directory named after the archive. Entries
-are sorted, use fixed timestamps and permissions, and exclude packaging metadata.
-`IMAGE_ARCHIVES.sha256` records archive checksums; verify from this directory
-with `shasum -a 256 -c IMAGE_ARCHIVES.sha256`.
-Reference CSVs remain ordinary files in their respective reference directories.
+manifest. It contains one top-level directory named after the archive.
 
-Tests now use separate fixtures for the shared CT phantom, each digital-phantom
-collection, and the response maps. The four archives extract into `tests/data/.cache/`,
-with archive fingerprinting, member integrity checks, and parallel-extraction
-locking. Reference loaders read the two canonical reference directories directly.
-Execution reports fingerprint these archives and reference CSVs.
+[//]: # (Entries)
 
-Superseded archives, top-level reference CSVs, and unpacked source copies have
-been removed. Extracted image files are disposable test caches and are not
-repository source assets. To inspect an archive independently, extract it into
-a temporary directory and read its included README and license. IBSI-SUV
-continues to extract into the ignored `tests/data/IBSI_SUV/` directory.
+[//]: # (are sorted, use fixed timestamps and permissions, and exclude packaging metadata.)
+
+[//]: # (`IMAGE_ARCHIVES.sha256` records archive checksums; verify from this directory)
+
+[//]: # (with `shasum -a 256 -c IMAGE_ARCHIVES.sha256`.)
+
+[//]: # (Reference CSVs remain ordinary files in their respective reference directories.)
+
+[//]: # ()
+[//]: # (Tests now use separate fixtures for the shared CT phantom, each digital-phantom)
+
+[//]: # (collection, and the response maps. The four archives extract into `tests/data/.cache/`,)
+
+[//]: # (with archive fingerprinting, member integrity checks, and parallel-extraction)
+
+[//]: # (locking. Reference loaders read the two canonical reference directories directly.)
+
+[//]: # (Execution reports fingerprint these archives and reference CSVs.)
+
+[//]: # ()
+[//]: # (Superseded archives, top-level reference CSVs, and unpacked source copies have)
+
+[//]: # (been removed. Extracted image files are disposable test caches and are not)
+
+[//]: # (repository source assets. To inspect an archive independently, extract it into)
+
+[//]: # (a temporary directory and read its included README and license. IBSI-SUV)
+
+[//]: # (continues to extract into the ignored `tests/data/IBSI_SUV/` directory.)
 
 ## IBSI-SUV
 
 `IBSI_SUV.zip` contains the IBSI-SUV v3.0.1 digital reference objects from
-[oncoray/suv_computation](https://github.com/oncoray/suv_computation), contributed
-by Michael Vácha, Alex Zwanenburg, and the Image Biomarker Standardisation
-Initiative. These data use [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
-They are outside the current canonical-directory preparation.
+[oncoray/suv_computation](https://github.com/oncoray/suv_computation). These data use [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
+
 
 ## References
 

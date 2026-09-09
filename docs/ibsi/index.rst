@@ -23,28 +23,28 @@ Coverage Matrix
    * - Benchmark
      - Cases / comparisons
      - Scope and limitations
-   * - IBSI I CT A and B
-     - 4 aggregation modes each; 167 features per mode
-     - 344 distinct reference tags per configuration. Moran's I and Geary's C
-       are not benchmarked on CT; see below.
-   * - IBSI I CT C, D and E
-     - 2 aggregation modes each; 167 features per mode
-     - 208 distinct reference tags per configuration; same CT limitation.
+   * - IBSI I digital phantom
+     - 6 aggregation modes; 169 features per mode
+     - 482 distinct reference tags, including Moran's I and Geary's C.
    * - IBSI I CT diagnostics A--E
      - Initial, interpolated and resegmented stages, separately reported
      - All 60 diagnostic rows per configuration, including image and ROI
        dimensions, voxel spacing, bounding boxes, voxel counts and intensities.
-   * - IBSI I digital phantom
-     - 6 aggregation modes; 169 features per mode
-     - 482 distinct reference tags, including Moran's I and Geary's C.
+   * - IBSI I CT A and B
+     - 4 aggregation modes each; 167 features per mode
+     - 344 distinct reference tags per configuration. Moran's I and Geary's C
+       are not benchmarked on CT.
+   * - IBSI I CT C, D and E
+     - 2 aggregation modes each; 167 features per mode
+     - 208 distinct reference tags per configuration. Moran's I and Geary's C
+       are not benchmarked on CT.
    * - IBSI II phase I
      - All 33 bundled published response maps
      - Each map is a separate case; shape and finite values
        are required, and every voxel must satisfy the 1% reference-range tolerance.
    * - IBSI II phase II 1.A--9.B
      - 18 configurations; 323 reference feature comparisons
-     - Includes unfiltered 1.A/1.B. 8.B has 17 comparisons; other configurations
-       have 18. ``stat_qcod`` for 8.B has no consensus.
+     - ``stat_qcod`` for 8.B has no IBSI consensus therefore is not benchmarked.
    * - IBSI II phase II 10.A/B and 11.A/B
      - No published feature references
      - No benchmark-agreement claim for these configurations.

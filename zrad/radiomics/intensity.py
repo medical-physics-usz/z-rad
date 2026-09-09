@@ -107,7 +107,7 @@ class LocalIntensityFeatures:
         kernel = spherical_mask.astype(float) / np.sum(spherical_mask)
         local_means = _get_cached_local_means(image, self.spacing)
         if local_means is None:
-            local_means = convolve(image, kernel, mode='constant', cval=0.0)
+            local_means = convolve(image, kernel, output=np.float64, mode='constant', cval=0.0)
             # Average only image voxels inside the spherical neighbourhood.
             # At image boundaries the neighbourhood contains fewer voxels.
             support = convolve(np.ones(image.shape, dtype=float), kernel, mode='constant', cval=0.0)

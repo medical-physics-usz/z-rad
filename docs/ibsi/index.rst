@@ -2,20 +2,10 @@
 IBSI Benchmark Coverage
 =======================
 
-Overview
---------
-
 Z-Rad is developed around IBSI-oriented radiomics workflows and includes test
-data and regression tests derived from IBSI reference material.
-
-Repository Assets
------------------
-
-The repository includes:
-
-* IBSI test data under ``tests/data``
-* reference feature values for IBSI I and IBSI II
-* automated tests in ``tests/test_ibsi_1.py`` and ``tests/test_ibsi_2.py``
+data and regression tests derived from IBSI reference material. The datasets
+and reference values are under ``tests/data``. Automated benchmarks are in
+``tests/test_ibsi_1.py``, ``tests/test_ibsi_2.py``, and ``tests/test_pet_suv.py``.
 
 The feature comparisons require every expected reference feature for the
 selected configuration and aggregation mode. Expected features are selected
@@ -49,7 +39,7 @@ Coverage Matrix
      - 482 distinct reference tags, including Moran's I and Geary's C.
    * - IBSI II phase I
      - All 33 bundled published response maps
-     - Includes 10.b.1. Each map is a separate case; shape and finite values
+     - Each map is a separate case; shape and finite values
        are required, and every voxel must satisfy the 1% reference-range tolerance.
    * - IBSI II phase II 1.A--9.B
      - 18 configurations; 323 reference feature comparisons
@@ -84,8 +74,8 @@ for CT A--E: the opt-in implementation creates quadratic-size pairwise
 matrices that are impractical for the full CT ROIs. This is a coverage gap,
 not an absence of reference values or demonstrated agreement on CT.
 
-Reference Precision
--------------------
+Comparison Rules
+----------------
 
 All scalar IBSI reference-table comparisons use the same tolerance policy,
 including IBSI I CT configurations A--E, the digital phantom, preprocessing
@@ -144,48 +134,20 @@ This limitation concerns phase II feature values. Phase I response-map
 comparisons are separate tests and do not establish phase II feature agreement
 for these configurations.
 
+Test Results and Reproduction
+-----------------------------
+
+CI publishes an IBSI execution report and JUnit results in
+``ibsi-results-python-*`` artifacts for each Python version. Reports identify
+individual passed, failed or skipped cases, plus
+the revision, working-tree state and environment at report-generation time.
+Generate reports immediately after testing; see :doc:`../developer/testing`
+for reproduction commands. A passing result applies only to the comparisons
+in the matrix above; line coverage is a separate metric.
+
 Licensing
 ---------
 
 The bundled IBSI datasets use multiple open licenses depending on the specific
 component. See ``tests/data/README.md`` for the exact attribution and license
 terms of each dataset subset.
-
-Why This Matters
-----------------
-
-The IBSI tests provide a reproducibility baseline for:
-
-* preprocessing choices
-* filter definitions
-* discretization behavior
-* radiomics feature calculations
-
-When changing feature code or preprocessing behavior, these tests should remain
-part of the release and CI validation workflow.
-
-Verification Evidence
----------------------
-
-CI publishes an IBSI execution report and JUnit results for each Python
-version. Reports identify individual passed, failed or skipped cases, plus
-the revision, working-tree state and environment at report-generation time.
-Generate reports immediately after testing; see :doc:`../developer/testing`
-for reproduction commands. A passing result applies only to the comparisons
-in the matrix above; line coverage is a separate metric.
-
-Last local verification: 2026-09-09, Python 3.14.6 on macOS, with the working
-tree changes described here. All 144 benchmark cases passed with zero skips:
-14 CT feature cases, 15 CT diagnostic cases, 6 digital-phantom cases,
-33 phase I response maps, 18 phase II feature cases, and 58 IBSI-SUV cases.
-The combined benchmark, reference-helper and radiomics run passed 271 tests.
-The full unit suite, including the shared zero-tolerance policy checks,
-passed 304 tests. This is a local
-verification snapshot; CI reports provide evidence for subsequent revisions
-and other Python versions.
-
-The new digital-phantom tests also identified and verified two corrections:
-histogram gradients now preserve empty grey-level bins, and global intensity
-peaks normalize boundary neighbourhoods by the number of available image
-voxels. These changes can affect features on images with missing histogram
-bins or intensity-peak neighbourhoods extending beyond the image boundary.

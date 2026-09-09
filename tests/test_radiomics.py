@@ -392,3 +392,32 @@ def test_shape_selection_skips_spatial_calculation(monkeypatch):
     monkeypatch.setattr(MorphologyCorrelationFeatures, 'calculate_features', unexpected)
     result = Radiomics().extract_features(roi_data=roi, features=['morph_volume'])
     assert result == pytest.approx({'morph_volume': 113.16666666666667})
+
+
+@pytest.mark.unit
+def test_global_peak_preserves_constant_intensity_at_image_boundary():
+    from zrad.radiomics.intensity import LocalIntensityFeatures
+
+    image = np.full((3, 3, 3), 7.0)
+    masked = np.full_like(image, np.nan)
+    masked[0, 0, 0] = 7.0
+    assert LocalIntensityFeatures((2, 2, 2))._calc_global_intensity_peak(image, masked) == pytest.approx(7.0)
+
+
+@pytest.mark.unit
+def test_histogram_gradient_keeps_empty_bins():
+    from zrad.radiomics.intensity import IntensityHistogramFeatures
+
+    values, gradient = IntensityHistogramFeatures._histogram_gradient(np.array([1.0, 1.0, 3.0, 3.0, 3.0]))
+    np.testing.assert_array_equal(values, [1, 2, 3])
+    np.testing.assert_array_equal(gradient, [-2, 0.5, 3])
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize('array', [np.array([]), np.array([np.nan])])
+def test_histogram_gradient_rejects_empty_roi(array):
+    from zrad.exceptions import DataStructureError
+    from zrad.radiomics.intensity import IntensityHistogramFeatures
+
+    with pytest.raises(DataStructureError, match='Not enough bins'):
+        IntensityHistogramFeatures._histogram_gradient(array)

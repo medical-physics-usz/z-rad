@@ -59,3 +59,36 @@ explicit tolerances for floating point feature values so the expected precision
 is visible in the test. Use exact array checks only when exact values are part
 of the intended behavior, such as discrete masks, labels, or deterministic
 integer-valued arrays.
+
+IBSI Benchmark Reports
+----------------------
+
+CI saves per-case integration results and an IBSI summary for each Python
+version as ``ibsi-results-python-*`` artifacts, including failures and skips.
+To produce the same report locally:
+
+.. code-block:: bash
+
+   pytest tests/test_ibsi_1.py tests/test_ibsi_2.py tests/test_pet_suv.py -m integration --junitxml=reports/integration.xml
+   python scripts/ibsi_report.py reports/integration.xml reports/ibsi.md
+
+The report records each executed benchmark case from JUnit. Revision,
+working-tree state, environment, dependency versions, and reference hashes
+describe report generation, so generate the report immediately after testing
+in the same checkout and environment. This metadata does not authenticate an
+older or imported JUnit file. It is execution evidence, not a certification.
+The reference-coverage matrix and limitations are in :doc:`../ibsi/index`.
+
+Reference loaders reject empty selections, duplicate tags, unexpected blanks,
+non-finite references, and negative tolerances. Feature comparisons require
+all expected keys for the selected aggregation mode, independently of the
+keys returned by extraction. IBSI I preprocessing diagnostics are compared
+separately from radiomic features.
+
+Invalid aggregation modes and modes without texture references fail selection.
+If a previously unavailable reference gains a value or tolerance, loading
+fails until its documented exception has been reviewed.
+
+Extracted archives are checked against their SHA-256 fingerprint and each
+member's CRC. Missing, modified, or outdated files trigger extraction under
+a process lock; a completion marker is written only after successful extraction.

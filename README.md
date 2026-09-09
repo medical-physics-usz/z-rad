@@ -15,7 +15,7 @@ Despite its potential, radiomics faces several challenges, including the need fo
 and lack of standardization.
 
 **Z-Rad (Zurich Radiomics)**, developed by the Radiation Oncology Department at the University Hospital Zurich, 
-addresses these issues by offering a user-friendly, IBSI-compliant, and open-source solution for radiomics analysis.
+addresses these issues by offering a user-friendly, open-source solution tested against IBSI benchmarks for radiomics analysis.
 
 ## Z-Rad Features
 <img src="https://raw.githubusercontent.com/medical-physics-usz/z-rad/master/docs/images/zrad_screenshot.png" width="600" alt="Z-Rad screenshot"/>
@@ -29,7 +29,7 @@ addresses these issues by offering a user-friendly, IBSI-compliant, and open-sou
 - **Operating Systems**: Windows, macOS, and Linux.
 
 ### Standard Compliance
-- **IBSI Compliance**: Adheres to [IBSI I](https://arxiv.org/abs/1612.07003) and [IBSI II](https://arxiv.org/abs/2006.05470) standards for reproducible and comparable radiomics features.
+- **IBSI Benchmark Agreement**: Tested against published IBSI I and IBSI II references for the configurations and feature families described in our [coverage and limitations](docs/ibsi/index.rst). Agreement claims apply to those tested cases; unavailable references and untested features are identified explicitly.
 
 
 ## Software Architecture and Design

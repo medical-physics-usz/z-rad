@@ -10,7 +10,7 @@ extracting radiomic features from image-mask pairs.
 Scope
 -----
 
-Z-Rad is intended for users who need IBSI-compliant, reproducible radiomics workflows across
+Z-Rad is intended for users who need reproducible radiomics workflows tested against IBSI references across
 interactive and scripted use cases. The project supports common medical imaging
 formats such as DICOM and NIfTI and is structured around the main workflow
 steps of preprocessing, filtering, visualization, and feature extraction.

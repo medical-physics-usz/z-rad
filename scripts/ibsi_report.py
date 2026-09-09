@@ -17,9 +17,11 @@ from pathlib import Path
 def build_report(xml_path):
     root = ET.parse(xml_path).getroot()
     cases = []
+    supplemental = []
     for case in root.iter('testcase'):
         name = case.attrib['name']
-        if not name.startswith(
+        is_supplemental = name.startswith('test_ibsi_supplemental_')
+        if not is_supplemental and not name.startswith(
             (
                 'test_ibsi_i_config_',
                 'test_ibsi_i_digital_phantom',
@@ -34,8 +36,8 @@ def build_report(xml_path):
         for element, label in [('skipped', 'SKIP'), ('failure', 'FAIL'), ('error', 'ERROR')]:
             if case.find(element) is not None:
                 status = label
-        cases.append((name, status))
-    if not cases:
+        (supplemental if is_supplemental else cases).append((name, status))
+    if not cases and not supplemental:
         raise ValueError('No IBSI benchmark cases found in JUnit report')
     revision = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
     dirty = bool(subprocess.check_output(['git', 'status', '--porcelain'], text=True).strip())
@@ -59,6 +61,26 @@ def build_report(xml_path):
         lines.append(f'| `{name}` | {status} |')
     counts = {status: sum(s == status for _, s in cases) for status in ('PASS', 'FAIL', 'ERROR', 'SKIP')}
     lines += ['', ', '.join(f'{count} {status}' for status, count in counts.items()), '']
+    lines += [
+        '## Supplemental asset and filter checks',
+        '',
+        'These checks exercise loading, geometry, and mathematical filter properties. '
+        'They are not published IBSI consensus comparisons and are excluded from '
+        'the benchmark totals above.',
+        '',
+        '| Supplemental case | Result |',
+        '|---|---|',
+    ]
+    for name, status in sorted(supplemental):
+        lines.append(f'| `{name}` | {status} |')
+    supplemental_counts = {
+        status: sum(s == status for _, s in supplemental) for status in ('PASS', 'FAIL', 'ERROR', 'SKIP')
+    }
+    lines += [
+        '',
+        'Supplemental: ' + ', '.join(f'{count} {status}' for status, count in supplemental_counts.items()),
+        '',
+    ]
     lines += ['## Dependency versions', '']
     for package in ('numpy', 'scipy', 'SimpleITK', 'pydicom', 'PyWavelets'):
         lines.append(f'- {package}: {importlib.metadata.version(package)}')

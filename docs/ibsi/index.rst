@@ -58,6 +58,35 @@ be interpreted as counts of independent feature definitions. The suite does
 not establish universal compliance across all inputs or processing options,
 or cover the IBSI II phase III clinical validation study.
 
+Supplemental Asset and Filter Checks
+------------------------------------
+
+``tests/test_ibsi_supplemental.py`` contains 53 supplemental cases using the
+IBSI II digital assets. These do not add published consensus comparisons to
+the coverage matrix:
+
+* Nine DICOM/NIfTI geometry checks cover all supplied phantoms, including
+  orientation, noise, empty, and patterns 2 and 3. NIfTI images and the eight
+  supplied masks are loaded through Z-Rad; DICOM geometry is inspected through
+  SimpleITK. The formats have different origins and their voxel arrays agree
+  after reversing the slice axis; they are not identical physical grids.
+* Nine Z-Rad DICOM loading checks require successful decoding of the synthetic
+  CT series, checking voxel values, dimensions, spacing, direction, and origin.
+  Entirely nonnegative decoded CT intensities are accepted: intensity sign alone
+  does not establish whether HU conversion succeeded. SimpleITK applies the
+  declared DICOM rescaling; separate DICOM regression tests verify known slopes
+  and intercepts, including fractional and nonnegative outputs.
+* Twenty-four zero-input cases check mean, Laplacian-of-Gaussian, and signed
+  Laws filtering in 2D and 3D with constant, nearest, wrap, and reflect padding.
+* Two mean-filter cases compare orientation and noise outputs to explicit
+  periodic neighbourhood averages and check geometry and input preservation.
+* Nine directional Laws cases compare the orientation and pattern 2/3 outputs
+  with explicit three-tap convolution stencils along each axis. These check
+  axis assignment and response sign without using generated golden outputs.
+
+Execution reports list supplemental cases and their status counts separately
+from consensus benchmarks. The integration-test selection runs both groups.
+
 IBSI I Reference Availability and Coverage Limits
 -------------------------------------------------
 

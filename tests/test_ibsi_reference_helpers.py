@@ -228,8 +228,16 @@ def test_benchmark_report_preserves_failure_and_skip_status(tmp_path):
         <testcase name="test_ibsi_i_config_a[2D-AVER]"/>
         <testcase name="test_ibsi_ii_ph_i_10"><failure message="mismatch"/></testcase>
         <testcase name="test_ibsi_ii_ph_ii_8b"><skipped/></testcase>
+        <testcase name="test_ibsi_supplemental_asset_geometry[orientation]"/>
+        <testcase name="test_ibsi_supplemental_zero_input[mean]"><failure/></testcase>
+        <testcase name="test_ibsi_supplemental_directional_laws[orientation]"><skipped/></testcase>
+        <testcase name="test_ibsi_supplemental_mean_orientation[noise]"><error/></testcase>
         <testcase name="test_unrelated"/>
         </testsuite>''')
     summary = report['build_report'](xml)
     assert '1 PASS, 1 FAIL, 0 ERROR, 1 SKIP' in summary
+    assert 'Supplemental: 1 PASS, 1 FAIL, 1 ERROR, 1 SKIP' in summary
+    benchmark, supplemental = summary.split('## Supplemental asset and filter checks')
+    assert 'test_ibsi_supplemental_' not in benchmark
+    assert 'test_ibsi_supplemental_asset_geometry[orientation]' in supplemental
     assert 'test_unrelated' not in summary

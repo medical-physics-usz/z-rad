@@ -106,3 +106,6 @@ config.json
 *.dcm
 *.nii
 *.nii.gz
+
+# Generated benchmark execution reports
+/reports/

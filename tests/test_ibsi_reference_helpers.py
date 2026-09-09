@@ -158,3 +158,20 @@ def test_8b_exception_cannot_apply_to_another_configuration():
 def test_valid_mode_without_references_cannot_drop_all_textures():
     with pytest.raises(ValueError, match='No texture references'):
         select_ibsi_i_references(ibsi_i_feature_tolerances('config_A'), '3D', 'AVER')
+
+
+def test_benchmark_report_preserves_failure_and_skip_status(tmp_path):
+    import runpy
+    from pathlib import Path
+
+    report = runpy.run_path(str(Path(__file__).parents[1] / 'scripts' / 'ibsi_report.py'))
+    xml = tmp_path / 'results.xml'
+    xml.write_text('''<testsuite>
+        <testcase name="test_ibsi_i_config_a[2D-AVER]"/>
+        <testcase name="test_ibsi_ii_ph_i_10"><failure message="mismatch"/></testcase>
+        <testcase name="test_ibsi_ii_ph_ii_8b"><skipped/></testcase>
+        <testcase name="test_unrelated"/>
+        </testsuite>''')
+    summary = report['build_report'](xml)
+    assert '1 PASS, 1 FAIL, 0 ERROR, 1 SKIP' in summary
+    assert 'test_unrelated' not in summary

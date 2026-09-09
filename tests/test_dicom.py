@@ -338,3 +338,62 @@ def test_get_all_structure_names_supports_dicom_seg(monkeypatch):
     monkeypatch.setattr(pydicom, "dcmread", lambda *_args, **_kwargs: seg)
 
     assert dicom.get_all_structure_names("seg.dcm") == ["Tumor lesions", "Liver"]
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    'stored,slope,intercept,expected',
+    [
+        ([0, 1, 2, 3], 1, -10, [-10, -9, -8, -7]),
+        ([0, 1, 2, 3], 2, -3, [-3, -1, 1, 3]),
+        ([0, 1, 2, 3], 1, 0, [0, 1, 2, 3]),
+        ([0, 1, 2, 3], 2, 5, [5, 7, 9, 11]),
+        ([0, 1, 2, 3], 0.5, -0.25, [-0.25, 0.25, 0.75, 1.25]),
+        ([0, 1, 2, 3], 0.5, 0.25, [0.25, 0.75, 1.25, 1.75]),
+        ([-2, -1, 0, 1], 2, 5, [1, 3, 5, 7]),
+    ],
+    ids=['negative', 'mixed', 'identity', 'positive', 'fractional-mixed', 'fractional-positive', 'signed-storage'],
+)
+def test_ct_dicom_rescaling_preserves_declared_values(tmp_path, stored, slope, intercept, expected):
+    """Use real encoded DICOMs and explicit expected values, not a mocked reader."""
+    from zrad.image import Image
+
+    study_uid, series_uid, frame_uid = generate_uid(), generate_uid(), generate_uid()
+    signed = min(stored) < 0
+    for index in range(2):
+        meta = FileMetaDataset()
+        meta.TransferSyntaxUID = ExplicitVRLittleEndian
+        meta.MediaStorageSOPClassUID = pydicom.uid.CTImageStorage
+        meta.MediaStorageSOPInstanceUID = generate_uid()
+        # Reverse filenames to require geometry-based ordering.
+        path = tmp_path / f'{1 - index}.dcm'
+        ds = FileDataset(str(path), {}, file_meta=meta, preamble=b'\0' * 128)
+        ds.SOPClassUID = meta.MediaStorageSOPClassUID
+        ds.SOPInstanceUID = meta.MediaStorageSOPInstanceUID
+        ds.StudyInstanceUID, ds.SeriesInstanceUID, ds.FrameOfReferenceUID = study_uid, series_uid, frame_uid
+        ds.PatientName, ds.PatientID = 'Rescale^Test', 'rescale-test'
+        ds.Modality = 'CT'
+        ds.ImageType = ['DERIVED', 'SECONDARY']
+        ds.InstanceNumber = index + 1
+        ds.ImagePositionPatient = [10, 20, 30 + 2 * index]
+        ds.ImageOrientationPatient = [1, 0, 0, 0, 1, 0]
+        ds.PixelSpacing = [0.8, 0.3]
+        ds.SliceThickness = 2
+        ds.Rows, ds.Columns = 2, 2
+        ds.SamplesPerPixel = 1
+        ds.PhotometricInterpretation = 'MONOCHROME2'
+        ds.BitsAllocated = ds.BitsStored = 16
+        ds.HighBit = 15
+        ds.PixelRepresentation = int(signed)
+        ds.RescaleSlope, ds.RescaleIntercept, ds.RescaleType = slope, intercept, 'HU'
+        pixels = np.array(stored, dtype='<i2' if signed else '<u2')
+        if index:
+            pixels = pixels[::-1]
+        ds.PixelData = pixels.tobytes()
+        ds.save_as(path, enforce_file_format=True)
+
+    image = Image.from_dicom(tmp_path, modality='CT')
+    expected_volume = np.array([expected, expected[::-1]]).reshape(2, 2, 2)
+    np.testing.assert_array_equal(image.array, expected_volume)
+    assert image.spacing == pytest.approx((0.3, 0.8, 2))
+    assert image.origin == pytest.approx((10, 20, 30))

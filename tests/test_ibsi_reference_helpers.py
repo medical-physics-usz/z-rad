@@ -241,3 +241,59 @@ def test_benchmark_report_preserves_failure_and_skip_status(tmp_path):
     assert 'test_ibsi_supplemental_' not in benchmark
     assert 'test_ibsi_supplemental_asset_geometry[orientation]' in supplemental
     assert 'test_unrelated' not in summary
+
+
+@pytest.mark.parametrize('replacement', ['removed', 'renamed'])
+def test_archive_replacement_removes_obsolete_members(tmp_path, replacement):
+    import zipfile
+
+    archive, output = tmp_path / 'data.zip', tmp_path / 'output'
+    with zipfile.ZipFile(archive, 'w') as stream:
+        stream.writestr('data/obsolete/slice.dcm', 'old')
+        stream.writestr('data/retained.dat', 'retained')
+    _prepare_data_dir(archive, output)
+    with zipfile.ZipFile(archive, 'w') as stream:
+        stream.writestr('data/retained.dat', 'retained')
+        if replacement == 'renamed':
+            stream.writestr('data/current/slice.dcm', 'old')
+    _prepare_data_dir(archive, output)
+    assert not (output / 'obsolete').exists()
+    assert (output / 'retained.dat').read_text() == 'retained'
+    expected = {'retained.dat', '.extraction_finished.flag'}
+    if replacement == 'renamed':
+        expected.add('current/slice.dcm')
+        assert (output / 'current/slice.dcm').read_text() == 'old'
+    assert {p.relative_to(output).as_posix() for p in output.rglob('*') if p.is_file()} == expected
+
+
+def test_failed_archive_rebuild_recovers_without_completion_marker(tmp_path, monkeypatch):
+    import zipfile
+
+    import conftest
+
+    archive, output = tmp_path / 'data.zip', tmp_path / 'output'
+    with zipfile.ZipFile(archive, 'w') as stream:
+        stream.writestr('data/old.dat', 'old')
+    _prepare_data_dir(archive, output)
+    with zipfile.ZipFile(archive, 'w') as stream:
+        stream.writestr('data/new.dat', 'new')
+    extract = conftest._extract_zip_to_dir
+
+    def fail_extraction(_archive, directory):
+        directory.mkdir()
+        (directory / 'partial.dat').write_text('partial')
+        raise OSError('simulated extraction failure')
+
+    monkeypatch.setattr(conftest, '_extract_zip_to_dir', fail_extraction)
+    with pytest.raises(OSError, match='simulated extraction failure'):
+        _prepare_data_dir(archive, output)
+    assert not (output / '.extraction_finished.flag').exists()
+    assert not output.with_suffix('.lock').exists()
+    monkeypatch.setattr(conftest, '_extract_zip_to_dir', extract)
+    _prepare_data_dir(archive, output)
+    assert (output / 'new.dat').read_text() == 'new'
+    assert not (output / 'old.dat').exists()
+    assert not (output / 'partial.dat').exists()
+    before = {p.name: (p.read_bytes(), p.stat().st_mtime_ns) for p in output.iterdir()}
+    _prepare_data_dir(archive, output)
+    assert {p.name: (p.read_bytes(), p.stat().st_mtime_ns) for p in output.iterdir()} == before

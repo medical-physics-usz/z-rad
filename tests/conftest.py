@@ -1,5 +1,6 @@
 import hashlib
 import os
+import shutil
 import time
 import zipfile
 import zlib
@@ -117,7 +118,10 @@ def _prepare_data_dir(zip_path: Path, extract_dir: Path):
                     complete = False
                     break
         if not complete:
-            extraction_flag.unlink(missing_ok=True)
+            # Rebuild rather than overlay: removed or renamed archive members
+            # must not survive as obsolete inputs (for example DICOM slices).
+            if extract_dir.exists():
+                shutil.rmtree(extract_dir)
             _extract_zip_to_dir(zip_path, extract_dir)
             extraction_flag.write_text(fingerprint)
     finally:

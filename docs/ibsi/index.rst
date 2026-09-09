@@ -87,26 +87,33 @@ not an absence of reference values or demonstrated agreement on CT.
 Reference Precision
 -------------------
 
-For IBSI I configuration A, all participants submitted ``0.0455`` for the
-intensity-histogram quartile coefficient of dispersion (``ih_qcod``). This
-agreement at the reported precision accounts for the zero tolerance in the
-reference table.
+All scalar IBSI reference-table comparisons use the same tolerance policy,
+including IBSI I CT configurations A--E, the digital phantom, preprocessing
+diagnostics, and IBSI II phase II features.
 
-Z-Rad's observed quartiles are 21 and 23, giving
-``(23 - 21) / (23 + 21) = 1/22 = 0.0454545...``, which rounds to ``0.0455``.
-The validation therefore requires exact agreement with the reference after
-rounding the computed value to four decimal places. This checks agreement
-at the published precision; it does not require the unrounded value to equal
-the rounded reference. The feature must be present for the comparison to
-pass. Other comparisons retain their existing reference-value and tolerance
-checks.
+When the published tolerance is zero, the suite requires exact agreement
+after rounding the computed value to the reference precision. It uses at
+least three significant figures, retaining any finer precision recorded in
+the reference text. For example, ``2.148648...`` matches ``2.15``,
+``0.0454545...`` matches ``0.0455``, and ``0.9765625`` matches ``0.977``.
+The rule uses significant figures, not a fixed number of decimal places.
 
-The digital-phantom CSV records zero tolerance for many rounded reference
-values. These entries are compared at three significant figures; nonzero
-tolerances retain the published numerical intervals. Zero-tolerance diagnostic
-measurements are checked at the decimal precision recorded in the CSV (for
-example, spacing ``0.9765625`` mm is reported as ``0.977`` mm). These precision
-rules do not alter production feature values.
+Trailing zeros in plain integer references are treated as place holders
+(thus ``1494.6`` matches ``1490`` at three significant figures). Decimal or
+scientific notation retains explicitly written precision; ``1.490e3`` records
+four significant figures. References containing more significant digits,
+such as a voxel count of ``125256``, retain those digits. A zero reference
+with zero tolerance requires an exact zero.
+
+For positive tolerances, the unrounded result must lie in the inclusive
+interval ``[reference - tolerance, reference + tolerance]``. Missing expected
+features, NaN, and infinite results fail validation. This policy changes only
+benchmark comparisons, not the extracted feature values or reference files.
+Rows without published references remain subject to the documented exclusions.
+
+Phase I response-map comparisons use the separate voxel-wise 1% range rule.
+IBSI-SUV checks use their specified two-decimal comparison; neither reads a
+scalar reference-table tolerance field.
 
 IBSI II Reference Availability
 ------------------------------
@@ -171,9 +178,9 @@ Last local verification: 2026-09-09, Python 3.14.6 on macOS, with the working
 tree changes described here. All 144 benchmark cases passed with zero skips:
 14 CT feature cases, 15 CT diagnostic cases, 6 digital-phantom cases,
 33 phase I response maps, 18 phase II feature cases, and 58 IBSI-SUV cases.
-The combined benchmark, reference-helper and radiomics run passed 237 tests.
-The full unit suite, including the subsequent exception and aggregation
-selection checks, passed 270 tests. This is a local
+The combined benchmark, reference-helper and radiomics run passed 271 tests.
+The full unit suite, including the shared zero-tolerance policy checks,
+passed 304 tests. This is a local
 verification snapshot; CI reports provide evidence for subsequent revisions
 and other Python versions.
 

@@ -2,7 +2,7 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-from ibsi_helpers import load_references
+from ibsi_helpers import load_references, matches_reference
 
 from zrad.filtering import create_filter
 from zrad.image import Image
@@ -63,13 +63,10 @@ def ibsi_ii_ph_ii_validation(ibsi_features, features, config_8b=False):
         if tag not in features:
             pytest.fail(f"Missing required feature {tag}")
 
-        val = float(feature_info['consensus_value'])
-        tol = float(feature_info['tolerance'])
-        upper_boundary = val + tol
-        lower_boundary = val - tol
-        if not (lower_boundary <= features[tag] <= upper_boundary):
+        if not matches_reference(features[tag], feature_info['consensus_value'], feature_info['tolerance']):
             pytest.fail(
-                f"Feature {tag} out of tolerance: {features[tag]} not in range ({lower_boundary}, {upper_boundary})"
+                f"Feature {tag} out of tolerance: computed={features[tag]}, "
+                f"reference={feature_info['consensus_value']}, tolerance={feature_info['tolerance']}"
             )
 
 

@@ -3,11 +3,69 @@ import csv
 import numpy as np
 import pytest
 from conftest import _prepare_data_dir
-from ibsi_helpers import load_references, select_ibsi_i_references
+from ibsi_helpers import load_references, matches_reference, select_ibsi_i_references
 from test_ibsi_1 import ibsi_i_feature_tolerances, ibsi_i_validation
 from test_ibsi_2 import ibsi_ii_ph_i_validation, ibsi_ii_ph_ii_validation
 
 pytestmark = pytest.mark.unit
+
+
+@pytest.mark.parametrize(
+    'validate, value_key',
+    [
+        (ibsi_i_validation, 'reference value'),
+        (ibsi_ii_ph_ii_validation, 'consensus_value'),
+    ],
+)
+@pytest.mark.parametrize(
+    ('actual', 'reference', 'passes'),
+    [
+        (2.148648648, '2.15', True),
+        (2.16, '2.15', False),
+        (1 / 22, '0.0455', True),
+        (0.0454, '0.0455', False),
+        (0.9765625, '0.977', True),
+        (1494.6, '1490', True),
+        (1494.6, '1.490e3', False),
+        (125256, '125256', True),
+        (125255, '125256', False),
+        (-0.35462048, '-0.355', True),
+        (0, '0', True),
+        (1e-12, '0', False),
+        (float('nan'), '2.15', False),
+        (float('inf'), '2.15', False),
+        (-float('inf'), '2.15', False),
+    ],
+)
+def test_zero_tolerance_policy_is_shared(validate, value_key, actual, reference, passes):
+    rows = {'example': {value_key: reference, 'tolerance': '0'}}
+    if passes:
+        validate(rows, {'example': actual})
+    else:
+        with pytest.raises(pytest.fail.Exception, match='out of tolerance'):
+            validate(rows, {'example': actual})
+
+
+@pytest.mark.parametrize(
+    'validate, value_key',
+    [
+        (ibsi_i_validation, 'reference value'),
+        (ibsi_ii_ph_ii_validation, 'consensus_value'),
+    ],
+)
+@pytest.mark.parametrize(('actual', 'passes'), [(1.875, True), (2.125, True), (2.12501, False)])
+def test_positive_tolerance_uses_unrounded_value(validate, value_key, actual, passes):
+    rows = {'example': {value_key: '2', 'tolerance': '0.125'}}
+    if passes:
+        validate(rows, {'example': actual})
+    else:
+        with pytest.raises(pytest.fail.Exception, match='out of tolerance'):
+            validate(rows, {'example': actual})
+
+
+def test_explicit_decimal_precision_is_retained():
+    assert matches_reference(1.23001, '1.2300', '0')
+    assert not matches_reference(1.2301, '1.2300', '0')
 
 
 @pytest.mark.parametrize('problem', ['empty', 'duplicate', 'blank', 'nan', 'negative'])
@@ -53,7 +111,7 @@ def test_aggregation_selection_does_not_depend_on_results():
     features = {tag: float(row['reference value']) for tag, row in reference.items()}
     del features['cm_joint_max_2D_avg']
     with pytest.raises(pytest.fail.Exception, match='Missing required feature cm_joint_max_2D_avg'):
-        ibsi_i_validation(reference, features, config_a=True)
+        ibsi_i_validation(reference, features)
 
 
 @pytest.mark.parametrize('actual', [np.zeros((1, 2)), np.array([np.nan, 0]), np.array([np.inf, 0])])

@@ -1,8 +1,7 @@
-import math
 from pathlib import Path
 
 import pytest
-from ibsi_helpers import load_references, select_ibsi_i_references
+from ibsi_helpers import load_references, matches_reference, select_ibsi_i_references
 
 from zrad.image import Image
 from zrad.preprocessing import (
@@ -22,78 +21,52 @@ def ibsi_i_feature_tolerances(sheet_name):
     return load_references(csv_path, 'tag', 'reference value', delimiter=',', phase='I')
 
 
-def ibsi_i_validation(ibsi_features, features, config_a=False):
+def ibsi_i_validation(ibsi_features, features):
     assert ibsi_features, "Empty IBSI reference selection"
     for raw_tag, feature_info in ibsi_features.items():
         tag = str(raw_tag)
-        if config_a and tag == 'ih_qcod':
-            # The zero-tolerance reference is published to four decimal places:
-            # configuration A gives (23 - 21) / (23 + 21) = 1/22, reported as 0.0455.
-            if tag not in features:
-                pytest.fail(f"Missing required feature {tag} for configuration A")
-            val = float(feature_info['reference value'])
-            if round(features[tag], 4) != val:
-                pytest.fail(f"Feature {tag} does not match reference at four decimal places: {features[tag]} != {val}")
-            continue
-
         if tag not in features:
             pytest.fail(f"Missing required feature {tag}")
 
-        val = float(feature_info['reference value'])
-        tol = float(feature_info['tolerance'])
-        upper_boundary = val + tol
-        lower_boundary = val - tol
-
-        actual = features[tag]
-        if feature_info.get('dataset') == 'digital phantom' and tol == 0 and math.isfinite(actual):
-            # Digital-phantom zero tolerances denote agreement at three significant figures.
-            actual = float(f'{actual:.3g}')
-        if not (lower_boundary <= actual <= upper_boundary):
+        if not matches_reference(features[tag], feature_info['reference value'], feature_info['tolerance']):
             pytest.fail(
-                f"Feature {tag} out of tolerance: {features[tag]} not in range ({lower_boundary}, {upper_boundary})"
+                f"Feature {tag} out of tolerance: computed={features[tag]}, "
+                f"reference={feature_info['reference value']}, tolerance={feature_info['tolerance']}"
             )
 
 
 @pytest.mark.unit
-@pytest.mark.parametrize('config_a', [False, True])
 @pytest.mark.parametrize('features', [{}, {'stat_mean': 1.0}])
-def test_ibsi_i_requires_all_reference_features(config_a, features):
+def test_ibsi_i_requires_all_reference_features(features):
     reference = {
         'stat_mean': {'reference value': '1', 'tolerance': '0'},
         'stat_var': {'reference value': '2', 'tolerance': '0'},
     }
     missing = 'stat_var' if features else 'stat_mean'
     with pytest.raises(pytest.fail.Exception, match=f'Missing required feature {missing}'):
-        ibsi_i_validation(reference, features, config_a=config_a)
+        ibsi_i_validation(reference, features)
 
 
 @pytest.mark.unit
 @pytest.mark.parametrize('value', [1 / 22, 0.0455])
 def test_config_a_qcod_matches_published_precision(value):
     reference = {'ih_qcod': ibsi_i_feature_tolerances('config_A')['ih_qcod']}
-    ibsi_i_validation(reference, {'ih_qcod': value}, config_a=True)
+    ibsi_i_validation(reference, {'ih_qcod': value})
 
 
 @pytest.mark.unit
 @pytest.mark.parametrize('value', [0.0454, 0.0456, float('nan'), float('inf')])
 def test_config_a_qcod_rejects_mismatch(value):
     reference = {'ih_qcod': ibsi_i_feature_tolerances('config_A')['ih_qcod']}
-    with pytest.raises(pytest.fail.Exception, match='four decimal places'):
-        ibsi_i_validation(reference, {'ih_qcod': value}, config_a=True)
+    with pytest.raises(pytest.fail.Exception, match='out of tolerance'):
+        ibsi_i_validation(reference, {'ih_qcod': value})
 
 
 @pytest.mark.unit
 def test_config_a_qcod_requires_feature():
     reference = {'ih_qcod': ibsi_i_feature_tolerances('config_A')['ih_qcod']}
     with pytest.raises(pytest.fail.Exception, match='Missing required feature ih_qcod'):
-        ibsi_i_validation(reference, {}, config_a=True)
-
-
-@pytest.mark.unit
-def test_qcod_rounding_is_limited_to_config_a():
-    reference = {'ih_qcod': ibsi_i_feature_tolerances('config_A')['ih_qcod']}
-    with pytest.raises(pytest.fail.Exception, match='out of tolerance'):
-        ibsi_i_validation(reference, {'ih_qcod': 1 / 22})
+        ibsi_i_validation(reference, {})
 
 
 @pytest.fixture()
@@ -254,7 +227,7 @@ def test_ibsi_i_config_a(dcm_ct_phantom_image, dcm_ct_phantom_mask, aggr_dim, ag
         bin_size=25,
         ivh_method='direct',
     )
-    ibsi_i_validation(reference, features, config_a=True)
+    ibsi_i_validation(reference, features)
 
 
 @pytest.mark.integration
@@ -272,7 +245,7 @@ def test_ibsi_i_config_b(res2d_2mm_image_linear, res2d_2mm_mask_linear, aggr_dim
         number_of_bins=32,
         ivh_method='direct',
     )
-    ibsi_i_validation(reference, features, config_a=False)
+    ibsi_i_validation(reference, features)
 
 
 @pytest.mark.integration
@@ -289,7 +262,7 @@ def test_ibsi_i_config_c(res3d_2mm_image_linear, res3d_2mm_mask_linear, aggr_dim
         ivh_method='fixed_bin_size',
         ivh_bin_size=2.5,
     )
-    ibsi_i_validation(reference, features, config_a=False)
+    ibsi_i_validation(reference, features)
 
 
 @pytest.mark.integration
@@ -305,7 +278,7 @@ def test_ibsi_i_config_d(res3d_2mm_image_linear, res3d_2mm_mask_linear, aggr_dim
         number_of_bins=32,
         ivh_method='direct',
     )
-    ibsi_i_validation(reference, features, config_a=False)
+    ibsi_i_validation(reference, features)
 
 
 @pytest.mark.integration
@@ -323,7 +296,7 @@ def test_ibsi_i_config_e(res3d_2mm_image_spline, res3d_2mm_mask_linear, aggr_dim
         ivh_method='fixed_bin_number',
         ivh_number_of_bins=1000,
     )
-    ibsi_i_validation(reference, features, config_a=False)
+    ibsi_i_validation(reference, features)
 
 
 @pytest.mark.integration
@@ -397,14 +370,6 @@ def test_ibsi_i_diagnostics(request, config, stage):
         for tag, row in ibsi_i_feature_tolerances(f'config_{config}').items()
         if row['family'].startswith('Diagnostics') and f'_{stage}_' in tag
     }
-    # Zero-tolerance diagnostic entries are rounded in the published spreadsheet
-    # (notably voxel spacing 0.9765625 -> 0.977 mm).
-    from decimal import Decimal
-
-    for tag, row in reference.items():
-        if float(row['tolerance']) == 0:
-            decimals = max(0, -Decimal(row['reference value']).as_tuple().exponent)
-            values[tag] = round(values[tag], decimals)
     ibsi_i_validation(reference, values)
 
 

@@ -2,6 +2,31 @@
 
 import csv
 import math
+from decimal import Decimal
+
+
+def matches_reference(actual, reference, tolerance):
+    """Compare finite values, applying reference precision only at zero tolerance.
+
+    Use at least three significant figures, retaining finer precision written
+    in the reference. Trailing zeros in plain integers are place holders;
+    decimal/scientific notation can explicitly preserve those digits.
+    A zero reference with zero tolerance requires an exact zero.
+    """
+    actual, value, margin = float(actual), float(reference), float(tolerance)
+    if not all(math.isfinite(x) for x in (actual, value, margin)) or margin < 0:
+        return False
+    if margin != 0:
+        return value - margin <= actual <= value + margin
+    if value == 0:
+        return actual == 0
+    text = str(reference).strip().lower()
+    decimal = Decimal(text)
+    if '.' not in text and 'e' not in text:
+        decimal = decimal.normalize()
+    precision = max(3, len(decimal.as_tuple().digits))
+    return float(f'{actual:.{precision}g}') == value
+
 
 IBSI_I_UNAVAILABLE = frozenset(
     {

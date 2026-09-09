@@ -1,9 +1,9 @@
-<p>
-  <a href="https://pypi.org/project/z-rad/"><img src="https://img.shields.io/pypi/v/z-rad.svg" alt="PyPI version" /></a>
-  <a href="https://pypi.org/project/z-rad/"><img src="https://img.shields.io/pypi/pyversions/z-rad.svg" alt="Supported Python versions" /></a>
-  <a href="https://github.com/medical-physics-usz/z-rad/actions/workflows/test.yml"><img src="https://github.com/medical-physics-usz/z-rad/actions/workflows/test.yml/badge.svg?branch=master" alt="Tests" /></a>
-  <a href="LICENSE"><img src="https://img.shields.io/pypi/l/z-rad.svg" alt="MIT license" /></a>
-</p>
+[![Tests](https://github.com/medical-physics-usz/z-rad/actions/workflows/test.yml/badge.svg?branch=master)](https://github.com/medical-physics-usz/z-rad/actions/workflows/test.yml)
+[![Ruff](https://github.com/medical-physics-usz/z-rad/actions/workflows/python-lint.yml/badge.svg?branch=master)](https://github.com/medical-physics-usz/z-rad/actions/workflows/python-lint.yml)
+[![Docs](https://github.com/medical-physics-usz/z-rad/actions/workflows/docs.yml/badge.svg?branch=master)](https://github.com/medical-physics-usz/z-rad/actions/workflows/docs.yml)
+[![PyPI](https://img.shields.io/pypi/v/z-rad.svg)](https://pypi.org/project/z-rad/)
+[![Python](https://img.shields.io/pypi/pyversions/z-rad.svg)](https://pypi.org/project/z-rad/)
+[![License](https://img.shields.io/pypi/l/z-rad.svg)](https://github.com/medical-physics-usz/z-rad/blob/master/LICENSE)
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/medical-physics-usz/z-rad/master/docs/logos/ZRadLogo.jpg" width="320" alt="Z-Rad — Zurich Radiomics" />

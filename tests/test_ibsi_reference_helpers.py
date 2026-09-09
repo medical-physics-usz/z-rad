@@ -222,7 +222,7 @@ def test_benchmark_report_preserves_failure_and_skip_status(tmp_path):
     import runpy
     from pathlib import Path
 
-    report = runpy.run_path(str(Path(__file__).parents[1] / 'scripts' / 'ibsi_report.py'))
+    report = runpy.run_path(str(Path(__file__).parent / 'ibsi_report.py'))
     xml = tmp_path / 'results.xml'
     xml.write_text('''<testsuite>
         <testcase name="test_ibsi_i_config_a[2D-AVER]"/>

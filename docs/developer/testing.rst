@@ -70,7 +70,7 @@ To produce the same report locally:
 .. code-block:: bash
 
    pytest tests/test_ibsi_1.py tests/test_ibsi_2.py tests/test_pet_suv.py -m integration --junitxml=reports/integration.xml
-   python scripts/ibsi_report.py reports/integration.xml reports/ibsi.md
+   python tests/ibsi_report.py reports/integration.xml reports/ibsi.md
 
 The report records each executed benchmark case from JUnit. Revision,
 working-tree state, environment, dependency versions, and reference hashes

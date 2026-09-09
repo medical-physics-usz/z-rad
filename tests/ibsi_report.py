@@ -1,6 +1,6 @@
 """Summarize collected IBSI benchmark results from pytest JUnit XML.
 
-Usage: python scripts/ibsi_report.py reports/integration.xml reports/ibsi.md
+Usage: python tests/ibsi_report.py reports/integration.xml reports/ibsi.md
 The report describes executed cases, not certification or untested configurations.
 """
 

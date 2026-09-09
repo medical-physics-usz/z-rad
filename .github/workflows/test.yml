@@ -54,7 +54,7 @@ jobs:
 
       - name: Summarize IBSI benchmarks
         if: always() && hashFiles('reports/integration.xml') != ''
-        run: python scripts/ibsi_report.py reports/integration.xml reports/ibsi.md
+        run: python tests/ibsi_report.py reports/integration.xml reports/ibsi.md
 
       - name: Upload benchmark results
         if: always()

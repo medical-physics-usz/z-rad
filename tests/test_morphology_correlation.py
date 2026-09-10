@@ -7,7 +7,6 @@ import numpy as np
 import pytest
 from scipy.spatial.distance import pdist, squareform
 
-from zrad.exceptions import DataStructureError
 from zrad.radiomics import morphology
 from zrad.radiomics.morphology import MorphologyCorrelationFeatures
 
@@ -99,8 +98,9 @@ def test_constant_detected_before_spatial_work(monkeypatch):
         pytest.fail('Constant intensities should not reach the selector')
 
     monkeypatch.setattr(morphology, '_correlation_method', unexpected)
-    with pytest.raises(DataStructureError, match='constant'):
-        MorphologyCorrelationFeatures((1, 1, 1)).calculate_features(np.ones((3, 3, 3)), np.ones((3, 3, 3)))
+    result = MorphologyCorrelationFeatures((1, 1, 1)).calculate_features(np.ones((3, 3, 3)), np.ones((3, 3, 3)))
+    assert set(result) == set(TAGS)
+    assert all(np.isnan(value) for value in result.values())
 
 
 @pytest.mark.unit

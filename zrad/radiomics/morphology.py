@@ -417,7 +417,8 @@ class MorphologyCorrelationFeatures:
         Nonzero mask voxels with non-NaN intensities form the population. Raw
         intensities are converted to float64; texture discretization is not used.
         Uses exact hybrid FFT/Parseval or blocked pair sums according to valid
-        voxel count and padded bounding-box geometry.
+        voxel count and padded bounding-box geometry. Fewer than two observations,
+        nonfinite intensities, or zero intensity variance yield NaN for both features.
         """
         mask_array = np.asarray(mask_array)
         image_array = np.asarray(image_array)
@@ -437,7 +438,8 @@ class MorphologyCorrelationFeatures:
         variance_sum = np.sum(centered**2)
         del values
         if variance_sum == 0:
-            raise DataStructureError("Moran's I and Geary's C are undefined for constant intensities.")
+            # Undefined statistics must not discard other valid morphology results.
+            return dict.fromkeys(MORPHOLOGY_CORRELATION_FEATURE_NAMES, np.nan)
         coordinates -= coordinates.min(axis=0)
         shape = tuple(int(value) + 1 for value in coordinates.max(axis=0))
         fft_shape = tuple(next_fast_len(2 * length - 1) for length in shape)

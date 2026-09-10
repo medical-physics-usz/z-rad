@@ -319,3 +319,18 @@ def test_removed_correlation_family_is_rejected():
     roi = _roi_data(image, _make_image(np.ones_like(image.array)))
     with pytest.raises(ValueError, match="Feature family 'morphology_correlation' is not supported"):
         Radiomics().extract_features(roi_data=roi, families=['morphology_correlation'])
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize('selection', [{}, {'families': ['morphology']}, {'features': ['morph_volume']}])
+def test_constant_intensity_preserves_morphology_results(selection):
+    image = _make_image(np.full((4, 5, 6), 50.0))
+    roi = _roi_data(image, _make_image(np.ones_like(image.array)))
+    result = Radiomics().extract_features(roi_data=roi, **selection)
+    assert result['morph_volume'] == pytest.approx(113.16666666666667)
+    if 'features' not in selection:
+        assert np.isnan(result['morph_moran_i'])
+        assert np.isnan(result['morph_geary_c'])
+        assert all(np.isfinite(value) for tag, value in result.items() if tag not in {'morph_moran_i', 'morph_geary_c'})
+    else:
+        assert set(result) == {'morph_volume'}

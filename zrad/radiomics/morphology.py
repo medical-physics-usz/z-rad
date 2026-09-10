@@ -301,6 +301,8 @@ class MorphologicalFeatures:
             area_density_ch,
             integrated_intensity,
         ]
+        correlation = MorphologyCorrelationFeatures(self.spacing).calculate_features(mask_array, image_array)
+        values.extend(correlation[name] for name in MORPHOLOGY_CORRELATION_FEATURE_NAMES)
         return dict(zip(MORPHOLOGY_FEATURE_NAMES, values))
 
 
@@ -308,8 +310,8 @@ class MorphologyCorrelationFeatures:
     """Spatial autocorrelation descriptors for a 3D region of interest.
 
     Moran's I and Geary's C summarize how intensity values vary with physical
-    distance between ROI voxels. They are optional morphology-related features
-    and require both a morphology mask and aligned intensity image.
+    distance between ROI voxels. They are morphological features and require both a morphology mask
+    and aligned intensity image.
 
     Parameters
     ----------
@@ -479,6 +481,8 @@ MORPHOLOGY_FEATURE_NAMES = (
     'morph_vol_dens_conv_hull',
     'morph_area_dens_conv_hull',
     'morph_integ_int',
+    'morph_moran_i',
+    'morph_geary_c',
 )
 
 
@@ -507,33 +511,6 @@ class MorphologyFeatureGroup(BaseFeatureGroup):
     def calculate(self, context, prepared_data):
         masks = prepared_data.require_base_masks()
         morphology = MorphologicalFeatures(
-            masks.morphological_mask.spacing[::-1],
-        )
-        return morphology.calculate_features(
-            masks.morphological_mask.array,
-            masks.intensity_mask.array,
-        )
-
-
-class MorphologyCorrelationFeatureGroup(BaseFeatureGroup):
-    family = 'morphology_correlation'
-    requirements = frozenset({'base_masks'})
-
-    def supports(self, context):
-        return not context.is_slice_2d
-
-    def default_enabled(self, context):
-        return False
-
-    def output_names(self, context):
-        return MORPHOLOGY_CORRELATION_FEATURE_NAMES
-
-    def feature_aliases(self, context):
-        return {name: name for name in self.output_names(context)}
-
-    def calculate(self, context, prepared_data):
-        masks = prepared_data.require_base_masks()
-        morphology = MorphologyCorrelationFeatures(
             masks.morphological_mask.spacing[::-1],
         )
         return morphology.calculate_features(

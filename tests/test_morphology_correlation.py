@@ -172,6 +172,38 @@ def test_digital_phantom_reference(method):
 
 
 @pytest.mark.unit
+def test_api_uses_resegmented_intensities_not_texture_bins():
+    from zrad.image import Image
+    from zrad.preprocessing import IntensityMaskBuilder, Resegmenter, RoiData, TextureDiscretizer
+    from zrad.radiomics import Radiomics
+
+    array = np.arange(4 * 5 * 6, dtype=float).reshape(4, 5, 6) - 60
+
+    def image(values):
+        return Image(
+            array=values,
+            origin=(0, 0, 0),
+            spacing=np.array([0.8, 1.1, 2.5]),
+            direction=(1, 0, 0, 0, 1, 0, 0, 0, 1),
+            shape=(6, 5, 4),
+        )
+
+    mask = np.ones_like(array)
+    mask[1, 2, 3] = 0
+    roi = IntensityMaskBuilder().apply(RoiData(image=image(array), morphological_mask=image(mask)))
+    roi = Resegmenter(intensity_range=[-30, 50]).apply(roi)
+    roi = TextureDiscretizer(number_of_bins=4).apply(roi)
+    expected = direct(mask, np.where((array >= -30) & (array <= 50), array, np.nan), (2.5, 1.1, 0.8))
+    extractor = Radiomics()
+    actual = extractor.extract_features(roi_data=roi, features=list(TAGS))
+    assert actual == pytest.approx(expected, abs=2e-12)
+    for tag in TAGS:
+        assert extractor.extract_features(roi_data=roi, features=[tag]) == pytest.approx(
+            {tag: expected[tag]}, abs=2e-12
+        )
+
+
+@pytest.mark.unit
 @pytest.mark.parametrize('shape', [(3, 3), (3, 3, 4)])
 def test_misaligned_input_rejected(shape):
     with pytest.raises(ValueError, match='aligned 3D'):

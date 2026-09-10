@@ -107,7 +107,8 @@ def test_default_extraction_uses_available_prepared_families():
     assert 'ih_mean' in features
     assert 'cm_joint_max_3D_avg' in features
     assert 'ivh_v10' not in features
-    assert 'morph_moran_i' not in features
+    assert 'morph_moran_i' in features
+    assert 'morph_geary_c' in features
 
 
 @pytest.mark.unit
@@ -236,3 +237,85 @@ def test_gldzm_distances_use_morphological_mask_after_resegmentation_edges_are_e
 
     assert features['dzm_sde'] == pytest.approx(0.25)
     assert features['dzm_lde'] == pytest.approx(4.0)
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    'families',
+    [
+        None,
+        ['morphology'],
+        ['morphology', 'morphology'],
+        'all',
+    ],
+)
+def test_morphology_includes_correlation_once(families, monkeypatch):
+    from zrad.radiomics.morphology import MorphologyCorrelationFeatures
+
+    image = _make_image(np.arange(1, 217, dtype=float).reshape(6, 6, 6))
+    mask_array = np.zeros_like(image.array)
+    mask_array[1:5, 1:4, 1:4] = 1
+    mask_array[4, 3, 3] = 0
+    mask = _make_image(mask_array)
+    roi = TextureDiscretizer(number_of_bins=4).apply(_roi_data(image, mask))
+    roi = IVHIntensityDiscretizer(method='direct').apply(roi)
+    expected = Radiomics().extract_features(roi_data=roi, families=['morphology'])
+    original = MorphologyCorrelationFeatures.calculate_features
+    calls = []
+
+    def calculate(self, *args):
+        calls.append(1)
+        return original(self, *args)
+
+    monkeypatch.setattr(MorphologyCorrelationFeatures, 'calculate_features', calculate)
+    result = Radiomics().extract_features(roi_data=roi, families=families)
+    assert 'morph_volume' in result
+    assert {tag: result[tag] for tag in expected} == pytest.approx(expected)
+    assert len(calls) == 1
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    'selection',
+    [
+        {'features': ['morph_moran_i']},
+        {'features': ['morph_geary_c']},
+        {'features': ['morph_moran_i', 'morph_geary_c', 'morph_moran_i']},
+    ],
+)
+def test_morphology_individual_selection(selection, monkeypatch):
+    image = _make_image(np.arange(1, 217, dtype=float).reshape(6, 6, 6))
+    mask_array = np.zeros_like(image.array)
+    mask_array[1:5, 1:4, 1:4] = 1
+    mask_array[4, 3, 3] = 0
+    roi = _roi_data(image, _make_image(mask_array))
+    expected = Radiomics().extract_features(roi_data=roi, families=['morphology'])
+    assert set(expected) == set(MorphologicalFeatures((1, 1, 1)).get_feature_names())
+    original = MorphologicalFeatures.calculate_features
+    calls = []
+
+    def calculate(self, *args):
+        calls.append(1)
+        return original(self, *args)
+
+    monkeypatch.setattr(MorphologicalFeatures, 'calculate_features', calculate)
+    result = Radiomics().extract_features(roi_data=roi, **selection)
+    tags = set(selection.get('features', expected))
+    assert result == pytest.approx({tag: expected[tag] for tag in tags})
+    assert len(calls) == 1
+
+
+@pytest.mark.unit
+def test_slice_image_still_omits_3d_morphology():
+    image = _make_image(np.arange(36, dtype=float).reshape(1, 6, 6))
+    roi = _roi_data(image, _make_image(np.ones_like(image.array)))
+    result = Radiomics().extract_features(roi_data=roi)
+    assert not any(tag.startswith('morph_') for tag in result)
+
+
+@pytest.mark.unit
+def test_removed_correlation_family_is_rejected():
+    image = _make_image(np.arange(27, dtype=float).reshape(3, 3, 3))
+    roi = _roi_data(image, _make_image(np.ones_like(image.array)))
+    with pytest.raises(ValueError, match="Feature family 'morphology_correlation' is not supported"):
+        Radiomics().extract_features(roi_data=roi, families=['morphology_correlation'])

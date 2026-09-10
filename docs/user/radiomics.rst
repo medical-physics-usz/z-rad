@@ -82,8 +82,10 @@ The implementation includes features from these groups:
 In the GUI, the standard workflow exposes morphological, local intensity,
 first-order, histogram, GLCM, GLRLM, GLSZM, and GLDZM features.
 
-**Note:** Intensity-volume histogram features and the computationally
-expensive Moran's I and Geary's C measures remain API-only.
+**Note:** Intensity-volume histogram features remain API-only.
+
+Moran's I (``morph_moran_i``) and Geary's C (``morph_geary_c``) are included
+in 3D morphology features in both the GUI and API.
 
 Validation Constraints
 ----------------------
@@ -130,9 +132,7 @@ Practical Notes
 * The upper workflow section ``(1)`` uses the same dataset-selection logic as
   preprocessing and filtering.
 * The choice of extraction parameters should be kept consistent across all analyzed cases.
-* Intensity-volume histogram features and computationally expensive measures
-  such as Moran's I and Geary's C are not exposed in the GUI and remain
-  available through the API only.
+* Intensity-volume histogram features remain available through the API only.
 * API users should prepare ``RoiData.texture_discretized_image`` before
   requesting histogram or texture families.
 * API users should prepare ``RoiData.ivh_intensity_image`` with

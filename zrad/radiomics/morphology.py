@@ -234,7 +234,7 @@ class MorphologicalFeatures:
     def _calc_integrated_intensity(image_array, vol_mesh):
         return np.nanmean(image_array) * vol_mesh
 
-    def calculate_features(self, mask_array, image_array):
+    def calculate_features(self, mask_array, image_array, *, include_correlation=True):
         """Calculate morphology features for prepared mask and intensity arrays.
 
         Parameters
@@ -244,6 +244,8 @@ class MorphologicalFeatures:
         image_array : numpy.ndarray
             Prepared intensity image aligned with ``mask_array`` where voxels
             outside the ROI can be represented by ``NaN``.
+        include_correlation : bool, default=True
+            Include the joint Moran's I and Geary's C calculation.
 
         Returns
         -------
@@ -301,9 +303,10 @@ class MorphologicalFeatures:
             area_density_ch,
             integrated_intensity,
         ]
-        correlation = MorphologyCorrelationFeatures(self.spacing).calculate_features(mask_array, image_array)
-        values.extend(correlation[name] for name in MORPHOLOGY_CORRELATION_FEATURE_NAMES)
-        return dict(zip(MORPHOLOGY_FEATURE_NAMES, values))
+        features = dict(zip(MORPHOLOGY_FEATURE_NAMES, values))
+        if include_correlation:
+            features.update(MorphologyCorrelationFeatures(self.spacing).calculate_features(mask_array, image_array))
+        return features
 
 
 class MorphologyCorrelationFeatures:
@@ -518,4 +521,20 @@ class MorphologyFeatureGroup(BaseFeatureGroup):
         return morphology.calculate_features(
             masks.morphological_mask.array,
             masks.intensity_mask.array,
+        )
+
+    def calculate_selected(self, context, prepared_data, selected_features):
+        masks = prepared_data.require_base_masks()
+        spacing = masks.morphological_mask.spacing[::-1]
+        correlation_names = set(MORPHOLOGY_CORRELATION_FEATURE_NAMES)
+        selected = set(selected_features)
+        if selected <= correlation_names:
+            return MorphologyCorrelationFeatures(spacing).calculate_features(
+                masks.morphological_mask.array,
+                masks.intensity_mask.array,
+            )
+        return MorphologicalFeatures(spacing).calculate_features(
+            masks.morphological_mask.array,
+            masks.intensity_mask.array,
+            include_correlation=bool(selected & correlation_names),
         )

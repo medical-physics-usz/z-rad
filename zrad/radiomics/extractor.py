@@ -143,7 +143,11 @@ class Radiomics:
 
         extracted = {}
         for group in groups:
-            extracted.update(group.calculate(context, prepared_data))
+            if selected_features is None:
+                extracted.update(group.calculate(context, prepared_data))
+            else:
+                group_features = [name for name in selected_features if name in group.output_names(context)]
+                extracted.update(group.calculate_selected(context, prepared_data, group_features))
 
         if selected_features is not None:
             extracted = {name: extracted[name] for name in selected_features}

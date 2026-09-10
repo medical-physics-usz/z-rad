@@ -326,8 +326,9 @@ def test_removed_correlation_family_is_rejected():
 
 @pytest.mark.unit
 @pytest.mark.parametrize('selection', [{}, {'families': ['morphology']}, {'features': ['morph_volume']}])
-def test_constant_intensity_preserves_morphology_results(selection):
-    image = _make_image(np.full((4, 5, 6), 50.0))
+@pytest.mark.parametrize('value', [0.1, 1.1, 50.0])
+def test_constant_intensity_preserves_morphology_results(selection, value):
+    image = _make_image(np.full((4, 5, 6), value))
     roi = _roi_data(image, _make_image(np.ones_like(image.array)))
     result = Radiomics().extract_features(roi_data=roi, **selection)
     assert result['morph_volume'] == pytest.approx(113.16666666666667)

@@ -437,6 +437,10 @@ class MorphologyCorrelationFeatures:
             # Infinity was not excluded by the old NaN-only population rule;
             # it propagated to NaN results. Preserve that behavior explicitly.
             return dict.fromkeys(MORPHOLOGY_CORRELATION_FEATURE_NAMES, np.nan)
+        # A rounded mean can differ from every value in a constant float array.
+        # Test equality directly; a tolerance would discard real low contrast.
+        if np.all(values == values[0]):
+            return dict.fromkeys(MORPHOLOGY_CORRELATION_FEATURE_NAMES, np.nan)
         centered = values - np.mean(values)
         variance_sum = np.sum(centered**2)
         del values

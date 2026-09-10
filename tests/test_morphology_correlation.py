@@ -93,12 +93,14 @@ def test_infinity_propagates_without_changing_population(value):
 
 
 @pytest.mark.unit
-def test_constant_detected_before_spatial_work(monkeypatch):
+@pytest.mark.parametrize('shape', [(4, 5, 6), (10, 10, 10)])
+@pytest.mark.parametrize('value', [0.1, 1.1, 50.0])
+def test_constant_detected_before_spatial_work(monkeypatch, shape, value):
     def unexpected(*args):
         pytest.fail('Constant intensities should not reach the selector')
 
     monkeypatch.setattr(morphology, '_correlation_method', unexpected)
-    result = MorphologyCorrelationFeatures((1, 1, 1)).calculate_features(np.ones((3, 3, 3)), np.ones((3, 3, 3)))
+    result = MorphologyCorrelationFeatures((1, 1, 1)).calculate_features(np.ones(shape), np.full(shape, value))
     assert set(result) == set(TAGS)
     assert all(np.isnan(value) for value in result.values())
 
@@ -208,3 +210,12 @@ def test_api_uses_resegmented_intensities_not_texture_bins():
 def test_misaligned_input_rejected(shape):
     with pytest.raises(ValueError, match='aligned 3D'):
         MorphologyCorrelationFeatures((1, 1, 1)).calculate_features(np.ones((3, 3, 3)), np.ones(shape))
+
+
+@pytest.mark.unit
+def test_low_contrast_is_not_treated_as_constant(method):
+    image = 0.1 + np.arange(120).reshape(4, 5, 6) * 1e-12
+    mask = np.ones_like(image)
+    result = MorphologyCorrelationFeatures((1, 1, 1)).calculate_features(mask, image)
+    assert all(np.isfinite(value) for value in result.values())
+    assert result == pytest.approx(direct(mask, image, (1, 1, 1)), abs=2e-12, rel=2e-12)

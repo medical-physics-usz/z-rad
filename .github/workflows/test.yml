@@ -50,7 +50,18 @@ jobs:
 
       - name: Run integration tests with coverage (append)
         run: |
-          pytest -m integration --cov=zrad --cov-append
+          pytest -m integration --cov=zrad --cov-append --junitxml=reports/integration.xml
+
+      - name: Summarize IBSI benchmarks
+        if: always() && hashFiles('reports/integration.xml') != ''
+        run: python tests/ibsi_report.py reports/integration.xml reports/ibsi.md
+
+      - name: Upload benchmark results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ibsi-results-python-${{ matrix.python-version }}
+          path: reports/
 
       - name: Generate coverage report
         run: |
@@ -60,5 +71,5 @@ jobs:
       - name: Upload coverage report (HTML)
         uses: actions/upload-artifact@v7
         with:
-          name: coverage-report
+          name: coverage-report-python-${{ matrix.python-version }}
           path: htmlcov/

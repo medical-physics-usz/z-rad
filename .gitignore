@@ -66,6 +66,7 @@ target/
 
 # Windows thumbnail cache files
 Thumbs.db
+.DS_Store
 ehthumbs.db
 ehthumbs_vista.db
 
@@ -106,3 +107,9 @@ config.json
 *.dcm
 *.nii
 *.nii.gz
+
+# Generated benchmark execution reports
+/reports/
+
+# Disposable IBSI-SUV extraction (other IBSI archives use .cache/)
+/tests/data/IBSI_SUV/

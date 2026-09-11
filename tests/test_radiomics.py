@@ -240,6 +240,38 @@ def test_gldzm_distances_use_morphological_mask_after_resegmentation_edges_are_e
 
 
 @pytest.mark.unit
+@pytest.mark.parametrize('dtype', [np.int16, np.uint16, np.float32, np.float64])
+def test_global_peak_preserves_constant_intensity_at_image_boundary(dtype):
+    from zrad.radiomics.intensity import LocalIntensityFeatures
+
+    image = np.full((3, 3, 3), 7, dtype=dtype)
+    masked = np.full(image.shape, np.nan)
+    masked[0, 0, 0] = 7.0
+    features = LocalIntensityFeatures((2, 2, 2)).calculate_features(image, masked)
+    assert features['loc_peak_glob'] == pytest.approx(7.0)
+    assert features['loc_peak_loc'] == pytest.approx(7.0)
+
+
+@pytest.mark.unit
+def test_histogram_gradient_keeps_empty_bins():
+    from zrad.radiomics.intensity import IntensityHistogramFeatures
+
+    values, gradient = IntensityHistogramFeatures._histogram_gradient(np.array([1.0, 1.0, 3.0, 3.0, 3.0]))
+    np.testing.assert_array_equal(values, [1, 2, 3])
+    np.testing.assert_array_equal(gradient, [-2, 0.5, 3])
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize('array', [np.array([]), np.array([np.nan])])
+def test_histogram_gradient_rejects_empty_roi(array):
+    from zrad.exceptions import DataStructureError
+    from zrad.radiomics.intensity import IntensityHistogramFeatures
+
+    with pytest.raises(DataStructureError, match='Not enough bins'):
+        IntensityHistogramFeatures._histogram_gradient(array)
+
+
+@pytest.mark.unit
 @pytest.mark.parametrize(
     'families',
     [

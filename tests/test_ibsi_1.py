@@ -1,7 +1,7 @@
-import csv
 from pathlib import Path
 
 import pytest
+from ibsi_helpers import load_references, matches_reference, select_ibsi_i_references
 
 from zrad.image import Image
 from zrad.preprocessing import (
@@ -17,54 +17,82 @@ from zrad.radiomics import Radiomics
 
 
 def ibsi_i_feature_tolerances(sheet_name):
-    csv_path = Path(__file__).parent / 'data' / f'ibsi_1_reference_values_{sheet_name}.csv'
-    with open(csv_path, newline='') as csv_file:
-        reader = csv.DictReader(csv_file)
-        return {row['tag']: row for row in reader}
+    csv_path = Path(__file__).parent / 'data' / 'ibsi_1_reference_data' / f'ibsi_1_reference_values_{sheet_name}.csv'
+    return load_references(csv_path, 'tag', 'reference value', delimiter=',', phase='I')
 
 
-def ibsi_i_validation(ibsi_features, features, config_a=False):
+def ibsi_i_validation(ibsi_features, features):
+    assert ibsi_features, "Empty IBSI reference selection"
     for raw_tag, feature_info in ibsi_features.items():
         tag = str(raw_tag)
-        if config_a and tag == 'ih_qcod':
-            continue
+        if tag not in features:
+            pytest.fail(f"Missing required feature {tag}")
 
-        if tag in features:
-            val = float(feature_info['reference value'])
-            tol = float(feature_info['tolerance'])
-            upper_boundary = val + tol
-            lower_boundary = val - tol
+        if not matches_reference(features[tag], feature_info['reference value'], feature_info['tolerance']):
+            pytest.fail(
+                f"Feature {tag} out of tolerance: computed={features[tag]}, "
+                f"reference={feature_info['reference value']}, tolerance={feature_info['tolerance']}"
+            )
 
-            if not (lower_boundary <= features[tag] <= upper_boundary):
-                pytest.fail(
-                    f"Feature {tag} out of tolerance: {features[tag]} not in range ({lower_boundary}, {upper_boundary})"
-                )
+
+@pytest.mark.unit
+@pytest.mark.parametrize('features', [{}, {'stat_mean': 1.0}])
+def test_ibsi_i_requires_all_reference_features(features):
+    reference = {
+        'stat_mean': {'reference value': '1', 'tolerance': '0'},
+        'stat_var': {'reference value': '2', 'tolerance': '0'},
+    }
+    missing = 'stat_var' if features else 'stat_mean'
+    with pytest.raises(pytest.fail.Exception, match=f'Missing required feature {missing}'):
+        ibsi_i_validation(reference, features)
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize('value', [1 / 22, 0.0455])
+def test_config_a_qcod_matches_published_precision(value):
+    reference = {'ih_qcod': ibsi_i_feature_tolerances('config_A')['ih_qcod']}
+    ibsi_i_validation(reference, {'ih_qcod': value})
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize('value', [0.0454, 0.0456, float('nan'), float('inf')])
+def test_config_a_qcod_rejects_mismatch(value):
+    reference = {'ih_qcod': ibsi_i_feature_tolerances('config_A')['ih_qcod']}
+    with pytest.raises(pytest.fail.Exception, match='out of tolerance'):
+        ibsi_i_validation(reference, {'ih_qcod': value})
+
+
+@pytest.mark.unit
+def test_config_a_qcod_requires_feature():
+    reference = {'ih_qcod': ibsi_i_feature_tolerances('config_A')['ih_qcod']}
+    with pytest.raises(pytest.fail.Exception, match='Missing required feature ih_qcod'):
+        ibsi_i_validation(reference, {})
 
 
 @pytest.fixture()
-def dcm_ct_phantom_image(ibsi_i_data_dir):
-    return Image.from_dicom(dicom_dir=ibsi_i_data_dir / 'dicom' / 'image', modality='CT')
+def dcm_ct_phantom_image(ibsi_ct_data_dir):
+    return Image.from_dicom(dicom_dir=ibsi_ct_data_dir / 'dicom' / 'image', modality='CT')
 
 
 @pytest.fixture()
-def dcm_ct_phantom_mask(dcm_ct_phantom_image):
+def dcm_ct_phantom_mask(dcm_ct_phantom_image, ibsi_ct_data_dir):
     return Image.from_dicom_mask(
         reference=dcm_ct_phantom_image,
-        rtstruct_path='tests/data/IBSI_I/dicom/mask/DCM_RS_00060.dcm',
+        rtstruct_path=str(ibsi_ct_data_dir / 'dicom' / 'mask' / 'DCM_RS_00060.dcm'),
         structure_name='GTV-1',
     )
 
 
 @pytest.fixture()
-def nii_ct_phantom_image(ibsi_i_data_dir):
-    return Image.from_nifti(str(ibsi_i_data_dir / 'nifti' / 'image' / 'phantom.nii.gz'))
+def nii_ct_phantom_image(ibsi_ct_data_dir):
+    return Image.from_nifti(str(ibsi_ct_data_dir / 'nifti' / 'image' / 'phantom.nii.gz'))
 
 
 @pytest.fixture()
-def nii_ct_phantom_mask(nii_ct_phantom_image):
+def nii_ct_phantom_mask(nii_ct_phantom_image, ibsi_ct_data_dir):
     return Image.from_nifti_mask(
         reference=nii_ct_phantom_image,
-        mask_path='tests/data/IBSI_I/nifti/mask/mask.nii.gz',
+        mask_path=str(ibsi_ct_data_dir / 'nifti' / 'mask' / 'mask.nii.gz'),
     )
 
 
@@ -109,11 +137,12 @@ def _prepare_roi_data(
     return roi_data
 
 
-def _extract_features(image, mask, aggr_dim, aggr_method, **prep_kwargs):
+def _extract_features(image, mask, aggr_dim, aggr_method, families=None, **prep_kwargs):
     return Radiomics(
         aggr_dim=aggr_dim,
         aggr_method=aggr_method,
     ).extract_features(
+        families=families,
         roi_data=_prepare_roi_data(image, mask, **prep_kwargs),
     )
 
@@ -184,186 +213,163 @@ def res3d_2mm_image_spline(dcm_ct_phantom_image):
 
 
 @pytest.mark.integration
-def test_ibsi_i_config_a(dcm_ct_phantom_image, dcm_ct_phantom_mask):
-    ibsi_features = ibsi_i_feature_tolerances('config_A')
-
+@pytest.mark.parametrize(
+    ('aggr_dim', 'aggr_method'), [('2D', 'AVER'), ('2D', 'SLICE_MERG'), ('2.5D', 'DIR_MERG'), ('2.5D', 'MERG')]
+)
+def test_ibsi_i_config_a(dcm_ct_phantom_image, dcm_ct_phantom_mask, aggr_dim, aggr_method):
+    reference = select_ibsi_i_references(ibsi_i_feature_tolerances('config_A'), aggr_dim, aggr_method)
     features = _extract_features(
         dcm_ct_phantom_image,
         dcm_ct_phantom_mask,
-        aggr_dim='2D',
-        aggr_method='AVER',
+        aggr_dim=aggr_dim,
+        aggr_method=aggr_method,
         intensity_range=[-500, 400],
         bin_size=25,
         ivh_method='direct',
     )
-    ibsi_i_validation(ibsi_features, features, True)
-
-    features = _extract_features(
-        dcm_ct_phantom_image,
-        dcm_ct_phantom_mask,
-        aggr_dim='2D',
-        aggr_method='SLICE_MERG',
-        intensity_range=[-500, 400],
-        bin_size=25,
-        ivh_method='direct',
-    )
-    ibsi_i_validation(ibsi_features, features, True)
-
-    features = _extract_features(
-        dcm_ct_phantom_image,
-        dcm_ct_phantom_mask,
-        aggr_dim='2.5D',
-        aggr_method='DIR_MERG',
-        intensity_range=[-500, 400],
-        bin_size=25,
-        ivh_method='direct',
-    )
-    ibsi_i_validation(ibsi_features, features, True)
-
-    features = _extract_features(
-        dcm_ct_phantom_image,
-        dcm_ct_phantom_mask,
-        aggr_dim='2.5D',
-        aggr_method='MERG',
-        intensity_range=[-500, 400],
-        bin_size=25,
-        ivh_method='direct',
-    )
-    ibsi_i_validation(ibsi_features, features, True)
+    ibsi_i_validation(reference, features)
 
 
 @pytest.mark.integration
-def test_ibsi_i_config_b(res2d_2mm_image_linear, res2d_2mm_mask_linear):
-    ibsi_features = ibsi_i_feature_tolerances('config_B')
-
+@pytest.mark.parametrize(
+    ('aggr_dim', 'aggr_method'), [('2D', 'AVER'), ('2D', 'SLICE_MERG'), ('2.5D', 'DIR_MERG'), ('2.5D', 'MERG')]
+)
+def test_ibsi_i_config_b(res2d_2mm_image_linear, res2d_2mm_mask_linear, aggr_dim, aggr_method):
+    reference = select_ibsi_i_references(ibsi_i_feature_tolerances('config_B'), aggr_dim, aggr_method)
     features = _extract_features(
         res2d_2mm_image_linear,
         res2d_2mm_mask_linear,
-        aggr_dim='2D',
-        aggr_method='AVER',
-        intensity_range=[-500, 400],
-        number_of_bins=32,
-    )
-    ibsi_i_validation(ibsi_features, features)
-    features = _extract_features(
-        res2d_2mm_image_linear,
-        res2d_2mm_mask_linear,
-        aggr_dim='2D',
-        aggr_method='SLICE_MERG',
+        aggr_dim=aggr_dim,
+        aggr_method=aggr_method,
         intensity_range=[-500, 400],
         number_of_bins=32,
         ivh_method='direct',
     )
-    ibsi_i_validation(ibsi_features, features)
-
-    features = _extract_features(
-        res2d_2mm_image_linear,
-        res2d_2mm_mask_linear,
-        aggr_dim='2.5D',
-        aggr_method='DIR_MERG',
-        intensity_range=[-500, 400],
-        number_of_bins=32,
-        ivh_method='direct',
-    )
-    ibsi_i_validation(ibsi_features, features)
-
-    features = _extract_features(
-        res2d_2mm_image_linear,
-        res2d_2mm_mask_linear,
-        aggr_dim='2.5D',
-        aggr_method='MERG',
-        intensity_range=[-500, 400],
-        number_of_bins=32,
-        ivh_method='direct',
-    )
-    ibsi_i_validation(ibsi_features, features)
+    ibsi_i_validation(reference, features)
 
 
 @pytest.mark.integration
-def test_ibsi_i_config_c(res3d_2mm_image_linear, res3d_2mm_mask_linear):
-    ibsi_features = ibsi_i_feature_tolerances('config_C')
-
+@pytest.mark.parametrize(('aggr_dim', 'aggr_method'), [('3D', 'AVER'), ('3D', 'MERG')])
+def test_ibsi_i_config_c(res3d_2mm_image_linear, res3d_2mm_mask_linear, aggr_dim, aggr_method):
+    reference = select_ibsi_i_references(ibsi_i_feature_tolerances('config_C'), aggr_dim, aggr_method)
     features = _extract_features(
         res3d_2mm_image_linear,
         res3d_2mm_mask_linear,
-        aggr_dim='3D',
-        aggr_method='AVER',
+        aggr_dim=aggr_dim,
+        aggr_method=aggr_method,
         intensity_range=[-1000, 400],
         bin_size=25,
         ivh_method='fixed_bin_size',
         ivh_bin_size=2.5,
     )
-    ibsi_i_validation(ibsi_features, features)
-
-    features = _extract_features(
-        res3d_2mm_image_linear,
-        res3d_2mm_mask_linear,
-        aggr_dim='3D',
-        aggr_method='MERG',
-        intensity_range=[-1000, 400],
-        bin_size=25,
-        ivh_method='fixed_bin_size',
-        ivh_bin_size=2.5,
-    )
-    ibsi_i_validation(ibsi_features, features)
+    ibsi_i_validation(reference, features)
 
 
 @pytest.mark.integration
-def test_ibsi_i_config_d(res3d_2mm_image_linear, res3d_2mm_mask_linear):
-    ibsi_features = ibsi_i_feature_tolerances('config_D')
-
+@pytest.mark.parametrize(('aggr_dim', 'aggr_method'), [('3D', 'AVER'), ('3D', 'MERG')])
+def test_ibsi_i_config_d(res3d_2mm_image_linear, res3d_2mm_mask_linear, aggr_dim, aggr_method):
+    reference = select_ibsi_i_references(ibsi_i_feature_tolerances('config_D'), aggr_dim, aggr_method)
     features = _extract_features(
         res3d_2mm_image_linear,
         res3d_2mm_mask_linear,
-        aggr_dim='3D',
-        aggr_method='AVER',
+        aggr_dim=aggr_dim,
+        aggr_method=aggr_method,
         outlier_range=3,
         number_of_bins=32,
         ivh_method='direct',
     )
-    ibsi_i_validation(ibsi_features, features)
-
-    features = _extract_features(
-        res3d_2mm_image_linear,
-        res3d_2mm_mask_linear,
-        aggr_dim='3D',
-        aggr_method='MERG',
-        outlier_range=3,
-        number_of_bins=32,
-        ivh_method='direct',
-    )
-    ibsi_i_validation(ibsi_features, features)
+    ibsi_i_validation(reference, features)
 
 
 @pytest.mark.integration
-def test_ibsi_i_config_e(res3d_2mm_image_spline, res3d_2mm_mask_linear):
-    ibsi_features = ibsi_i_feature_tolerances('config_E')
-
+@pytest.mark.parametrize(('aggr_dim', 'aggr_method'), [('3D', 'AVER'), ('3D', 'MERG')])
+def test_ibsi_i_config_e(res3d_2mm_image_spline, res3d_2mm_mask_linear, aggr_dim, aggr_method):
+    reference = select_ibsi_i_references(ibsi_i_feature_tolerances('config_E'), aggr_dim, aggr_method)
     features = _extract_features(
         res3d_2mm_image_spline,
         res3d_2mm_mask_linear,
-        aggr_dim='3D',
-        aggr_method='AVER',
+        aggr_dim=aggr_dim,
+        aggr_method=aggr_method,
         intensity_range=[-1000, 400],
         outlier_range=3,
         number_of_bins=32,
         ivh_method='fixed_bin_number',
         ivh_number_of_bins=1000,
     )
-    ibsi_i_validation(ibsi_features, features)
+    ibsi_i_validation(reference, features)
 
+
+@pytest.mark.integration
+@pytest.mark.parametrize(
+    ('aggr_dim', 'aggr_method'),
+    [
+        ('2D', 'AVER'),
+        ('2D', 'SLICE_MERG'),
+        ('2.5D', 'DIR_MERG'),
+        ('2.5D', 'MERG'),
+        ('3D', 'AVER'),
+        ('3D', 'MERG'),
+    ],
+)
+def test_ibsi_i_digital_phantom(ibsi_i_digital_data_dir, aggr_dim, aggr_method):
+    image = Image.from_nifti(ibsi_i_digital_data_dir / 'nifti' / 'image' / 'phantom.nii.gz')
+    mask = Image.from_nifti(ibsi_i_digital_data_dir / 'nifti' / 'mask' / 'mask.nii.gz')
+    reference = select_ibsi_i_references(ibsi_i_feature_tolerances('digital_phantom'), aggr_dim, aggr_method)
     features = _extract_features(
-        res3d_2mm_image_spline,
-        res3d_2mm_mask_linear,
-        aggr_dim='3D',
-        aggr_method='MERG',
-        intensity_range=[-1000, 400],
-        outlier_range=3,
-        number_of_bins=32,
-        ivh_method='fixed_bin_number',
-        ivh_number_of_bins=1000,
+        image, mask, aggr_dim, aggr_method, number_of_bins=6, ivh_method='direct', families='all'
     )
-    ibsi_i_validation(ibsi_features, features)
+    ibsi_i_validation(reference, features)
+
+
+def _diagnostic_values(image, roi, stage):
+    import numpy as np
+
+    result = {}
+    if stage != 'reseg':
+        for axis, size, spacing in zip('xyz', image.array.shape[::-1], image.spacing):
+            result[f'img_dim_{axis}_{stage}_img'] = size
+            result[f'vox_dim_{axis}_{stage}_img'] = spacing
+        for name, operation in [('mean', np.mean), ('min', np.min), ('max', np.max)]:
+            result[f'{name}_int_{stage}_img'] = float(operation(image.array))
+    intensity = roi.intensity_mask.array
+    for kind, mask in [('int', np.isfinite(intensity)), ('morph', roi.morphological_mask.array > 0)]:
+        positions = np.argwhere(mask)
+        dimensions = (positions.max(axis=0) - positions.min(axis=0) + 1)[::-1]
+        for axis, size in zip('xyz', dimensions):
+            result[f'{kind}_mask_bb_dim_{axis}_{stage}_roi'] = size
+        result[f'{kind}_mask_vox_count_{stage}_roi'] = int(mask.sum())
+    for axis, size in zip('xyz', intensity.shape[::-1]):
+        result[f'int_mask_dim_{axis}_{stage}_roi'] = size
+    for name, operation in [('mean', np.nanmean), ('min', np.nanmin), ('max', np.nanmax)]:
+        result[f'int_mask_{name}_int_{stage}_roi'] = float(operation(intensity))
+    return result
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize('config', ['A', 'B', 'C', 'D', 'E'])
+@pytest.mark.parametrize('stage', ['init', 'interp', 'reseg'])
+def test_ibsi_i_diagnostics(request, config, stage):
+    image_name, mask_name = {
+        'A': ('dcm_ct_phantom_image', 'dcm_ct_phantom_mask'),
+        'B': ('res2d_2mm_image_linear', 'res2d_2mm_mask_linear'),
+        'C': ('res3d_2mm_image_linear', 'res3d_2mm_mask_linear'),
+        'D': ('res3d_2mm_image_linear', 'res3d_2mm_mask_linear'),
+        'E': ('res3d_2mm_image_spline', 'res3d_2mm_mask_linear'),
+    }[config]
+    if stage == 'init':
+        image_name, mask_name = 'dcm_ct_phantom_image', 'dcm_ct_phantom_mask'
+    image, mask = request.getfixturevalue(image_name), request.getfixturevalue(mask_name)
+    roi = IntensityMaskBuilder().apply(RoiData(image=image, morphological_mask=mask))
+    if stage == 'reseg':
+        ranges = {'A': [-500, 400], 'B': [-500, 400], 'C': [-1000, 400], 'D': None, 'E': [-1000, 400]}
+        roi = Resegmenter(intensity_range=ranges[config], outlier_range=3 if config in ('D', 'E') else None).apply(roi)
+    values = _diagnostic_values(image, roi, stage)
+    reference = {
+        tag: row
+        for tag, row in ibsi_i_feature_tolerances(f'config_{config}').items()
+        if row['family'].startswith('Diagnostics') and f'_{stage}_' in tag
+    }
+    ibsi_i_validation(reference, values)
 
 
 @pytest.mark.integration
@@ -398,8 +404,4 @@ def test_ibsi_i_morphology_correlation(config, method, request, monkeypatch):
     tags = {'morph_moran_i', 'morph_geary_c'}
     assert set(features) == set(morphology.MORPHOLOGY_FEATURE_NAMES)
     references = ibsi_i_feature_tolerances('config_' + config)
-    for tag in tags:
-        assert features[tag] == pytest.approx(
-            float(references[tag]['reference value']),
-            abs=float(references[tag]['tolerance']),
-        )
+    ibsi_i_validation({tag: references[tag] for tag in tags}, features)

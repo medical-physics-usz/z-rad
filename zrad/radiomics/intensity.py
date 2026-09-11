@@ -107,7 +107,11 @@ class LocalIntensityFeatures:
         kernel = spherical_mask.astype(float) / np.sum(spherical_mask)
         local_means = _get_cached_local_means(image, self.spacing)
         if local_means is None:
-            local_means = convolve(image, kernel, mode='constant', cval=0.0)
+            local_means = convolve(image, kernel, output=np.float64, mode='constant', cval=0.0)
+            # Average only image voxels inside the spherical neighbourhood.
+            # At image boundaries the neighbourhood contains fewer voxels.
+            support = convolve(np.ones(image.shape, dtype=float), kernel, mode='constant', cval=0.0)
+            local_means = local_means / support
             _set_cached_local_means(image, self.spacing, local_means)
         roi_mask = ~np.isnan(masked_image)
         return np.max(local_means[roi_mask])
@@ -215,6 +219,13 @@ class _IntensityFeatureCalculator:
     @staticmethod
     def _histogram_gradient(array):
         values, counts = np.unique(array[~np.isnan(array)], return_counts=True)
+        if len(values) == 0:
+            raise DataStructureError("Not enough bins to calculate gradient.")
+        # Empty grey-level bins retain their positions in the histogram.
+        full_values = np.arange(1, int(values[-1]) + 1)
+        full_counts = np.zeros(len(full_values), dtype=float)
+        full_counts[values.astype(int) - 1] = counts
+        values, counts = full_values, full_counts
         if len(counts) <= 1:
             raise DataStructureError("Not enough bins to calculate gradient.")
         gradient = np.gradient(counts)

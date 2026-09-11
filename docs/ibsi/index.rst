@@ -1,198 +1,223 @@
-============================
-IBSI coverage and validation
-============================
+=======================
+IBSI Benchmark Coverage
+=======================
+
+Z-Rad is developed around IBSI-oriented radiomics workflows and includes test
+data and regression tests derived from IBSI reference material. The datasets
+and reference values are under ``tests/data``. Automated benchmarks are in
+``tests/test_ibsi_1.py``, ``tests/test_ibsi_2.py``, and ``tests/test_pet_suv.py``.
+
+The feature comparisons require every expected reference feature for the
+selected configuration and aggregation mode. Expected features are selected
+from reference metadata, independently of the extracted result keys. Missing
+expected features fail validation. Diagnostic measurements and absent references
+are accounted for separately.
 
 Implementation Coverage
 -----------------------
 
 Z-Rad supports all IBSI I preprocessing operations and radiomic features,
-and all IBSI II filters. Implementation coverage describes the available
-operations; benchmark validation describes numerical comparisons for specific
+and all IBSI II filters. Implementation coverage describes available
+operations; benchmark validation describes numerical agreement for specific
 reference configurations. They should be assessed separately.
 
-The matrix below identifies what the reference suites exercise, rather than
-reporting a test result. Use the linked configurations and the test report to
-assess numerical agreement for a particular version.
-
-.. list-table:: Implementation and reference-test scope
+.. list-table:: Implementation guides
    :header-rows: 1
-   :widths: 20 40 40
+   :widths: 25 50 25
 
    * - Area
-     - Implemented
-     - Reference-test scope
+     - Available operations
+     - Guide
    * - IBSI I preprocessing
-     - Image and mask interpolation, resegmentation, and discretization;
-       see :doc:`../user/preprocessing`.
-     - CT phantom configurations A–E exercise selected settings through
-       downstream feature comparisons. See `IBSI I reference configurations`_.
-   * - IBSI I morphology
-     - Morphological features; see :doc:`../user/radiomics`.
-     - Default morphology features are requested in the A–E suite.
-       Reference tags are compared only when returned by extraction.
-   * - Moran's I and Geary's C
-     - Optional 3D ``morphology_correlation`` family, also selected by
-       ``families="all"``; excluded from default extraction due to cost.
-     - Not requested by the IBSI I reference suite. Implementation availability
-       should not be read as reference validation by that suite.
-   * - IBSI I intensity
-     - Local intensity, intensity statistics, intensity histograms,
-       and intensity-volume histograms; see :doc:`../reference/radiomics`.
-     - A–E compare returned features, subject to preparation and the
-       configuration A exclusion in `Current Benchmark Limitations`_.
-   * - IBSI I texture
-     - GLCM, GLRLM, GLSZM, GLDZM, NGTDM, and NGLDM with applicable
-       aggregation methods; see :doc:`../user/radiomics`.
-     - A/B exercise 2D and 2.5D aggregation; C/D/E exercise 3D aggregation.
-       The linked tests specify the exact settings and compared tags.
+     - Image and mask interpolation, resegmentation, and intensity discretization.
+     - :doc:`../user/preprocessing`
+   * - IBSI I features
+     - Morphology, local intensity, intensity statistics, histograms,
+       intensity-volume histograms, and texture. Moran's I and Geary's C
+       are included in default 3D morphology extraction.
+     - :doc:`../user/radiomics` and :doc:`../reference/radiomics`
    * - IBSI II filters
      - Mean, LoG, Laws, Gabor, separable wavelets, Simoncelli wavelets,
-       and Riesz transforms; see :doc:`../user/filtering`.
-     - Phase I compares selected digital-phantom response maps; phase II
-       compares intensity statistics on filtered CT images. See
-       `IBSI II reference configurations`_ for filter-specific checks.
+       and Riesz transforms.
+     - :doc:`../user/filtering`
 
-IBSI I Reference Configurations
--------------------------------
+Reference Tests and Data
+------------------------
 
-CT phantom test functions: `A <https://github.com/medical-physics-usz/z-rad/blob/master/tests/test_ibsi_1.py#L187>`_, `B <https://github.com/medical-physics-usz/z-rad/blob/master/tests/test_ibsi_1.py#L236>`_, `C <https://github.com/medical-physics-usz/z-rad/blob/master/tests/test_ibsi_1.py#L283>`_, `D <https://github.com/medical-physics-usz/z-rad/blob/master/tests/test_ibsi_1.py#L312>`_, `E <https://github.com/medical-physics-usz/z-rad/blob/master/tests/test_ibsi_1.py#L339>`_.
+* `IBSI I tests <https://github.com/medical-physics-usz/z-rad/blob/master/tests/test_ibsi_1.py>`_
+  define the digital-phantom and CT A--E configurations and aggregation modes.
+  The `IBSI I reference tables <https://github.com/medical-physics-usz/z-rad/tree/master/tests/data/ibsi_1_reference_data>`_
+  provide the expected values and tolerances.
+* `IBSI II tests <https://github.com/medical-physics-usz/z-rad/blob/master/tests/test_ibsi_2.py>`_
+  define the phase I filter settings and response-map comparisons, and
+  phase II CT feature comparisons. The phase I and phase II configuration
+  numbers belong to separate benchmarks and are not interchangeable filter IDs.
+  The `IBSI II reference data <https://github.com/medical-physics-usz/z-rad/tree/master/tests/data/ibsi_2_reference_data>`_
+  contain the response-map archive and phase II feature table.
+* `IBSI-SUV tests <https://github.com/medical-physics-usz/z-rad/blob/master/tests/test_pet_suv.py>`_
+  define the valid and intentionally invalid digital reference cases.
 
-Reference values and per-feature tolerances: `A <https://github.com/medical-physics-usz/z-rad/blob/master/tests/data/ibsi_1_reference_values_config_A.csv>`_, `B <https://github.com/medical-physics-usz/z-rad/blob/master/tests/data/ibsi_1_reference_values_config_B.csv>`_, `C <https://github.com/medical-physics-usz/z-rad/blob/master/tests/data/ibsi_1_reference_values_config_C.csv>`_, `D <https://github.com/medical-physics-usz/z-rad/blob/master/tests/data/ibsi_1_reference_values_config_D.csv>`_, `E <https://github.com/medical-physics-usz/z-rad/blob/master/tests/data/ibsi_1_reference_values_config_E.csv>`_.
+Coverage Matrix
+---------------
 
-The `digital-phantom reference table <https://github.com/medical-physics-usz/z-rad/blob/master/tests/data/ibsi_1_reference_values_digital_phantom.csv>`_
-is bundled, but is not read by the current ``tests/test_ibsi_1.py`` suite.
-Its presence does not establish an automated digital-phantom comparison.
-
-IBSI II Reference Configurations
---------------------------------
-
-Phase I links below point to the test functions containing the exact
-configuration IDs, filter parameters, and response-map filenames. The maps
-are distributed in `IBSI_II.zip <https://github.com/medical-physics-usz/z-rad/blob/master/tests/data/IBSI_II.zip>`_ under
-``Ph_I/response_maps`` after extraction.
-
-.. list-table:: Filter-specific reference checks
+.. list-table:: Implemented benchmark coverage
    :header-rows: 1
-   :widths: 30 35 35
+   :widths: 25 30 45
 
-   * - Implemented filter
-     - Phase I response-map tests
-     - Phase II CT feature tests
+   * - Benchmark
+     - Cases / comparisons
+     - Scope and limitations
+   * - IBSI I digital phantom
+     - 6 aggregation modes; 169 features per mode
+     - 482 distinct reference tags.
+   * - IBSI I CT diagnostics A--E
+     - Initial, interpolated and resegmented stages, separately reported
+     - All 60 diagnostic rows per configuration, including image and ROI
+       dimensions, voxel spacing, bounding boxes, voxel counts and intensities.
+   * - IBSI I CT A and B
+     - 4 aggregation modes each; 169 features per mode
+     - 346 distinct reference tags per configuration.
+   * - IBSI I CT C, D and E
+     - 2 aggregation modes each; 169 features per mode
+     - 210 distinct reference tags per configuration.
+   * - IBSI II phase I
+     - All 33 bundled published response maps
+     - Each map is a separate case; shape and finite values
+       are required, and every voxel must satisfy the 1% reference-range tolerance.
+   * - IBSI II phase II 1.A--9.B
+     - 18 configurations; 323 reference feature comparisons
+     - ``stat_qcod`` for 8.B has no IBSI consensus therefore is not benchmarked.
+   * - IBSI II phase II 10.A/B and 11.A/B
+     - No published feature references
+     - No benchmark-agreement claim for these configurations.
+   * - IBSI-SUV
+     - 43 valid and 15 intentionally invalid digital reference objects
+     - Valid cases check ROI minimum, median and maximum to two decimals;
+       invalid cases require an exception. These are not radiomic-feature tests.
 
-   * - Mean
-     - `Group 1 <https://github.com/medical-physics-usz/z-rad/blob/master/tests/test_ibsi_2.py#L139>`_
-     - No CT feature comparison in this suite.
+Counts of distinct reference tags include aggregation suffixes and should not
+be interpreted as counts of independent feature definitions. The suite does
+not establish universal compliance across all inputs or processing options,
+or cover the IBSI II phase III clinical validation study.
 
-   * - Laplacian of Gaussian (LoG)
-     - `Group 2 <https://github.com/medical-physics-usz/z-rad/blob/master/tests/test_ibsi_2.py#L156>`_
-     - `2.A <https://github.com/medical-physics-usz/z-rad/blob/master/tests/test_ibsi_2.py#L437>`_, `2.B <https://github.com/medical-physics-usz/z-rad/blob/master/tests/test_ibsi_2.py#L449>`_
+Supplemental Asset and Filter Checks
+------------------------------------
 
-   * - Laws
-     - `Group 3 <https://github.com/medical-physics-usz/z-rad/blob/master/tests/test_ibsi_2.py#L175>`_
-     - `3.A <https://github.com/medical-physics-usz/z-rad/blob/master/tests/test_ibsi_2.py#L461>`_, `3.B <https://github.com/medical-physics-usz/z-rad/blob/master/tests/test_ibsi_2.py#L475>`_, `4.A <https://github.com/medical-physics-usz/z-rad/blob/master/tests/test_ibsi_2.py#L489>`_, `4.B <https://github.com/medical-physics-usz/z-rad/blob/master/tests/test_ibsi_2.py#L510>`_
+``tests/test_ibsi_supplemental.py`` contains 53 supplemental cases using the
+IBSI II digital assets. These do not add published consensus comparisons to
+the coverage matrix:
 
-   * - Gabor
-     - `Group 4 <https://github.com/medical-physics-usz/z-rad/blob/master/tests/test_ibsi_2.py#L265>`_
-     - `5.A <https://github.com/medical-physics-usz/z-rad/blob/master/tests/test_ibsi_2.py#L532>`_, `5.B <https://github.com/medical-physics-usz/z-rad/blob/master/tests/test_ibsi_2.py#L555>`_
+* Nine DICOM/NIfTI geometry checks cover all supplied phantoms, including
+  orientation, noise, empty, and patterns 2 and 3. NIfTI images and the eight
+  supplied masks are loaded through Z-Rad; DICOM geometry is inspected through
+  SimpleITK. The formats have different origins and their voxel arrays agree
+  after reversing the slice axis; they are not identical physical grids.
+* Nine Z-Rad DICOM loading checks require successful decoding of the synthetic
+  CT series, checking voxel values, dimensions, spacing, direction, and origin.
+  Entirely nonnegative decoded CT intensities are accepted: intensity sign alone
+  does not establish whether HU conversion succeeded. SimpleITK applies the
+  declared DICOM rescaling; separate DICOM regression tests verify known slopes
+  and intercepts, including fractional and nonnegative outputs.
+* Twenty-four zero-input cases check mean, Laplacian-of-Gaussian, and signed
+  Laws filtering in 2D and 3D with constant, nearest, wrap, and reflect padding.
+* Two mean-filter cases compare orientation and noise outputs to explicit
+  periodic neighbourhood averages and check geometry and input preservation.
+* Nine directional Laws cases compare the orientation and pattern 2/3 outputs
+  with explicit three-tap convolution stencils along each axis. These check
+  axis assignment and response sign without using generated golden outputs.
 
-   * - Separable wavelets (Daubechies, Coiflet, Haar)
-     - `Group 5 <https://github.com/medical-physics-usz/z-rad/blob/master/tests/test_ibsi_2.py#L301>`_, `Group 6 <https://github.com/medical-physics-usz/z-rad/blob/master/tests/test_ibsi_2.py#L321>`_, `Group 7 <https://github.com/medical-physics-usz/z-rad/blob/master/tests/test_ibsi_2.py#L341>`_
-     - `6.A <https://github.com/medical-physics-usz/z-rad/blob/master/tests/test_ibsi_2.py#L578>`_, `6.B <https://github.com/medical-physics-usz/z-rad/blob/master/tests/test_ibsi_2.py#L598>`_, `7.A <https://github.com/medical-physics-usz/z-rad/blob/master/tests/test_ibsi_2.py#L618>`_, `7.B <https://github.com/medical-physics-usz/z-rad/blob/master/tests/test_ibsi_2.py#L638>`_
+Execution reports list supplemental cases and their status counts separately
+from consensus benchmarks. The integration-test selection runs both groups.
 
-   * - Simoncelli
-     - `Group 8 <https://github.com/medical-physics-usz/z-rad/blob/master/tests/test_ibsi_2.py#L361>`_
-     - `8.A <https://github.com/medical-physics-usz/z-rad/blob/master/tests/test_ibsi_2.py#L658>`_, `8.B <https://github.com/medical-physics-usz/z-rad/blob/master/tests/test_ibsi_2.py#L672>`_, `9.A <https://github.com/medical-physics-usz/z-rad/blob/master/tests/test_ibsi_2.py#L688>`_, `9.B <https://github.com/medical-physics-usz/z-rad/blob/master/tests/test_ibsi_2.py#L702>`_
+IBSI I Reference Availability and Coverage Limits
+-------------------------------------------------
 
-   * - Riesz-transformed LoG
-     - `Group 9 <https://github.com/medical-physics-usz/z-rad/blob/master/tests/test_ibsi_2.py#L380>`_
-     - No CT feature comparison in this suite.
+The bundled IBSI I tables leave reference values and tolerances blank for
+``morph_vol_dens_ombb``, ``morph_area_dens_ombb``, ``morph_vol_dens_mvee``,
+``morph_area_dens_mvee``, and ``ivh_auc``. These five rows are explicitly
+classified as lacking references and are excluded from numerical comparisons.
+Unexpected blanks fail reference loading. Previously unavailable rows gaining
+values also fail loading, requiring review of the documented exception.
 
-   * - Riesz-transformed Simoncelli
-     - `Group 10 <https://github.com/medical-physics-usz/z-rad/blob/master/tests/test_ibsi_2.py#L415>`_ (10.b.1; conditional skip)
-     - No CT feature comparison in this suite.
+Comparison Rules
+----------------
 
-The `IBSI II feature table <https://github.com/medical-physics-usz/z-rad/blob/master/tests/data/ibsi_2_reference_values.csv>`_ supplies phase II consensus values and tolerances,
-selected by ``filter_id``. The current suite executes configurations 2.A–9.B;
-the table also contains 1.A/1.B entries that this suite does not execute.
-The phase I and phase II configuration numbers belong to separate benchmark
-phases and should not be treated as interchangeable filter IDs.
+All scalar IBSI reference-table comparisons use the same tolerance policy,
+including IBSI I CT configurations A--E, the digital phantom, preprocessing
+diagnostics, and IBSI II phase II features.
 
-Reference Tests and Tolerances
+When the published tolerance is zero, the suite requires exact agreement
+after rounding the computed value to the reference precision. It uses at
+least three significant figures, retaining any finer precision recorded in
+the reference text. For example, ``2.148648...`` matches ``2.15``,
+``0.0454545...`` matches ``0.0455``, and ``0.9765625`` matches ``0.977``.
+The rule uses significant figures, not a fixed number of decimal places.
+
+Trailing zeros in plain integer references are treated as place holders
+(thus ``1494.6`` matches ``1490`` at three significant figures). Decimal or
+scientific notation retains explicitly written precision; ``1.490e3`` records
+four significant figures. References containing more significant digits,
+such as a voxel count of ``125256``, retain those digits. A zero reference
+with zero tolerance requires an exact zero.
+
+For positive tolerances, the unrounded result must lie in the inclusive
+interval ``[reference - tolerance, reference + tolerance]``. Missing expected
+features, NaN, and infinite results fail validation. This policy changes only
+benchmark comparisons, not the extracted feature values or reference files.
+Rows without published references remain subject to the documented exclusions.
+
+Phase I response-map comparisons use the separate voxel-wise 1% range rule.
+IBSI-SUV checks use their specified two-decimal comparison; neither reads a
+scalar reference-table tolerance field.
+
+IBSI II Reference Availability
 ------------------------------
 
-* `IBSI I comparison helper <https://github.com/medical-physics-usz/z-rad/blob/master/tests/test_ibsi_1.py#L26>`_: reference
-  value plus or minus the per-feature tolerance in the corresponding CSV.
-* `IBSI II response-map comparison helper <https://github.com/medical-physics-usz/z-rad/blob/master/tests/test_ibsi_2.py#L34>`_:
-  voxel-wise absolute tolerance of 1% of the reference map's intensity range.
-* `IBSI II feature comparison helper <https://github.com/medical-physics-usz/z-rad/blob/master/tests/test_ibsi_2.py#L46>`_:
-  consensus value plus or minus the per-feature tolerance in the CSV.
+For IBSI II configuration 8.B (3D Simoncelli filtering, decomposition level 1),
+Table 7.16 of the `IBSI II reference manual
+<https://doi.org/10.48550/arXiv.2006.05470>`_ explicitly reports consensus as
+``none`` for the quartile coefficient of dispersion (``stat_qcod``). IBSI
+therefore provides neither a reference value nor a tolerance for this
+feature/filter combination. The blank fields in the bundled reference CSV
+match the `official IBSI reference data
+<https://github.com/theibsi/ibsi_2_reference_data/blob/main/reference_feature_values/reference_values.csv>`_.
 
-The `CI test workflow <https://github.com/medical-physics-usz/z-rad/actions/workflows/test.yml>`_
-executes the unit and integration suites. A passing workflow reports the checks
-that ran; it is not a percentage measure of IBSI implementation or validation
-coverage.
+The 8.B test excludes only ``stat_qcod`` from the reference comparison and
+continues to check the other 17 reference features. This is an intentional
+exception due to the absence of IBSI consensus, not missing repository data
+or evidence of a calculation defect. A passing 8.B comparison does not
+establish IBSI agreement for ``stat_qcod``.
 
-Current Benchmark Limitations
+For IBSI II phase II configurations 10.A, 10.B, 11.A, and 11.B, IBSI provides
+no reference values or tolerances for any of the 18 features. These entire
+configurations are absent from the official reference-feature CSV and its
+bundled copy, which cover configurations 1.A through 9.B. Consequently, no
+IBSI phase II feature agreement can be established for 10.A, 10.B, 11.A, or
+11.B using the published reference data.
+
+This limitation concerns phase II feature values. Phase I response-map
+comparisons are separate tests and do not establish phase II feature agreement
+for these configurations.
+
+Test Results and Reproduction
 -----------------------------
 
-.. list-table:: Explicit benchmark exceptions
-   :header-rows: 1
-   :widths: 15 25 30 30
-
-   * - Configuration
-     - Affected feature or test
-     - Reason / evidence
-     - Practical implication
-   * - IBSI I A
-     - ``ih_qcod``: intensity-histogram quartile coefficient of dispersion,
-       a measure of relative spread based on the lower and upper quartiles.
-     - The comparison helper explicitly excludes it. The bundled table has
-       a reference value (0.0455) and tolerance (0), but the reason for the
-       exclusion is not documented in the test.
-     - A passing configuration A test does not validate this feature.
-       The exclusion requires investigation before agreement can be claimed.
-   * - IBSI II 8.B
-     - ``stat_qcod``: quartile coefficient of dispersion calculated from
-       filtered-image intensities.
-     - The bundled phase II table leaves both the consensus value and
-       tolerance blank; the test also notes the empty reference entry.
-     - This feature is excluded from the 8.B comparison. That comparison
-       cannot establish agreement without a reference value and tolerance.
-   * - IBSI II 10.b.1
-     - Riesz-transformed Simoncelli response-map comparison.
-     - The test skips if ``10_b_1-ValidCRM.nii`` is absent from the
-       bundled response maps.
-     - A skipped test supplies no numerical validation for this configuration.
-       It runs when the expected reference map is available.
-
-Both feature-comparison helpers check reference tags only when they are
-present in the extracted result. Missing feature tags therefore do not fail
-these comparisons. In particular, the default IBSI I extraction calls do not
-request the optional ``morphology_correlation`` family. These suites alone
-should not be interpreted as exhaustive validation of every implemented
-feature or every parameter combination.
-
-Reproducing the Checks
-----------------------
-
-From a repository checkout, install the test dependencies and run:
-
-.. code-block:: bash
-
-   python -m pip install -e ".[test]"
-   python -m pytest tests/test_ibsi_1.py tests/test_ibsi_2.py -ra
-
-The test fixtures unpack the bundled phantom archives. The report includes
-failures and skipped tests, which should be reviewed alongside the reference
-configuration and its tolerance.
+CI publishes an IBSI execution report and JUnit results in
+``ibsi-results-python-*`` artifacts for each Python version. Reports identify
+individual passed, failed or skipped cases, plus
+the revision, working-tree state and environment at report-generation time.
+Generate reports immediately after testing; see :doc:`../developer/testing`
+for reproduction commands. A passing result applies only to the comparisons
+in the matrix above; line coverage is a separate metric.
 
 For reproducible studies, retain the Z-Rad version, image and mask geometry,
 and exact preprocessing, filtering, discretization, and aggregation settings
 alongside the extracted feature table.
 
-Data Attribution
-----------------
+Licensing
+---------
 
-The bundled IBSI datasets use multiple open licenses depending on the
-component. See `tests/data/README.md <https://github.com/medical-physics-usz/z-rad/blob/master/tests/data/README.md>`_
-for the attribution and license terms of each subset.
+The bundled IBSI datasets use multiple open licenses depending on the specific
+component. See `tests/data/README.md
+<https://github.com/medical-physics-usz/z-rad/blob/master/tests/data/README.md>`_
+for the exact attribution and license terms of each dataset subset.

@@ -1,6 +1,9 @@
+import hashlib
 import os
+import shutil
 import time
 import zipfile
+import zlib
 from pathlib import Path
 
 import pytest
@@ -86,10 +89,11 @@ def _extract_zip_to_dir(zip_path: Path, extract_dir: Path):
 
 def _prepare_data_dir(zip_path: Path, extract_dir: Path):
     """
-    Ensure a ZIP archive is extracted exactly once across processes.
+    Ensure extracted files match the current ZIP archive across processes.
 
-    Uses a lock file to serialize extraction, and a flag file to mark completion.
-    Waits for extraction to finish if another process is performing it.
+    Uses a lock to serialize integrity checks and extraction. The completion
+    marker stores the archive fingerprint; member CRCs detect missing or
+    modified extracted files even when the marker is present.
 
     Args:
         zip_path (Path): Path to the ZIP archive to extract.
@@ -98,45 +102,69 @@ def _prepare_data_dir(zip_path: Path, extract_dir: Path):
     Returns:
         Path: The directory where the data has been extracted.
     """
-    extraction_flag = extract_dir.joinpath('.extraction_finished.flag')
+    extraction_flag = extract_dir / '.extraction_finished.flag'
+    fingerprint = hashlib.sha256(zip_path.read_bytes()).hexdigest()
     lock_file = extract_dir.with_suffix('.lock')
-
     _acquire_file_lock(lock_file)
     try:
-        if not extraction_flag.exists():
-            if not extract_dir.exists():
-                _extract_zip_to_dir(zip_path, extract_dir)
-            extraction_flag.touch()
+        complete = extraction_flag.exists() and extraction_flag.read_text() == fingerprint
+        with zipfile.ZipFile(zip_path) as archive:
+            for member in archive.infolist():
+                parts = Path(member.filename.replace('\\', '/')).parts
+                if member.filename.startswith('__MACOSX/') or member.is_dir() or len(parts) <= 1:
+                    continue
+                target = extract_dir / Path(*parts[1:])
+                if not target.is_file() or zlib.crc32(target.read_bytes()) != member.CRC:
+                    complete = False
+                    break
+        if not complete:
+            # Rebuild rather than overlay: removed or renamed archive members
+            # must not survive as obsolete inputs (for example DICOM slices).
+            if extract_dir.exists():
+                shutil.rmtree(extract_dir)
+            _extract_zip_to_dir(zip_path, extract_dir)
+            extraction_flag.write_text(fingerprint)
     finally:
         _release_file_lock(lock_file)
-
-    while not extraction_flag.exists():
-        time.sleep(1)
     return extract_dir
 
 
 @pytest.fixture(scope="session")
-def ibsi_i_data_dir():
-    """
-    Pytest fixture that provides the extracted IBSI_I data directory.
-
-    Ensures the IBSI_I.zip archive is unpacked once per test session.
-    """
-    zip_path = Path(__file__).parent / 'data' / 'IBSI_I.zip'
-    extract_dir = Path(__file__).parent / 'data' / 'IBSI_I'
-    return _prepare_data_dir(zip_path, extract_dir)
+def ibsi_ct_data_dir():
+    """Extract the ibsi_ct_radiomics_phantom archive into the shared test cache."""
+    data_dir = Path(__file__).parent / 'data'
+    cache_dir = data_dir / '.cache'
+    cache_dir.mkdir(exist_ok=True)
+    return _prepare_data_dir(data_dir / 'ibsi_ct_radiomics_phantom.zip', cache_dir / 'ibsi_ct_radiomics_phantom')
 
 
 @pytest.fixture(scope="session")
-def ibsi_ii_data_dir():
-    """
-    Pytest fixture that provides the extracted IBSI_II data directory.
+def ibsi_i_digital_data_dir():
+    """Extract the ibsi_1_digital_phantom archive into the shared test cache."""
+    data_dir = Path(__file__).parent / 'data'
+    cache_dir = data_dir / '.cache'
+    cache_dir.mkdir(exist_ok=True)
+    return _prepare_data_dir(data_dir / 'ibsi_1_digital_phantom.zip', cache_dir / 'ibsi_1_digital_phantom')
 
-    Ensures the IBSI_II.zip archive is unpacked once per test session.
-    """
-    zip_path = Path(__file__).parent / 'data' / 'IBSI_II.zip'
-    extract_dir = Path(__file__).parent / 'data' / 'IBSI_II'
-    return _prepare_data_dir(zip_path, extract_dir)
+
+@pytest.fixture(scope="session")
+def ibsi_ii_digital_data_dir():
+    """Extract the ibsi_2_digital_phantom archive into the shared test cache."""
+    data_dir = Path(__file__).parent / 'data'
+    cache_dir = data_dir / '.cache'
+    cache_dir.mkdir(exist_ok=True)
+    return _prepare_data_dir(data_dir / 'ibsi_2_digital_phantom.zip', cache_dir / 'ibsi_2_digital_phantom')
+
+
+@pytest.fixture(scope="session")
+def ibsi_ii_response_maps_dir():
+    """Extract the ibsi_2_response_maps archive into the shared test cache."""
+    data_dir = Path(__file__).parent / 'data'
+    cache_dir = data_dir / '.cache'
+    cache_dir.mkdir(exist_ok=True)
+    return _prepare_data_dir(
+        data_dir / 'ibsi_2_reference_data/ibsi_2_response_maps.zip', cache_dir / 'ibsi_2_response_maps'
+    )
 
 
 @pytest.fixture(scope="session")

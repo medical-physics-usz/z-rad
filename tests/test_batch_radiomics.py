@@ -593,3 +593,34 @@ def test_gui_mapping_creates_dicom_batch_radiomics_extractor_with_all_structures
     assert extractor.input_data_type == 'dicom'
     assert extractor.structures is None
     assert extractor.use_all_structures is True
+
+
+@pytest.mark.unit
+def test_gui_workflow_writes_moran_and_geary_columns(tmp_path):
+    input_dir, output_dir = tmp_path / 'input', tmp_path / 'output'
+    case_dir = _write_case(input_dir, 'case_a', masks=['mask'])
+    values = np.arange(1, 217, dtype=float).reshape(6, 6, 6)
+    mask = np.zeros_like(values)
+    mask[1:5, 1:4, 1:4] = 1
+    mask[4, 3, 3] = 0
+    _make_image(values).save_as_nifti(case_dir / 'image.nii.gz')
+    _make_image(mask).save_as_nifti(case_dir / 'mask.nii.gz')
+    extractor = create_batch_radiomics_extractor_from_input_params(
+        _gui_input_params(
+            input_directory=str(input_dir),
+            output_directory=str(output_dir),
+            number_of_threads=1,
+            intensity_range=None,
+            outlier_range=None,
+            aggregation_method=('3D', 'MERG'),
+            weighting='Mean',
+        ),
+        parallel_backend='threads',
+    )
+    result = extractor.run()
+    assert result.processed_count == 1
+    with (output_dir / 'radiomics.csv').open() as f:
+        rows = list(csv.DictReader(f))
+    assert len(rows) == 1
+    assert np.isfinite(float(rows[0]['morph_moran_i']))
+    assert np.isfinite(float(rows[0]['morph_geary_c']))

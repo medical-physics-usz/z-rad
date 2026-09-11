@@ -69,7 +69,7 @@ See the [data-format and folder-layout guide](https://medical-physics-usz.github
 
 ## Full IBSI implementation coverage
 
-Z-Rad supports **all IBSI I preprocessing operations and radiomic features, and all IBSI II filters** defined by the Image Biomarker Standardisation Initiative (IBSI).
+Z-Rad supports **all IBSI I preprocessing operations and radiomic features, and all IBSI II filters** defined by the Image Biomarker Standardisation Initiative (IBSI). Implementation coverage describes available operations; benchmark agreement applies to the tested configurations and features described in the [coverage and limitations](docs/ibsi/index.rst).
 
 | Standard | Implementation coverage | Explore |
 | --- | --- | --- |
@@ -133,11 +133,11 @@ from zrad.preprocessing import IntensityMaskBuilder, RoiData
 from zrad.radiomics import Radiomics
 
 with TemporaryDirectory() as folder:
-    with ZipFile("tests/data/IBSI_I.zip") as archive:
+    with ZipFile("tests/data/ibsi_ct_radiomics_phantom.zip") as archive:
         for name in ("image/phantom.nii.gz", "mask/mask.nii.gz"):
-            archive.extract(f"IBSI_I/nifti/{name}", folder)
+            archive.extract(f"ibsi_ct_radiomics_phantom/nifti/{name}", folder)
 
-    data = Path(folder) / "IBSI_I/nifti"
+    data = Path(folder) / "ibsi_ct_radiomics_phantom/nifti"
     image = Image.from_nifti(data / "image/phantom.nii.gz")
     mask = Image.from_nifti_mask(data / "mask/mask.nii.gz", reference=image)
     roi = IntensityMaskBuilder().apply(RoiData(image=image, morphological_mask=mask))
@@ -158,12 +158,15 @@ The result is a dictionary of feature names and values; this example prints the 
 
 ## IBSI validation and reproducibility
 
-Z-Rad includes automated comparisons against IBSI reference material. The implementation follows [IBSI I](https://arxiv.org/abs/1612.07003) and [IBSI II](https://arxiv.org/abs/2006.05470); the benchmark suites make numerical agreement inspectable:
+Z-Rad is tested against published [IBSI I](https://arxiv.org/abs/1612.07003) and [IBSI II](https://arxiv.org/abs/2006.05470) references. Agreement claims apply to the tested configurations and feature families:
 
-- **IBSI I:** CT phantom tests for configurations A–E cover preprocessing and feature comparisons using the reference tables' per-feature tolerances. [Inspect the tests](tests/test_ibsi_1.py).
-- **IBSI II:** digital phantom tests compare filter response maps, and CT phantom tests compare features from filtered images. Response-map comparisons use a tolerance of 1% of the reference map's intensity range; feature comparisons use the reference tables' tolerances. [Inspect the tests](tests/test_ibsi_2.py).
+- **IBSI I:** digital-phantom feature comparisons and CT configurations A–E, including preprocessing diagnostics. Missing expected features fail validation. [Inspect the tests](tests/test_ibsi_1.py).
+- **IBSI II:** phase I compares all 33 bundled published response maps using a voxel-wise tolerance of 1% of the reference map's intensity range; phase II compares features for CT configurations 1.A–9.B. [Inspect the tests](tests/test_ibsi_2.py).
+- **IBSI-SUV:** valid digital reference objects check ROI minimum, median, and maximum SUV to two decimals; intentionally invalid objects must raise an exception. [Inspect the tests](tests/test_pet_suv.py).
 
-See the [validation scope and current benchmark limitations](docs/ibsi/index.rst#current-benchmark-limitations) for excluded comparisons, unavailable reference data, and limits of the automated checks.
+Scalar feature and diagnostic comparisons use the published tolerances, with reference-precision rounding for zero tolerances. See the [coverage, comparison rules, and reference limitations](docs/ibsi/index.rst) for the exact scope and unavailable references. These checks do not establish universal compliance across every input or processing option.
+
+CI publishes per-case IBSI execution reports and JUnit results. Follow the [report reproduction instructions](docs/developer/testing.rst#ibsi-benchmark-reports) to inspect passed, failed, and skipped cases for a particular revision.
 
 ## Contribute and get in touch
 

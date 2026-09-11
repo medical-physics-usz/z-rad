@@ -19,3 +19,10 @@ class BaseFeatureGroup:
 
     def calculate(self, context, prepared_data):
         raise NotImplementedError
+
+    def calculate_selected(self, context, prepared_data, selected_features):
+        """Evaluate selected outputs; groups may avoid unrelated calculations.
+
+        The extractor still filters and orders the returned feature dictionary.
+        """
+        return self.calculate(context, prepared_data)

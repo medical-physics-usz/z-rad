@@ -9,7 +9,7 @@ from .intensity import (
     IVHFeatureGroup,
     LocalIntensityFeatureGroup,
 )
-from .morphology import MorphologyCorrelationFeatureGroup, MorphologyFeatureGroup
+from .morphology import MorphologyFeatureGroup
 from .ngldm import NGLDMFeatureGroup
 from .ngtdm import NGTDMFeatureGroup
 
@@ -25,7 +25,6 @@ DEFAULT_GROUP_ORDER = (
     'ngtdm',
     'ngldm',
     'ivh',
-    'morphology_correlation',
 )
 
 
@@ -33,7 +32,6 @@ FEATURE_GROUPS = {
     group.family: group
     for group in (
         MorphologyFeatureGroup(),
-        MorphologyCorrelationFeatureGroup(),
         LocalIntensityFeatureGroup(),
         IntensityStatisticsFeatureGroup(),
         IntensityHistogramFeatureGroup(),

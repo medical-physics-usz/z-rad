@@ -364,3 +364,42 @@ def test_ibsi_i_config_e(res3d_2mm_image_spline, res3d_2mm_mask_linear):
         ivh_number_of_bins=1000,
     )
     ibsi_i_validation(ibsi_features, features)
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize('config', list('ABCDE'))
+@pytest.mark.parametrize('method', ['fft', 'blocked'])
+def test_ibsi_i_morphology_correlation(config, method, request, monkeypatch):
+    from zrad.radiomics import morphology
+
+    fixture_names = {
+        'A': ('dcm_ct_phantom_image', 'dcm_ct_phantom_mask'),
+        'B': ('res2d_2mm_image_linear', 'res2d_2mm_mask_linear'),
+        'C': ('res3d_2mm_image_linear', 'res3d_2mm_mask_linear'),
+        'D': ('res3d_2mm_image_linear', 'res3d_2mm_mask_linear'),
+        'E': ('res3d_2mm_image_spline', 'res3d_2mm_mask_linear'),
+    }
+    image, mask = (request.getfixturevalue(name) for name in fixture_names[config])
+    roi = _prepare_roi_data(
+        image,
+        mask,
+        intensity_range=[-500, 400] if config in 'AB' else [-1000, 400] if config in 'CE' else None,
+        outlier_range=3 if config in 'DE' else None,
+    )
+    original_selector = morphology._correlation_method
+
+    def select(n, shape):
+        assert original_selector(n, shape) == 'fft'
+        # Validate both exact algorithms on the same reference fixtures.
+        return method
+
+    monkeypatch.setattr(morphology, '_correlation_method', select)
+    features = Radiomics().extract_features(roi_data=roi, families=['morphology'])
+    tags = {'morph_moran_i', 'morph_geary_c'}
+    assert set(features) == set(morphology.MORPHOLOGY_FEATURE_NAMES)
+    references = ibsi_i_feature_tolerances('config_' + config)
+    for tag in tags:
+        assert features[tag] == pytest.approx(
+            float(references[tag]['reference value']),
+            abs=float(references[tag]['tolerance']),
+        )

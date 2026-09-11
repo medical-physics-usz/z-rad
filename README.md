@@ -32,7 +32,7 @@
 ## From images to a feature table
 
 <p align="center">
-  <img src="docs/images/readme_workflow.png" width="600" alt="Workflow from images and ROI masks through preprocessing, optional filtering, feature extraction, and export to a feature dictionary or CSV." />
+  <img src="docs/images/readme_workflow.png" width="700" alt="Workflow from images and ROI masks through preprocessing, optional filtering, feature extraction, and export to a feature dictionary or CSV." />
 </p>
 
 Use the same processing stages interactively through the desktop application or automate them with Python. See the [workflow guide](https://medical-physics-usz.github.io/z-rad/user/gui_workflows.html) for data preparation and processing choices.

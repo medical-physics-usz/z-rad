@@ -34,8 +34,10 @@
 <p align="center">
   <img src="docs/images/readme_workflow.png" width="700" alt="Workflow from images and ROI masks through preprocessing, optional filtering, feature extraction, and export to a feature dictionary or CSV." />
 </p>
-
-Run the workflow interactively through the [desktop application](https://medical-physics-usz.github.io/z-rad/user/gui_workflows.html) or automate it with [Python API](https://medical-physics-usz.github.io/z-rad/user/api_quickstart.html).
+<p align="center">
+  <em>Use preprocessing, filtering, and feature extraction independently or combine them into a complete workflow.</em>
+</p>
+<br>
 
 | Capability | What you can do |
 | --- | --- |
@@ -46,11 +48,18 @@ Run the workflow interactively through the [desktop application](https://medical
 | Process cohorts | Run preprocessing, filtering, and feature extraction across case folders through the GUI or Python batch APIs. |
 | Export results | Collect feature dictionaries in Python or export batch radiomics results to CSV. |
 
+<br>
 <p align="center">
-  <img src="https://raw.githubusercontent.com/medical-physics-usz/z-rad/master/docs/images/Filtering_Res.png" width="380" alt="Four CT views comparing an unfiltered image with mean, Laplacian-of-Gaussian, and wavelet filtering" />
+  <img src="https://raw.githubusercontent.com/medical-physics-usz/z-rad/master/docs/images/zrad_screenshot.png" width="700" alt="Z-Rad screenshot"/>
 </p>
 
-*IBSI II CT phantom: (A) unfiltered, (B) mean, (C) Laplacian-of-Gaussian, and (D) Daubechies 3 wavelet filtering.*
+<p align="center">
+  <em>Run the workflow interactively through the
+    <a href="https://medical-physics-usz.github.io/z-rad/user/gui_workflows.html">graphical user interface</a>
+    or automate it with the
+    <a href="https://medical-physics-usz.github.io/z-rad/user/api_quickstart.html">Python API</a>.</em>
+</p>
+
 
 ## Supported images and masks
 

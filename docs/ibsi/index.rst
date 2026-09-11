@@ -25,7 +25,7 @@ Coverage Matrix
      - Scope and limitations
    * - IBSI I digital phantom
      - 6 aggregation modes; 169 features per mode
-     - 482 distinct reference tags, including Moran's I and Geary's C.
+     - 482 distinct reference tags.
    * - IBSI I CT diagnostics A--E
      - Initial, interpolated and resegmented stages, separately reported
      - All 60 diagnostic rows per configuration, including image and ROI

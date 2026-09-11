@@ -1,3 +1,5 @@
+# Z-Rad
+
 [![Tests](https://github.com/medical-physics-usz/z-rad/actions/workflows/test.yml/badge.svg?branch=master)](https://github.com/medical-physics-usz/z-rad/actions/workflows/test.yml)
 [![Ruff](https://github.com/medical-physics-usz/z-rad/actions/workflows/python-lint.yml/badge.svg?branch=master)](https://github.com/medical-physics-usz/z-rad/actions/workflows/python-lint.yml)
 [![Docs](https://github.com/medical-physics-usz/z-rad/actions/workflows/docs.yml/badge.svg?branch=master)](https://github.com/medical-physics-usz/z-rad/actions/workflows/docs.yml)
@@ -29,13 +31,9 @@
 
 ## From images to a feature table
 
-```mermaid
-flowchart LR
-    A[Images + ROI masks] --> B[Preprocessing]
-    B --> C[Optional filtering]
-    C --> D[Feature extraction]
-    D --> E[Feature dictionary or CSV]
-```
+<p align="center">
+  <img src="docs/images/readme_workflow.png" width="600" alt="Workflow from images and ROI masks through preprocessing, optional filtering, feature extraction, and export to a feature dictionary or CSV." />
+</p>
 
 Use the same processing stages interactively through the desktop application or automate them with Python. See the [workflow guide](https://medical-physics-usz.github.io/z-rad/user/gui_workflows.html) for data preparation and processing choices.
 

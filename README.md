@@ -50,7 +50,7 @@
 
 <br>
 <p align="center">
-  <img src="https://raw.githubusercontent.com/medical-physics-usz/z-rad/master/docs/images/zrad_screenshot.png" width="700" alt="Z-Rad screenshot"/>
+  <img src="docs/images/zrad_screenshot.png" width="700" alt="Z-Rad screenshot"/>
 </p>
 
 <p align="center">

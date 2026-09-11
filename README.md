@@ -18,7 +18,7 @@
 </p>
 
 <p align="center">
-  <a href="#ibsi-implementation-and-validation"><strong>Full IBSI I preprocessing and feature coverage · All IBSI II filters</strong></a>
+  <a href="#from-images-to-a-feature-table"><strong>Full IBSI I preprocessing and feature coverage · All IBSI II filters</strong></a>
 </p>
 
 <p align="center">
@@ -26,7 +26,7 @@
   <a href="https://medical-physics-usz.github.io/z-rad/">Documentation</a> ·
   <a href="#python-quickstart">Python quickstart</a> ·
   <a href="https://medical-physics-usz.github.io/z-rad/examples/">Examples</a> ·
-  <a href="#ibsi-implementation-and-validation">Validation</a>
+  <a href="#ibsi-validation">Validation</a>
 </p>
 
 ## From images to a feature table
@@ -35,22 +35,22 @@
   <img src="docs/images/readme_workflow.png" width="700" alt="Workflow from images and ROI masks through preprocessing, optional filtering, feature extraction, and export to a feature dictionary or CSV." />
 </p>
 
-Use the desktop application to [view images and ROI masks](https://medical-physics-usz.github.io/z-rad/user/visualization.html) and run the workflow interactively, or automate it with Python. Process individual cases or entire cohorts through the GUI and batch APIs. See the [workflow guide](https://medical-physics-usz.github.io/z-rad/user/gui_workflows.html) for processing choices.
+Run the workflow interactively through the [desktop application](https://medical-physics-usz.github.io/z-rad/user/gui_workflows.html) or automate it with [Python API](https://medical-physics-usz.github.io/z-rad/user/api_quickstart.html).
 
 | Capability | What you can do |
 | --- | --- |
-| Inspect images | View images and ROI masks together in the [desktop viewer](https://medical-physics-usz.github.io/z-rad/user/visualization.html). |
-| Prepare images | Convert DICOM to NIfTI, resample images and masks, resegment intensities, and configure discretization. All operations, including image and mask interpolation, resegmentation, and intensity discretization. See [preprocessing guide](https://medical-physics-usz.github.io/z-rad/user/preprocessing.html). |
-| Filter images | Apply standardized spatial and wavelet filters before feature extraction. All filters, including mean, LoG, Laws, Gabor, separable wavelets, Simoncelli, and Riesz transforms. See [filtering guide](https://medical-physics-usz.github.io/z-rad/user/filtering.html) |
-| Extract features | Calculate shape, intensity, and texture features with 2D, 2.5D, and 3D aggregation options. All feature families, including morphology, local intensity, intensity statistics, histograms, intensity-volume histograms, and texture. See [feature guide](https://medical-physics-usz.github.io/z-rad/user/radiomics.html). |
-| Process cohorts | Use the GUI or Python batch APIs to preprocess, filter, and extract features across case folders. |
-| Use the results | Collect feature dictionaries in Python or export batch radiomics results to a CSV file. |
+| Inspect images | View images and ROI masks together in the desktop viewer. |
+| Prepare images | Convert DICOM to NIfTI and apply **all IBSI I preprocessing operations**, including image and mask interpolation, resegmentation, and intensity discretization. |
+| Filter images | Apply **all IBSI II filters**, including mean, LoG, Laws, Gabor, separable wavelets, Simoncelli, and Riesz transforms. |
+| Extract features | Calculate **all IBSI I radiomic features** across morphology, local intensity, intensity statistics, histograms, intensity-volume histograms, and texture, with applicable 2D, 2.5D, and 3D aggregation options. |
+| Process cohorts | Run preprocessing, filtering, and feature extraction across case folders through the GUI or Python batch APIs. |
+| Export results | Collect feature dictionaries in Python or export batch radiomics results to CSV. |
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/medical-physics-usz/z-rad/master/docs/images/Filtering_Res.png" width="380" alt="Four CT views comparing an unfiltered image with mean, Laplacian-of-Gaussian, and wavelet filtering" />
 </p>
 
-*IBSI II CT phantom: (A) unfiltered, (B) mean, (C) Laplacian-of-Gaussian, and (D) Daubechies 3 wavelet filtering. See [filter settings and the worked example](https://medical-physics-usz.github.io/z-rad/examples/gui_filtering.html).*
+*IBSI II CT phantom: (A) unfiltered, (B) mean, (C) Laplacian-of-Gaussian, and (D) Daubechies 3 wavelet filtering.
 
 ## Supported images and masks
 
@@ -103,9 +103,9 @@ print(features["stat_mean"])
 
 The result is a dictionary of feature names and values. To try a complete example with supplied data and an expected result, follow the [bundled phantom example](https://medical-physics-usz.github.io/z-rad/user/api_quickstart.html#run-the-bundled-phantom-example). Texture and intensity-volume histogram features require additional preparation; see the [full Python workflow](https://medical-physics-usz.github.io/z-rad/user/api_quickstart.html#recommended-workflow) and follow the documentation for your installed release.
 
-## IBSI implementation and validation
+## IBSI validation
 
-Z-Rad implements **all IBSI I preprocessing operations and radiomic features, and all IBSI II filters** defined by the Image Biomarker Standardisation Initiative (IBSI). Automated benchmarks compare results against published reference data:
+Automated benchmarks compare Z-Rad results against published reference data from the Image Biomarker Standardisation Initiative (IBSI):
 
 - **IBSI I:** digital-phantom features and CT configurations A–E, including preprocessing diagnostics.
 - **IBSI II:** digital-phantom filter response maps and features from filtered CT images.

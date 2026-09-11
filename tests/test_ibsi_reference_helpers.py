@@ -255,6 +255,24 @@ def test_benchmark_report_preserves_failure_and_skip_status(tmp_path):
     assert 'test_unrelated' not in summary
 
 
+@pytest.mark.parametrize('method', ['fft', 'blocked'])
+@pytest.mark.parametrize(
+    ('element', 'status'), [('', 'PASS'), ('failure', 'FAIL'), ('error', 'ERROR'), ('skipped', 'SKIP')]
+)
+def test_benchmark_report_includes_ct_correlation_results(tmp_path, method, element, status):
+    from ibsi_report import build_report
+
+    name = f'test_ibsi_i_morphology_correlation[{method}-A]'
+    outcome = f'<{element}/>' if element else ''
+    xml = tmp_path / 'results.xml'
+    xml.write_text(f'<testsuite><testcase name="{name}">{outcome}</testcase></testsuite>')
+    summary = build_report(xml)
+    benchmark, supplemental = summary.split('## Supplemental asset and filter checks')
+    assert f'| `{name}` | {status} |' in benchmark
+    assert name not in supplemental
+    assert f'1 {status}' in benchmark
+
+
 @pytest.mark.parametrize('replacement', ['removed', 'renamed'])
 def test_archive_replacement_removes_obsolete_members(tmp_path, replacement):
     import zipfile

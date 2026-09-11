@@ -26,6 +26,7 @@ def build_report(xml_path):
                 'test_ibsi_i_config_',
                 'test_ibsi_i_digital_phantom',
                 'test_ibsi_i_diagnostics',
+                'test_ibsi_i_morphology_correlation',
                 'test_ibsi_ii_ph_i_',
                 'test_ibsi_ii_ph_ii_',
                 'test_official_ibsi_suv_dro',

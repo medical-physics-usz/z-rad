@@ -2,173 +2,191 @@
 IBSI Benchmark Coverage
 =======================
 
-Z-Rad is developed around IBSI-oriented radiomics workflows and includes test
-data and regression tests derived from IBSI reference material. The datasets
-and reference values are under ``tests/data``. Automated benchmarks are in
-``tests/test_ibsi_1.py``, ``tests/test_ibsi_2.py``, and ``tests/test_pet_suv.py``.
+Z-Rad implements IBSI preprocessing, features, and filters and tests them
+against published reference data. This page explains what is implemented,
+which benchmark configurations are tested, and how to interpret agreement.
+Implementation coverage describes available operations; benchmark validation
+provides numerical evidence for specific configurations.
 
-The feature comparisons require every expected reference feature for the
-selected configuration and aggregation mode. Expected features are selected
-from reference metadata, independently of the extracted result keys. Missing
-expected features fail validation. Diagnostic measurements and absent references
-are accounted for separately.
+Implementation Coverage
+-----------------------
 
-Coverage Matrix
----------------
+Z-Rad supports all IBSI I preprocessing operations and radiomic features,
+and all IBSI II filters. The guides below describe the available settings.
 
-.. list-table:: Implemented benchmark coverage
+.. list-table:: Implementation guides
    :header-rows: 1
-   :widths: 25 30 45
+   :widths: 25 50 25
+
+   * - Area
+     - Available operations
+     - Guide
+   * - IBSI I preprocessing
+     - Image and mask interpolation, resegmentation, and intensity discretization.
+     - :doc:`../user/preprocessing`
+   * - IBSI I features
+     - Morphology, local intensity, intensity statistics, histograms,
+       intensity-volume histograms, and texture.
+     - :doc:`../user/radiomics` and :doc:`../reference/radiomics`
+   * - IBSI II filters
+     - Mean, LoG, Laws, Gabor, separable wavelets, Simoncelli wavelets,
+       and Riesz transforms.
+     - :doc:`../user/filtering`
+
+.. _ibsi-benchmark-coverage:
+
+Benchmark Coverage
+------------------
+
+The matrix describes the automated checks available in the repository.
+Results for a particular revision are provided in the execution reports
+linked under `Results and Reproduction`_.
+
+For IBSI I, **features per mode** counts the feature comparisons within one
+aggregation mode. **Distinct reference tags** counts unique reference-table
+identifiers across the listed modes, including aggregation suffixes; some
+features share a reference tag across modes. For IBSI II phase II,
+**feature comparisons** counts feature/configuration pairs. These totals
+should not be interpreted as counts of independent feature definitions.
+
+.. list-table:: Automated benchmark coverage
+   :header-rows: 1
+   :widths: 23 52 25
 
    * - Benchmark
-     - Cases / comparisons
-     - Scope and limitations
+     - Coverage
+     - Limitations
    * - IBSI I digital phantom
-     - 6 aggregation modes; 169 features per mode
-     - 482 distinct reference tags.
+     - 6 aggregation modes; 169 features per mode; 482 distinct reference tags.
+     - Features without references are listed below.
    * - IBSI I CT diagnostics A--E
-     - Initial, interpolated and resegmented stages, separately reported
-     - All 60 diagnostic rows per configuration, including image and ROI
-       dimensions, voxel spacing, bounding boxes, voxel counts and intensities.
+     - All 60 diagnostic rows per configuration at initial, interpolated,
+       and resegmented stages: image and ROI dimensions, voxel spacing,
+       bounding boxes, voxel counts, and intensities.
+     - Reported separately from feature comparisons.
    * - IBSI I CT A and B
-     - 4 aggregation modes each; 169 features per mode
-     - 346 distinct reference tags per configuration.
-   * - IBSI I CT C, D and E
-     - 2 aggregation modes each; 169 features per mode
-     - 210 distinct reference tags per configuration.
+     - 4 aggregation modes each; 169 features per mode;
+       346 distinct reference tags per configuration.
+     - Features without references are listed below.
+   * - IBSI I CT C, D, and E
+     - 2 aggregation modes each; 169 features per mode;
+       210 distinct reference tags per configuration.
+     - Features without references are listed below.
    * - IBSI II phase I
-     - All 33 bundled published response maps
-     - Each map is a separate case; shape and finite values
-       are required, and every voxel must satisfy the 1% reference-range tolerance.
+     - All 33 bundled published filter response maps; one case per map.
+     - Response-map agreement does not establish phase II feature agreement.
    * - IBSI II phase II 1.A--9.B
-     - 18 configurations; 323 reference feature comparisons
-     - ``stat_qcod`` for 8.B has no IBSI consensus therefore is not benchmarked.
-   * - IBSI II phase II 10.A/B and 11.A/B
-     - No published feature references
-     - No benchmark-agreement claim for these configurations.
+     - 18 configurations; 323 feature comparisons on filtered CT images.
+     - One feature in 8.B has no consensus reference; see below.
    * - IBSI-SUV
-     - 43 valid and 15 intentionally invalid digital reference objects
-     - Valid cases check ROI minimum, median and maximum to two decimals;
-       invalid cases require an exception. These are not radiomic-feature tests.
+     - 43 valid and 15 intentionally invalid digital reference objects;
+       ROI minimum, median, and maximum SUV for valid objects.
+     - SUV checks are separate from radiomic-feature comparisons.
 
-Counts of distinct reference tags include aggregation suffixes and should not
-be interpreted as counts of independent feature definitions. The suite does
-not establish universal compliance across all inputs or processing options,
-or cover the IBSI II phase III clinical validation study.
+Reference Limitations
+---------------------
 
-Supplemental Asset and Filter Checks
-------------------------------------
+The following exclusions arise from unavailable reference values or
+tolerances. Passing the available comparisons does not establish agreement
+for these excluded features or configurations.
 
-``tests/test_ibsi_supplemental.py`` contains 53 supplemental cases using the
-IBSI II digital assets. These do not add published consensus comparisons to
-the coverage matrix:
+.. list-table:: Unavailable references
+   :header-rows: 1
+   :widths: 25 50 25
 
-* Nine DICOM/NIfTI geometry checks cover all supplied phantoms, including
-  orientation, noise, empty, and patterns 2 and 3. NIfTI images and the eight
-  supplied masks are loaded through Z-Rad; DICOM geometry is inspected through
-  SimpleITK. The formats have different origins and their voxel arrays agree
-  after reversing the slice axis; they are not identical physical grids.
-* Nine Z-Rad DICOM loading checks require successful decoding of the synthetic
-  CT series, checking voxel values, dimensions, spacing, direction, and origin.
-  Entirely nonnegative decoded CT intensities are accepted: intensity sign alone
-  does not establish whether HU conversion succeeded. SimpleITK applies the
-  declared DICOM rescaling; separate DICOM regression tests verify known slopes
-  and intercepts, including fractional and nonnegative outputs.
-* Twenty-four zero-input cases check mean, Laplacian-of-Gaussian, and signed
-  Laws filtering in 2D and 3D with constant, nearest, wrap, and reflect padding.
-* Two mean-filter cases compare orientation and noise outputs to explicit
-  periodic neighbourhood averages and check geometry and input preservation.
-* Nine directional Laws cases compare the orientation and pattern 2/3 outputs
-  with explicit three-tap convolution stencils along each axis. These check
-  axis assignment and response sign without using generated golden outputs.
+   * - Benchmark
+     - Excluded features or configurations
+     - Reference availability
+   * - IBSI I
+     - Volume and area density of the oriented minimum bounding box
+       (``morph_vol_dens_ombb``, ``morph_area_dens_ombb``); volume and area
+       density of the minimum volume enclosing ellipsoid
+       (``morph_vol_dens_mvee``, ``morph_area_dens_mvee``); area under the
+       intensity-volume histogram curve (``ivh_auc``).
+     - The five rows have blank values and tolerances in the bundled tables.
+   * - IBSI II phase II 8.B
+     - Quartile coefficient of dispersion (``stat_qcod``) for 3D Simoncelli
+       filtering, decomposition level 1. The other 17 features are compared.
+     - IBSI reports no consensus for this feature/configuration pair.
+   * - IBSI II phase II 10.A/B and 11.A/B
+     - All 18 features in each configuration.
+     - These configurations are absent from the published feature-reference CSV.
 
-Execution reports list supplemental cases and their status counts separately
-from consensus benchmarks. The integration-test selection runs both groups.
+The 8.B exception is documented in Table 7.16 of the `IBSI II reference manual
+<https://doi.org/10.48550/arXiv.2006.05470>`_. The bundled CSV matches the
+`official IBSI II reference data
+<https://github.com/theibsi/ibsi_2_reference_data/blob/main/reference_feature_values/reference_values.csv>`_,
+which cover phase II configurations 1.A--9.B. Phase I response maps are
+separate references; configuration numbers from the two phases are not
+interchangeable.
 
-IBSI I Reference Availability and Coverage Limits
--------------------------------------------------
+The suite does not cover the IBSI II phase III clinical validation study or
+establish universal compliance across all inputs and processing options.
 
-The bundled IBSI I tables leave reference values and tolerances blank for
-``morph_vol_dens_ombb``, ``morph_area_dens_ombb``, ``morph_vol_dens_mvee``,
-``morph_area_dens_mvee``, and ``ivh_auc``. These five rows are explicitly
-classified as lacking references and are excluded from numerical comparisons.
-Unexpected blanks fail reference loading. Previously unavailable rows gaining
-values also fail loading, requiring review of the documented exception.
+.. _ibsi-comparison-rules:
 
 Comparison Rules
 ----------------
 
-All scalar IBSI reference-table comparisons use the same tolerance policy,
-including IBSI I CT configurations A--E, the digital phantom, preprocessing
-diagnostics, and IBSI II phase II features.
+All scalar reference-table comparisons use the same policy, including IBSI I
+features and preprocessing diagnostics and IBSI II phase II features:
 
-When the published tolerance is zero, the suite requires exact agreement
-after rounding the computed value to the reference precision. It uses at
-least three significant figures, retaining any finer precision recorded in
-the reference text. For example, ``2.148648...`` matches ``2.15``,
-``0.0454545...`` matches ``0.0455``, and ``0.9765625`` matches ``0.977``.
-The rule uses significant figures, not a fixed number of decimal places.
+* **Positive tolerance:** the unrounded result must lie in the inclusive
+  interval ``[reference - tolerance, reference + tolerance]``.
+* **Zero tolerance:** the result must agree exactly after rounding to the
+  reference precision, using at least three significant figures and retaining
+  any finer precision in the reference text. For example, ``0.0454545...``
+  matches ``0.0455``. A zero reference with zero tolerance requires exact zero.
+* **Required results:** missing expected features, NaN, and infinite results
+  fail validation, subject to the documented reference exclusions above.
 
-Trailing zeros in plain integer references are treated as place holders
-(thus ``1494.6`` matches ``1490`` at three significant figures). Decimal or
-scientific notation retains explicitly written precision; ``1.490e3`` records
-four significant figures. References containing more significant digits,
-such as a voxel count of ``125256``, retain those digits. A zero reference
-with zero tolerance requires an exact zero.
+These rules affect benchmark comparisons only; extracted values and reference
+files are unchanged. See :ref:`ibsi-reference-validation` for reference-loading
+checks and precision edge cases.
 
-For positive tolerances, the unrounded result must lie in the inclusive
-interval ``[reference - tolerance, reference + tolerance]``. Missing expected
-features, NaN, and infinite results fail validation. This policy changes only
-benchmark comparisons, not the extracted feature values or reference files.
-Rows without published references remain subject to the documented exclusions.
+IBSI II phase I requires matching response-map shapes, finite values, and
+voxel-wise agreement within 1% of the reference map's intensity range.
+IBSI-SUV compares valid cases to two decimal places and requires exceptions
+for intentionally invalid cases. Neither uses scalar reference-table tolerances.
 
-Phase I response-map comparisons use the separate voxel-wise 1% range rule.
-IBSI-SUV checks use their specified two-decimal comparison; neither reads a
-scalar reference-table tolerance field.
+Supplemental Checks
+-------------------
 
-IBSI II Reference Availability
-------------------------------
+An additional 53 cases check geometry, DICOM loading, and filter behavior
+using IBSI II digital assets. These checks provide software regression
+coverage without adding published consensus comparisons. Reports list them
+separately from benchmarks. See :ref:`ibsi-supplemental-checks` for the case
+breakdown and test methodology.
 
-For IBSI II configuration 8.B (3D Simoncelli filtering, decomposition level 1),
-Table 7.16 of the `IBSI II reference manual
-<https://doi.org/10.48550/arXiv.2006.05470>`_ explicitly reports consensus as
-``none`` for the quartile coefficient of dispersion (``stat_qcod``). IBSI
-therefore provides neither a reference value nor a tolerance for this
-feature/filter combination. The blank fields in the bundled reference CSV
-match the `official IBSI reference data
-<https://github.com/theibsi/ibsi_2_reference_data/blob/main/reference_feature_values/reference_values.csv>`_.
+Results and Reproduction
+------------------------
 
-The 8.B test excludes only ``stat_qcod`` from the reference comparison and
-continues to check the other 17 reference features. This is an intentional
-exception due to the absence of IBSI consensus, not missing repository data
-or evidence of a calculation defect. A passing 8.B comparison does not
-establish IBSI agreement for ``stat_qcod``.
+CI publishes per-case IBSI execution reports and JUnit results in
+``ibsi-results-python-*`` artifacts for each Python version. Inspect the
+passed, failed, and skipped cases for the revision of interest; the coverage
+matrix above describes scope, not a current test result. Line coverage is a
+separate metric.
 
-For IBSI II phase II configurations 10.A, 10.B, 11.A, and 11.B, IBSI provides
-no reference values or tolerances for any of the 18 features. These entire
-configurations are absent from the official reference-feature CSV and its
-bundled copy, which cover configurations 1.A through 9.B. Consequently, no
-IBSI phase II feature agreement can be established for 10.A, 10.B, 11.A, or
-11.B using the published reference data.
+Follow :ref:`ibsi-benchmark-reports` for commands and report metadata guidance.
+For reproducible studies, retain the Z-Rad version, image and mask geometry,
+and exact preprocessing, filtering, discretization, and aggregation settings
+alongside the extracted feature table.
 
-This limitation concerns phase II feature values. Phase I response-map
-comparisons are separate tests and do not establish phase II feature agreement
-for these configurations.
+Reference Tests, Data, and Licensing
+------------------------------------
 
-Test Results and Reproduction
------------------------------
+* `IBSI I tests <https://github.com/medical-physics-usz/z-rad/blob/master/tests/test_ibsi_1.py>`_
+  define the digital-phantom and CT A--E configurations and aggregation modes.
+  The `IBSI I reference tables <https://github.com/medical-physics-usz/z-rad/tree/master/tests/data/ibsi_1_reference_data>`_
+  provide the expected values and tolerances.
+* `IBSI II tests <https://github.com/medical-physics-usz/z-rad/blob/master/tests/test_ibsi_2.py>`_
+  define the phase I filter settings and response-map comparisons, and
+  phase II CT feature comparisons. The `IBSI II reference data <https://github.com/medical-physics-usz/z-rad/tree/master/tests/data/ibsi_2_reference_data>`_
+  contain the response-map archive and phase II feature table.
+* `IBSI-SUV tests <https://github.com/medical-physics-usz/z-rad/blob/master/tests/test_pet_suv.py>`_
+  define the valid and intentionally invalid digital reference cases.
 
-CI publishes an IBSI execution report and JUnit results in
-``ibsi-results-python-*`` artifacts for each Python version. Reports identify
-individual passed, failed or skipped cases, plus
-the revision, working-tree state and environment at report-generation time.
-Generate reports immediately after testing; see :doc:`../developer/testing`
-for reproduction commands. A passing result applies only to the comparisons
-in the matrix above; line coverage is a separate metric.
-
-Licensing
----------
-
-The bundled IBSI datasets use multiple open licenses depending on the specific
-component. See ``tests/data/README.md`` for the exact attribution and license
-terms of each dataset subset.
+The bundled datasets use multiple open licenses depending on the component.
+See `tests/data/README.md
+<https://github.com/medical-physics-usz/z-rad/blob/master/tests/data/README.md>`_
+for dataset locations, attribution, and license terms.

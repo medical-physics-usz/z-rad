@@ -18,7 +18,7 @@
 </p>
 
 <p align="center">
-  <a href="#full-ibsi-implementation-coverage"><strong>Full IBSI I preprocessing and feature coverage · All IBSI II filters</strong></a>
+  <a href="#ibsi-implementation-and-validation"><strong>Full IBSI I preprocessing and feature coverage · All IBSI II filters</strong></a>
 </p>
 
 <p align="center">
@@ -26,7 +26,7 @@
   <a href="https://medical-physics-usz.github.io/z-rad/">Documentation</a> ·
   <a href="#python-quickstart">Python quickstart</a> ·
   <a href="https://medical-physics-usz.github.io/z-rad/examples/">Examples</a> ·
-  <a href="#ibsi-validation-and-reproducibility">Validation</a>
+  <a href="#ibsi-implementation-and-validation">Validation</a>
 </p>
 
 ## From images to a feature table
@@ -92,7 +92,7 @@ Z-Rad supports **all IBSI I preprocessing operations and radiomic features, and 
 
 3. Follow the [GUI quickstart](https://medical-physics-usz.github.io/z-rad/user/gui_quickstart.html) to select your input data, configure processing, and run your first analysis.
 
-The macOS app is currently unsigned and unnotarized, so Gatekeeper may show a warning. For Linux and Intel Macs, or to run the current source version, open **Install from source and run the bundled example** under [Python quickstart](#python-quickstart), follow the source installation steps, and launch `python main.py` from the repository root. See the [installation guide](https://medical-physics-usz.github.io/z-rad/user/installation.html) for details.
+The macOS app is currently unsigned and unnotarized, so Gatekeeper may show a warning. For Linux, Intel Macs, or the current source version, follow [Run from a repository checkout](https://medical-physics-usz.github.io/z-rad/user/installation.html#run-from-a-repository-checkout) to install and launch the GUI.
 
 ### Python quickstart
 
@@ -102,74 +102,34 @@ The macOS app is currently unsigned and unnotarized, so Gatekeeper may show a wa
 python -m pip install z-rad
 ```
 
-Follow the documentation for your installed release. The [full Python workflow](https://medical-physics-usz.github.io/z-rad/user/api_quickstart.html) covers resampling, filtering, texture discretization, and batch extraction.
-
-<details>
-<summary>Install from source and run the bundled example</summary>
-
-To try the example below with the current source and bundled IBSI phantom, clone the repository and install it in a virtual environment:
-
-```sh
-git clone https://github.com/medical-physics-usz/z-rad.git
-cd z-rad
-python -m venv .venv
-```
-
-Activate the environment with `source .venv/bin/activate` on macOS/Linux or `.venv\Scripts\Activate.ps1` in Windows PowerShell, then install:
-
-```sh
-python -m pip install -e .
-```
-
-Run this example from the repository root. It loads the bundled CT phantom and ROI mask, then extracts intensity statistics without resampling or filtering:
+The example below requires your own NIfTI image and binary ROI mask on the same physical voxel grid. Replace the two paths with your files. It extracts intensity statistics without resampling or filtering:
 
 ```python
-from pathlib import Path
-from tempfile import TemporaryDirectory
-from zipfile import ZipFile
-
 from zrad.image import Image
 from zrad.preprocessing import IntensityMaskBuilder, RoiData
 from zrad.radiomics import Radiomics
 
-with TemporaryDirectory() as folder:
-    with ZipFile("tests/data/ibsi_ct_radiomics_phantom.zip") as archive:
-        for name in ("image/phantom.nii.gz", "mask/mask.nii.gz"):
-            archive.extract(f"ibsi_ct_radiomics_phantom/nifti/{name}", folder)
-
-    data = Path(folder) / "ibsi_ct_radiomics_phantom/nifti"
-    image = Image.from_nifti(data / "image/phantom.nii.gz")
-    mask = Image.from_nifti_mask(data / "mask/mask.nii.gz", reference=image)
-    roi = IntensityMaskBuilder().apply(RoiData(image=image, morphological_mask=mask))
-    features = Radiomics().extract_features(roi_data=roi, families=["intensity_statistics"])
-
-    print(f"Mean intensity: {features['stat_mean']:.2f} HU")
+image = Image.from_nifti("path/to/image.nii.gz")
+mask = Image.from_nifti_mask("path/to/mask.nii.gz", reference=image)
+roi = IntensityMaskBuilder().apply(RoiData(image=image, morphological_mask=mask))
+features = Radiomics().extract_features(roi_data=roi, families=["intensity_statistics"])
+print(features["stat_mean"])
 ```
 
-Expected output:
+The result is a dictionary of feature names and values. To try a complete example with supplied data and an expected result, follow the [bundled phantom example](https://medical-physics-usz.github.io/z-rad/user/api_quickstart.html#run-the-bundled-phantom-example). Texture and intensity-volume histogram features require additional preparation; see the [full Python workflow](https://medical-physics-usz.github.io/z-rad/user/api_quickstart.html#recommended-workflow) and follow the documentation for your installed release.
 
-```text
-Mean intensity: -46.88 HU
-```
+## IBSI implementation and validation
 
-The result is a dictionary of feature names and values; this example prints the ROI's mean CT intensity. See the [bundled dataset attribution and license terms](tests/data/README.md) before reusing or redistributing the phantom data.
+Z-Rad implements **all IBSI I preprocessing operations and radiomic features, and all IBSI II filters** defined by the Image Biomarker Standardisation Initiative (IBSI). Automated benchmarks compare results against published reference data:
 
-</details>
+- **IBSI I:** digital-phantom features and CT configurations A–E, including preprocessing diagnostics.
+- **IBSI II:** digital-phantom filter response maps and features from filtered CT images.
+- **IBSI-SUV:** SUV conversion checks using valid and intentionally invalid digital reference objects.
 
-## IBSI validation and reproducibility
-
-Z-Rad is tested against published [IBSI I](https://arxiv.org/abs/1612.07003) and [IBSI II](https://arxiv.org/abs/2006.05470) references. Agreement claims apply to the tested configurations and feature families:
-
-- **IBSI I:** digital-phantom feature comparisons and CT configurations A–E, including preprocessing diagnostics. Missing expected features fail validation. [Inspect the tests](tests/test_ibsi_1.py).
-- **IBSI II:** phase I compares all 33 bundled published response maps using a voxel-wise tolerance of 1% of the reference map's intensity range; phase II compares features for CT configurations 1.A–9.B. [Inspect the tests](tests/test_ibsi_2.py).
-- **IBSI-SUV:** valid digital reference objects check ROI minimum, median, and maximum SUV to two decimals; intentionally invalid objects must raise an exception. [Inspect the tests](tests/test_pet_suv.py).
-
-Scalar feature and diagnostic comparisons use the published tolerances, with reference-precision rounding for zero tolerances. See the [coverage, comparison rules, and reference limitations](docs/ibsi/index.rst) for the exact scope and unavailable references. These checks do not establish universal compliance across every input or processing option.
-
-CI publishes per-case IBSI execution reports and JUnit results. Follow the [report reproduction instructions](docs/developer/testing.rst#ibsi-benchmark-reports) to inspect passed, failed, and skipped cases for a particular revision.
+Implementation coverage describes available operations; benchmark agreement applies to the tested configurations and features. See [IBSI coverage and limitations](https://medical-physics-usz.github.io/z-rad/ibsi/) for the scope, comparison rules, and unavailable references, and [execution reports and reproduction](https://medical-physics-usz.github.io/z-rad/developer/testing.html#ibsi-benchmark-reports) to inspect results for a particular revision.
 
 ## Contribute and get in touch
 
 Found a bug or have a feature request? [Open an issue](https://github.com/medical-physics-usz/z-rad/issues). To contribute code or documentation, start with the [contributing guide](https://medical-physics-usz.github.io/z-rad/developer/contributing.html).
 
-For questions or research collaborations, contact [zrad@usz.ch](mailto:zrad@usz.ch). Z-Rad is developed at University Hospital Zurich and released under the [MIT License](LICENSE).
+For questions or research collaborations, contact [zrad@usz.ch](mailto:zrad@usz.ch). Z-Rad is released under the [MIT License](LICENSE).

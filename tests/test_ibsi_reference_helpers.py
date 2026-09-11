@@ -114,6 +114,18 @@ def test_aggregation_selection_does_not_depend_on_results():
         ibsi_i_validation(reference, features)
 
 
+@pytest.mark.parametrize('config', list('ABCDE'))
+@pytest.mark.parametrize('tag', ['morph_moran_i', 'morph_geary_c'])
+def test_ct_correlation_references_are_required(config, tag):
+    mode = ('2D', 'AVER') if config in 'AB' else ('3D', 'AVER')
+    reference = select_ibsi_i_references(ibsi_i_feature_tolerances(f'config_{config}'), *mode)
+    assert tag in reference
+    features = {name: float(row['reference value']) for name, row in reference.items()}
+    del features[tag]
+    with pytest.raises(pytest.fail.Exception, match=f'Missing required feature {tag}'):
+        ibsi_i_validation(reference, features)
+
+
 @pytest.mark.parametrize('actual', [np.zeros((1, 2)), np.array([np.nan, 0]), np.array([np.inf, 0])])
 def test_response_map_rejects_invalid_arrays(actual):
     with pytest.raises(AssertionError):

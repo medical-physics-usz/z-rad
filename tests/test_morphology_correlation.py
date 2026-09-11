@@ -166,7 +166,7 @@ def test_digital_phantom_reference(method):
     mask[2:, 0, 3:] = 0
     actual = MorphologyCorrelationFeatures((2, 2, 2)).calculate_features(mask, image)
     assert set(actual) == set(TAGS)
-    with (Path(__file__).parent / 'data/ibsi_1_reference_values_digital_phantom.csv').open() as f:
+    with (Path(__file__).parent / 'data/ibsi_1_reference_data/ibsi_1_reference_values_digital_phantom.csv').open() as f:
         refs = {r['tag']: r for r in csv.DictReader(f)}
     for tag in TAGS:
         assert actual[tag] == pytest.approx(float(refs[tag]['reference value']), abs=float(refs[tag]['tolerance']))

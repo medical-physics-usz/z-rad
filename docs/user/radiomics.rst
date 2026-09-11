@@ -84,9 +84,6 @@ first-order, histogram, GLCM, GLRLM, GLSZM, and GLDZM features.
 
 **Note:** Intensity-volume histogram features remain API-only.
 
-Moran's I (``morph_moran_i``) and Geary's C (``morph_geary_c``) are included
-in 3D morphology features in both the GUI and API.
-
 Validation Constraints
 ----------------------
 

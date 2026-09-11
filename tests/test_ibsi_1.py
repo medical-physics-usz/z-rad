@@ -404,8 +404,4 @@ def test_ibsi_i_morphology_correlation(config, method, request, monkeypatch):
     tags = {'morph_moran_i', 'morph_geary_c'}
     assert set(features) == set(morphology.MORPHOLOGY_FEATURE_NAMES)
     references = ibsi_i_feature_tolerances('config_' + config)
-    for tag in tags:
-        assert features[tag] == pytest.approx(
-            float(references[tag]['reference value']),
-            abs=float(references[tag]['tolerance']),
-        )
+    ibsi_i_validation({tag: references[tag] for tag in tags}, features)

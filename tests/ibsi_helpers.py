@@ -85,10 +85,6 @@ def select_ibsi_i_references(references, aggr_dim, aggr_method):
     result = {}
     for tag, row in references.items():
         family = row['family']
-        # CT correlation features are opt-in and allocate quadratic distance matrices.
-        # Benchmark them on the digital phantom; record CT coverage as unbenchmarked.
-        if row.get('dataset') != 'digital phantom' and tag in {'morph_moran_i', 'morph_geary_c'}:
-            continue
         if family.startswith('Diagnostics') or tag in IBSI_I_UNAVAILABLE:
             continue
         if '(' in family:

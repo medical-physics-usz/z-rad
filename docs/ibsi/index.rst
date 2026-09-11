@@ -10,8 +10,8 @@ and reference values are under ``tests/data``. Automated benchmarks are in
 The feature comparisons require every expected reference feature for the
 selected configuration and aggregation mode. Expected features are selected
 from reference metadata, independently of the extracted result keys. Missing
-expected features fail validation. Diagnostic measurements, absent references,
-and the CT morphology-correlation coverage gap are accounted for separately.
+expected features fail validation. Diagnostic measurements and absent references
+are accounted for separately.
 
 Coverage Matrix
 ---------------
@@ -31,13 +31,11 @@ Coverage Matrix
      - All 60 diagnostic rows per configuration, including image and ROI
        dimensions, voxel spacing, bounding boxes, voxel counts and intensities.
    * - IBSI I CT A and B
-     - 4 aggregation modes each; 167 features per mode
-     - 344 distinct reference tags per configuration. Moran's I and Geary's C
-       are not benchmarked on CT.
+     - 4 aggregation modes each; 169 features per mode
+     - 346 distinct reference tags per configuration.
    * - IBSI I CT C, D and E
-     - 2 aggregation modes each; 167 features per mode
-     - 208 distinct reference tags per configuration. Moran's I and Geary's C
-       are not benchmarked on CT.
+     - 2 aggregation modes each; 169 features per mode
+     - 210 distinct reference tags per configuration.
    * - IBSI II phase I
      - All 33 bundled published response maps
      - Each map is a separate case; shape and finite values
@@ -96,12 +94,6 @@ The bundled IBSI I tables leave reference values and tolerances blank for
 classified as lacking references and are excluded from numerical comparisons.
 Unexpected blanks fail reference loading. Previously unavailable rows gaining
 values also fail loading, requiring review of the documented exception.
-
-Moran's I (``morph_moran_i``) and Geary's C (``morph_geary_c``) have published
-references and are tested on the digital phantom. They remain unbenchmarked
-for CT A--E: the opt-in implementation creates quadratic-size pairwise
-matrices that are impractical for the full CT ROIs. This is a coverage gap,
-not an absence of reference values or demonstrated agreement on CT.
 
 Comparison Rules
 ----------------

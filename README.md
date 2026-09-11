@@ -126,4 +126,4 @@ Implementation coverage describes available operations; benchmark agreement appl
 
 Found a bug or have a feature request? [Open an issue](https://github.com/medical-physics-usz/z-rad/issues). To contribute code or documentation, start with the [contributing guide](https://medical-physics-usz.github.io/z-rad/developer/contributing.html).
 
-For questions or research collaborations, contact [zrad@usz.ch](mailto:zrad@usz.ch). Z-Rad is released under the [MIT License](LICENSE).
+For questions or research collaborations, contact [zrad@usz.ch](mailto:zrad@usz.ch).

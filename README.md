@@ -35,16 +35,14 @@
   <img src="docs/images/readme_workflow.png" width="700" alt="Workflow from images and ROI masks through preprocessing, optional filtering, feature extraction, and export to a feature dictionary or CSV." />
 </p>
 
-Use the same processing stages interactively through the desktop application or automate them with Python. See the [workflow guide](https://medical-physics-usz.github.io/z-rad/user/gui_workflows.html) for data preparation and processing choices.
-
-## See what you can do
+Use the desktop application to [view images and ROI masks](https://medical-physics-usz.github.io/z-rad/user/visualization.html) and run the workflow interactively, or automate it with Python. Process individual cases or entire cohorts through the GUI and batch APIs. See the [workflow guide](https://medical-physics-usz.github.io/z-rad/user/gui_workflows.html) for processing choices.
 
 | Capability | What you can do |
 | --- | --- |
 | Inspect images | View images and ROI masks together in the [desktop viewer](https://medical-physics-usz.github.io/z-rad/user/visualization.html). |
-| Prepare images | Convert DICOM to NIfTI, resample images and masks, resegment intensities, and configure discretization. |
-| Filter images | Apply standardized spatial and wavelet filters before feature extraction. |
-| Extract features | Calculate shape, intensity, and texture features with 2D, 2.5D, and 3D aggregation options. |
+| Prepare images | Convert DICOM to NIfTI, resample images and masks, resegment intensities, and configure discretization. All operations, including image and mask interpolation, resegmentation, and intensity discretization. See [preprocessing guide](https://medical-physics-usz.github.io/z-rad/user/preprocessing.html). |
+| Filter images | Apply standardized spatial and wavelet filters before feature extraction. All filters, including mean, LoG, Laws, Gabor, separable wavelets, Simoncelli, and Riesz transforms. See [filtering guide](https://medical-physics-usz.github.io/z-rad/user/filtering.html) |
+| Extract features | Calculate shape, intensity, and texture features with 2D, 2.5D, and 3D aggregation options. All feature families, including morphology, local intensity, intensity statistics, histograms, intensity-volume histograms, and texture. See [feature guide](https://medical-physics-usz.github.io/z-rad/user/radiomics.html). |
 | Process cohorts | Use the GUI or Python batch APIs to preprocess, filter, and extract features across case folders. |
 | Use the results | Collect feature dictionaries in Python or export batch radiomics results to a CSV file. |
 
@@ -63,20 +61,7 @@ Use the same processing stages interactively through the desktop application or 
 | NIfTI | Image | Scalar image volumes with spatial geometry. |
 | NIfTI | Mask | One binary ROI mask per file, paired with its reference image. |
 
-Use scalar image volumes with masks on the same physical voxel grid. DICOM SEG support excludes fractional and label-map segmentations. Ultrasound input must be a single DICOM file with `PixelSpacing` and `SliceThickness` metadata.
-
-See the [data-format and folder-layout guide](https://medical-physics-usz.github.io/z-rad/user/data_structure.html) for organizing cases, naming masks, and selecting DICOM structures, and the [Python image reference](https://medical-physics-usz.github.io/z-rad/reference/image.html) for in-memory inputs.
-
-## Full IBSI implementation coverage
-
-Z-Rad supports **all IBSI I preprocessing operations and radiomic features, and all IBSI II filters** defined by the Image Biomarker Standardisation Initiative (IBSI). Implementation coverage describes available operations; benchmark agreement applies to the tested configurations and features described in the [coverage and limitations](docs/ibsi/index.rst).
-
-| Standard | Implementation coverage | Explore |
-| --- | --- | --- |
-| IBSI I · Preprocessing | All operations, including image and mask interpolation, resegmentation, and intensity discretization | [Preprocessing guide](https://medical-physics-usz.github.io/z-rad/user/preprocessing.html) |
-| IBSI I · Features | All feature families, including morphology, local intensity, intensity statistics, histograms, intensity-volume histograms, and texture | [Feature guide](https://medical-physics-usz.github.io/z-rad/user/radiomics.html) |
-| IBSI II · Filters | All filters, including mean, LoG, Laws, Gabor, separable wavelets, Simoncelli, and Riesz transforms | [Filtering guide](https://medical-physics-usz.github.io/z-rad/user/filtering.html) |
-
+Use scalar image volumes with masks on the same physical voxel grid. See the [data-format and folder-layout guide](https://medical-physics-usz.github.io/z-rad/user/data_structure.html) for input restrictions, case organization, and structure selection.
 
 ## Get started
 

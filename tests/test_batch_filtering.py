@@ -158,18 +158,24 @@ def test_unexpected_filter_failure_is_recorded_as_failed_case(monkeypatch, tmp_p
 
 
 @pytest.mark.unit
-def test_dicom_filter_uses_dicom_reader(monkeypatch, tmp_path):
+@pytest.mark.parametrize("modality", ["CT", "us"])
+def test_dicom_filter_uses_dicom_reader(monkeypatch, tmp_path, modality):
     input_dir = tmp_path / 'input'
     output_dir = tmp_path / 'output'
     (input_dir / 'case_a').mkdir(parents=True)
+    received_modalities = []
 
-    monkeypatch.setattr(batch_filtering.Image, 'from_dicom', staticmethod(lambda *args, **kwargs: _make_image()))
+    def read_dicom(_case_dir, modality):
+        received_modalities.append(modality)
+        return _make_image()
+
+    monkeypatch.setattr(batch_filtering.Image, 'from_dicom', staticmethod(read_dicom))
 
     result = BatchFilter(
         input_directory=input_dir,
         output_directory=output_dir,
         input_data_type='dicom',
-        modality='CT',
+        modality=modality,
         filter_type='Mean',
         filter_dimension='3D',
         padding_type='reflect',
@@ -181,6 +187,7 @@ def test_dicom_filter_uses_dicom_reader(monkeypatch, tmp_path):
     assert case_result.status == 'processed'
     assert case_result.output_path == expected
     assert expected.exists()
+    assert received_modalities == [modality.upper()]
 
 
 @pytest.mark.unit

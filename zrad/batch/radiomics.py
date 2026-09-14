@@ -77,7 +77,7 @@ class BatchRadiomicsExtractor:
         Directory where the radiomics CSV is written.
     input_data_type : {"dicom", "nifti"}
         Input format. Values are normalized to lower-case during validation.
-    modality : {"CT", "MRI", "PET", "MG", "RTDOSE"}
+    modality : {"CT", "MRI", "PET", "MG", "US", "RTDOSE"}
         Image modality used by the image reader.
     aggregation_dimension : {"2D", "2.5D", "3D"}
         Spatial aggregation dimensionality for texture features.

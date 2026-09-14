@@ -13,7 +13,7 @@ Z-Rad supports:
 
 * Windows, macOS, and Linux workflows
 * DICOM and NIfTI input data
-* CT, MRI, PET, mammography, and RTDOSE imaging modalities
+* CT, MRI, PET, mammography, ultrasound, and RTDOSE imaging modalities
 
 Basic Directory Layout
 ----------------------

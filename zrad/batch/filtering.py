@@ -62,7 +62,7 @@ class BatchFilter:
         Directory where filtered case folders are written.
     input_data_type : {"dicom", "nifti"}
         Input format. Values are normalized to lower-case during validation.
-    modality : {"CT", "MRI", "PET", "MG", "RTDOSE"}
+    modality : {"CT", "MRI", "PET", "MG", "US", "RTDOSE"}
         Image modality used by the image reader.
     filter_type : {"Mean", "Laplacian of Gaussian", "Riesz-transformed LoG", "Laws Kernels", "Gabor", "Wavelets", "Simoncelli"}
         Filter family to apply.

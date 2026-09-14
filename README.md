@@ -35,7 +35,7 @@
   <img src="docs/images/readme_workflow.png" width="700" alt="Workflow from images and ROI masks through preprocessing, optional filtering, feature extraction, and export to a feature dictionary or CSV." />
 </p>
 <p align="center">
-  <em>Use preprocessing, filtering, and feature extraction independently or combine them into a complete workflow.</em>
+  <em></em>
 </p>
 <br>
 
@@ -50,14 +50,11 @@
 
 <br>
 <p align="center">
-  <img src="docs/images/zrad_screenshot.png" width="700" alt="Z-Rad screenshot"/>
+  <img src="docs/images/zrad_extraction_pathways.svg" width="700" alt="Z-Rad screenshot"/>
 </p>
 
 <p align="center">
-  <em>Run the workflow interactively through the
-    <a href="https://medical-physics-usz.github.io/z-rad/user/gui_workflows.html">graphical user interface</a>
-    or automate it with the
-    <a href="https://medical-physics-usz.github.io/z-rad/user/api_quickstart.html">Python API</a>.</em>
+  <em>Use preprocessing, filtering, and feature extraction independently or combine them into a complete workflow.</em>
 </p>
 
 
@@ -87,6 +84,17 @@ Use scalar image volumes with masks on the same physical voxel grid. See the [da
 3. Follow the [GUI quickstart](https://medical-physics-usz.github.io/z-rad/user/gui_quickstart.html) to select your input data, configure processing, and run your first analysis.
 
 The macOS app is currently unsigned and unnotarized, so Gatekeeper may show a warning. For Linux, Intel Macs, or the current source version, follow [Run from a repository checkout](https://medical-physics-usz.github.io/z-rad/user/installation.html#run-from-a-repository-checkout) to install and launch the GUI.
+
+<p align="center">
+  <img src="docs/images/zrad_screenshot.png" width="700" alt="Z-Rad screenshot"/>
+</p>
+
+<p align="center">
+  <em>Run the workflow interactively through the
+    <a href="https://medical-physics-usz.github.io/z-rad/user/gui_workflows.html">graphical user interface</a>
+    or automate it with the
+    <a href="https://medical-physics-usz.github.io/z-rad/user/api_quickstart.html">Python API</a>.</em>
+</p>
 
 ### Python quickstart
 

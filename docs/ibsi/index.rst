@@ -6,6 +6,10 @@ Z-Rad is developed around IBSI-oriented radiomics workflows and includes test
 data and regression tests derived from IBSI reference material. The datasets
 and reference values are under ``tests/data``. Automated benchmarks are in
 ``tests/test_ibsi_1.py``, ``tests/test_ibsi_2.py``, and ``tests/test_pet_suv.py``.
+The performance ``exhaustive`` tier mirrors all 20 IBSI I feature/aggregation
+cases, 33 IBSI II phase-I response maps, and 18 IBSI II phase-II feature
+configurations through the shared ``tests/ibsi_cases.py`` registry. See
+:doc:`../developer/benchmarking` for timing and memory methodology.
 
 The feature comparisons require every expected reference feature for the
 selected configuration and aggregation mode. Expected features are selected

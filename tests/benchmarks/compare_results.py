@@ -3,7 +3,12 @@
 import argparse
 import json
 import math
+import sys
 from pathlib import Path
+
+TESTS = Path(__file__).resolve().parents[1]
+if str(TESTS) not in sys.path:
+    sys.path.insert(0, str(TESTS))
 
 
 def median_change(reference, current):
@@ -29,6 +34,15 @@ def workload_results(payload):
             raise ValueError(f'Duplicate workload: {identifier}')
         results[identifier] = benchmark['stats']
     return results
+
+
+def exhaustive_ibsi_coverage(payload):
+    """Return executed/expected published IBSI workload IDs when any are present."""
+    from ibsi_cases import ALL_IBSI_PERFORMANCE_CASES
+
+    expected = {case.identifier for case in ALL_IBSI_PERFORMANCE_CASES}
+    executed = expected & workload_results(payload).keys()
+    return executed, expected
 
 
 def render_comparison(reference, current, reference_label):
@@ -70,6 +84,9 @@ def render_comparison(reference, current, reference_label):
         'These labels describe direction only, not statistical significance. Inspect IQR and repeat runs.',
         '',
     ]
+    executed, expected = exhaustive_ibsi_coverage(current)
+    if executed:
+        rows.extend([f'Published IBSI performance coverage: {len(executed)}/{len(expected)} cases.', ''])
     for row in table:
         rows.append(' | '.join(cell.ljust(width) for cell, width in zip(row, widths)))
     return '\n'.join(rows) + '\n'

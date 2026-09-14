@@ -4,7 +4,26 @@ Performance benchmarking
 The suite in ``tests/benchmarks`` measures Z-Rad computation, independently of
 correctness-test duration. Use operation benchmarks to locate a change and the
 IBSI workflows to assess its effect on realistic processing. Production code
-and existing correctness tests are unchanged.
+is unchanged; correctness expectations and published tolerances are preserved.
+
+Coverage tiers
+--------------
+
+Three named tiers balance feedback time, diagnosis and configuration coverage:
+
+``quick``
+    Focused operation and feature-family signals intended for every pull request.
+``extended``
+    The quick cases plus large scaling inputs, expensive filter/aggregation paths,
+    pipeline and representative IBSI workflows. This is the local launcher default.
+``exhaustive``
+    Every extended case plus all 71 published IBSI cases exercised by the
+    correctness suite: 20 IBSI I feature/aggregation workflows, all 33 IBSI II
+    phase-I response maps and all 18 IBSI II phase-II feature configurations.
+
+The declarations in ``tests/ibsi_cases.py`` are shared with IBSI correctness
+tests and exhaustive performance construction. Registry contract tests require
+the published 20/33/18 inventory and 71 unique workload identifiers.
 
 Install and run
 ---------------
@@ -35,20 +54,20 @@ benchmark datasets. Benchmarks do not have ``unit`` or ``integration`` markers.
 For timing, the recommended portable launcher sets native thread environment
 variables **before** importing numerical libraries, then invokes native pytest::
 
-    # Fast suite, no saved results
-    python tests/benchmarks/run.py -m 'not benchmark_slow'
+    # Pull-request tier, no saved results
+    python tests/benchmarks/run.py --suite quick
 
-    # Complete suite, including slow scaling, I/O, pipeline, and IBSI
-    python tests/benchmarks/run.py
+    # Focused and representative slow cases (the local default)
+    python tests/benchmarks/run.py --suite extended
 
-    # IBSI only; or use -m benchmark_slow for every expensive workload
-    python tests/benchmarks/run.py -k ibsi
+    # Complete published IBSI configuration matrix plus all focused cases
+    python tests/benchmarks/run.py --suite exhaustive
 
 The equivalent direct pytest commands are::
 
-    python -m pytest tests/benchmarks --benchmark-only -n 0 --no-cov -m 'not benchmark_slow'
+    python -m pytest tests/benchmarks --benchmark-only -n 0 --no-cov -m 'not benchmark_slow and not benchmark_exhaustive'
+    python -m pytest tests/benchmarks --benchmark-only -n 0 --no-cov -m 'not benchmark_exhaustive'
     python -m pytest tests/benchmarks --benchmark-only -n 0 --no-cov
-    python -m pytest tests/benchmarks/test_benchmark_ibsi.py --benchmark-only -n 0 --no-cov
 
 ``--benchmark-only`` overrides the normal native skip. ``-n 0`` overrides
 ``-n auto``; competing pytest workers would otherwise measure CPU contention.
@@ -90,8 +109,9 @@ importing the timing fixture.
      - Image generation and filter construction. Metadata preparation and array
        conversions performed by ``apply`` remain included
    * - radiomics
-     - Complete fresh-image ``families='all'`` extraction; six texture families together;
-       and selected Moran's I/Geary's C, using 3D/MERG aggregation
+     - Complete fresh-image ``families='all'`` extraction; all 11 feature families
+       separately; every IBSI texture aggregation path; and selected Moran's
+       I/Geary's C
      - Intensity-mask building, re-segmentation, texture and IVH discretization,
        extractor construction; local-means result-cache reset before each complete
        extraction round. Extractor-internal mask validation/copying remains included
@@ -119,11 +139,13 @@ importing the timing fixture.
      - Same setup/validation exclusions as IBSI I. The existing correctness
        workflow uses **2D/AVER features after 3D filtering**; this is preserved
 
-IBSI uses the repository's CT phantom and GTV-1 RTSTRUCT, reusing the session
-extraction fixture. Configuration C covers calibrated-intensity full extraction;
-3.B covers resampling, filtering and filtered-image feature extraction. These two
-signals avoid duplicating the complete IBSI correctness matrix. They are always
-slow benchmarks, irrespective of speed on a particular machine.
+IBSI uses the repository's CT phantom and GTV-1 RTSTRUCT, reusing session-loaded
+inputs. In the extended tier, configuration C covers calibrated-intensity full
+extraction and 3.B covers resampling, filtering and filtered-image feature
+extraction. These remain compact representative signals. The exhaustive tier
+additionally builds every published case from the shared registry, times
+computation only, and applies the same reference validation after measurement.
+Dataset, CSV and response-map loading is excluded from timing.
 
 The Enhanced PET helper is a deliberate private-API benchmark because conventional
 SUV conversion nests its calculations inside a function that rereads files.
@@ -170,7 +192,8 @@ Rounds, state, threads, and statistics
 --------------------------------------
 
 Most operations run seven measured calls; expensive scaling/radiomics/PET cases
-use five; pipeline and IBSI use three. Each has one unmeasured warmup and one
+use five; pipeline and representative IBSI use three. Exhaustive IBSI feature
+workflows use one screening round and phase-I filters use three. Each has one unmeasured warmup and one
 iteration per round. This bounds the costly 3D work. Initial measurements found
 the fast suite took seconds, whereas a single IBSI II call took tens of seconds;
 automatic calibration of that workflow would provide little benefit. Three
@@ -203,6 +226,12 @@ are unchanged. Earlier RSS/allocation measurements already used fresh processes
 without warmup; their methodology is unaffected, although the shared complete
 extraction workload ID is now renamed in memory output too.
 
+Suite version 3 adds named coverage tiers, per-family and aggregation-path
+signals, and the 71 registry-driven IBSI workload IDs. It also replaces the
+combined ``radiomics/texture/medium`` signal with individual texture-family
+measurements. Treat absent version-3 rows in older JSON as unavailable rather
+than unchanged performance.
+
 SimpleITK and OpenCV have explicit thread APIs. OpenCV GCD builds require
 ``setNumThreads(0)`` to disable parallel regions; other backends use 1. The
 reported serial state is checked, and prior settings are restored afterward. NumPy/SciPy BLAS and OpenMP pools
@@ -234,16 +263,16 @@ Saving and comparing references
 Native JSON is the sole timing format. No timing database or custom baseline
 updater is introduced. For example::
 
-    python tests/benchmarks/run.py -m 'not benchmark_slow' --benchmark-save=master-accepted --benchmark-save-data
-    python tests/benchmarks/run.py -m 'not benchmark_slow' --benchmark-autosave --benchmark-save-data
+    python tests/benchmarks/run.py --suite quick --benchmark-save=master-accepted --benchmark-save-data
+    python tests/benchmarks/run.py --suite quick --benchmark-autosave --benchmark-save-data
     pytest-benchmark list
     # Replace 0001 with the explicit accepted reference ID from the listing
-    python tests/benchmarks/run.py -m 'not benchmark_slow' --benchmark-compare=0001 --benchmark-save=pr-candidate
+    python tests/benchmarks/run.py --suite quick --benchmark-compare=0001 --benchmark-save=pr-candidate
 
 Or use explicit files (create parent directories first)::
 
     mkdir -p reports/benchmarks
-    python tests/benchmarks/run.py -m 'not benchmark_slow' --benchmark-json=reports/benchmarks/current.json
+    python tests/benchmarks/run.py --suite quick --benchmark-json=reports/benchmarks/current.json
     python tests/benchmarks/compare_results.py --current reports/benchmarks/current.json --master reports/benchmarks/master.json --release reports/benchmarks/release.json
     pytest-benchmark compare reports/benchmarks/master.json reports/benchmarks/current.json --columns=median,iqr,mean,stddev,min,max,rounds,iterations
 
@@ -296,7 +325,9 @@ For local committed changes::
 
 Replace the example release tag with the latest **published release** you intend
 to evaluate; the newest version-sorted tag is not necessarily a release. Use
-``--full`` for slow/IBSI comparisons. Uncommitted production edits are excluded by
+``--suite extended`` for broader focused comparisons or ``--suite exhaustive``
+for the complete published IBSI matrix. ``--full`` is a deprecated alias for
+``--suite exhaustive``. Uncommitted production edits are excluded by
 ``git archive``; use the ordinary launcher to time working-tree edits. The current
 working-tree harness is used intentionally. The output directory must be new,
 protecting earlier results. Source trees and environments are removed afterward.
@@ -314,8 +345,11 @@ GitHub-hosted runner. It runs on PRs/pushes to master and manual dispatch. On PR
 checkout time. On master pushes, current and master may be identical (a useful
 noise observation, not a claimed speedup). The GitHub release API resolves the
 latest published stable release, then the runner freezes its SHA for that job.
-It does not alter any saved accepted/release reference. Manual dispatch can opt
-into the full suite. The compatibility/coverage workflow remains separate.
+It does not alter any saved accepted/release reference. Pull requests and pushes
+run ``quick``; manual dispatch selects any tier, and a weekly scheduled run uses
+``exhaustive``. Exhaustive manual/scheduled runs also create a parallel isolated-
+process RSS artifact for all 71 published cases. The compatibility/coverage
+workflow remains separate.
 
 Artifacts retained for 30 days contain valid ``current.json``, ``master.json``,
 and ``release.json`` where available, installation/test logs, dependency lists,
@@ -344,8 +378,9 @@ Peak RSS is measured without pytest or timing instrumentation::
 
     python tests/benchmarks/memory.py --mode rss --repeats 3 --output reports/benchmarks/rss-001.json
     python tests/benchmarks/memory.py --mode rss --workload ibsi_i --workload ibsi_ii --output reports/benchmarks/rss-ibsi.json
+    python tests/benchmarks/memory.py --mode rss --suite exhaustive --output reports/benchmarks/rss-exhaustive.json
 
-The six workloads are large B-spline resampling, medium Riesz-LoG, large complete
+The default six workloads are large B-spline resampling, medium Riesz-LoG, large complete
 radiomics, large spatial statistics, IBSI I C and IBSI II 3.B. Each repetition
 executes in a **fresh subprocess**, with no warmup. Archive extraction occurs in
 the parent before any measured child starts. ``resource.getrusage(RUSAGE_SELF)``
@@ -359,6 +394,8 @@ it is neither current RSS nor a number to subtract to obtain temporary allocatio
 size. Setup may itself dominate a small operation. The maximum is not polluted by
 previous workloads because every sample has its own process/PID. Children do not
 spawn batch workers. A process tree would require a different measurement design.
+The named memory tiers expand this same fresh-process method; ``exhaustive`` adds
+all 71 registry cases. Use Memray only for selected cases after RSS screening.
 This backend supports Linux/macOS; Windows timing remains usable and optional
 profiling dependencies are excluded there.
 

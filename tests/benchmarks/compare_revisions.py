@@ -9,6 +9,7 @@ import json
 import os
 import shutil
 import subprocess
+import sys
 import tarfile
 import tempfile
 import venv
@@ -17,12 +18,21 @@ from pathlib import Path
 if __package__:
     from .compare_results import render_comparison
     from .runtime import controlled_environment
+    from .suites import SUITE_MARKERS, marker_for_suite
 else:
     from compare_results import render_comparison
     from runtime import controlled_environment
+    from suites import SUITE_MARKERS, marker_for_suite
 
 ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT / 'tests'))
 TOOLS = ['pytest', 'pytest-cov', 'pytest-xdist', 'pytest-benchmark>=5.3.0', 'threadpoolctl>=3.5']
+
+
+def expected_exhaustive_ids():
+    from ibsi_cases import ALL_IBSI_PERFORMANCE_CASES
+
+    return {case.identifier for case in ALL_IBSI_PERFORMANCE_CASES}
 
 
 def resolve_revision(repository, ref):
@@ -35,7 +45,7 @@ def resolve_revision(repository, ref):
 def copy_harness(destination):
     tests = destination / 'tests'
     tests.mkdir(parents=True)
-    for name in ('conftest.py', 'ibsi_helpers.py'):
+    for name in ('conftest.py', 'ibsi_cases.py', 'ibsi_helpers.py'):
         shutil.copy2(ROOT / 'tests' / name, tests / name)
     ignore = shutil.ignore_patterns('__pycache__', '.cache', 'IBSI_SUV', '*.pyc')
     for name in ('benchmarks', 'data'):
@@ -99,8 +109,9 @@ def run_revision(label, sha, args, temporary, harness):
             '--benchmark-json=' + str(result_path),
             '--benchmark-columns=median,iqr,mean,stddev,min,max,rounds,iterations',
         ]
-        if not args.full:
-            command.extend(['-m', 'not benchmark_slow'])
+        marker = marker_for_suite(args.suite)
+        if marker:
+            command.extend(['-m', marker])
         if run(command):
             # pytest can write partial results on failures. Never compare them.
             if result_path.exists():
@@ -109,6 +120,15 @@ def run_revision(label, sha, args, temporary, harness):
     payload = json.loads(result_path.read_text())
     if not payload.get('benchmarks'):
         return {'status': 'no_measurements', 'commit': sha}
+    if args.suite == 'exhaustive':
+        measured = {
+            benchmark.get('extra_info', {}).get('workload_id') or benchmark['fullname']
+            for benchmark in payload['benchmarks']
+        }
+        missing = sorted(expected_exhaustive_ids() - measured)
+        if missing:
+            result_path.rename(args.output / f'{label}-INCOMPLETE.json')
+            return {'status': 'incomplete_exhaustive_suite', 'commit': sha, 'missing': missing}
     return {'status': 'ok', 'commit': sha, 'python': str(python), 'result': str(result_path)}
 
 
@@ -157,8 +177,15 @@ def main():
     parser.add_argument(
         '--constraints', type=Path, help='Optional shared pip constraints for controlled dependency versions.'
     )
-    parser.add_argument('--full', action='store_true')
+    parser.add_argument('--suite', choices=SUITE_MARKERS)
+    parser.add_argument('--full', action='store_true', help='Deprecated alias for --suite exhaustive.')
     args = parser.parse_args()
+    if args.full:
+        if args.suite is not None:
+            parser.error('--full cannot be combined with --suite; use --suite exhaustive.')
+        args.suite = 'exhaustive'
+    elif args.suite is None:
+        args.suite = 'quick'
     args.repository = args.repository.resolve()
     args.output = args.output.resolve()
     if args.constraints:

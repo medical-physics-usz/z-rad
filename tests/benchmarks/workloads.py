@@ -11,7 +11,7 @@ from typing import Callable
 
 import numpy as np
 
-from zrad.filtering import LoG, Mean, RieszLoG, Wavelets3D
+from zrad.filtering import Gabor, Laws, LoG, Mean, RieszLoG, Simoncelli, Wavelets2D, Wavelets3D
 from zrad.image import Image
 from zrad.preprocessing import (
     ImageResampler,
@@ -164,6 +164,38 @@ def filtering(kind, size):
         'riesz': lambda: RieszLoG(
             padding_type='reflect', sigma_mm=2.0, cutoff=4, dimensionality='3D', riesz_order=(1, 0, 0)
         ),
+        'laws': lambda: Laws(
+            response_map='E3W5R5',
+            padding_type='reflect',
+            dimensionality='3D',
+            rotation_invariance=True,
+            pooling='max',
+            energy_map=True,
+            distance=7,
+        ),
+        'gabor': lambda: Gabor(
+            padding_type='reflect',
+            res_mm=1.0,
+            sigma_mm=5.0,
+            lambda_mm=2.0,
+            gamma=1.5,
+            theta=np.pi / 8,
+            rotation_invariance=True,
+            orthogonal_planes=False,
+        ),
+        'wavelet_2d': lambda: Wavelets2D(
+            wavelet_type='db3',
+            padding_type='reflect',
+            response_map='LH',
+            decomposition_level=2,
+            rotation_invariance=True,
+        ),
+        'simoncelli': lambda: Simoncelli(
+            padding_type='periodic', decomposition_level=2, dimensionality='3D'
+        ),
+        'riesz_simoncelli': lambda: Simoncelli(
+            padding_type='periodic', decomposition_level=1, dimensionality='3D', riesz_order=(0, 2, 0)
+        ),
     }
     flt = filters[kind]()
     return Workload(
@@ -171,7 +203,7 @@ def filtering(kind, size):
         partial(flt.apply, image),
         partial(validate_image, expected_shape=image.array.shape),
         metadata(image, filter=flt.get_params()),
-        rounds=5 if size == 'large' else 7,
+        rounds=5 if size == 'large' or kind in {'laws', 'gabor'} else 7,
     )
 
 
@@ -184,13 +216,13 @@ def clear_radiomics_result_caches():
     _LOCAL_MEANS_CACHE.clear()
 
 
-def radiomics(size, family='all'):
+def radiomics(size, family='all', aggregation=('3D', 'MERG')):
     image, mask = synthetic_pair(ROI_SHAPES[size])
     roi = prepare_roi(image, mask)
     for value in vars(roi).values():
         if isinstance(value, Image):
             value.array.flags.writeable = False
-    extractor = Radiomics(aggr_dim='3D', aggr_method='MERG')
+    extractor = Radiomics(aggr_dim=aggregation[0], aggr_method=aggregation[1])
     if family == 'spatial':
         operation = partial(extractor.extract_features, roi_data=roi, features=['morph_moran_i', 'morph_geary_c'])
     else:
@@ -204,8 +236,12 @@ def radiomics(size, family='all'):
         if family == 'spatial':
             assert set(result) == {'morph_moran_i', 'morph_geary_c'}
 
+    family_id = 'all_fresh' if family == 'all' else family
+    aggregation_id = f'/{aggregation[0].lower().replace(".", "_")}/{aggregation[1].lower()}'
+    if aggregation == ('3D', 'MERG'):
+        aggregation_id = ''
     return Workload(
-        f'radiomics/{"all_fresh" if family == "all" else family}/{size}',
+        f'radiomics/{family_id}/{size}{aggregation_id}',
         operation,
         validate,
         metadata(
@@ -213,11 +249,11 @@ def radiomics(size, family='all'):
             mask,
             feature_group=family,
             number_of_bins=32,
-            aggregation='3D/MERG',
+            aggregation='/'.join(aggregation),
             **({'cache_policy': 'fresh_image_results'} if family == 'all' else {}),
         ),
         rounds=5,
-        setup=clear_radiomics_result_caches if family == 'all' else None,
+        setup=clear_radiomics_result_caches if family in ('all', 'local_intensity') else None,
     )
 
 

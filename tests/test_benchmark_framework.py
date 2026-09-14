@@ -4,11 +4,46 @@ import json
 from types import SimpleNamespace
 
 import pytest
-from benchmarks.compare_results import median_change, render_comparison
+from benchmarks.compare_results import exhaustive_ibsi_coverage, median_change, render_comparison
 from benchmarks.compare_revisions import write_summary
 from benchmarks.conftest import measure, pytest_configure
+from benchmarks.memory import exhaustive_names
+from benchmarks.suites import marker_for_suite
+from ibsi_cases import ALL_IBSI_PERFORMANCE_CASES, IBSI_I_FEATURE_CASES, IBSI_II_FEATURE_CASES, IBSI_II_FILTER_CASES
 
 pytestmark = pytest.mark.unit
+
+
+def test_exhaustive_ibsi_registry_is_complete_and_unique():
+    assert len(IBSI_I_FEATURE_CASES) == 20
+    assert len(IBSI_II_FILTER_CASES) == 33
+    assert len(IBSI_II_FEATURE_CASES) == 18
+    identifiers = [case.identifier for case in ALL_IBSI_PERFORMANCE_CASES]
+    assert len(identifiers) == len(set(identifiers)) == 71
+    assert {case.config for case in IBSI_II_FEATURE_CASES} == {
+        f'{number}.{variant}' for number in range(1, 10) for variant in 'AB'
+    }
+
+
+def test_named_suite_markers_keep_exhaustive_cases_opt_in():
+    assert marker_for_suite('quick') == 'not benchmark_slow and not benchmark_exhaustive'
+    assert marker_for_suite('extended') == 'not benchmark_exhaustive'
+    assert marker_for_suite('exhaustive') is None
+    with pytest.raises(ValueError, match='Unknown benchmark suite'):
+        marker_for_suite('typo')
+
+
+def test_exhaustive_coverage_reports_registry_cases():
+    workload_id = ALL_IBSI_PERFORMANCE_CASES[0].identifier
+    executed, expected = exhaustive_ibsi_coverage(timing_result(1.0, workload_id))
+    assert executed == {workload_id}
+    assert len(expected) == 71
+
+
+def test_exhaustive_memory_inventory_includes_every_registry_case():
+    names = exhaustive_names()
+    assert len(names) == len(set(names)) == 77
+    assert {case.identifier for case in ALL_IBSI_PERFORMANCE_CASES} < set(names)
 
 
 def timing_config(**overrides):

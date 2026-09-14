@@ -21,6 +21,16 @@ sys.path.insert(0, str(TESTS.parent))
 from benchmarks.runtime import controlled_environment, environment_metadata, single_threaded  # noqa: E402
 
 WORKLOADS = ('resampling', 'filtering', 'radiomics', 'spatial', 'ibsi_i', 'ibsi_ii')
+MEMORY_SUITES = {
+    'quick': WORKLOADS[:4],
+    'extended': WORKLOADS,
+}
+
+
+def exhaustive_names():
+    from ibsi_cases import ALL_IBSI_PERFORMANCE_CASES
+
+    return WORKLOADS + tuple(case.identifier for case in ALL_IBSI_PERFORMANCE_CASES)
 
 
 def build_workload(name):
@@ -28,6 +38,30 @@ def build_workload(name):
 
     if name.startswith('ibsi_'):
         return ibsi(name.removeprefix('ibsi_'), load_ct(TESTS / 'data/.cache/ibsi_ct_radiomics_phantom'))
+    if name.startswith('ibsi/'):
+        from ibsi_cases import IBSI_I_FEATURE_CASES, IBSI_II_FEATURE_CASES, IBSI_II_FILTER_CASES
+
+        from benchmarks.ibsi_workloads import (
+            ibsi_feature,
+            ibsi_filter,
+            load_ct_sources,
+            load_ibsi_i_digital,
+            load_ibsi_ii_phantoms,
+        )
+
+        cases = IBSI_I_FEATURE_CASES + IBSI_II_FILTER_CASES + IBSI_II_FEATURE_CASES
+        all_cases = {case.identifier: case for case in cases}
+        case = all_cases[name]
+        cache = TESTS / 'data/.cache'
+        if name.startswith('ibsi/ii/phase_i/'):
+            phantoms = load_ibsi_ii_phantoms(cache / 'ibsi_2_digital_phantom')
+            return ibsi_filter(case, phantoms, cache / 'ibsi_2_response_maps')
+        sources = {}
+        if case.image_source.startswith('ct_') or case.mask_source.startswith('ct_'):
+            sources.update(load_ct_sources(cache / 'ibsi_ct_radiomics_phantom'))
+        if case.image_source == 'i_digital':
+            sources.update(load_ibsi_i_digital(cache / 'ibsi_1_digital_phantom'))
+        return ibsi_feature(case, sources)
     factories = {
         'resampling': lambda: resampling('large', 'BSpline'),
         'filtering': lambda: filtering('riesz', 'medium'),
@@ -87,11 +121,12 @@ def measure_child(args):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--mode', choices=['rss', 'memray'], default='rss')
-    parser.add_argument('--workload', choices=WORKLOADS, action='append', dest='workloads')
+    parser.add_argument('--workload', action='append', dest='workloads')
+    parser.add_argument('--suite', choices=('quick', 'extended', 'exhaustive'))
     parser.add_argument('--repeats', type=int, default=1)
     parser.add_argument('--native', action='store_true', help='Native allocation stacks (Memray only).')
     parser.add_argument('--output', type=Path, default=Path('reports/benchmarks/memory.json'))
-    parser.add_argument('--child', choices=WORKLOADS, help=argparse.SUPPRESS)
+    parser.add_argument('--child', help=argparse.SUPPRESS)
     parser.add_argument('--commit', help=argparse.SUPPRESS)
     parser.add_argument('--dirty', action='store_true', help=argparse.SUPPRESS)
     args = parser.parse_args()
@@ -106,13 +141,37 @@ def main():
         return
     if args.output.exists():
         parser.error('Output exists; choose a new path to preserve earlier measurements.')
-    names = args.workloads or list(WORKLOADS)
+    available = set(exhaustive_names())
+    if args.workloads and args.suite:
+        parser.error('Use either --suite or explicit --workload selections.')
+    selected_suite = exhaustive_names() if args.suite == 'exhaustive' else MEMORY_SUITES.get(args.suite, WORKLOADS)
+    names = list(args.workloads or selected_suite)
+    unknown = sorted(set(names) - available)
+    if unknown:
+        parser.error('Unknown workload(s): ' + ', '.join(unknown))
     if any(name.startswith('ibsi_') for name in names):
         from conftest import _prepare_data_dir
 
         cache = TESTS / 'data/.cache'
         cache.mkdir(exist_ok=True)
         _prepare_data_dir(TESTS / 'data/ibsi_ct_radiomics_phantom.zip', cache / 'ibsi_ct_radiomics_phantom')
+    if any(name.startswith(('ibsi/i/', 'ibsi/ii/phase_ii/')) for name in names):
+        from conftest import _prepare_data_dir
+
+        cache = TESTS / 'data/.cache'
+        cache.mkdir(exist_ok=True)
+        _prepare_data_dir(TESTS / 'data/ibsi_ct_radiomics_phantom.zip', cache / 'ibsi_ct_radiomics_phantom')
+        if any(name.startswith('ibsi/i/') for name in names):
+            _prepare_data_dir(TESTS / 'data/ibsi_1_digital_phantom.zip', cache / 'ibsi_1_digital_phantom')
+    if any(name.startswith('ibsi/ii/phase_i/') for name in names):
+        from conftest import _prepare_data_dir
+
+        cache = TESTS / 'data/.cache'
+        cache.mkdir(exist_ok=True)
+        _prepare_data_dir(TESTS / 'data/ibsi_2_digital_phantom.zip', cache / 'ibsi_2_digital_phantom')
+        _prepare_data_dir(
+            TESTS / 'data/ibsi_2_reference_data/ibsi_2_response_maps.zip', cache / 'ibsi_2_response_maps'
+        )
     commit = subprocess.run(['git', 'rev-parse', 'HEAD'], cwd=TESTS.parent, capture_output=True, text=True, check=False)
     commit = os.environ.get('ZRAD_BENCHMARK_COMMIT', commit.stdout.strip() or 'unknown')
     status = subprocess.run(
@@ -125,8 +184,9 @@ def main():
     with tempfile.TemporaryDirectory(prefix='zrad-memory-') as temporary:
         for name in names:
             for repeat in range(args.repeats):
+                safe_name = name.replace('/', '-')
                 output = (args.output.parent if args.mode == 'memray' else Path(temporary)) / (
-                    f'{args.output.stem}-{name}-{repeat}.json'
+                    f'{args.output.stem}-{safe_name}-{repeat}.json'
                 )
                 command = [
                     sys.executable,

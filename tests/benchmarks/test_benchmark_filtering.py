@@ -10,6 +10,24 @@ def test_log(benchmark, measure, size):
     measure(filtering('log', size))
 
 
-@pytest.mark.parametrize('kind', ['mean', 'wavelet', pytest.param('riesz', marks=pytest.mark.benchmark_slow)])
-def test_filter(benchmark, measure, kind):
+@pytest.mark.parametrize(
+    ('kind', 'size'),
+    [
+        ('mean', 'medium'),
+        ('wavelet', 'medium'),
+        ('laws', 'small'),
+        ('gabor', 'small'),
+        ('simoncelli', 'medium'),
+        pytest.param('wavelet_2d', 'medium', marks=pytest.mark.benchmark_slow),
+        pytest.param('riesz', 'medium', marks=pytest.mark.benchmark_slow),
+        pytest.param('riesz_simoncelli', 'medium', marks=pytest.mark.benchmark_slow),
+    ],
+)
+def test_filter(benchmark, measure, kind, size):
+    measure(filtering(kind, size))
+
+
+@pytest.mark.benchmark_slow
+@pytest.mark.parametrize('kind', ['laws', 'gabor'])
+def test_expensive_filter_medium(benchmark, measure, kind):
     measure(filtering(kind, 'medium'))

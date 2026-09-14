@@ -61,6 +61,27 @@ def ct_pair(ibsi_ct_data_dir):
     return load_ct(ibsi_ct_data_dir)
 
 
+@pytest.fixture(scope='session')
+def ibsi_ct_sources(ibsi_ct_data_dir):
+    from .ibsi_workloads import load_ct_sources
+
+    return load_ct_sources(ibsi_ct_data_dir)
+
+
+@pytest.fixture(scope='session')
+def ibsi_feature_sources(ibsi_ct_sources, ibsi_i_digital_data_dir):
+    from .ibsi_workloads import load_ibsi_i_digital
+
+    return {**ibsi_ct_sources, **load_ibsi_i_digital(ibsi_i_digital_data_dir)}
+
+
+@pytest.fixture(scope='session')
+def ibsi_ii_filter_sources(ibsi_ii_digital_data_dir):
+    from .ibsi_workloads import load_ibsi_ii_phantoms
+
+    return load_ibsi_ii_phantoms(ibsi_ii_digital_data_dir)
+
+
 def pytest_benchmark_update_commit_info(config, commit_info):
     target = os.environ.get('ZRAD_BENCHMARK_COMMIT')
     if target:

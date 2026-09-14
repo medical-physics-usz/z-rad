@@ -6,12 +6,15 @@ on:
     branches: [master]
   push:
     branches: [master]
+  schedule:
+    - cron: "17 2 * * 1"
   workflow_dispatch:
     inputs:
-      full:
-        description: Run slow and IBSI workflows too
-        type: boolean
-        default: false
+      suite:
+        description: Benchmark coverage tier
+        type: choice
+        options: [quick, extended, exhaustive]
+        default: quick
 
 permissions:
   contents: read
@@ -23,7 +26,7 @@ concurrency:
 jobs:
   timing:
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    timeout-minutes: 240
     env:
       OMP_NUM_THREADS: "1"
       OPENBLAS_NUM_THREADS: "1"
@@ -53,12 +56,14 @@ jobs:
       - name: Compare isolated revisions on this runner
         env:
           RELEASE_TAG: ${{ steps.release.outputs.tag }}
-          FULL: ${{ inputs.full }}
+          REQUESTED_SUITE: ${{ inputs.suite }}
+          EVENT_NAME: ${{ github.event_name }}
         shell: bash
         run: |
-          args=(--current HEAD --master origin/master --output reports/benchmarks/ci)
+          suite="${REQUESTED_SUITE:-quick}"
+          if [[ "$EVENT_NAME" == "schedule" ]]; then suite=exhaustive; fi
+          args=(--current HEAD --master origin/master --suite "$suite" --output reports/benchmarks/ci)
           if [[ -n "$RELEASE_TAG" ]]; then args+=(--release "$RELEASE_TAG"); fi
-          if [[ "$FULL" == "true" ]]; then args+=(--full); fi
           python tests/benchmarks/compare_revisions.py "${args[@]}"
       - name: Display comparison
         if: always()
@@ -77,5 +82,34 @@ jobs:
           path: |
             reports/benchmarks/ci/
             release-lookup.log
+          retention-days: 30
+          if-no-files-found: warn
+
+  memory:
+    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.suite == 'exhaustive')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 240
+    env:
+      OMP_NUM_THREADS: "1"
+      OPENBLAS_NUM_THREADS: "1"
+      MKL_NUM_THREADS: "1"
+      ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS: "1"
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: Install test environment
+        run: python -m pip install -e '.[test]'
+      - name: Measure exhaustive peak RSS in isolated processes
+        run: python tests/benchmarks/memory.py --mode rss --suite exhaustive --output reports/benchmarks/rss-exhaustive.json
+      - name: Upload memory artifact
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: performance-memory-${{ github.run_id }}-${{ github.run_attempt }}
+          path: reports/benchmarks/rss-exhaustive.json
           retention-days: 30
           if-no-files-found: warn

@@ -80,6 +80,10 @@ Notes:
 * Z-Rad reads the image series directly from the case folder.
 * If both RTSTRUCT and SEG objects are present, the first detected RTSTRUCT is
   used; otherwise, the first detected SEG is used.
+* DICOM SEG support is limited to BINARY objects; fractional and label-map
+  segmentations are not supported.
+* Ultrasound input must be a single DICOM file with ``PixelSpacing`` and
+  ``SliceThickness`` metadata.
 * SEG objects use ``SegmentLabel`` as the structure name. Selected segments are
   aligned to the source image series using referenced SOP Instance UIDs (with
   per-frame image position as a fallback).

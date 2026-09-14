@@ -32,7 +32,7 @@
 ## From images to a feature table
 
 <p align="center">
-  <img src="docs/images/readme_workflow.png" width="700" alt="Workflow from images and ROI masks through preprocessing, optional filtering, feature extraction, and export to a feature dictionary or CSV." />
+  <img src="https://raw.githubusercontent.com/medical-physics-usz/z-rad/master/docs/images/readme_workflow.png" width="700" alt="Workflow from images and ROI masks through preprocessing, optional filtering, feature extraction, and export to a feature dictionary or CSV." />
 </p>
 <p align="center">
   <em></em>
@@ -50,7 +50,7 @@
 
 <br>
 <p align="center">
-  <img src="docs/images/zrad_extraction_pathways.svg" width="700" alt="Z-Rad screenshot"/>
+  <img src="https://raw.githubusercontent.com/medical-physics-usz/z-rad/master/docs/images/zrad_extraction_pathways.svg" width="700" alt="Z-Rad screenshot"/>
 </p>
 
 <p align="center">
@@ -86,7 +86,7 @@ Use scalar image volumes with masks on the same physical voxel grid. See the [da
 The macOS app is currently unsigned and unnotarized, so Gatekeeper may show a warning. For Linux, Intel Macs, or the current source version, follow [Run from a repository checkout](https://medical-physics-usz.github.io/z-rad/user/installation.html#run-from-a-repository-checkout) to install and launch the GUI.
 
 <p align="center">
-  <img src="docs/images/zrad_screenshot.png" width="700" alt="Z-Rad screenshot"/>
+  <img src="https://raw.githubusercontent.com/medical-physics-usz/z-rad/master/docs/images/zrad_screenshot.png" width="700" alt="Z-Rad screenshot"/>
 </p>
 
 <p align="center">

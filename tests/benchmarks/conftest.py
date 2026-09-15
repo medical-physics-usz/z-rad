@@ -3,9 +3,11 @@
 import gc
 import os
 import sys
+from pathlib import Path
 
 import pytest
 
+from .cases import CASE_BY_ID, single_case, suite_cases
 from .runtime import environment_metadata, single_threaded
 
 _BENCHMARK_GROUP_ORDER = {
@@ -33,6 +35,49 @@ def pytest_collection_modifyitems(session, config, items):
     for index, item in enumerate(items):
         _BENCHMARK_ITEM_ORDER[item.nodeid] = index
         _BENCHMARK_ITEM_ORDER[item.name] = index
+
+
+def pytest_collection_finish(session):
+    """Fail full named-suite collection if timing and memory IDs diverge."""
+    config = session.config
+    if not config.getoption('benchmark_only'):
+        return
+    benchmark_dir = Path(__file__).resolve().parent
+    ids = []
+    for item in session.items:
+        if Path(item.path).parent != benchmark_dir:
+            continue
+        test = item.originalname or item.name.split('[', 1)[0]
+        case = item.callspec.params.get('case') if hasattr(item, 'callspec') else single_case(test)
+        if case is None or case.test != test or CASE_BY_ID.get(case.identifier) != case:
+            raise pytest.UsageError(f'Unregistered benchmark case: {item.nodeid}')
+        group_marker = item.get_closest_marker('benchmark')
+        group = group_marker.kwargs.get('group') if group_marker else None
+        if (
+            group != case.group
+            or bool(item.get_closest_marker('benchmark_exhaustive')) != case.exhaustive
+            or bool(item.get_closest_marker('benchmark_slow')) != case.slow
+            or bool(item.get_closest_marker('benchmark_ibsi')) != case.group.startswith('ibsi')
+        ):
+            raise pytest.UsageError(f'Benchmark tier/group differs from registry: {item.nodeid}')
+        ids.append(case.identifier)
+    if len(ids) != len(set(ids)):
+        raise pytest.UsageError('Timing collection has duplicate benchmark workload IDs.')
+    if len(config.args) != 1 or Path(config.args[0]).resolve() != benchmark_dir:
+        return  # Focused native pytest selections need not collect a full tier.
+    marker = config.getoption('markexpr')
+    tier = {
+        '': 'exhaustive',
+        'not benchmark_exhaustive': 'standard',
+        'benchmark_ibsi': 'ibsi',
+    }.get(marker)
+    if tier is None:
+        return
+    expected = {case.identifier for case in suite_cases(tier)}
+    if set(ids) != expected:
+        missing = sorted(expected - set(ids))
+        extra = sorted(set(ids) - expected)
+        raise pytest.UsageError(f'{tier} timing/memory inventory differs: missing={missing}, extra={extra}.')
 
 
 @pytest.hookimpl(wrapper=True)
@@ -101,13 +146,6 @@ def measure(benchmark, timing_environment):
         return result
 
     return run
-
-
-@pytest.fixture(scope='session')
-def ct_pair(ibsi_ct_data_dir):
-    from .workloads import load_ct
-
-    return load_ct(ibsi_ct_data_dir)
 
 
 @pytest.fixture(scope='session')

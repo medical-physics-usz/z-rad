@@ -6,7 +6,6 @@ mutation. Filter metadata preparation is part of apply; output caching is absent
 
 from dataclasses import dataclass
 from functools import partial
-from pathlib import Path
 from typing import Callable
 
 import numpy as np
@@ -18,7 +17,6 @@ from zrad.preprocessing import (
     IntensityMaskBuilder,
     IVHIntensityDiscretizer,
     MaskResampler,
-    Pipeline,
     Resegmenter,
     RoiData,
     TextureDiscretizer,
@@ -27,7 +25,6 @@ from zrad.radiomics import Radiomics
 
 IMAGE_SHAPES = {'small': (32, 96, 96), 'medium': (64, 128, 128), 'large': (96, 192, 192)}
 ROI_SHAPES = {'small': (16, 24, 24), 'medium': (24, 40, 40), 'large': (40, 64, 64)}
-DATA = Path(__file__).resolve().parents[1] / 'data'
 
 
 @dataclass
@@ -436,93 +433,4 @@ def radiomics(size, family='all', aggregation=('3D', 'MERG')):
         ),
         rounds=5,
         setup=clear_radiomics_result_caches if family in ('all', 'local_intensity') else None,
-    )
-
-
-def load_ct(directory):
-    image = Image.from_dicom(directory / 'dicom/image', modality='CT')
-    mask = Image.from_dicom_mask(
-        reference=image, rtstruct_path=directory / 'dicom/mask/DCM_RS_00060.dcm', structure_name='GTV-1'
-    )
-    image.array.flags.writeable = mask.array.flags.writeable = False
-    return image, mask
-
-
-def ibsi(phase, pair):
-    # Reuse published reference selection/tolerances without invoking pytest tests.
-    from ibsi_helpers import load_references, matches_reference, select_ibsi_i_references
-
-    image, mask = pair
-    if phase == 'i':
-        references = select_ibsi_i_references(
-            load_references(
-                DATA / 'ibsi_1_reference_data/ibsi_1_reference_values_config_C.csv',
-                'tag',
-                'reference value',
-                delimiter=',',
-                phase='I',
-            ),
-            '3D',
-            'MERG',
-        )
-        value_key = 'reference value'
-        steps = Pipeline(
-            [
-                ('image', ImageResampler(resolution=(2, 2, 2), method='Linear', intensity_rounding='nearest_integer')),
-                ('mask', MaskResampler(resolution=(2, 2, 2), method='Linear', partial_volume_threshold=0.5)),
-                ('roi', IntensityMaskBuilder()),
-                ('range', Resegmenter(intensity_range=(-1000, 400))),
-                ('texture', TextureDiscretizer(bin_size=25)),
-                ('ivh', IVHIntensityDiscretizer(method='fixed_bin_size', bin_size=2.5)),
-            ]
-        )
-        extractor = Radiomics(aggr_dim='3D', aggr_method='MERG')
-        identifier = 'ibsi/i_config_c'
-    else:
-        references = load_references(
-            DATA / 'ibsi_2_reference_data/reference_feature_values/reference_values.csv',
-            'feature_tag',
-            'consensus_value',
-            delimiter=';',
-            phase='II',
-            config='3.B',
-        )
-        value_key = 'consensus_value'
-        steps = Pipeline(
-            [
-                ('image', ImageResampler(resolution=(1, 1, 1), method='BSpline', intensity_rounding='nearest_integer')),
-                ('mask', MaskResampler(resolution=(1, 1, 1), method='Linear', partial_volume_threshold=0.5)),
-                ('filter', LoG(padding_type='reflect', dimensionality='3D', sigma_mm=1.5, cutoff=4)),
-                ('roi', IntensityMaskBuilder()),
-                ('range', Resegmenter(intensity_range=(-1000, 400))),
-                ('texture', TextureDiscretizer(bin_size=25)),
-            ]
-        )
-        # Matches test_ibsi_ii_ph_ii_3b: 3D filtering, 2D/AVER feature aggregation.
-        extractor = Radiomics(aggr_dim='2D', aggr_method='AVER')
-        identifier = 'ibsi/ii_config_3b'
-    roi = RoiData(image=image, morphological_mask=mask)
-
-    def operation():
-        return extractor.extract_features(roi_data=steps.apply(roi))
-
-    def validate(result):
-        assert references
-        for tag, row in references.items():
-            assert tag in result, tag
-            assert matches_reference(result[tag], row[value_key], row['tolerance']), (tag, result[tag], row)
-
-    return Workload(
-        identifier,
-        operation,
-        validate,
-        metadata(
-            image,
-            mask,
-            dataset='IBSI CT radiomics phantom',
-            seed=None,
-            steps=steps.get_params(),
-            aggregation=f'{extractor.aggr_dim}/{extractor.aggr_method}',
-        ),
-        rounds=3,
     )

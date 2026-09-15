@@ -18,56 +18,33 @@ TESTS = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(TESTS))
 sys.path.insert(0, str(TESTS.parent))
 
+from benchmarks.cases import CASE_BY_ID, suite_cases  # noqa: E402
 from benchmarks.runtime import controlled_environment, environment_metadata, single_threaded  # noqa: E402
 
-WORKLOADS = ('resampling', 'filtering', 'radiomics', 'spatial', 'ibsi_i', 'ibsi_ii')
-MEMORY_SUITES = {
-    'standard': WORKLOADS,
-}
+MEMORY_SUITES = ('standard', 'ibsi', 'exhaustive')
 
 
 def exhaustive_names():
-    from ibsi_cases import ALL_IBSI_PERFORMANCE_CASES
-
-    return WORKLOADS + tuple(case.identifier for case in ALL_IBSI_PERFORMANCE_CASES)
+    return tuple(case.identifier for case in suite_cases('exhaustive'))
 
 
 def build_workload(name):
-    from benchmarks.workloads import filtering, ibsi, load_ct, radiomics, resampling
+    case = CASE_BY_ID[name]
+    if not name.startswith('ibsi/'):
+        return case.build()
+    from benchmarks.ibsi_workloads import load_ct_sources, load_ibsi_i_digital, load_ibsi_ii_phantoms
 
-    if name.startswith('ibsi_'):
-        return ibsi(name.removeprefix('ibsi_'), load_ct(TESTS / 'data/.cache/ibsi_ct_radiomics_phantom'))
-    if name.startswith('ibsi/'):
-        from ibsi_cases import IBSI_I_FEATURE_CASES, IBSI_II_FEATURE_CASES, IBSI_II_FILTER_CASES
-
-        from benchmarks.ibsi_workloads import (
-            ibsi_feature,
-            ibsi_filter,
-            load_ct_sources,
-            load_ibsi_i_digital,
-            load_ibsi_ii_phantoms,
-        )
-
-        cases = IBSI_I_FEATURE_CASES + IBSI_II_FILTER_CASES + IBSI_II_FEATURE_CASES
-        all_cases = {case.identifier: case for case in cases}
-        case = all_cases[name]
-        cache = TESTS / 'data/.cache'
-        if name.startswith('ibsi/ii/phase_i/'):
-            phantoms = load_ibsi_ii_phantoms(cache / 'ibsi_2_digital_phantom')
-            return ibsi_filter(case, phantoms, cache / 'ibsi_2_response_maps')
-        sources = {}
-        if case.image_source.startswith('ct_') or case.mask_source.startswith('ct_'):
-            sources.update(load_ct_sources(cache / 'ibsi_ct_radiomics_phantom'))
-        if case.image_source == 'i_digital':
-            sources.update(load_ibsi_i_digital(cache / 'ibsi_1_digital_phantom'))
-        return ibsi_feature(case, sources)
-    factories = {
-        'resampling': lambda: resampling('large', 'BSpline'),
-        'filtering': lambda: filtering('riesz_first', 'medium'),
-        'radiomics': lambda: radiomics('large'),
-        'spatial': lambda: radiomics('large', 'spatial'),
-    }
-    return factories[name]()
+    cache = TESTS / 'data/.cache'
+    if case.group == 'ibsi2_phase1':
+        phantoms = load_ibsi_ii_phantoms(cache / 'ibsi_2_digital_phantom')
+        return case.build(phantoms, cache / 'ibsi_2_response_maps')
+    sources = {}
+    reference = case.reference
+    if reference.image_source.startswith('ct_') or reference.mask_source.startswith('ct_'):
+        sources.update(load_ct_sources(cache / 'ibsi_ct_radiomics_phantom'))
+    if reference.image_source == 'i_digital':
+        sources.update(load_ibsi_i_digital(cache / 'ibsi_1_digital_phantom'))
+    return case.build(sources)
 
 
 def peak_rss_bytes():
@@ -86,6 +63,8 @@ def measure_child(args):
     with single_threaded():
         workload = build_workload(args.child)
         info = environment_metadata()
+        if workload.setup is not None:
+            workload.setup()
         before = peak_rss_bytes()
         if args.mode == 'memray':
             import memray
@@ -113,6 +92,7 @@ def measure_child(args):
         'python': platform.python_version(),
         'platform': platform.platform(),
         'metadata': {**info, **workload.metadata},
+        'memory_methodology_version': 2,
         **metric,
     }
 
@@ -121,7 +101,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--mode', choices=['rss', 'memray'], default='rss')
     parser.add_argument('--workload', action='append', dest='workloads')
-    parser.add_argument('--suite', choices=('standard', 'exhaustive'))
+    parser.add_argument('--suite', choices=MEMORY_SUITES)
     parser.add_argument('--repeats', type=int, default=1)
     parser.add_argument('--native', action='store_true', help='Native allocation stacks (Memray only).')
     parser.add_argument('--output', type=Path, default=Path('reports/benchmarks/memory.json'))
@@ -143,17 +123,11 @@ def main():
     available = set(exhaustive_names())
     if args.workloads and args.suite:
         parser.error('Use either --suite or explicit --workload selections.')
-    selected_suite = exhaustive_names() if args.suite == 'exhaustive' else MEMORY_SUITES.get(args.suite, WORKLOADS)
+    selected_suite = tuple(case.identifier for case in suite_cases(args.suite or 'standard'))
     names = list(args.workloads or selected_suite)
     unknown = sorted(set(names) - available)
     if unknown:
         parser.error('Unknown workload(s): ' + ', '.join(unknown))
-    if any(name.startswith('ibsi_') for name in names):
-        from conftest import _prepare_data_dir
-
-        cache = TESTS / 'data/.cache'
-        cache.mkdir(exist_ok=True)
-        _prepare_data_dir(TESTS / 'data/ibsi_ct_radiomics_phantom.zip', cache / 'ibsi_ct_radiomics_phantom')
     if any(name.startswith(('ibsi/i/', 'ibsi/ii/phase_ii/')) for name in names):
         from conftest import _prepare_data_dir
 

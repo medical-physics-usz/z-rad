@@ -1,58 +1,41 @@
 import pytest
 
-from .workloads import preprocessing, resampling, texture_fixed_bin_size
+from .cases import pytest_params, single_case
 
 pytestmark = pytest.mark.benchmark(group='preprocessing')
 
 
-@pytest.mark.parametrize('method,size', [
-    pytest.param('Linear', 'small', id='linear-small'),
-    pytest.param('Linear', 'medium', id='linear-medium'),
-    pytest.param('Linear', 'large', id='linear-large', marks=pytest.mark.benchmark_slow),
-    pytest.param('BSpline', 'small', id='bspline-small'),
-    pytest.param('BSpline', 'medium', id='bspline-medium'),
-    pytest.param('BSpline', 'large', id='bspline-large', marks=pytest.mark.benchmark_slow),
-    pytest.param('NN', 'medium', id='nearest_neighbor-medium'),
-    pytest.param('Gaussian', 'medium', id='gaussian-medium'),
-])
-def test_image_resampling_isotropic(benchmark, measure, method, size):
-    measure(resampling(size, method))
+@pytest.mark.parametrize('case', pytest_params('test_image_resampling_isotropic'))
+def test_image_resampling_isotropic(benchmark, measure, case):
+    measure(case.build())
 
 
-@pytest.mark.parametrize('method', [
-    pytest.param('NN', id='nearest_neighbor-medium'),
-    pytest.param('Linear', id='linear-medium'),
-    pytest.param('BSpline', id='bspline-medium'),
-    pytest.param('Gaussian', id='gaussian-medium'),
-])
-def test_mask_resampling_isotropic(benchmark, measure, method):
-    measure(resampling('medium', method, mask=True))
+@pytest.mark.parametrize('case', pytest_params('test_mask_resampling_isotropic'))
+def test_mask_resampling_isotropic(benchmark, measure, case):
+    measure(case.build())
 
 
-@pytest.mark.parametrize('method,size', [pytest.param('Linear', 'medium', id='linear-medium')])
-def test_image_resampling_in_plane(benchmark, measure, method, size):
-    measure(resampling(size, method, dimension='2D'))
+@pytest.mark.parametrize('case', pytest_params('test_image_resampling_in_plane'))
+def test_image_resampling_in_plane(benchmark, measure, case):
+    measure(case.build())
 
 
-@pytest.mark.parametrize('method', [
-    pytest.param('NN', id='nearest_neighbor-medium'),
-    pytest.param('Linear', id='linear-medium'),
-])
-def test_mask_resampling_in_plane(benchmark, measure, method):
-    measure(resampling('medium', method, mask=True, dimension='2D'))
+@pytest.mark.parametrize('case', pytest_params('test_mask_resampling_in_plane'))
+def test_mask_resampling_in_plane(benchmark, measure, case):
+    measure(case.build())
 
 
 def test_intensity_mask_building(benchmark, measure):
-    measure(preprocessing('roi'))
+    measure(single_case('test_intensity_mask_building').build())
 
 
 def test_range_and_outlier_resegmentation(benchmark, measure):
-    measure(preprocessing('resegment'))
+    measure(single_case('test_range_and_outlier_resegmentation').build())
 
 
 def test_texture_discretization_fixed_bin_number(benchmark, measure):
-    measure(preprocessing('discretize'))
+    measure(single_case('test_texture_discretization_fixed_bin_number').build())
 
 
 def test_texture_discretization_fixed_bin_size(benchmark, measure):
-    measure(texture_fixed_bin_size())
+    measure(single_case('test_texture_discretization_fixed_bin_size').build())

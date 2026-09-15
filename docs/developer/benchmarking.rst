@@ -155,8 +155,8 @@ importing the timing fixture.
 repository's digital phantoms and CT phantom, with
 GTV-1 RTSTRUCT for CT workflows. The 71 cases come from the shared registry;
 input, CSV, and response-map loading is outside timing, and published-reference
-validation happens after measurement. Configuration C and 3.B are also the
-memory CLI's named IBSI defaults; the memory runs are separate from pytest timing.
+validation happens after measurement. Configuration C and 3.B are selectable
+through their published registry workload IDs in both timing and memory.
 
 Sizes and scaling
 -----------------
@@ -186,9 +186,9 @@ megabyte-scale allocation and 3D computation; ROI-specific volumes bound expensi
 texture work while scaling from about 2,000 to 38,000 ROI voxels. These are selective
 patch/ROI workloads, not a claim to represent every scanner's full field of view.
 Real CT workflows supply the complementary larger, irregular workload.
-The timing suite runs complete fresh extraction and spatial statistics only at
-medium radiomics size. The small and large synthetic radiomics inputs remain
-available to workload factories and the separate memory CLI.
+The timing and memory suites run complete fresh extraction and spatial statistics
+only at medium radiomics size. Small and large synthetic radiomics inputs remain
+available to workload factories for future scaling studies.
 
 Stable ``extra_info.workload_id`` identifiers match timing and memory results.
 Metadata records shapes, ROI size/fraction, spacing, dtype, parameters, seed,
@@ -256,8 +256,7 @@ All filtering workloads now record their actual dimensionality, with Gabor
 identified as filtering on 2D planes.
 
 Suite version 5 removes the small and large complete fresh-extraction and spatial
-statistics timing cases. Their medium-size cases and the separate large-size
-memory workloads remain available. Older timing JSON may contain the four removed
+statistics timing cases. Their medium-size cases remain. Older timing JSON may contain the four removed
 rows; comparison reports treat them as unavailable in the current suite.
 
 Suite version 6 removes the synthetic ``pipeline/log_radiomics/large`` timing case
@@ -270,6 +269,13 @@ differences as unavailable workloads.
 Suite version 7 increases IBSI I feature workflows from one to three measured
 rounds. Their timed operation and workload IDs are unchanged, but newer timing
 JSON contains a preliminary within-run distribution instead of a single sample.
+
+Suite version 8 moves all 151 speed case declarations to a shared case registry
+used by timing collection and the memory CLI. ``standard`` selects 100 IDs,
+``ibsi`` selects 71, and ``exhaustive`` selects 151 in both runners. Existing
+workload IDs and speed measurement regions are unchanged. The older six-case
+memory selection and its aliases are removed. Memory setup hooks now run before each operation, matching
+the fresh-kernel and fresh-radiomics cache policy used by timing.
 
 SimpleITK and OpenCV have explicit thread APIs. OpenCV GCD builds require
 ``setNumThreads(0)`` to disable parallel regions; other backends use 1. The
@@ -387,8 +393,8 @@ latest published stable release, then the runner freezes its SHA for that job.
 It does not alter any saved accepted/release reference. Pull requests and pushes
 run ``standard``; manual dispatch selects any suite, and a weekly scheduled run uses
 ``exhaustive``. Exhaustive manual/scheduled runs also create a parallel isolated-
-process RSS artifact for all 71 published cases. The compatibility/coverage
-workflow remains separate.
+process RSS artifact for all 151 parity-matched cases, one sample each. The
+compatibility/coverage workflow remains separate.
 
 Artifacts retained for 30 days contain valid ``current.json``, ``master.json``,
 and ``release.json`` where available, installation/test logs, dependency lists,
@@ -417,13 +423,17 @@ Memory: separate metrics and processes
 
 Peak RSS is measured without pytest or timing instrumentation::
 
-    python tests/benchmarks/memory.py --mode rss --repeats 3 --output reports/benchmarks/rss-001.json
-    python tests/benchmarks/memory.py --mode rss --workload ibsi_i --workload ibsi_ii --output reports/benchmarks/rss-ibsi.json
+    python tests/benchmarks/memory.py --mode rss --suite standard --repeats 3 --output reports/benchmarks/rss-standard-001.json
+    python tests/benchmarks/memory.py --mode rss --suite ibsi --output reports/benchmarks/rss-ibsi-001.json
+    python tests/benchmarks/memory.py --mode rss --workload ibsi/i/c/3d/merg --workload ibsi/ii/phase_ii/3.b --output reports/benchmarks/rss-selected-001.json
     python tests/benchmarks/memory.py --mode rss --suite exhaustive --output reports/benchmarks/rss-exhaustive.json
 
-The default six workloads are large B-spline resampling, medium Riesz-LoG, large complete
-radiomics, large spatial statistics, IBSI I C and IBSI II 3.B. Each repetition
-executes in a **fresh subprocess**, with no warmup. Archive extraction occurs in
+The default is ``standard``. Parity-matched tiers use the same case IDs as
+``run.py``: 100 ``standard`` cases, 71 ``ibsi`` cases, and 151 ``exhaustive``
+cases. Their inputs, parameters, operation, setup hook, and validator come from
+the same case declaration. Join timing ``extra_info.workload_id`` to memory
+``measurements[].workload_id`` to inspect both metrics for a case.
+Each repetition executes in a **fresh subprocess**, with no warmup. Archive extraction occurs in
 the parent before any measured child starts. ``resource.getrusage(RUSAGE_SELF)``
 is sampled after computation and before validation/report serialization. Linux
 KiB values and macOS byte values are normalized to bytes.
@@ -433,20 +443,24 @@ of the workload**, including interpreter/native imports, loaded inputs and setup
 ``setup_peak_rss_bytes`` is the high-water mark immediately before computation;
 it is neither current RSS nor a number to subtract to obtain temporary allocation
 size. Setup may itself dominate a small operation. The maximum is not polluted by
-previous workloads because every sample has its own process/PID. Children do not
-spawn batch workers. A process tree would require a different measurement design.
-The named memory tiers expand this same fresh-process method; ``exhaustive`` adds
-all 71 registry cases. Use Memray only for selected cases after RSS screening.
+previous workloads because every sample has its own process/PID. A workload's
+setup hook, if any, runs once after input preparation and before the setup RSS
+snapshot. Children do not spawn batch workers. A process tree would require a
+different measurement design.
+The named memory tiers use this same fresh-process method. RSS remains a cold-process
+high-water mark, while speed uses an unmeasured warmup and several timed rounds;
+equal workload IDs mean equal case definitions, not interchangeable metrics.
+Use Memray only for selected cases after RSS screening.
 This backend supports Linux/macOS; Windows timing remains usable and optional
 profiling dependencies are excluded there.
 
 For allocation attribution, install the optional profiling extra::
 
     python -m pip install -e '.[test,profiling]'
-    python tests/benchmarks/memory.py --mode memray --workload ibsi_ii --output reports/benchmarks/alloc-ibsi-001.json
-    python tests/benchmarks/memory.py --mode memray --native --workload spatial --output reports/benchmarks/alloc-spatial-001.json
-    python -m memray stats reports/benchmarks/alloc-spatial-001-spatial-0.memray
-    python -m memray flamegraph reports/benchmarks/alloc-spatial-001-spatial-0.memray
+    python tests/benchmarks/memory.py --mode memray --workload ibsi/ii/phase_ii/3.b --output reports/benchmarks/alloc-ibsi-001.json
+    python tests/benchmarks/memory.py --mode memray --native --workload radiomics/spatial/medium --output reports/benchmarks/alloc-spatial-001.json
+    python -m memray stats reports/benchmarks/alloc-spatial-001-radiomics-spatial-medium-0.memray
+    python -m memray flamegraph reports/benchmarks/alloc-spatial-001-radiomics-spatial-medium-0.memray
 
 Memray's tracker wraps **only one operation after input preparation**, in its own
 fresh child. It captures Python and native heap allocations. ``--native`` adds
@@ -465,10 +479,12 @@ tracking provides the desired narrower region with one optional dependency.
 Memray remains limited to Linux/macOS and is never a normal runtime dependency.
 
 Memory JSON has ``schema_version: 1`` and a ``measurements`` list: stable workload
-ID, commit, working-tree dirty flag, PID, timestamp, Python/platform, workload/environment metadata, and
-one mode-specific metric. All repetitions remain separate; no timing schema is
-repurposed. Existing output paths are refused. Peak RSS is suitable for an initial
-platform-specific longitudinal series; characterize variance before gating it.
+ID, commit, working-tree dirty flag, PID, timestamp, Python/platform,
+workload/environment metadata, ``memory_methodology_version`` (2 for
+setup-before-operation), and one mode-specific metric. All repetitions remain
+separate; no timing schema is repurposed. Existing output paths are refused.
+Peak RSS is suitable for an initial platform-specific longitudinal series;
+characterize variance before gating it.
 Memray results and captures are diagnostic allocation evidence, not substitute RSS.
 
 Initial observations and extending the suite
@@ -478,7 +494,7 @@ Before the suite-version-2 cache correction, local verification on macOS/Apple S
 Python 3.14.6, measured 20 fast
 cases in approximately 6.6 seconds and 11 slow cases in approximately 111 seconds
 (warmups/setup included in suite duration). IBSI medians were approximately 0.81 s
-and 24 s. Two fresh-process RSS observations ranged around 300 MiB for resampling,
+and 24 s. Earlier six-case fresh-process RSS observations ranged around 300 MiB for resampling,
 264 MiB Riesz-LoG, 241 MiB radiomics, 223 MiB spatial, 361 MiB IBSI I and 1.28 GiB
 IBSI II. These are development observations, **not versioned baselines**; Accelerate
 threading is unverified and dependencies/hardware differ from CI. Recheck on your
@@ -496,11 +512,13 @@ When adding a benchmark:
 4. Make repeated calls independent. Use read-only input arrays where possible;
    for mutating APIs use ``benchmark.pedantic(setup=...)`` to clone inputs outside
    each timed round. Never merely reset once before a multi-iteration round.
-5. Select meaningful sizes; measure their time/memory before enabling them by
-   default. Mark costly cases ``benchmark_slow`` and filesystem cases ``benchmark_io``.
-6. Include the explicit ``benchmark`` fixture in each test so native exclusion
-   works. Add a group, call ``measure``, run the test, and inspect the saved JSON.
-7. Add the shared factory to the memory CLI only if its allocations matter.
+5. Add the case and its parameters to ``tests/benchmarks/cases.py``. The named
+   tiers then select the same ID in timing and memory. Mark costly cases
+   ``benchmark_slow`` and filesystem cases ``benchmark_io`` as appropriate.
+6. Include the explicit ``benchmark`` fixture in each timing test so native
+   exclusion works. Call ``measure(case.build())`` using the registry case,
+   run the test, and inspect the saved JSON.
+7. Run the case once in isolated RSS mode and check its setup policy and validator.
    Keep memory instrumentation out of authoritative timing runs.
 
 The current matrix includes selected Laws/Gabor, Simoncelli, and Riesz paths;

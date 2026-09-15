@@ -20,7 +20,9 @@ from zrad.preprocessing import (
 )
 from zrad.radiomics import Radiomics
 
-from .workloads import DATA, Workload, clear_radiomics_result_caches, metadata
+from .workloads import Workload, clear_radiomics_result_caches, metadata
+
+DATA = Path(__file__).resolve().parents[1] / 'data'
 
 
 def _read_only(*images):

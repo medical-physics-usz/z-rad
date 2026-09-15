@@ -4,11 +4,12 @@ import json
 from types import SimpleNamespace
 
 import pytest
+from benchmarks.cases import ALL_CASES, CASE_BY_ID, pytest_params, suite_cases
 from benchmarks.compare_results import exhaustive_ibsi_coverage, median_change, render_comparison
 from benchmarks.compare_revisions import write_summary
 from benchmarks.conftest import measure, pytest_configure
-from benchmarks.memory import exhaustive_names
-from benchmarks.suites import marker_for_suite
+from benchmarks.memory import MEMORY_SUITES, exhaustive_names
+from benchmarks.suites import SUITE_MARKERS, marker_for_suite
 from ibsi_cases import ALL_IBSI_PERFORMANCE_CASES, IBSI_I_FEATURE_CASES, IBSI_II_FEATURE_CASES, IBSI_II_FILTER_CASES
 
 pytestmark = pytest.mark.unit
@@ -42,8 +43,22 @@ def test_exhaustive_coverage_reports_registry_cases():
 
 def test_exhaustive_memory_inventory_includes_every_registry_case():
     names = exhaustive_names()
-    assert len(names) == len(set(names)) == 77
+    assert len(names) == len(set(names)) == 151
     assert {case.identifier for case in ALL_IBSI_PERFORMANCE_CASES} < set(names)
+
+
+def test_memory_and_timing_case_inventory_has_named_tier_parity():
+    assert len(ALL_CASES) == len(CASE_BY_ID) == 151
+    assert set(MEMORY_SUITES) == set(SUITE_MARKERS) == {'standard', 'ibsi', 'exhaustive'}
+    for tier, count in [('standard', 100), ('ibsi', 71), ('exhaustive', 151)]:
+        cases = suite_cases(tier)
+        assert len(cases) == count
+        assert len({case.identifier for case in cases}) == count
+    assert {case.identifier for case in suite_cases('exhaustive')} == set(exhaustive_names())
+    for test in {case.test for case in ALL_CASES if case.pytest_id}:
+        assert {param.values[0].identifier for param in pytest_params(test)} == {
+            case.identifier for case in ALL_CASES if case.test == test
+        }
 
 
 def timing_config(**overrides):

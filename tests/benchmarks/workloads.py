@@ -123,6 +123,49 @@ def resampling(size, method='Linear', target=False, mask=False):
     )
 
 
+def target_grid_alignment(size):
+    image, roi_mask = synthetic_pair(IMAGE_SHAPES[size])
+    spacing = (1.5, 1.5, 1.5)
+    source_extent = np.array(image.shape) * np.array(image.spacing)
+    target_shape = np.ceil(source_extent / spacing * (1.1, 0.9, 1.0)).astype(int)
+    target_origin = tuple(source_extent * (0.15, -0.1, 0.2))
+    target_array = np.zeros(tuple(target_shape[::-1]), dtype=np.float64)
+    target_array.flags.writeable = False
+    target = Image(
+        array=target_array,
+        origin=target_origin,
+        spacing=spacing,
+        direction=image.direction,
+        shape=tuple(target_shape),
+    )
+    background = float(np.nanmin(image.array))
+
+    def validate(result):
+        validate_image(result, target_array.shape)
+        assert tuple(result.origin) == target.origin
+        assert tuple(result.spacing) == target.spacing
+        assert tuple(result.direction) == target.direction
+        assert tuple(result.shape) == target.shape
+        assert result.array[0, 0, 0] == background
+        assert result.array[-1, -1, -1] == background
+        assert result.array[tuple(dimension // 2 for dimension in result.array.shape)] > background
+
+    return Workload(
+        f'image/target_partial_overlap_linear/{size}',
+        partial(image.resample_to_target, target),
+        validate,
+        metadata(
+            image,
+            roi_mask,
+            interpolation='Linear',
+            target_shape_zyx=list(target_array.shape),
+            target_origin_xyz_mm=list(target_origin),
+            target_spacing_xyz_mm=list(spacing),
+        ),
+        rounds=5 if size == 'large' else 7,
+    )
+
+
 def preprocessing(operation):
     image, mask = synthetic_pair(IMAGE_SHAPES['medium'])
     roi = RoiData(image=image, morphological_mask=mask)

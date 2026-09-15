@@ -97,9 +97,12 @@ importing the timing fixture.
      - Measured operation
      - Outside timing
    * - image
-     - ``Image.resample_to_target`` with linear interpolation at three sizes;
+     - ``Image.resample_to_target`` with linear interpolation at three sizes on
+       both a source-derived grid and an independently constructed grid with a
+       shifted origin, different field of view, and partial source overlap;
        includes the API's array/SimpleITK conversions and output construction
-     - Source and target grid construction
+     - Source and target grid construction; target geometry and background-fill
+       validation
    * - preprocessing
      - ``ImageResampler.apply`` (linear and B-spline), linear mask resampling;
        separately intensity ROI construction, range/outlier re-segmentation,

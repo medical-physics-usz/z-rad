@@ -139,24 +139,27 @@ importing the timing fixture.
      - Image/mask resampling to 1.5 mm, LoG, ROI building, re-segmentation,
        texture/IVH discretization, complete radiomics extraction
      - Synthetic inputs, pipeline and extractor construction
-   * - ibsi
-     - IBSI I configuration C: linear image/mask resampling to 2 mm, CT rounding,
-       range [-1000, 400], texture width 25, IVH width 2.5, 3D/MERG extraction
-     - CT/RTSTRUCT loading, extraction, reference CSV loading, published-tolerance
-       checks. Checks use ``ibsi_helpers`` and the same selection as correctness tests
-   * - ibsi
-     - IBSI II phase II configuration 3.B: 1 mm B-spline image/linear mask,
-       CT rounding, 3D LoG sigma 1.5 mm, ROI/range/width-25 preparation, extraction
-     - Same setup/validation exclusions as IBSI I. The existing correctness
-       workflow uses **2D/AVER features after 3D filtering**; this is preserved
+   * - ibsi1
+     - All 20 published IBSI I feature/aggregation workflows, including their
+       configured preprocessing and radiomics extraction
+     - Digital-phantom or CT/RTSTRUCT loading, pipeline/extractor construction,
+       reference CSV loading, and published-tolerance checks
+   * - ibsi2_phase1
+     - ``apply`` for all 33 published IBSI II phase-I filter response maps
+     - Digital-phantom and reference response-map loading, filter construction,
+       and response-map validation
+   * - ibsi2_phase2
+     - All 18 published IBSI II phase-II feature workflows, including configured
+       resampling, filtering, ROI preparation, and radiomics extraction
+     - CT/RTSTRUCT loading, pipeline/extractor construction, reference CSV
+       loading, and published-tolerance checks
 
-IBSI uses the repository's CT phantom and GTV-1 RTSTRUCT, reusing session-loaded
-inputs. In the standard suite, configuration C covers calibrated-intensity full
-extraction and 3.B covers resampling, filtering and filtered-image feature
-extraction. These remain compact representative signals. The exhaustive tier
-additionally builds every published case from the shared registry, times
-computation only, and applies the same reference validation after measurement.
-Dataset, CSV and response-map loading is excluded from timing.
+These IBSI timing groups run only in ``ibsi`` or ``exhaustive``; ``standard``
+excludes them. They use the repository's digital phantoms and CT phantom, with
+GTV-1 RTSTRUCT for CT workflows. The 71 cases come from the shared registry;
+input, CSV, and response-map loading is outside timing, and published-reference
+validation happens after measurement. Configuration C and 3.B are also the
+memory CLI's named IBSI defaults, but are not extra standard pytest timing cases.
 
 Sizes and scaling
 -----------------
@@ -198,12 +201,13 @@ Rounds, state, threads, and statistics
 --------------------------------------
 
 Most operations run seven measured calls; expensive scaling/radiomics cases
-use five; pipeline and representative IBSI use three. Exhaustive IBSI feature
-workflows use one screening round and phase-I filters use three. Each has one unmeasured warmup and one
-iteration per round. This bounds the costly 3D work. Initial measurements found
-the fast suite took seconds, whereas a single IBSI II call took tens of seconds;
-automatic calibration of that workflow would provide little benefit. Three
-IBSI rounds give only a preliminary distribution, not a precise confidence bound.
+use five; the synthetic pipeline and IBSI II phase-I filters use three. IBSI
+feature workflows use one screening round. Each has one unmeasured warmup and
+one iteration per round. This bounds the costly 3D work. Initial measurements
+found the fast suite took seconds, whereas a single IBSI II call took tens of
+seconds; automatic calibration of that workflow would provide little benefit.
+Three-round workloads give only a preliminary distribution, not a precise
+confidence bound.
 To characterize noise, repeat entire runs and, if justified, increase the specific
 workload's rounds. Native ``--benchmark-min-rounds`` does not override pedantic rounds.
 

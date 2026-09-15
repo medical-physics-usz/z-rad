@@ -227,3 +227,24 @@ def test_fresh_extraction_recomputes_local_means_in_every_round(monkeypatch):
     assert convolution_counts == [2] * (workload.rounds + 1)
     assert cache_hits == [False] * (workload.rounds + 1)
     assert workload.identifier == 'radiomics/all_fresh/small'
+
+
+def test_gabor_operation_rebuilds_kernels_after_each_round_setup():
+    from benchmarks.workloads import filtering
+
+    workload = filtering('gabor_fixed', 'small')
+    flt = workload.operation.func.__self__
+    assert workload.setup is not None
+
+    workload.setup()
+    workload.validate(workload.operation())
+    first = flt._make_kernels.cache_info()
+    assert first.misses == 1 and first.hits == 0
+
+    workload.operation()
+    assert flt._make_kernels.cache_info().hits == 1
+
+    workload.setup()
+    workload.validate(workload.operation())
+    second = flt._make_kernels.cache_info()
+    assert second.misses == 1 and second.hits == 0

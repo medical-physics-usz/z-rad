@@ -119,10 +119,15 @@ importing the timing fixture.
        both modes use the same 3D SimpleITK filter with different output grids.
        Output shape and voxel count are recorded for each case
    * - filtering
-     - ``apply`` for 3D mean (support 5), LoG (sigma 2 mm, cutoff 4), db3 HHL
-       wavelet (level 1), and first-order Riesz-LoG; reflect padding
-     - Image generation and filter construction. Metadata preparation and array
-       conversions performed by ``apply`` remain included
+     - ``apply`` for matched 2D/3D Mean and LoG paths, rotation and level
+       choices for db3 wavelets, plain versus rotation-invariant energy-map
+       Laws, fixed versus rotated/three-plane Gabor on the same small input,
+       periodic/nearest and 2D/3D Simoncelli, and first-/second-order Riesz-LoG
+       with optional structure-tensor alignment
+     - Synthetic image generation and filter construction. Gabor kernel caches
+       are cleared before every warmup and measured call, outside timing;
+       kernel generation during ``apply`` is included. Array conversions and
+       output construction performed by ``apply`` remain included
    * - radiomics
      - Complete fresh-image ``families='all'`` extraction; all 11 feature families
        separately; every IBSI texture aggregation path; and selected Moran's
@@ -226,8 +231,12 @@ outside timing. Inspection found no other module-level or identity-based
 radiomics result cache affecting this workload.
 
 Selected filters do not cache output volumes. LoG updates spacing-derived scalar
-state in ``apply``; the same geometry is used every round. Decoded PET pixels are
-cached explicitly in setup. Warmup absorbs library initialization; complete
+state in ``apply``; the same geometry is used every round. Gabor's kernel cache is
+reset in per-round setup, so operation-only Gabor cases measure fresh kernel
+generation even after warmup. The level-2 2D separable wavelet currently
+evaluates four rotations regardless of its ``rotation_invariance`` parameter;
+its workload metadata records the effective count. Decoded PET pixels are cached
+explicitly in setup. Warmup absorbs library initialization; complete
 radiomics keeps image-derived results uncached. These runs do not measure cold
 interpreter/import or cold filesystem latency. All allocations and Python object
 construction performed by the operation stay included. Garbage collection stays enabled.
@@ -246,6 +255,14 @@ signals, and the 71 registry-driven IBSI workload IDs. It also replaces the
 combined ``radiomics/texture/medium`` signal with individual texture-family
 measurements. Treat absent version-3 rows in older JSON as unavailable rather
 than unchanged performance.
+
+Suite version 4 redesigns the synthetic filtering group around matched paths,
+changes Gabor operation timings to fresh-kernel calls, and leaves dedicated
+volume-scaling studies out of this group. Old ``filtering/*`` results should
+not be compared with version-4 rows by test name: some parameters and timed
+cache states changed.
+All filtering workloads now record their actual dimensionality, with Gabor
+identified as filtering on 2D planes.
 
 SimpleITK and OpenCV have explicit thread APIs. OpenCV GCD builds require
 ``setNumThreads(0)`` to disable parallel regions; other backends use 1. The

@@ -63,7 +63,7 @@ def build_workload(name):
         return ibsi_feature(case, sources)
     factories = {
         'resampling': lambda: resampling('large', 'BSpline'),
-        'filtering': lambda: filtering('riesz', 'medium'),
+        'filtering': lambda: filtering('riesz_first', 'medium'),
         'radiomics': lambda: radiomics('large'),
         'spatial': lambda: radiomics('large', 'spatial'),
     }

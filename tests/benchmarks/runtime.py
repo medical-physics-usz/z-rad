@@ -80,5 +80,5 @@ def environment_metadata():
         'zrad_version': zrad.__version__,
         'zrad_path': str(Path(zrad.__file__).resolve()),
         'dependencies': {dist.metadata['Name']: dist.version for dist in distributions()},
-        'suite_version': 3,
+        'suite_version': 4,
     }

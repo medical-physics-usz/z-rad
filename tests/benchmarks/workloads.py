@@ -244,19 +244,48 @@ def texture_fixed_bin_size():
 def filtering(kind, size):
     image, _ = synthetic_pair(IMAGE_SHAPES[size])
     filters = {
-        'mean': lambda: Mean(padding_type='reflect', support=5, dimensionality='3D'),
-        'log': lambda: LoG(padding_type='reflect', sigma_mm=2.0, cutoff=4, dimensionality='3D'),
-        'wavelet': lambda: Wavelets3D(
+        'mean_3d': lambda: Mean(padding_type='reflect', support=5, dimensionality='3D'),
+        'mean_2d': lambda: Mean(padding_type='reflect', support=5, dimensionality='2D'),
+        'log_3d': lambda: LoG(padding_type='reflect', sigma_mm=2.0, cutoff=4, dimensionality='3D'),
+        'log_2d': lambda: LoG(padding_type='reflect', sigma_mm=2.0, cutoff=4, dimensionality='2D'),
+        'wavelet_3d': lambda: Wavelets3D(
             wavelet_type='db3',
             padding_type='reflect',
             response_map='HHL',
             decomposition_level=1,
             rotation_invariance=False,
         ),
-        'riesz': lambda: RieszLoG(
-            padding_type='reflect', sigma_mm=2.0, cutoff=4, dimensionality='3D', riesz_order=(1, 0, 0)
+        'wavelet_3d_rot': lambda: Wavelets3D(
+            wavelet_type='db3',
+            padding_type='reflect',
+            response_map='HHL',
+            decomposition_level=1,
+            rotation_invariance=True,
         ),
-        'laws': lambda: Laws(
+        'wavelet_2d_l1': lambda: Wavelets2D(
+            wavelet_type='db3',
+            padding_type='reflect',
+            response_map='LH',
+            decomposition_level=1,
+            rotation_invariance=True,
+        ),
+        'wavelet_2d_l2': lambda: Wavelets2D(
+            wavelet_type='db3',
+            padding_type='reflect',
+            response_map='LH',
+            decomposition_level=2,
+            rotation_invariance=False,
+        ),
+        'laws_plain': lambda: Laws(
+            response_map='E3W5R5',
+            padding_type='reflect',
+            dimensionality='3D',
+            rotation_invariance=False,
+            pooling=None,
+            energy_map=False,
+            distance=7,
+        ),
+        'laws_rot_energy': lambda: Laws(
             response_map='E3W5R5',
             padding_type='reflect',
             dimensionality='3D',
@@ -265,7 +294,17 @@ def filtering(kind, size):
             energy_map=True,
             distance=7,
         ),
-        'gabor': lambda: Gabor(
+        'gabor_fixed': lambda: Gabor(
+            padding_type='reflect',
+            res_mm=1.0,
+            sigma_mm=5.0,
+            lambda_mm=2.0,
+            gamma=1.5,
+            theta=np.pi / 8,
+            rotation_invariance=False,
+            orthogonal_planes=False,
+        ),
+        'gabor_rot_plane': lambda: Gabor(
             padding_type='reflect',
             res_mm=1.0,
             sigma_mm=5.0,
@@ -275,27 +314,78 @@ def filtering(kind, size):
             rotation_invariance=True,
             orthogonal_planes=False,
         ),
-        'wavelet_2d': lambda: Wavelets2D(
-            wavelet_type='db3',
+        'gabor_rot_orthogonal': lambda: Gabor(
             padding_type='reflect',
-            response_map='LH',
-            decomposition_level=2,
+            res_mm=1.0,
+            sigma_mm=5.0,
+            lambda_mm=2.0,
+            gamma=1.5,
+            theta=np.pi / 8,
             rotation_invariance=True,
+            orthogonal_planes=True,
         ),
-        'simoncelli': lambda: Simoncelli(
-            padding_type='periodic', decomposition_level=2, dimensionality='3D'
+        'simoncelli_wrap_3d': lambda: Simoncelli(padding_type='periodic', decomposition_level=2, dimensionality='3D'),
+        'simoncelli_nearest_3d': lambda: Simoncelli(padding_type='nearest', decomposition_level=2, dimensionality='3D'),
+        'simoncelli_wrap_2d': lambda: Simoncelli(padding_type='periodic', decomposition_level=2, dimensionality='2D'),
+        'simoncelli_riesz': lambda: Simoncelli(
+            padding_type='periodic', decomposition_level=2, dimensionality='3D', riesz_order=(0, 2, 0)
         ),
-        'riesz_simoncelli': lambda: Simoncelli(
-            padding_type='periodic', decomposition_level=1, dimensionality='3D', riesz_order=(0, 2, 0)
+        'riesz_first': lambda: RieszLoG(
+            padding_type='reflect', sigma_mm=2.0, cutoff=4, dimensionality='3D', riesz_order=(1, 0, 0)
+        ),
+        'riesz_second': lambda: RieszLoG(
+            padding_type='reflect', sigma_mm=2.0, cutoff=4, dimensionality='3D', riesz_order=(2, 0, 0)
+        ),
+        'riesz_aligned': lambda: RieszLoG(
+            padding_type='reflect',
+            sigma_mm=2.0,
+            cutoff=4,
+            dimensionality='3D',
+            riesz_order=(2, 0, 0),
+            structure_tensor_sigma_mm=1.0,
         ),
     }
     flt = filters[kind]()
+    filter_params = flt.get_params()
+
+    def validate(result):
+        validate_image(result, image.array.shape)
+        assert tuple(result.origin) == tuple(image.origin)
+        assert tuple(result.spacing) == tuple(image.spacing)
+        assert tuple(result.direction) == tuple(image.direction)
+        assert tuple(result.shape) == tuple(image.shape)
+
+    expensive = {
+        'wavelet_3d_rot',
+        'laws_rot_energy',
+        'gabor_rot_plane',
+        'gabor_rot_orthogonal',
+        'simoncelli_nearest_3d',
+        'riesz_first',
+        'riesz_second',
+        'riesz_aligned',
+    }
+    setup = flt._make_kernels.cache_clear if isinstance(flt, Gabor) else None
+    extra = {}
+    if isinstance(flt, Gabor):
+        extra['gabor_kernel_state'] = 'fresh_each_round'
+    if kind == 'wavelet_2d_l2':
+        extra['effective_rotation_count'] = 4
+    rounds = (
+        3 if kind in {'laws_rot_energy', 'gabor_rot_orthogonal', 'riesz_aligned'} else (5 if kind in expensive else 7)
+    )
     return Workload(
         f'filtering/{kind}/{size}',
         partial(flt.apply, image),
-        partial(validate_image, expected_shape=image.array.shape),
-        metadata(image, filter=flt.get_params()),
-        rounds=5 if size == 'large' or kind in {'laws', 'gabor'} else 7,
+        validate,
+        metadata(
+            image,
+            dimensionality=filter_params.get('dimensionality', '2D planes'),
+            filter=filter_params,
+            **extra,
+        ),
+        rounds=rounds,
+        setup=setup,
     )
 
 

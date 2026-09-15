@@ -8,6 +8,57 @@ import pytest
 
 from .runtime import environment_metadata, single_threaded
 
+_BENCHMARK_GROUP_ORDER = {
+    'image': 0,
+    'preprocessing': 1,
+    'filtering': 2,
+    'radiomics': 3,
+    'pipeline': 4,
+    'pet_suv': 5,
+    'ibsi1': 6,
+    'ibsi2_phase1': 7,
+    'ibsi2_phase2': 8,
+}
+_BENCHMARK_ITEM_ORDER = {}
+
+
+def pytest_collection_modifyitems(session, config, items):
+    """Keep benchmark output in a stable, workload-oriented order."""
+
+    def sort_key(item):
+        marker = item.get_closest_marker('benchmark')
+        group = marker.kwargs.get('group') if marker else None
+        return _BENCHMARK_GROUP_ORDER.get(group, len(_BENCHMARK_GROUP_ORDER))
+
+    items.sort(key=sort_key)
+    _BENCHMARK_ITEM_ORDER.clear()
+    for index, item in enumerate(items):
+        _BENCHMARK_ITEM_ORDER[item.nodeid] = index
+        _BENCHMARK_ITEM_ORDER[item.name] = index
+
+
+@pytest.hookimpl(wrapper=True)
+def pytest_benchmark_group_stats(config, benchmarks, group_by):
+    """Keep the console report aligned with benchmark collection order."""
+
+    outcome = yield
+    if group_by != 'group':
+        return
+
+    groups = list(outcome.get_result() if hasattr(outcome, 'get_result') else outcome)
+    fallback = len(_BENCHMARK_ITEM_ORDER)
+    for _, grouped_benchmarks in groups:
+        grouped_benchmarks.sort(
+            key=lambda benchmark: _BENCHMARK_ITEM_ORDER.get(
+                benchmark.get('fullname') or benchmark.get('name'), fallback
+            )
+        )
+    groups.sort(key=lambda pair: _BENCHMARK_GROUP_ORDER.get(pair[0], len(_BENCHMARK_GROUP_ORDER)))
+    if hasattr(outcome, 'force_result'):
+        outcome.force_result(groups)
+    else:
+        return groups
+
 
 def pytest_configure(config):
     if not config.getoption('benchmark_only'):

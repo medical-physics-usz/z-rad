@@ -201,11 +201,12 @@ Rounds, state, threads, and statistics
 --------------------------------------
 
 Most operations run seven measured calls; expensive scaling/radiomics cases
-use five; IBSI II phase-I filters use three. IBSI
-feature workflows use one screening round. Each has one unmeasured warmup and
-one iteration per round. This bounds the costly 3D work. Initial measurements
-found the fast suite took seconds, whereas a single IBSI II call took tens of
-seconds; automatic calibration of that workflow would provide little benefit.
+use five; IBSI I feature workflows and IBSI II phase-I filters use three;
+IBSI II phase-II feature workflows use one screening round. Each has one
+unmeasured warmup and one iteration per round. This bounds the costly 3D work.
+Initial measurements found the fast suite took seconds, whereas a single IBSI II
+call took tens of seconds; automatic calibration of that workflow would provide
+little benefit.
 Three-round workloads give only a preliminary distribution, not a precise
 confidence bound.
 To characterize noise, repeat entire runs and, if justified, increase the specific
@@ -265,6 +266,10 @@ runs all 71 published cases; ``exhaustive`` adds ``ibsi2_phase1`` and
 ``ibsi2_phase2`` to ``standard``. Older timing JSON may lack the newly standard
 IBSI I rows or contain the removed pipeline row; comparison reports treat those
 differences as unavailable workloads.
+
+Suite version 7 increases IBSI I feature workflows from one to three measured
+rounds. Their timed operation and workload IDs are unchanged, but newer timing
+JSON contains a preliminary within-run distribution instead of a single sample.
 
 SimpleITK and OpenCV have explicit thread APIs. OpenCV GCD builds require
 ``setNumThreads(0)`` to disable parallel regions; other backends use 1. The

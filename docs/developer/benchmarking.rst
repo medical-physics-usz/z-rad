@@ -201,8 +201,8 @@ Rounds, state, threads, and statistics
 --------------------------------------
 
 Most operations run seven measured calls; expensive scaling/radiomics cases
-use five; IBSI I feature workflows and IBSI II phase-I filters use three;
-IBSI II phase-II feature workflows use one screening round. Each has one
+use five; IBSI I feature workflows, IBSI II phase-I filters, and IBSI II
+phase-II feature workflows use three. Each has one
 unmeasured warmup and one iteration per round. This bounds the costly 3D work.
 Initial measurements found the fast suite took seconds, whereas a single IBSI II
 call took tens of seconds; automatic calibration of that workflow would provide
@@ -276,6 +276,10 @@ used by timing collection and the memory CLI. ``standard`` selects 100 IDs,
 workload IDs and speed measurement regions are unchanged. The older six-case
 memory selection and its aliases are removed. Memory setup hooks now run before each operation, matching
 the fresh-kernel and fresh-radiomics cache policy used by timing.
+
+Suite version 9 increases IBSI II phase-II feature workflows from one to three
+measured rounds. Their operation, setup, validation and workload IDs remain
+unchanged; the extra samples provide a preliminary within-run distribution.
 
 SimpleITK and OpenCV have explicit thread APIs. OpenCV GCD builds require
 ``setNumThreads(0)`` to disable parallel regions; other backends use 1. The

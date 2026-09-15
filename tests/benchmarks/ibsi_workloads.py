@@ -179,7 +179,7 @@ def ibsi_feature(case: IbsiFeatureCase, sources):
             reference_features=len(references),
             seed=None,
         ),
-        rounds=3 if case.phase == 'I' else 1,
+        rounds=3,
         setup=clear_radiomics_result_caches,
     )
 

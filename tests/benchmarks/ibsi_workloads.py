@@ -6,7 +6,7 @@ import numpy as np
 from ibsi_cases import IbsiFeatureCase, IbsiFilterCase
 from ibsi_helpers import load_references, matches_reference, select_ibsi_i_references
 
-from zrad.filtering import create_filter
+from zrad.filtering import Gabor, create_filter
 from zrad.image import Image
 from zrad.preprocessing import (
     ImageResampler,
@@ -150,6 +150,12 @@ def ibsi_feature(case: IbsiFeatureCase, sources):
     extractor = Radiomics(aggr_dim=case.aggregation[0], aggr_method=case.aggregation[1])
     references, value_key = _feature_references(case)
     roi = RoiData(image=image, morphological_mask=mask)
+    gabor = next((step for name, step in pipeline.steps if name == 'filter' and isinstance(step, Gabor)), None)
+
+    def setup():
+        clear_radiomics_result_caches()
+        if gabor is not None:
+            gabor._make_kernels.cache_clear()
 
     def operation():
         prepared = pipeline.apply(roi)
@@ -180,7 +186,7 @@ def ibsi_feature(case: IbsiFeatureCase, sources):
             seed=None,
         ),
         rounds=3,
-        setup=clear_radiomics_result_caches,
+        setup=setup,
     )
 
 
@@ -188,6 +194,7 @@ def ibsi_filter(case: IbsiFilterCase, phantoms, response_maps: Path):
     image = phantoms[case.phantom]
     expected = Image.from_nifti(response_maps / 'reference_response_maps' / case.response_map).array
     filtering = create_filter(filtering_method=case.filter_method, **dict(case.filter_params))
+    setup = filtering._make_kernels.cache_clear if isinstance(filtering, Gabor) else None
 
     def validate(result):
         actual = result.array
@@ -210,4 +217,5 @@ def ibsi_filter(case: IbsiFilterCase, phantoms, response_maps: Path):
             seed=None,
         ),
         rounds=3,
+        setup=setup,
     )

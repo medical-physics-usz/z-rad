@@ -263,3 +263,33 @@ def test_gabor_operation_rebuilds_kernels_after_each_round_setup():
     workload.validate(workload.operation())
     second = flt._make_kernels.cache_info()
     assert second.misses == 1 and second.hits == 0
+
+
+def test_ibsi_gabor_workloads_clear_kernels_before_each_round(monkeypatch, tmp_path):
+    from benchmarks import ibsi_workloads
+    from benchmarks.workloads import synthetic_pair
+
+    from zrad.filtering import Gabor
+
+    image, mask = synthetic_pair((2, 8, 8))
+    filter_case = next(case for case in IBSI_II_FILTER_CASES if case.config == '4.a.1')
+    feature_case = next(case for case in IBSI_II_FEATURE_CASES if case.config == '5.A')
+    monkeypatch.setattr(ibsi_workloads.Image, 'from_nifti', lambda path: image)
+    monkeypatch.setattr(ibsi_workloads, '_feature_references', lambda case: ({}, 'consensus_value'))
+
+    filter_workload = ibsi_workloads.ibsi_filter(filter_case, {filter_case.phantom: image}, tmp_path)
+    feature_workload = ibsi_workloads.ibsi_feature(
+        feature_case, {feature_case.image_source: (image, mask), feature_case.mask_source: (image, mask)}
+    )
+    assert filter_workload.setup is not None and feature_workload.setup is not None
+
+    gabor = Gabor(**dict(filter_case.filter_params))
+    try:
+        for workload in (filter_workload, feature_workload):
+            gabor._make_kernels.cache_clear()
+            gabor._make_kernels(gabor.theta, 3)
+            assert gabor._make_kernels.cache_info().currsize == 1
+            workload.setup()
+            assert gabor._make_kernels.cache_info().currsize == 0
+    finally:
+        gabor._make_kernels.cache_clear()

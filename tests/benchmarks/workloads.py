@@ -214,6 +214,33 @@ def preprocessing(operation):
     )
 
 
+def texture_fixed_bin_size():
+    image, mask = synthetic_pair(IMAGE_SHAPES['medium'])
+    roi = IntensityMaskBuilder().apply(RoiData(image=image, morphological_mask=mask))
+    roi = Resegmenter(intensity_range=(-50, 100)).apply(roi)
+    step = TextureDiscretizer(bin_size=25)
+
+    def validate(result):
+        values = result.texture_discretized_image.array
+        assert result.intensity_range == (-50.0, 100.0)
+        assert np.isfinite(values).any() and not np.isinf(values).any()
+        assert np.nanmin(values) == 1 and np.nanmax(values) == 7
+
+    return Workload(
+        'preprocessing/texture_fixed_bin_size_25/medium',
+        partial(step.apply, roi),
+        validate,
+        metadata(
+            image,
+            mask,
+            operation='texture_fixed_bin_size',
+            bin_size=25,
+            intensity_range=list(roi.intensity_range),
+            prepared_roi_voxels=int(np.isfinite(roi.intensity_mask.array).sum()),
+        ),
+    )
+
+
 def filtering(kind, size):
     image, _ = synthetic_pair(IMAGE_SHAPES[size])
     filters = {

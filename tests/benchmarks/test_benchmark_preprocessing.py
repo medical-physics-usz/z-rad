@@ -1,6 +1,6 @@
 import pytest
 
-from .workloads import preprocessing, resampling
+from .workloads import preprocessing, resampling, texture_fixed_bin_size
 
 pytestmark = pytest.mark.benchmark(group='preprocessing')
 
@@ -52,3 +52,7 @@ def test_range_and_outlier_resegmentation(benchmark, measure):
 
 def test_texture_discretization_fixed_bin_number(benchmark, measure):
     measure(preprocessing('discretize'))
+
+
+def test_texture_discretization_fixed_bin_size(benchmark, measure):
+    measure(texture_fixed_bin_size())

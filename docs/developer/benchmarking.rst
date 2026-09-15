@@ -109,9 +109,12 @@ importing the timing fixture.
        size; linear and B-spline image scaling at small and large sizes;
        medium in-plane linear image and nearest-neighbor/linear mask cases;
        separately intensity ROI construction, range/outlier re-segmentation,
-       and 32-bin texture discretization
+       32-bin fixed-bin-number texture discretization, and fixed-bin-size
+       texture discretization with width 25 and range anchor -50
      - Synthetic image/mask generation; resampler construction; preceding ROI
        preparation for the individual re-segmentation/discretization cases.
+       Fixed-bin-size texture preparation includes range re-segmentation before
+       timing, so only ``TextureDiscretizer.apply`` is measured.
        In-plane cases preserve the source z spacing on a multi-slice input;
        both modes use the same 3D SimpleITK filter with different output grids.
        Output shape and voxel count are recorded for each case

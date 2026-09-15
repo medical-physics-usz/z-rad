@@ -4,11 +4,10 @@ The correctness and performance suites consume these definitions so adding or
 changing a published configuration cannot silently update only one suite.
 """
 
+import math
 from dataclasses import dataclass
 from types import MappingProxyType
 from typing import Mapping
-
-import numpy as np
 
 
 @dataclass(frozen=True)
@@ -230,10 +229,10 @@ IBSI_II_FILTER_CASES = (
             n_stds=n_stds,
         )
         for config, padding, sigma, wave_length, gamma, theta, rotation, orthogonal, n_stds, phantom, filename in (
-            ('4.a.1', 'constant', 10.0, 4.0, 0.5, np.pi / 3, False, False, 11, 'impulse', '4_a_1-ValidCRM.nii'),
-            ('4.a.2', 'constant', 10.0, 4.0, 0.5, np.pi / 4, True, True, 11, 'impulse', '4_a_2-ValidCRM.nii'),
-            ('4.b.1', 'reflect', 20.0, 8.0, 2.5, 5 * np.pi / 4, False, False, None, 'sphere', '4_b_1-ValidCRM.nii'),
-            ('4.b.2', 'reflect', 20.0, 8.0, 2.5, np.pi / 8, True, True, None, 'sphere', '4_b_2-ValidCRM.nii'),
+            ('4.a.1', 'constant', 10.0, 4.0, 0.5, math.pi / 3, False, False, 11, 'impulse', '4_a_1-ValidCRM.nii'),
+            ('4.a.2', 'constant', 10.0, 4.0, 0.5, math.pi / 4, True, True, 11, 'impulse', '4_a_2-ValidCRM.nii'),
+            ('4.b.1', 'reflect', 20.0, 8.0, 2.5, 5 * math.pi / 4, False, False, None, 'sphere', '4_b_1-ValidCRM.nii'),
+            ('4.b.2', 'reflect', 20.0, 8.0, 2.5, math.pi / 8, True, True, None, 'sphere', '4_b_2-ValidCRM.nii'),
         )
     ),
     *(
@@ -315,7 +314,7 @@ _IBSI_II_PHASE_II_FILTERS = {
             sigma_mm=5.0,
             lambda_mm=2.0,
             gamma=1.5,
-            theta=np.pi / 8,
+            theta=math.pi / 8,
             rotation_invariance=True,
         ),
     ),

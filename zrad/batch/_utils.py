@@ -6,7 +6,7 @@ import joblib
 
 from ..exceptions import InvalidInputParametersError
 
-VALID_MODALITIES = ['CT', 'MRI', 'PET', 'MG', 'RTDOSE']
+VALID_MODALITIES = ['CT', 'MRI', 'PET', 'MG', 'US', 'RTDOSE']
 
 
 def normalize_optional_text(value) -> str | None:
@@ -45,7 +45,7 @@ def normalize_common_batch_options(batch) -> None:
     if batch.input_data_type not in ['dicom', 'nifti']:
         raise InvalidInputParametersError("input_data_type must be 'dicom' or 'nifti'.")
     if batch.modality not in VALID_MODALITIES:
-        raise InvalidInputParametersError("modality must be one of CT, MRI, PET, MG, or RTDOSE.")
+        raise InvalidInputParametersError("modality must be one of CT, MRI, PET, MG, US, or RTDOSE.")
     if not batch.input_directory.exists():
         raise InvalidInputParametersError(f"Input directory '{batch.input_directory}' does not exist.")
     if not batch.input_directory.is_dir():

@@ -51,6 +51,10 @@ IBSI fixtures unpack archived test data from ``tests/data/`` during test runs.
 When adding or changing test data, preserve the licensing and attribution
 information documented in ``tests/data/README.md``.
 
+Extracted archives are checked against their SHA-256 fingerprint and each
+member's CRC. Missing, modified, or outdated files trigger extraction under
+a process lock; a completion marker is written only after successful extraction.
+
 Numerical Assertions
 --------------------
 
@@ -59,6 +63,8 @@ explicit tolerances for floating point feature values so the expected precision
 is visible in the test. Use exact array checks only when exact values are part
 of the intended behavior, such as discrete masks, labels, or deterministic
 integer-valued arrays.
+
+.. _ibsi-benchmark-reports:
 
 IBSI Benchmark Reports
 ----------------------
@@ -84,6 +90,14 @@ in the same checkout and environment. This metadata does not authenticate an
 older or imported JUnit file. It is execution evidence, not a certification.
 The reference-coverage matrix and limitations are in :doc:`../ibsi/index`.
 
+.. _ibsi-reference-validation:
+
+IBSI Reference Validation
+-------------------------
+
+The :ref:`comparison rules <ibsi-comparison-rules>` define benchmark agreement.
+The following checks keep reference selection and precision handling explicit.
+
 Reference loaders reject empty selections, duplicate tags, unexpected blanks,
 non-finite references, and negative tolerances. Feature comparisons require
 all expected keys for the selected aggregation mode, independently of the
@@ -94,6 +108,37 @@ Invalid aggregation modes and modes without texture references fail selection.
 If a previously unavailable reference gains a value or tolerance, loading
 fails until its documented exception has been reviewed.
 
-Extracted archives are checked against their SHA-256 fingerprint and each
-member's CRC. Missing, modified, or outdated files trigger extraction under
-a process lock; a completion marker is written only after successful extraction.
+Trailing zeros in plain integer references are treated as place holders
+(thus ``1494.6`` matches ``1490`` at three significant figures). Decimal or
+scientific notation retains explicitly written precision; ``1.490e3`` records
+four significant figures. References containing more significant digits,
+such as a voxel count of ``125256``, retain those digits. A zero reference
+with zero tolerance requires an exact zero.
+
+.. _ibsi-supplemental-checks:
+
+Supplemental IBSI Checks
+------------------------
+
+``tests/test_ibsi_supplemental.py`` contains 53 cases using IBSI II digital
+assets. They exercise loading, geometry, and filter behavior independently
+of published consensus comparisons:
+
+* Nine DICOM/NIfTI geometry checks cover all supplied phantoms, including
+  orientation, noise, empty, and patterns 2 and 3. NIfTI images and the eight
+  supplied masks are loaded through Z-Rad; DICOM geometry is inspected through
+  SimpleITK. The formats have different origins and their voxel arrays agree
+  after reversing the slice axis; they are not identical physical grids.
+* Nine Z-Rad DICOM loading checks require successful decoding of the synthetic
+  CT series, checking voxel values, dimensions, spacing, direction, and origin.
+  Entirely nonnegative decoded CT intensities are accepted: intensity sign alone
+  does not establish whether HU conversion succeeded. SimpleITK applies the
+  declared DICOM rescaling; separate DICOM regression tests verify known slopes
+  and intercepts, including fractional and nonnegative outputs.
+* Twenty-four zero-input cases check mean, Laplacian-of-Gaussian, and signed
+  Laws filtering in 2D and 3D with constant, nearest, wrap, and reflect padding.
+* Two mean-filter cases compare orientation and noise outputs to explicit
+  periodic neighbourhood averages and check geometry and input preservation.
+* Nine directional Laws cases compare the orientation and pattern 2/3 outputs
+  with explicit three-tap convolution stencils along each axis. These check
+  axis assignment and response sign without using generated golden outputs.

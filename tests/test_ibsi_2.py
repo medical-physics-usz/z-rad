@@ -488,15 +488,11 @@ def test_ibsi_ii_ph_i_7(ibsi_ii_response_maps_dir, request, config, params_and_i
 @pytest.mark.parametrize('case', _phase_i_cases('8.'), ids=lambda case: case.config)
 def test_ibsi_ii_ph_i_8(ibsi_ii_response_maps_dir, checkerboard_phantom, case):
     filtering = create_filter(filtering_method=case.filter_method, **dict(case.filter_params))
-    _run_ph_i_case(
-        filtering, checkerboard_phantom, case.response_map, case.config, ibsi_ii_response_maps_dir
-    )
+    _run_ph_i_case(filtering, checkerboard_phantom, case.response_map, case.config, ibsi_ii_response_maps_dir)
 
 
 @pytest.mark.integration
-@pytest.mark.parametrize(
-    'case', _phase_i_cases('9.'), ids=lambda case: case.config
-)
+@pytest.mark.parametrize('case', _phase_i_cases('9.'), ids=lambda case: case.config)
 def test_ibsi_ii_ph_i_9(ibsi_ii_response_maps_dir, request, case):
     filtering = create_filter(filtering_method=case.filter_method, **dict(case.filter_params))
     phantom = request.getfixturevalue(f'{case.phantom}_phantom')

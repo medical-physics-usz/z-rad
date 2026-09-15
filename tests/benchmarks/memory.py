@@ -142,9 +142,7 @@ def main():
         cache = TESTS / 'data/.cache'
         cache.mkdir(exist_ok=True)
         _prepare_data_dir(TESTS / 'data/ibsi_2_digital_phantom.zip', cache / 'ibsi_2_digital_phantom')
-        _prepare_data_dir(
-            TESTS / 'data/ibsi_2_reference_data/ibsi_2_response_maps.zip', cache / 'ibsi_2_response_maps'
-        )
+        _prepare_data_dir(TESTS / 'data/ibsi_2_reference_data/ibsi_2_response_maps.zip', cache / 'ibsi_2_response_maps')
     commit = subprocess.run(['git', 'rev-parse', 'HEAD'], cwd=TESTS.parent, capture_output=True, text=True, check=False)
     commit = os.environ.get('ZRAD_BENCHMARK_COMMIT', commit.stdout.strip() or 'unknown')
     status = subprocess.run(

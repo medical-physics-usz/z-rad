@@ -115,9 +115,7 @@ _IBSI_I_CONFIGS = {
         mask_source='ct_nifti',
         resampling_dim='3D',
         image_interpolation='Linear',
-        preparation=dict(
-            intensity_range=(-1000, 400), bin_size=25, ivh_method='fixed_bin_size', ivh_bin_size=2.5
-        ),
+        preparation=dict(intensity_range=(-1000, 400), bin_size=25, ivh_method='fixed_bin_size', ivh_bin_size=2.5),
     ),
     'D': dict(
         image_source='ct_nifti',

@@ -94,31 +94,53 @@ def prepare_roi(image, mask):
     return IVHIntensityDiscretizer(method='direct').apply(roi)
 
 
-def resampling(size, method='Linear', target=False, mask=False):
+def resampling(size, method='Linear', target=False, mask=False, dimension='3D'):
     image, roi_mask = synthetic_pair(IMAGE_SHAPES[size])
     source = roi_mask if mask else image
-    resolution = (1.5, 1.5, 1.5)
+    if dimension == '3D':
+        resolution = (1.5, 1.5, 1.5)
+    elif dimension == '2D':
+        resolution = (1.5, 1.5, source.spacing[2])
+    else:
+        raise ValueError(f'Unsupported resample dimension {dimension!r}.')
     resampler = (MaskResampler if mask else ImageResampler)(resolution=resolution, method=method)
     if target:
+        if dimension != '3D':
+            raise ValueError('Target-grid benchmark uses the 3D resampling grid.')
         reference = resampler.apply(image)
         operation = partial(image.resample_to_target, reference)
         identifier = f'image/target_linear/{size}'
         shape = reference.array.shape
     else:
         operation = partial(resampler.apply, source)
-        identifier = f'preprocessing/{"mask" if mask else "image"}_{method.lower()}/{size}'
+        name = f'{"mask" if mask else "image"}_{method.lower()}'
+        if dimension == '2D':
+            name += '_in_plane'
+        identifier = f'preprocessing/{name}/{size}'
         shape = tuple(np.ceil(np.array(source.shape) * np.array(source.spacing) / resolution).astype(int)[::-1])
 
     def validate(result):
         validate_image(result, shape)
+        assert tuple(result.spacing) == resolution
         if mask:
             assert set(np.unique(result.array)) <= {0, 1}
+            assert np.any(result.array > 0)
+        if dimension == '2D':
+            assert result.array.shape[0] == source.array.shape[0]
 
     return Workload(
         identifier,
         operation,
         validate,
-        metadata(source, roi_mask, interpolation=method, output_spacing_xyz_mm=list(resolution)),
+        metadata(
+            source,
+            roi_mask,
+            interpolation=method,
+            resample_dimension=dimension,
+            output_spacing_xyz_mm=list(resolution),
+            output_shape_zyx=[int(axis) for axis in shape],
+            output_voxel_count=int(np.prod(shape)),
+        ),
         rounds=5 if size == 'large' else 7,
     )
 

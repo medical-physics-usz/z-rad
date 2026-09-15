@@ -104,11 +104,17 @@ importing the timing fixture.
      - Source and target grid construction; target geometry and background-fill
        validation
    * - preprocessing
-     - ``ImageResampler.apply`` (linear and B-spline), linear mask resampling;
+     - Isotropic ``ImageResampler.apply`` and ``MaskResampler.apply`` with
+       nearest-neighbor, linear, B-spline, and Gaussian interpolation at medium
+       size; linear and B-spline image scaling at small and large sizes;
+       medium in-plane linear image and nearest-neighbor/linear mask cases;
        separately intensity ROI construction, range/outlier re-segmentation,
        and 32-bin texture discretization
      - Synthetic image/mask generation; resampler construction; preceding ROI
-       preparation for the individual re-segmentation/discretization cases
+       preparation for the individual re-segmentation/discretization cases.
+       In-plane cases preserve the source z spacing on a multi-slice input;
+       both modes use the same 3D SimpleITK filter with different output grids.
+       Output shape and voxel count are recorded for each case
    * - filtering
      - ``apply`` for 3D mean (support 5), LoG (sigma 2 mm, cutoff 4), db3 HHL
        wavelet (level 1), and first-order Riesz-LoG; reflect padding

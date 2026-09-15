@@ -232,54 +232,20 @@ radiomics keeps image-derived results uncached. These runs do not measure cold
 interpreter/import or cold filesystem latency. All allocations and Python object
 construction performed by the operation stay included. Garbage collection stays enabled.
 
-Suite version 2 renames complete extraction to ``test_complete_fresh_extraction``
-and uses workload IDs ``radiomics/all_fresh/{size}``. Earlier
-``test_complete_extraction`` / ``radiomics/all/{size}`` timing results were warmed
-by the local-means result cache and are **invalid as fresh-extraction references**.
-Do not merge or compare those timing series. Texture/spatial workload identities
-are unchanged. Earlier RSS/allocation measurements already used fresh processes
-without warmup; their methodology is unaffected, although the shared complete
-extraction workload ID is now renamed in memory output too.
+Suite version 1 is the first published benchmark definition. Timing and memory
+select cases from the same registry: ``standard`` has 100 workload IDs, ``ibsi``
+has 71, and ``exhaustive`` has 151. Complete radiomics extraction uses
+``radiomics/all_fresh/{size}`` and clears the local-means result cache before each
+timed call. Filtering cases record their dimensionality, and Gabor measures fresh
+kernel generation. Memory setup hooks run before the operation, matching the
+timing suite's cache policy.
 
-Suite version 3 adds named coverage tiers, per-family and aggregation-path
-signals, and the 71 registry-driven IBSI workload IDs. It also replaces the
-combined ``radiomics/texture/medium`` signal with individual texture-family
-measurements. Treat absent version-3 rows in older JSON as unavailable rather
-than unchanged performance.
-
-Suite version 4 redesigns the synthetic filtering group around matched paths,
-changes Gabor operation timings to fresh-kernel calls, and leaves dedicated
-volume-scaling studies out of this group. Old ``filtering/*`` results should
-not be compared with version-4 rows by test name: some parameters and timed
-cache states changed.
-All filtering workloads now record their actual dimensionality, with Gabor
-identified as filtering on 2D planes.
-
-Suite version 5 removes the small and large complete fresh-extraction and spatial
-statistics timing cases. Their medium-size cases remain. Older timing JSON may contain the four removed
-rows; comparison reports treat them as unavailable in the current suite.
-
-Suite version 6 removes the synthetic ``pipeline/log_radiomics/large`` timing case
-and includes all ``ibsi1`` cases in ``standard``. The focused ``ibsi`` suite still
-runs all 71 published cases; ``exhaustive`` adds ``ibsi2_phase1`` and
-``ibsi2_phase2`` to ``standard``. Older timing JSON may lack the newly standard
-IBSI I rows or contain the removed pipeline row; comparison reports treat those
-differences as unavailable workloads.
-
-Suite version 7 increases IBSI I feature workflows from one to three measured
-rounds. Their timed operation and workload IDs are unchanged, but newer timing
-JSON contains a preliminary within-run distribution instead of a single sample.
-
-Suite version 8 moves all 151 speed case declarations to a shared case registry
-used by timing collection and the memory CLI. ``standard`` selects 100 IDs,
-``ibsi`` selects 71, and ``exhaustive`` selects 151 in both runners. Existing
-workload IDs and speed measurement regions are unchanged. The older six-case
-memory selection and its aliases are removed. Memory setup hooks now run before each operation, matching
-the fresh-kernel and fresh-radiomics cache policy used by timing.
-
-Suite version 9 increases IBSI II phase-II feature workflows from one to three
-measured rounds. Their operation, setup, validation and workload IDs remain
-unchanged; the extra samples provide a preliminary within-run distribution.
+Results saved during development of this suite used changing workloads and
+measurement methods. In particular, early complete-extraction timing results
+were warmed by the local-means cache and are invalid as fresh-extraction
+references. Do not use those development runs as accepted baselines; create new
+references with the version-1 suite and retain their workload and environment
+metadata.
 
 SimpleITK and OpenCV have explicit thread APIs. OpenCV GCD builds require
 ``setNumThreads(0)`` to disable parallel regions; other backends use 1. The
@@ -484,7 +450,7 @@ Memray remains limited to Linux/macOS and is never a normal runtime dependency.
 
 Memory JSON has ``schema_version: 1`` and a ``measurements`` list: stable workload
 ID, commit, working-tree dirty flag, PID, timestamp, Python/platform,
-workload/environment metadata, ``memory_methodology_version`` (2 for
+workload/environment metadata, ``memory_methodology_version`` (1 for
 setup-before-operation), and one mode-specific metric. All repetitions remain
 separate; no timing schema is repurposed. Existing output paths are refused.
 Peak RSS is suitable for an initial platform-specific longitudinal series;
@@ -494,7 +460,8 @@ Memray results and captures are diagnostic allocation evidence, not substitute R
 Initial observations and extending the suite
 --------------------------------------------
 
-Before the suite-version-2 cache correction, local verification on macOS/Apple Silicon,
+During early development, before the fresh-extraction cache correction, local
+verification on macOS/Apple Silicon,
 Python 3.14.6, measured 20 fast
 cases in approximately 6.6 seconds and 11 slow cases in approximately 111 seconds
 (warmups/setup included in suite duration). IBSI medians were approximately 0.81 s

@@ -92,7 +92,7 @@ def measure_child(args):
         'python': platform.python_version(),
         'platform': platform.platform(),
         'metadata': {**info, **workload.metadata},
-        'memory_methodology_version': 2,
+        'memory_methodology_version': 1,
         **metric,
     }
 

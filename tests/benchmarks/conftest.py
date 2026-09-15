@@ -14,10 +14,9 @@ _BENCHMARK_GROUP_ORDER = {
     'filtering': 2,
     'radiomics': 3,
     'pipeline': 4,
-    'pet_suv': 5,
-    'ibsi1': 6,
-    'ibsi2_phase1': 7,
-    'ibsi2_phase2': 8,
+    'ibsi1': 5,
+    'ibsi2_phase1': 6,
+    'ibsi2_phase2': 7,
 }
 _BENCHMARK_ITEM_ORDER = {}
 

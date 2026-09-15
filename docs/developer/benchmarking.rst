@@ -135,15 +135,6 @@ importing the timing fixture.
      - Intensity-mask building, re-segmentation, texture and IVH discretization,
        extractor construction; local-means result-cache reset before each complete
        extraction round. Extractor-internal mask validation/copying remains included
-   * - pet_suv
-     - Enhanced PET ``_enhanced_suv_array`` on IBSI-SUV DRO_7_0_0, including
-       metadata interpretation and SUVbw calculation
-     - ZIP extraction, DICOM reading, and initial pixel decoding. The decoded
-       pydicom pixel cache is deliberately warm
-   * - pet_suv (I/O)
-     - ``Image.from_dicom`` loading and converting conventional DRO_0_0
-     - ZIP extraction and reference-mask loading. Filesystem/OS caches are warm;
-       this is explicitly marked ``benchmark_io`` and ``benchmark_slow``
    * - pipeline
      - Image/mask resampling to 1.5 mm, LoG, ROI building, re-segmentation,
        texture/IVH discretization, complete radiomics extraction
@@ -166,11 +157,6 @@ extraction. These remain compact representative signals. The exhaustive tier
 additionally builds every published case from the shared registry, times
 computation only, and applies the same reference validation after measurement.
 Dataset, CSV and response-map loading is excluded from timing.
-
-The Enhanced PET helper is a deliberate private-API benchmark because conventional
-SUV conversion nests its calculations inside a function that rereads files.
-No production API was changed to expose it. Historical versions without this
-helper cannot use this harness unchanged.
 
 Sizes and scaling
 -----------------
@@ -211,7 +197,7 @@ Do not compare incompatible workloads just because test names match.
 Rounds, state, threads, and statistics
 --------------------------------------
 
-Most operations run seven measured calls; expensive scaling/radiomics/PET cases
+Most operations run seven measured calls; expensive scaling/radiomics cases
 use five; pipeline and representative IBSI use three. Exhaustive IBSI feature
 workflows use one screening round and phase-I filters use three. Each has one unmeasured warmup and one
 iteration per round. This bounds the costly 3D work. Initial measurements found
@@ -235,8 +221,8 @@ state in ``apply``; the same geometry is used every round. Gabor's kernel cache 
 reset in per-round setup, so operation-only Gabor cases measure fresh kernel
 generation even after warmup. The level-2 2D separable wavelet currently
 evaluates four rotations regardless of its ``rotation_invariance`` parameter;
-its workload metadata records the effective count. Decoded PET pixels are cached
-explicitly in setup. Warmup absorbs library initialization; complete
+its workload metadata records the effective count. Warmup absorbs library
+initialization; complete
 radiomics keeps image-derived results uncached. These runs do not measure cold
 interpreter/import or cold filesystem latency. All allocations and Python object
 construction performed by the operation stay included. Garbage collection stays enabled.
@@ -396,8 +382,8 @@ publishing is used.
 Old revisions may lack the current API or fail current validation. They are
 reported as incompatible/failed, with logs; partial failing results are labelled
 ``INVALID`` and excluded from comparison. Candidate failures are never silently
-skipped. In particular, v26.8.0 lacks RieszLoG and the Enhanced PET helper required
-by this harness; its full-suite comparison is unavailable. The initial framework
+skipped. In particular, v26.8.0 lacks RieszLoG required by this harness;
+its full-suite comparison is unavailable. The initial framework
 prioritizes PR/master comparisons instead of inventing historical adapters or
 claiming unequal workflows are equivalent. Release tracking starts when a release
 supports this harness (or a reviewed common-workload adapter is added). Never
@@ -494,12 +480,12 @@ When adding a benchmark:
 7. Add the shared factory to the memory CLI only if its allocations matter.
    Keep memory instrumentation out of authoritative timing runs.
 
-Laws/Gabor, Simoncelli, every filter/IBSI configuration, pure NIfTI I/O and joblib
-batch scaling were deliberately omitted from the initial selective matrix.
-Mean/LoG, separable wavelets and Riesz cover different computational paths;
-Gabor's kernel cache would need an explicitly chosen warm/cold policy. Batch work
-mixes filesystem and parallel scheduling costs requiring a separate methodology.
-The synthetic pipeline is the initial system-level signal alongside real IBSI.
+The current matrix includes selected Laws/Gabor, Simoncelli, and Riesz paths;
+the exhaustive tier supplies the published IBSI filter/feature configurations.
+Pure NIfTI I/O and joblib batch scaling remain outside this computation-focused
+suite. Batch work mixes filesystem and parallel scheduling costs requiring a
+separate methodology. The synthetic pipeline is a system-level signal alongside
+real IBSI workflows.
 
 Useful future work includes a stable dedicated runner, repeated/counterbalanced
 revision order, archived environment constraints, characterized per-workload noise

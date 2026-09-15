@@ -9,16 +9,14 @@ is unchanged; correctness expectations and published tolerances are preserved.
 Coverage tiers and focused suites
 ----------------------------------
 
-The named tiers balance feedback time, diagnosis and configuration coverage. The
-focused ``ibsi`` suite is available in addition to those tiers:
+The named suites balance feedback time, diagnosis and configuration coverage.
+The focused ``ibsi`` suite is available in addition to the two full tiers:
 
-``quick``
-    Focused operation and feature-family signals intended for every pull request.
-``extended``
-    The quick cases plus large scaling inputs, expensive filter/aggregation paths,
-    and pipeline workloads. This is the local launcher default.
+``standard``
+    Scaling inputs, expensive filter/aggregation paths, and pipeline workloads.
+    This is the local launcher default.
 ``exhaustive``
-    Every extended case plus all 71 published IBSI cases exercised by the
+    Every standard case plus all 71 published IBSI cases exercised by the
     correctness suite: 20 IBSI I feature/aggregation workflows, all 33 IBSI II
     phase-I response maps and all 18 IBSI II phase-II feature configurations.
 ``ibsi``
@@ -59,13 +57,10 @@ benchmark datasets. Benchmarks do not have ``unit`` or ``integration`` markers.
 For timing, the recommended portable launcher sets native thread environment
 variables **before** importing numerical libraries, then invokes native pytest::
 
-    # Pull-request tier, no saved results
-    python tests/benchmarks/run.py --suite quick
+    # Standard benchmark suite (the local default)
+    python tests/benchmarks/run.py --suite standard
 
-    # Focused and representative slow cases (the local default)
-    python tests/benchmarks/run.py --suite extended
-
-    # Complete published IBSI configuration matrix plus all focused cases
+    # Complete published IBSI configuration matrix plus all standard cases
     python tests/benchmarks/run.py --suite exhaustive
 
     # Published IBSI configuration matrix only
@@ -73,7 +68,6 @@ variables **before** importing numerical libraries, then invokes native pytest::
 
 The equivalent direct pytest commands are::
 
-    python -m pytest tests/benchmarks --benchmark-only -n 0 --no-cov -m 'not benchmark_slow and not benchmark_exhaustive'
     python -m pytest tests/benchmarks --benchmark-only -n 0 --no-cov -m 'not benchmark_exhaustive'
     python -m pytest tests/benchmarks --benchmark-only -n 0 --no-cov -m 'benchmark_ibsi'
     python -m pytest tests/benchmarks --benchmark-only -n 0 --no-cov
@@ -149,7 +143,7 @@ importing the timing fixture.
        workflow uses **2D/AVER features after 3D filtering**; this is preserved
 
 IBSI uses the repository's CT phantom and GTV-1 RTSTRUCT, reusing session-loaded
-inputs. In the extended tier, configuration C covers calibrated-intensity full
+inputs. In the standard suite, configuration C covers calibrated-intensity full
 extraction and 3.B covers resampling, filtering and filtered-image feature
 extraction. These remain compact representative signals. The exhaustive tier
 additionally builds every published case from the shared registry, times
@@ -272,16 +266,16 @@ Saving and comparing references
 Native JSON is the sole timing format. No timing database or custom baseline
 updater is introduced. For example::
 
-    python tests/benchmarks/run.py --suite quick --benchmark-save=master-accepted --benchmark-save-data
-    python tests/benchmarks/run.py --suite quick --benchmark-autosave --benchmark-save-data
+    python tests/benchmarks/run.py --suite standard --benchmark-save=master-accepted --benchmark-save-data
+    python tests/benchmarks/run.py --suite standard --benchmark-autosave --benchmark-save-data
     pytest-benchmark list
     # Replace 0001 with the explicit accepted reference ID from the listing
-    python tests/benchmarks/run.py --suite quick --benchmark-compare=0001 --benchmark-save=pr-candidate
+    python tests/benchmarks/run.py --suite standard --benchmark-compare=0001 --benchmark-save=pr-candidate
 
 Or use explicit files (create parent directories first)::
 
     mkdir -p reports/benchmarks
-    python tests/benchmarks/run.py --suite quick --benchmark-json=reports/benchmarks/current.json
+    python tests/benchmarks/run.py --suite standard --benchmark-json=reports/benchmarks/current.json
     python tests/benchmarks/compare_results.py --current reports/benchmarks/current.json --master reports/benchmarks/master.json --release reports/benchmarks/release.json
     pytest-benchmark compare reports/benchmarks/master.json reports/benchmarks/current.json --columns=median,iqr,mean,stddev,min,max,rounds,iterations
 
@@ -334,7 +328,7 @@ For local committed changes::
 
 Replace the example release tag with the latest **published release** you intend
 to evaluate; the newest version-sorted tag is not necessarily a release. Use
-``--suite extended`` for broader focused comparisons or ``--suite exhaustive``
+``--suite standard`` for the default comparisons or ``--suite exhaustive``
 for the complete published IBSI matrix. ``--full`` is a deprecated alias for
 ``--suite exhaustive``. Uncommitted production edits are excluded by
 ``git archive``; use the ordinary launcher to time working-tree edits. The current
@@ -355,7 +349,7 @@ checkout time. On master pushes, current and master may be identical (a useful
 noise observation, not a claimed speedup). The GitHub release API resolves the
 latest published stable release, then the runner freezes its SHA for that job.
 It does not alter any saved accepted/release reference. Pull requests and pushes
-run ``quick``; manual dispatch selects any tier, and a weekly scheduled run uses
+run ``standard``; manual dispatch selects any suite, and a weekly scheduled run uses
 ``exhaustive``. Exhaustive manual/scheduled runs also create a parallel isolated-
 process RSS artifact for all 71 published cases. The compatibility/coverage
 workflow remains separate.

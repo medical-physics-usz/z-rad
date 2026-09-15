@@ -185,7 +185,7 @@ def main():
             parser.error('--full cannot be combined with --suite; use --suite exhaustive.')
         args.suite = 'exhaustive'
     elif args.suite is None:
-        args.suite = 'quick'
+        args.suite = 'standard'
     args.repository = args.repository.resolve()
     args.output = args.output.resolve()
     if args.constraints:

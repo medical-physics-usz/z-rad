@@ -22,8 +22,7 @@ from benchmarks.runtime import controlled_environment, environment_metadata, sin
 
 WORKLOADS = ('resampling', 'filtering', 'radiomics', 'spatial', 'ibsi_i', 'ibsi_ii')
 MEMORY_SUITES = {
-    'quick': WORKLOADS[:4],
-    'extended': WORKLOADS,
+    'standard': WORKLOADS,
 }
 
 
@@ -122,7 +121,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--mode', choices=['rss', 'memray'], default='rss')
     parser.add_argument('--workload', action='append', dest='workloads')
-    parser.add_argument('--suite', choices=('quick', 'extended', 'exhaustive'))
+    parser.add_argument('--suite', choices=('standard', 'exhaustive'))
     parser.add_argument('--repeats', type=int, default=1)
     parser.add_argument('--native', action='store_true', help='Native allocation stacks (Memray only).')
     parser.add_argument('--output', type=Path, default=Path('reports/benchmarks/memory.json'))

@@ -11,10 +11,10 @@ on:
   workflow_dispatch:
     inputs:
       suite:
-        description: Benchmark coverage tier
+        description: Benchmark suite
         type: choice
-        options: [quick, extended, ibsi, exhaustive]
-        default: quick
+        options: [standard, ibsi, exhaustive]
+        default: standard
 
 permissions:
   contents: read
@@ -60,7 +60,7 @@ jobs:
           EVENT_NAME: ${{ github.event_name }}
         shell: bash
         run: |
-          suite="${REQUESTED_SUITE:-quick}"
+          suite="${REQUESTED_SUITE:-standard}"
           if [[ "$EVENT_NAME" == "schedule" ]]; then suite=exhaustive; fi
           args=(--current HEAD --master origin/master --suite "$suite" --output reports/benchmarks/ci)
           if [[ -n "$RELEASE_TAG" ]]; then args+=(--release "$RELEASE_TAG"); fi

@@ -1,8 +1,7 @@
 """Named benchmark-suite selection shared by launchers and tests."""
 
 SUITE_MARKERS = {
-    'quick': 'not benchmark_slow and not benchmark_exhaustive',
-    'extended': 'not benchmark_exhaustive',
+    'standard': 'not benchmark_exhaustive',
     'ibsi': 'benchmark_ibsi',
     'exhaustive': None,
 }

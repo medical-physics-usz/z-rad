@@ -25,7 +25,7 @@ def main():
         '--benchmark-columns=median,iqr,mean,stddev,min,max,rounds,iterations',
         *pytest_args,
     ]
-    marker = marker_for_suite(options.suite or 'extended')
+    marker = marker_for_suite(options.suite or 'standard')
     if marker:
         if '-m' in pytest_args:
             parser.error('Use either --suite or a native pytest marker expression, not both.')

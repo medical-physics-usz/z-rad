@@ -15,7 +15,7 @@ Three named tiers balance feedback time, diagnosis and configuration coverage:
     Focused operation and feature-family signals intended for every pull request.
 ``extended``
     The quick cases plus large scaling inputs, expensive filter/aggregation paths,
-    pipeline and representative IBSI workflows. This is the local launcher default.
+    and pipeline workloads. This is the local launcher default.
 ``exhaustive``
     Every extended case plus all 71 published IBSI cases exercised by the
     correctness suite: 20 IBSI I feature/aggregation workflows, all 33 IBSI II

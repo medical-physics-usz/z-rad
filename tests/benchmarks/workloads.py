@@ -18,6 +18,7 @@ from zrad.preprocessing import (
     IntensityMaskBuilder,
     IVHIntensityDiscretizer,
     MaskResampler,
+    Pipeline,
     Resegmenter,
     RoiData,
     TextureDiscretizer,

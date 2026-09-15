@@ -382,12 +382,14 @@ publishing is used.
 Old revisions may lack the current API or fail current validation. They are
 reported as incompatible/failed, with logs; partial failing results are labelled
 ``INVALID`` and excluded from comparison. Candidate failures are never silently
-skipped. In particular, v26.8.0 lacks RieszLoG required by this harness;
-its full-suite comparison is unavailable. The initial framework
-prioritizes PR/master comparisons instead of inventing historical adapters or
-claiming unequal workflows are equivalent. Release tracking starts when a release
-supports this harness (or a reviewed common-workload adapter is added). Never
-interpret an absent row/reference as unchanged performance.
+skipped. In particular, v26.8.0 does not export ``RieszLoG`` or ``Simoncelli``.
+The revision-comparison runner imports the current workload module before suite
+selection, so it cannot compare that release without a compatibility adapter.
+The initial framework prioritizes PR/master comparisons instead of inventing
+historical adapters or claiming unequal workflows are equivalent. Release
+tracking starts when a release supports this harness (or a reviewed
+common-workload adapter is added). Never interpret an absent row/reference as
+unchanged performance.
 
 Memory: separate metrics and processes
 --------------------------------------

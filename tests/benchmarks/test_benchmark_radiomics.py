@@ -5,12 +5,12 @@ from .workloads import radiomics
 pytestmark = pytest.mark.benchmark(group='radiomics')
 
 
-@pytest.mark.parametrize('size', ['small', 'medium', pytest.param('large', marks=pytest.mark.benchmark_slow)])
+@pytest.mark.parametrize('size', ['medium'])
 def test_complete_fresh_extraction(benchmark, measure, size):
     measure(radiomics(size))
 
 
-@pytest.mark.parametrize('size', ['small', 'medium', pytest.param('large', marks=pytest.mark.benchmark_slow)])
+@pytest.mark.parametrize('size', ['medium'])
 def test_spatial_statistics(benchmark, measure, size):
     measure(radiomics(size, 'spatial'))
 

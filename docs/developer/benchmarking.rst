@@ -129,9 +129,9 @@ importing the timing fixture.
        kernel generation during ``apply`` is included. Array conversions and
        output construction performed by ``apply`` remain included
    * - radiomics
-     - Complete fresh-image ``families='all'`` extraction; all 11 feature families
-       separately; every IBSI texture aggregation path; and selected Moran's
-       I/Geary's C
+     - Complete fresh-image ``families='all'`` extraction and selected Moran's
+       I/Geary's C at medium size; all 11 feature families separately; every IBSI
+       texture aggregation path
      - Intensity-mask building, re-segmentation, texture and IVH discretization,
        extractor construction; local-means result-cache reset before each complete
        extraction round. Extractor-internal mask validation/copying remains included
@@ -189,6 +189,9 @@ megabyte-scale allocation and 3D computation; ROI-specific volumes bound expensi
 texture work while scaling from about 2,000 to 38,000 ROI voxels. These are selective
 patch/ROI workloads, not a claim to represent every scanner's full field of view.
 Real CT workflows supply the complementary larger, irregular workload.
+The timing suite runs complete fresh extraction and spatial statistics only at
+medium radiomics size. The small and large synthetic radiomics inputs remain
+available to workload factories and the separate memory CLI.
 
 Stable ``extra_info.workload_id`` identifiers match timing and memory results.
 Metadata records shapes, ROI size/fraction, spacing, dtype, parameters, seed,
@@ -253,6 +256,11 @@ not be compared with version-4 rows by test name: some parameters and timed
 cache states changed.
 All filtering workloads now record their actual dimensionality, with Gabor
 identified as filtering on 2D planes.
+
+Suite version 5 removes the small and large complete fresh-extraction and spatial
+statistics timing cases. Their medium-size cases and the separate large-size
+memory workloads remain available. Older timing JSON may contain the four removed
+rows; comparison reports treat them as unavailable in the current suite.
 
 SimpleITK and OpenCV have explicit thread APIs. OpenCV GCD builds require
 ``setNumThreads(0)`` to disable parallel regions; other backends use 1. The

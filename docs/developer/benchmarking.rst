@@ -1,169 +1,308 @@
 Performance benchmarking
 ========================
 
-The suite in ``tests/benchmarks`` measures Z-Rad computation, independently of
-correctness-test duration. Use operation benchmarks to locate a change and the
-IBSI workflows to assess its effect on realistic processing. Production code
-is unchanged; correctness expectations and published tolerances are preserved.
+The benchmarks in ``tests/benchmarks`` measure Z-Rad execution time and memory
+use. Use individual operation benchmarks to identify where performance changed,
+and IBSI workflows to assess the effect on complete processing workflows.
+Setup and validation run outside the timed region.
 
-Coverage tiers and focused suites
-----------------------------------
+Quick start
+-----------
 
-The named suites balance feedback time, diagnosis and configuration coverage.
-The focused ``ibsi`` suite is available in addition to the two full tiers:
-
-``standard``
-    Scaling inputs, expensive filter/aggregation paths, and all 20 IBSI I
-    workflows. This is the local launcher default.
-``exhaustive``
-    Every standard case plus all 33 IBSI II phase-I response maps and all 18
-    IBSI II phase-II feature configurations, completing the 71 published IBSI
-    cases exercised by the correctness suite.
-``ibsi``
-    The 71 published IBSI performance cases only, grouped as ``ibsi1`` (20
-    IBSI I cases), ``ibsi2_phase1`` (33 IBSI II phase-I cases), and
-    ``ibsi2_phase2`` (18 IBSI II phase-II cases).
-
-The declarations in ``tests/ibsi_cases.py`` are shared with IBSI correctness
-tests and exhaustive performance construction. Registry contract tests require
-the published 20/33/18 inventory and 71 unique workload identifiers.
-
-Install and run
----------------
-
-Install the normal test extra (also included in ``dev``)::
+Run these commands from the repository root. Install the test dependencies
+(also included in the ``dev`` extra), then run the standard suite::
 
     python -m pip install -e '.[test]'
-
-``pytest-benchmark>=5.3.0`` is intentional: 5.3.0 was the current stable release
-checked on 2026-09-11 and includes pytest 9 compatibility and current xdist
-detection fixes. Candidate percentage changes are calculated explicitly by this
-framework, independently of pytest-benchmark's file ordering. There is no
-exact pin. ``threadpoolctl>=3.5`` controls supported BLAS/OpenMP backends, including
-SciPy's bundled OpenBLAS. Neither dependency is required by ordinary Z-Rad users.
-See the `pytest-benchmark changelog
-<https://pytest-benchmark.readthedocs.io/en/latest/changelog.html>`_.
-
-Normal tests retain their coverage and xdist defaults::
-
-    python -m pytest
-    python -m pytest -m unit
-    python -m pytest -m integration
-
-``pytest.ini`` sets ``--benchmark-skip``. The plugin skips benchmark tests before
-fixtures run, so ordinary tests neither generate benchmark images nor extract
-benchmark datasets. Benchmarks do not have ``unit`` or ``integration`` markers.
-
-For timing, the recommended portable launcher sets native thread environment
-variables **before** importing numerical libraries, then invokes native pytest::
-
-    # Standard benchmark suite (the local default)
     python tests/benchmarks/run.py --suite standard
 
-    # Standard cases plus the IBSI II phase-I and phase-II workflows
-    python tests/benchmarks/run.py --suite exhaustive
+The launcher sets thread limits before importing numerical libraries and runs
+pytest with parallel workers and coverage disabled. Ordinary test runs skip
+benchmarks before their fixtures run; see :doc:`testing` for test commands.
 
-    # Published IBSI configuration matrix only
+Choose a suite
+--------------
+
+Timing and memory measurements use the same suite definitions and workload IDs.
+
+.. list-table:: Benchmark suites
+   :header-rows: 1
+   :widths: 15 10 75
+
+   * - Suite
+     - Cases
+     - Coverage
+   * - ``standard`` (default)
+     - 100
+     - Synthetic operation benchmarks and all 20 IBSI I workflows
+   * - ``exhaustive``
+     - 151
+     - All standard cases, plus 33 IBSI II phase-I filter response maps and
+       18 IBSI II phase-II feature workflows
+   * - ``ibsi``
+     - 71
+     - Only the published IBSI cases: ``ibsi1``, ``ibsi2_phase1``, and
+       ``ibsi2_phase2``
+
+For broader coverage or a focused IBSI run::
+
+    python tests/benchmarks/run.py --suite exhaustive
     python tests/benchmarks/run.py --suite ibsi
 
-The equivalent direct pytest commands are::
+Save and compare results
+------------------------
 
-    python -m pytest tests/benchmarks --benchmark-only -n 0 --no-cov -m 'not benchmark_exhaustive'
-    python -m pytest tests/benchmarks --benchmark-only -n 0 --no-cov -m 'benchmark_ibsi'
-    python -m pytest tests/benchmarks --benchmark-only -n 0 --no-cov
+Compare committed revisions
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-``--benchmark-only`` overrides the normal native skip. ``-n 0`` overrides
-``-n auto``; competing pytest workers would otherwise measure CPU contention.
-``--no-cov`` overrides the coverage configuration; instrumentation changes the
-work being measured. The suite rejects intentional timing with workers, coverage,
-explicit cProfile/pytest-memray profiling, disabled garbage collection, or active
-Python tracing/profiling. Do not wrap these commands in external profilers.
+Use the revision runner to compare committed changes with master on the same
+machine::
 
-Groups and exact measured regions
----------------------------------
+    git fetch origin master --tags
+    python tests/benchmarks/compare_revisions.py --master origin/master --current HEAD --output reports/benchmarks/comparison-001
 
-Each factory in ``workloads.py`` prepares inputs and returns a callable plus a
-validator and, where needed, per-round setup. ``measure`` invokes only the
-operation callable inside ``benchmark.pedantic``'s timed region. Per-round setup
-runs before each warmup and measured call, outside timing. Validation happens
-after measurement. The shared definitions also power memory measurement without
-importing the timing fixture.
+The output directory must be new. The runner resolves each ref once, installs
+it non-editably in a separate temporary virtual environment, and runs revisions
+sequentially with the same Python interpreter and thread controls. It uses the
+current working-tree benchmark harness for all revisions and checks that
+``zrad.__file__`` points to the intended installation. Temporary source trees
+and environments are removed afterward.
 
-.. list-table:: Workloads
+Uncommitted production changes are excluded. Use ``run.py`` to measure
+working-tree changes. Pass ``--suite exhaustive`` for full coverage;
+``--full`` is a deprecated alias for that option.
+
+To include a release comparison, add ``--release RELEASE_TAG``, replacing
+``RELEASE_TAG`` with a published release compatible with the current harness.
+For example, v26.8.0 is incompatible because it lacks ``RieszLoG`` and
+``Simoncelli``. The runner imports the workload module before selecting a suite,
+so choosing a smaller suite does not avoid that incompatibility. Failed or
+incompatible references are reported with logs; partial results are labelled
+``INVALID`` and excluded from comparisons. Candidate failures fail the run.
+
+Dependencies are resolved from each revision's requirements and may differ.
+Check ``*-dependencies.txt`` and the run metadata. To hold dependencies fixed,
+pass ``--constraints /absolute/path/constraints.txt`` with versions compatible
+with all revisions being compared.
+
+Save individual runs
+~~~~~~~~~~~~~~~~~~~~
+
+Timing results use pytest-benchmark's JSON format. To save a working-tree run::
+
+    mkdir -p reports/benchmarks
+    python tests/benchmarks/run.py --suite standard --benchmark-json=reports/benchmarks/current.json
+
+If you already have an accepted ``master.json`` reference, compare it explicitly::
+
+    python tests/benchmarks/compare_results.py --current reports/benchmarks/current.json --master reports/benchmarks/master.json
+
+Add ``--release reports/benchmarks/release.json`` when a release reference is
+available. For a side-by-side view of the underlying statistics, use::
+
+    pytest-benchmark compare reports/benchmarks/master.json reports/benchmarks/current.json --columns=median,iqr,mean,stddev,min,max,rounds,iterations
+
+You can also use pytest-benchmark's named saves. Run the first command at the
+accepted master revision, then switch to the candidate before saving it::
+
+    python tests/benchmarks/run.py --suite standard --benchmark-save=master-accepted --benchmark-save-data
+    pytest-benchmark list
+    # Replace 0001 with the accepted reference ID from the listing
+    python tests/benchmarks/run.py --suite standard --benchmark-compare=0001 --benchmark-save=pr-candidate --benchmark-save-data
+
+``--benchmark-json`` includes individual round samples. For named saves,
+``--benchmark-save-data`` retains them. Always specify the reference ID:
+``--benchmark-compare`` without an ID uses the latest saved run, which may be
+another candidate.
+
+Maintain references
+~~~~~~~~~~~~~~~~~~~
+
+* **Master reference:** an accepted master SHA, updated deliberately after
+  accepted changes reach master. A passing PR does not automatically replace it.
+* **Release reference:** a published tag/SHA, retained until you deliberately
+  select a new release reference.
+* **Current/PR:** a candidate, saved separately from both references.
+
+Save names are labels; they do not check out revisions. Ensure that each run
+executes the intended code, especially when using editable installations across
+checkouts. Retain the reference's workload and environment metadata in a durable
+artifact archive. Generated JSON, ``.benchmarks``, reports, and profiling captures
+are ignored by git.
+
+.. note::
+
+   Create references with the version-1 suite. Development runs used changing
+   workload definitions, and early complete-extraction timings reused cached
+   local means. Those timings are invalid as fresh-extraction references.
+
+Interpret results
+-----------------
+
+Use the median runtime as the main comparison metric. ``compare_results.py``
+calculates each change relative to the explicitly selected reference::
+
+    100 * (current_median - reference_median) / reference_median
+
+A change from 1 s to 2 s is a **+100% regression**; 2 s to 1 s is a
+**-50% improvement**. These labels describe direction, not statistical
+significance. The interquartile range (IQR) describes spread within a run; it is
+not a confidence interval for the difference between runs.
+
+Retain mean, minimum, maximum, standard deviation, IQR, rounds, and iterations.
+Repeat noisy measurements on an idle machine, running revisions in both orders.
+Differences comparable to normal run-to-run variability are inconclusive.
+The suite has no timing or memory regression thresholds.
+
+Results are matched by ``extra_info.workload_id``, falling back to the full test
+name when that field is absent. Check that workload definitions and environments
+are compatible before comparing. Missing workloads are reported as unavailable;
+zero or invalid reference timings produce no percentage verdict. Missing results
+do not indicate unchanged performance.
+
+.. warning::
+
+   Use ``compare_results.py`` for candidate percentage changes. In
+   pytest-benchmark 5.3.0, ``compare --between`` sorts filenames and may choose
+   ``current.json`` as the baseline regardless of argument order. Regenerate
+   summaries made with that command from the raw JSON.
+
+Measure memory
+--------------
+
+Peak process memory
+~~~~~~~~~~~~~~~~~~~
+
+Resident set size (RSS) measures memory resident in RAM. Run the RSS suite
+separately from timing, without pytest or profiling instrumentation::
+
+    python tests/benchmarks/memory.py --mode rss --suite standard --repeats 3 --output reports/benchmarks/rss-standard-001.json
+
+Use ``--suite ibsi`` or ``--suite exhaustive`` for broader IBSI coverage, or
+select individual workload IDs::
+
+    python tests/benchmarks/memory.py --mode rss --workload ibsi/i/c/3d/merg --workload ibsi/ii/phase_ii/3.b --output reports/benchmarks/rss-selected-001.json
+
+Each repetition runs in a fresh subprocess without warmup. Archive extraction
+happens in the parent before measurement. The child prepares inputs, runs any
+setup hook, records the setup peak, executes the operation, and records the final
+peak before validation and report serialization. Linux and macOS values are
+normalized to bytes. This backend supports Linux and macOS; timing is also
+available on Windows.
+
+The two RSS fields have distinct meanings:
+
+* ``peak_rss_bytes`` is the process-lifetime maximum through completion of the
+  operation, including imports, inputs, and setup.
+* ``setup_peak_rss_bytes`` is the process-lifetime maximum immediately before
+  the operation. It is not current RSS; subtracting it from the final peak does
+  not measure temporary allocations.
+
+Setup may dominate small workloads. Separate processes keep previous workloads
+from affecting the peak; child processes do not launch batch workers. RSS uses a
+fresh process while timing uses warmup rounds, so the metrics describe different
+execution conditions.
+
+Allocation profiling
+~~~~~~~~~~~~~~~~~~~~
+
+Use Memray to investigate allocations in selected cases after RSS screening.
+Install the optional profiling extra on Linux or macOS::
+
+    python -m pip install -e '.[test,profiling]'
+    python tests/benchmarks/memory.py --mode memray --native --workload radiomics/spatial/medium --output reports/benchmarks/alloc-spatial-001.json
+    python -m memray stats reports/benchmarks/alloc-spatial-001-radiomics-spatial-medium-0.memray
+    python -m memray flamegraph reports/benchmarks/alloc-spatial-001-radiomics-spatial-medium-0.memray
+
+Memray tracks Python and native heap allocations during one operation in a fresh
+child process. Input preparation, setup, and validation are outside the tracker.
+``--native`` adds native stack attribution and overhead; omit it when those
+stacks are unnecessary. Generate native-symbol reports on the capture machine;
+see `Memray native tracking <https://bloomberg.github.io/memray/run.html>`_.
+
+``allocation_high_water_bytes`` is the peak simultaneously live tracked
+allocation size during the operation. It excludes preexisting inputs and is
+not peak RSS. Instrumented runs produce neither timing JSON nor RSS measurements;
+use their captures to diagnose allocations rather than compare execution times.
+
+Memory result files
+~~~~~~~~~~~~~~~~~~~
+
+Memory JSON uses ``schema_version: 1`` and a ``measurements`` list. Each entry
+includes a workload ID, revision and dirty flag, PID, timestamp, Python/platform,
+workload/environment metadata, ``memory_methodology_version`` (1 for setup before
+operation), and mode-specific measurements. Repetitions remain separate, and
+existing output paths are refused.
+
+Join ``measurements[].workload_id`` with timing ``extra_info.workload_id`` to
+inspect both metrics for a case. Measure run-to-run variability on your platform
+before setting memory failure thresholds.
+
+Measurement methodology
+-----------------------
+
+Measured operations
+~~~~~~~~~~~~~~~~~~~
+
+Factories in ``tests/benchmarks/workloads.py`` prepare inputs and return an
+operation, a validator, and optional per-round setup. ``measure`` times only the
+operation through ``benchmark.pedantic``. Setup runs before each warmup and
+measured call; validation runs afterward. Allocations, array conversions, and
+object construction performed by the operation are included.
+
+Timing and memory use the same case declarations in ``tests/benchmarks/cases.py``.
+Published IBSI declarations in ``tests/ibsi_cases.py`` are also shared with
+correctness tests. Registry tests check the 20/33/18 published case inventory.
+
+.. list-table:: Workload boundaries
    :header-rows: 1
-   :widths: 18 44 38
+   :widths: 18 42 40
 
    * - Group
      - Measured operation
-     - Outside timing
+     - Setup and validation outside timing
    * - image
-     - ``Image.resample_to_target`` with linear interpolation at three sizes on
-       both a source-derived grid and an independently constructed grid with a
-       shifted origin, different field of view, and partial source overlap;
-       includes the API's array/SimpleITK conversions and output construction
-     - Source and target grid construction; target geometry and background-fill
-       validation
+     - ``Image.resample_to_target``, including array/SimpleITK conversions
+     - Source and target grids; geometry and background-fill checks
    * - preprocessing
-     - Isotropic ``ImageResampler.apply`` and ``MaskResampler.apply`` with
-       nearest-neighbor, linear, B-spline, and Gaussian interpolation at medium
-       size; linear and B-spline image scaling at small and large sizes;
-       medium in-plane linear image and nearest-neighbor/linear mask cases;
-       separately intensity ROI construction, range/outlier re-segmentation,
-       32-bin fixed-bin-number texture discretization, and fixed-bin-size
-       texture discretization with width 25 and range anchor -50
-     - Synthetic image/mask generation; resampler construction; preceding ROI
-       preparation for the individual re-segmentation/discretization cases.
-       Fixed-bin-size texture preparation includes range re-segmentation before
-       timing, so only ``TextureDiscretizer.apply`` is measured.
-       In-plane cases preserve the source z spacing on a multi-slice input;
-       both modes use the same 3D SimpleITK filter with different output grids.
-       Output shape and voxel count are recorded for each case
+     - Image/mask resampling, or individual ROI preparation,
+       re-segmentation, and discretization operations
+     - Synthetic inputs, resampler construction, and preceding ROI preparation
    * - filtering
-     - ``apply`` for matched 2D/3D Mean and LoG paths, rotation and level
-       choices for db3 wavelets, plain versus rotation-invariant energy-map
-       Laws, fixed versus rotated/three-plane Gabor on the same small input,
-       periodic/nearest and 2D/3D Simoncelli, and first-/second-order Riesz-LoG
-       with optional structure-tensor alignment
-     - Synthetic image generation and filter construction. Gabor kernel caches
-       are cleared before every warmup and measured call, outside timing;
-       kernel generation during ``apply`` is included. Array conversions and
-       output construction performed by ``apply`` remain included
+     - Filter ``apply``, including Gabor kernel generation
+     - Synthetic inputs, filter construction, and Gabor cache reset
    * - radiomics
-     - Complete fresh-image ``families='all'`` extraction and selected Moran's
-       I/Geary's C at medium size; all 11 feature families separately; every IBSI
-       texture aggregation path
-     - Intensity-mask building, re-segmentation, texture and IVH discretization,
-       extractor construction; local-means result-cache reset before each complete
-       extraction round. Extractor-internal mask validation/copying remains included
+     - Complete extraction, individual feature families, texture aggregation,
+       or spatial statistics; includes extractor-internal mask validation/copying
+     - ROI preparation, discretization, extractor construction, and local-means
+       cache reset for complete extraction
    * - ibsi1
-     - All 20 published IBSI I feature/aggregation workflows, including their
-       configured preprocessing and radiomics extraction
-     - Digital-phantom or CT/RTSTRUCT loading, pipeline/extractor construction,
-       reference CSV loading, and published-tolerance checks
+     - Configured preprocessing and radiomics extraction
+     - Phantom/CT/RTSTRUCT loading, pipeline construction, and reference checks
    * - ibsi2_phase1
-     - ``apply`` for all 33 published IBSI II phase-I filter response maps
-     - Digital-phantom and reference response-map loading, filter construction,
-       and response-map validation
+     - Filter ``apply`` for published response maps
+     - Phantom/reference loading, filter construction, and response-map checks
    * - ibsi2_phase2
-     - All 18 published IBSI II phase-II feature workflows, including configured
-       resampling, filtering, ROI preparation, and radiomics extraction
-     - CT/RTSTRUCT loading, pipeline/extractor construction, reference CSV
-       loading, and published-tolerance checks
+     - Configured resampling, filtering, ROI preparation, and radiomics extraction
+     - CT/RTSTRUCT loading, pipeline construction, and reference checks
 
-``standard`` includes ``ibsi1``; ``exhaustive`` adds ``ibsi2_phase1`` and
-``ibsi2_phase2``. The focused ``ibsi`` suite runs all three groups. They use the
-repository's digital phantoms and CT phantom, with
-GTV-1 RTSTRUCT for CT workflows. The 71 cases come from the shared registry;
-input, CSV, and response-map loading is outside timing, and published-reference
-validation happens after measurement. Configuration C and 3.B are selectable
-through their published registry workload IDs in both timing and memory.
+The operation cases cover source-derived and independent resampling grids,
+isotropic and in-plane resampling, intensity ROI construction, range/outlier
+re-segmentation, and fixed-bin-number/fixed-bin-size discretization. Filtering
+covers Mean, LoG, db3 wavelets, Laws, Gabor, Simoncelli, and Riesz-LoG variants.
+Radiomics covers all 11 feature families, IBSI texture aggregation paths, and
+Moran's I/Geary's C. See the case registry and workload factories for individual
+parameters and interpolation choices.
 
-Sizes and scaling
------------------
+IBSI workflows use repository digital phantoms and the CT phantom, with GTV-1
+RTSTRUCT for CT workflows. Pure NIfTI I/O and joblib batch scaling are outside
+this computation-focused suite.
+
+Synthetic inputs and metadata
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Array shapes are **(z, y, x)**; geometry spacing is **(x, y, z)**.
 
-.. list-table:: Deterministic synthetic inputs
+.. list-table:: Synthetic input sizes
    :header-rows: 1
 
    * - Size
@@ -179,329 +318,113 @@ Array shapes are **(z, y, x)**; geometry spacing is **(x, y, z)**.
      - 96 x 192 x 192 (3,538,944 voxels)
      - 40 x 64 x 64 (163,840 voxels)
 
-All use float64 data, spacing (1, 1, 2) mm, a fixed RNG seed (20260911), smooth
-structure plus nonconstant noise, and an ellipsoidal ROI covering approximately
-23% of the volume. Actual voxel count/fraction is stored. The image sizes exercise
-megabyte-scale allocation and 3D computation; ROI-specific volumes bound expensive
-texture work while scaling from about 2,000 to 38,000 ROI voxels. These are selective
-patch/ROI workloads, not a claim to represent every scanner's full field of view.
-Real CT workflows supply the complementary larger, irregular workload.
-The timing and memory suites run complete fresh extraction and spatial statistics
-only at medium radiomics size. Small and large synthetic radiomics inputs remain
-available to workload factories for future scaling studies.
+Inputs use float64 data, spacing (1, 1, 2) mm, a fixed random seed (20260911),
+smooth structure with noise, and an ellipsoidal ROI covering approximately 23%
+of the volume. These synthetic patches keep texture computation manageable;
+CT workflows provide larger, irregular inputs. Complete extraction and spatial
+statistics run only at medium radiomics size. Small and large radiomics inputs
+are available to factories for future scaling studies.
 
-Stable ``extra_info.workload_id`` identifiers match timing and memory results.
 Metadata records shapes, ROI size/fraction, spacing, dtype, parameters, seed,
-aggregation, requested/observed thread controls, dependencies, loaded Z-Rad path,
-and a hash of the benchmark Python files. Change the suite version and workload
-identifier if the measured region, data distribution, or parameters change.
-Do not compare incompatible workloads just because test names match.
+aggregation, requested and observed thread controls, dependencies, loaded Z-Rad
+path, and a hash of benchmark Python files. The current suite version is 1.
+Change the suite version and workload ID when the measured region, input
+distribution, or parameters change.
 
-Rounds, state, threads, and statistics
---------------------------------------
+Rounds and cache policy
+~~~~~~~~~~~~~~~~~~~~~~~
 
-Most operations run seven measured calls; expensive scaling/radiomics cases
-use five; IBSI I feature workflows, IBSI II phase-I filters, and IBSI II
-phase-II feature workflows use three. Each has one
-unmeasured warmup and one iteration per round. This bounds the costly 3D work.
-Initial measurements found the fast suite took seconds, whereas a single IBSI II
-call took tens of seconds; automatic calibration of that workflow would provide
-little benefit.
-Three-round workloads give only a preliminary distribution, not a precise
-confidence bound.
-To characterize noise, repeat entire runs and, if justified, increase the specific
-workload's rounds. Native ``--benchmark-min-rounds`` does not override pedantic rounds.
+Most operations use seven measured rounds; expensive scaling/radiomics cases
+use five, and published IBSI cases use three. Each has one unmeasured warmup and
+one call per round. ``--benchmark-min-rounds`` does not override these explicit
+pedantic round counts. Three rounds provide only a preliminary view of variability;
+repeat entire runs and increase a workload's rounds when needed.
 
-Input arrays are read-only; preprocessing/filtering return new outputs, and the
-extractor builds a fresh context and feature groups per call. Complete radiomics
-extraction additionally resets ``_LOCAL_MEANS_CACHE`` in per-round setup: this
-module-level cache otherwise reuses local means by image-array identity despite
-fresh extraction contexts. Both image and support convolutions execute in every
-measured round. Cache clearing, ROI preparation and extractor construction stay
-outside timing. Inspection found no other module-level or identity-based
-radiomics result cache affecting this workload.
+Inputs are read-only, preprocessing/filtering return new outputs, and extraction
+creates a fresh context and feature groups per call. Complete radiomics extraction
+also clears ``_LOCAL_MEANS_CACHE`` before every round so both image and support
+convolutions execute each time. Gabor kernel caches are cleared before every
+round so kernel generation remains measured. Memory runs use the same setup hooks
+before their single operation.
 
-Selected filters do not cache output volumes. LoG updates spacing-derived scalar
-state in ``apply``; the same geometry is used every round. Gabor's kernel cache is
-reset in per-round setup, so operation-only Gabor cases measure fresh kernel
-generation even after warmup. The level-2 2D separable wavelet currently
-evaluates four rotations regardless of its ``rotation_invariance`` parameter;
-its workload metadata records the effective count. Warmup absorbs library
-initialization; complete
-radiomics keeps image-derived results uncached. These runs do not measure cold
-interpreter/import or cold filesystem latency. All allocations and Python object
-construction performed by the operation stay included. Garbage collection stays enabled.
+LoG reuses spacing-derived scalar state with identical geometry each round.
+The level-2 2D separable wavelet evaluates four rotations regardless of its
+``rotation_invariance`` parameter; metadata records the effective count.
+Warmup absorbs library initialization. Timing excludes cold interpreter/import
+and filesystem startup latency. Garbage collection remains enabled.
 
-Suite version 1 is the first published benchmark definition. Timing and memory
-select cases from the same registry: ``standard`` has 100 workload IDs, ``ibsi``
-has 71, and ``exhaustive`` has 151. Complete radiomics extraction uses
-``radiomics/all_fresh/{size}`` and clears the local-means result cache before each
-timed call. Filtering cases record their dimensionality, and Gabor measures fresh
-kernel generation. Memory setup hooks run before the operation, matching the
-timing suite's cache policy.
+Thread controls and direct pytest use
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Results saved during development of this suite used changing workloads and
-measurement methods. In particular, early complete-extraction timing results
-were warmed by the local-means cache and are invalid as fresh-extraction
-references. Do not use those development runs as accepted baselines; create new
-references with the version-1 suite and retain their workload and environment
-metadata.
+The launchers set ``OMP_NUM_THREADS``, ``OPENBLAS_NUM_THREADS``,
+``MKL_NUM_THREADS``, and ``ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS`` to 1 before
+imports. After import, ``threadpoolctl`` limits supported BLAS/OpenMP pools,
+including SciPy's bundled OpenBLAS; SciPy FFT uses ``set_workers(1)``.
+SimpleITK and OpenCV use explicit thread APIs. OpenCV GCD builds use
+``setNumThreads(0)`` to disable parallel regions; other backends use 1.
+Reported serial state is checked, and prior settings are restored after pytest.
+PyWavelets and the selected ndimage kernels have no separate thread-pool setting.
 
-SimpleITK and OpenCV have explicit thread APIs. OpenCV GCD builds require
-``setNumThreads(0)`` to disable parallel regions; other backends use 1. The
-reported serial state is checked, and prior settings are restored afterward. NumPy/SciPy BLAS and OpenMP pools
-are limited with ``threadpoolctl`` after imports; SciPy FFT uses ``set_workers(1)``.
-The launchers additionally set ``OMP_NUM_THREADS``, ``OPENBLAS_NUM_THREADS``,
-``MKL_NUM_THREADS`` and ``ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS`` to 1 before import.
-These cover the numerical backends used by the installed dependencies. PyWavelets
-and the selected ndimage kernels have no separate thread-pool setting here.
-Joblib batch parallelism is not invoked. Thread limits are restored after pytest.
-
-On macOS the launchers also set ``VECLIB_MAXIMUM_THREADS=1``. Apple Accelerate is
-not introspected by threadpoolctl, so its limit is recorded as **unverified**;
-an empty native-pool list does not prove serial BLAS execution. Direct pytest
-users on such systems should export this variable before starting Python. Prefer
-the canonical Linux/OpenBLAS environment for controlled comparisons. See
+On macOS, launchers also set ``VECLIB_MAXIMUM_THREADS=1``. Apple Accelerate's
+limit is recorded as **unverified** because threadpoolctl cannot inspect it.
+An empty native-pool list does not establish serial BLAS execution. Prefer
+Linux/OpenBLAS for controlled comparisons; see
 `threadpoolctl's Accelerate limitation <https://github.com/joblib/threadpoolctl/issues/135>`_.
 
-Use **median** as the headline, retaining mean, min/max, standard deviation, IQR,
-rounds and iterations in native JSON. ``--benchmark-json`` includes round samples;
-use ``--benchmark-save-data`` with saved runs to retain them there too. A minimum
-is not a regression verdict. IQR is within-run spread, not a confidence interval
-for changes between runs. Rerun noisy changes on an idle machine; compare repeated
-runs in both execution orders. Do not infer improvements from differences similar
-to normal variability. No timing or memory failure thresholds are installed.
+The following direct pytest commands select the same suites, but require you to
+set the thread environment variables above before starting Python::
 
-Saving and comparing references
--------------------------------
+    # standard
+    python -m pytest tests/benchmarks --benchmark-only -n 0 --no-cov -m 'not benchmark_exhaustive'
+    # exhaustive
+    python -m pytest tests/benchmarks --benchmark-only -n 0 --no-cov
+    # ibsi
+    python -m pytest tests/benchmarks --benchmark-only -n 0 --no-cov -m 'benchmark_ibsi'
 
-Native JSON is the sole timing format. No timing database or custom baseline
-updater is introduced. For example::
+``--benchmark-only`` overrides the normal ``--benchmark-skip`` setting;
+``-n 0`` disables pytest workers and ``--no-cov`` disables coverage.
+The suite rejects timing with workers, coverage, explicit cProfile/pytest-memray
+profiling, disabled garbage collection, or active Python tracing/profiling.
+Run timing commands without external profilers.
 
-    python tests/benchmarks/run.py --suite standard --benchmark-save=master-accepted --benchmark-save-data
-    python tests/benchmarks/run.py --suite standard --benchmark-autosave --benchmark-save-data
-    pytest-benchmark list
-    # Replace 0001 with the explicit accepted reference ID from the listing
-    python tests/benchmarks/run.py --suite standard --benchmark-compare=0001 --benchmark-save=pr-candidate
+CI behavior
+-----------
 
-Or use explicit files (create parent directories first)::
+The separate ``benchmark.yml`` workflow uses Ubuntu 24.04 and Python 3.12 on one
+GitHub-hosted runner. PRs and pushes to master run ``standard``; manual dispatch
+selects any suite, and a weekly schedule runs ``exhaustive``. Exhaustive manual
+and scheduled runs also produce an isolated-process RSS artifact for every case,
+with one sample per case.
 
-    mkdir -p reports/benchmarks
-    python tests/benchmarks/run.py --suite standard --benchmark-json=reports/benchmarks/current.json
-    python tests/benchmarks/compare_results.py --current reports/benchmarks/current.json --master reports/benchmarks/master.json --release reports/benchmarks/release.json
-    pytest-benchmark compare reports/benchmarks/master.json reports/benchmarks/current.json --columns=median,iqr,mean,stddev,min,max,rounds,iterations
+On PRs, current is GitHub's tested merge candidate and master is resolved at job
+checkout. On master pushes, the two may be identical, providing an observation
+of measurement noise. The GitHub release API selects the latest published stable
+release, whose SHA is fixed for the job. These comparisons do not update saved
+accepted references. Incompatible releases are handled as described above.
 
-``compare_results.py`` uses explicit reference roles and reports
-``100 * (current_median - reference_median) / reference_median`` separately for
-master and release. Thus 1 s to 2 s is **+100% regression**, 2 s to 1 s is
-**-50% improvement**, and equal values are **0% unchanged**. These labels describe
-direction, not statistical significance. Reference/current IQR values are shown
-as spread, without interpreting IQR changes as performance improvements.
-Workloads are matched by ``extra_info.workload_id`` (or full test name for JSON
-without that field); unmatched workloads are reported as unavailable. A zero or
-invalid reference timing produces no percentage verdict.
+Artifacts are retained for 30 days and include valid timing JSON where available,
+installation/test logs, dependency lists, a status/commit manifest, and comparison
+output. The job summary shows median changes relative to master and release,
+with IQR values. GitHub-hosted hardware and background load vary, so use these
+results as performance indicators. Candidate measurement or validation failures
+still fail the job. Correctness and coverage checks run in a separate workflow.
 
-Do not use ``pytest-benchmark compare --between`` for reports of candidate changes:
-pytest-benchmark 5.3.0 sorts filenames and may select ``current.json`` as its
-baseline, regardless of argument order. Previously generated summaries using that
-command must be regenerated from the raw JSON. The raw timing samples are not
-changed by the reporting fix; the complete-extraction exception is described above.
-The ordinary native comparison command preserves all the statistics. With no explicit reference,
-``--benchmark-compare`` uses the latest saved run, which may be a candidate:
-**always name the accepted reference when making regression decisions**.
+Add a benchmark
+---------------
 
-* **Master reference:** accepted master SHA, updated deliberately after accepted
-  changes reach master. A slower passing PR cannot redefine it.
-* **Release reference:** a specific published tag/SHA, fixed until the next
-  release reference is intentionally created. Retain its environment and harness.
-* **Current/PR:** a candidate, saved separately. Never overwrite either reference.
-
-Names like ``master-accepted`` are labels, not an automatic branch checkout.
-A named save must actually execute the intended revision. Do not run another
-checkout's tests while an editable installation still points at the current code.
-Long-lived reference JSON belongs in a controlled artifact archive; the repository
-ignores generated JSON, ``.benchmarks``, reports and profiling captures.
-
-Same-machine comparisons and CI
--------------------------------
-
-A portable comparison runner resolves refs once, archives each tracked revision
-into a fresh temporary source tree, installs it **non-editably** in a separate
-virtual environment, and runs a single copy of the **current benchmark harness**
-outside those source trees. It asserts that ``zrad.__file__`` belongs to the
-intended environment. This avoids stale editable installs, bytecode/build products,
-and accidental benchmark-definition differences. Each revision is run sequentially
-on the same machine and Python interpreter with identical thread controls.
-
-For local committed changes::
-
-    git fetch origin master --tags
-    python tests/benchmarks/compare_revisions.py --master origin/master --release v26.8.0 --current HEAD --output reports/benchmarks/comparison-001
-
-Replace the example release tag with the latest **published release** you intend
-to evaluate; the newest version-sorted tag is not necessarily a release. Use
-``--suite standard`` for the default comparisons or ``--suite exhaustive``
-for the complete published IBSI matrix. ``--full`` is a deprecated alias for
-``--suite exhaustive``. Uncommitted production edits are excluded by
-``git archive``; use the ordinary launcher to time working-tree edits. The current
-working-tree harness is used intentionally. The output directory must be new,
-protecting earlier results. Source trees and environments are removed afterward.
-
-Dependencies are resolved separately from each revision's declared requirements.
-All use the same benchmark tools, but compatible version ranges can resolve to
-different libraries. ``*-dependencies.txt`` and per-run metadata expose this
-confounder. Use ``--constraints /absolute/path/constraints.txt`` to supply a common
-set when comparing algorithm changes with fixed dependencies. No silently forced
-incompatible dependency set or persistent shared editable environment is used.
-
-The separate ``benchmark.yml`` workflow uses **ubuntu-24.04, Python 3.12** on one
-GitHub-hosted runner. It runs on PRs/pushes to master and manual dispatch. On PRs,
-``HEAD`` is GitHub's tested merge candidate; ``origin/master`` is resolved at job
-checkout time. On master pushes, current and master may be identical (a useful
-noise observation, not a claimed speedup). The GitHub release API resolves the
-latest published stable release, then the runner freezes its SHA for that job.
-It does not alter any saved accepted/release reference. Pull requests and pushes
-run ``standard``; manual dispatch selects any suite, and a weekly scheduled run uses
-``exhaustive``. Exhaustive manual/scheduled runs also create a parallel isolated-
-process RSS artifact for all 151 parity-matched cases, one sample each. The
-compatibility/coverage workflow remains separate.
-
-Artifacts retained for 30 days contain valid ``current.json``, ``master.json``,
-and ``release.json`` where available, installation/test logs, dependency lists,
-a status/commit manifest and explicitly reference-relative median/IQR comparison output. The comparison
-also appears in the job summary, with current/master and current/release
-percentage changes shown separately where each reference is valid. GitHub-hosted hardware and background load vary;
-the runner image label does not pin hardware or every OS package. Results are
-informative, without small-percentage gates. Measurement/test failures in the
-candidate still fail the job. No privileged ``pull_request_target`` or PR-comment
-publishing is used.
-
-Old revisions may lack the current API or fail current validation. They are
-reported as incompatible/failed, with logs; partial failing results are labelled
-``INVALID`` and excluded from comparison. Candidate failures are never silently
-skipped. In particular, v26.8.0 does not export ``RieszLoG`` or ``Simoncelli``.
-The revision-comparison runner imports the current workload module before suite
-selection, so it cannot compare that release without a compatibility adapter.
-The initial framework prioritizes PR/master comparisons instead of inventing
-historical adapters or claiming unequal workflows are equivalent. Release
-tracking starts when a release supports this harness (or a reviewed
-common-workload adapter is added). Never interpret an absent row/reference as
-unchanged performance.
-
-Memory: separate metrics and processes
---------------------------------------
-
-Peak RSS is measured without pytest or timing instrumentation::
-
-    python tests/benchmarks/memory.py --mode rss --suite standard --repeats 3 --output reports/benchmarks/rss-standard-001.json
-    python tests/benchmarks/memory.py --mode rss --suite ibsi --output reports/benchmarks/rss-ibsi-001.json
-    python tests/benchmarks/memory.py --mode rss --workload ibsi/i/c/3d/merg --workload ibsi/ii/phase_ii/3.b --output reports/benchmarks/rss-selected-001.json
-    python tests/benchmarks/memory.py --mode rss --suite exhaustive --output reports/benchmarks/rss-exhaustive.json
-
-The default is ``standard``. Parity-matched tiers use the same case IDs as
-``run.py``: 100 ``standard`` cases, 71 ``ibsi`` cases, and 151 ``exhaustive``
-cases. Their inputs, parameters, operation, setup hook, and validator come from
-the same case declaration. Join timing ``extra_info.workload_id`` to memory
-``measurements[].workload_id`` to inspect both metrics for a case.
-Each repetition executes in a **fresh subprocess**, with no warmup. Archive extraction occurs in
-the parent before any measured child starts. ``resource.getrusage(RUSAGE_SELF)``
-is sampled after computation and before validation/report serialization. Linux
-KiB values and macOS byte values are normalized to bytes.
-
-``peak_rss_bytes`` is the **process-lifetime maximum resident set through completion
-of the workload**, including interpreter/native imports, loaded inputs and setup.
-``setup_peak_rss_bytes`` is the high-water mark immediately before computation;
-it is neither current RSS nor a number to subtract to obtain temporary allocation
-size. Setup may itself dominate a small operation. The maximum is not polluted by
-previous workloads because every sample has its own process/PID. A workload's
-setup hook, if any, runs once after input preparation and before the setup RSS
-snapshot. Children do not spawn batch workers. A process tree would require a
-different measurement design.
-The named memory tiers use this same fresh-process method. RSS remains a cold-process
-high-water mark, while speed uses an unmeasured warmup and several timed rounds;
-equal workload IDs mean equal case definitions, not interchangeable metrics.
-Use Memray only for selected cases after RSS screening.
-This backend supports Linux/macOS; Windows timing remains usable and optional
-profiling dependencies are excluded there.
-
-For allocation attribution, install the optional profiling extra::
-
-    python -m pip install -e '.[test,profiling]'
-    python tests/benchmarks/memory.py --mode memray --workload ibsi/ii/phase_ii/3.b --output reports/benchmarks/alloc-ibsi-001.json
-    python tests/benchmarks/memory.py --mode memray --native --workload radiomics/spatial/medium --output reports/benchmarks/alloc-spatial-001.json
-    python -m memray stats reports/benchmarks/alloc-spatial-001-radiomics-spatial-medium-0.memray
-    python -m memray flamegraph reports/benchmarks/alloc-spatial-001-radiomics-spatial-medium-0.memray
-
-Memray's tracker wraps **only one operation after input preparation**, in its own
-fresh child. It captures Python and native heap allocations. ``--native`` adds
-native stack attribution and extra overhead; it is optional. The reported
-``allocation_high_water_bytes`` is Memray's peak simultaneously live **tracked
-allocations during the operation**, not peak RSS/RAM. Preexisting input allocations
-are not counted. Validation and setup are outside the tracker. No timing JSON is
-created and RSS is not reported from an instrumented run. Do not combine those
-runtimes with timing results. Native-symbol reports should be generated on the
-capture machine; large captures are ignored by git. See
-`Memray native tracking <https://bloomberg.github.io/memray/run.html>`_.
-
-pytest-memray was investigated but is not installed: its per-test instrumentation
-would include fixture/test work and complicate timing separation. Direct Memray
-tracking provides the desired narrower region with one optional dependency.
-Memray remains limited to Linux/macOS and is never a normal runtime dependency.
-
-Memory JSON has ``schema_version: 1`` and a ``measurements`` list: stable workload
-ID, commit, working-tree dirty flag, PID, timestamp, Python/platform,
-workload/environment metadata, ``memory_methodology_version`` (1 for
-setup-before-operation), and one mode-specific metric. All repetitions remain
-separate; no timing schema is repurposed. Existing output paths are refused.
-Peak RSS is suitable for an initial platform-specific longitudinal series;
-characterize variance before gating it.
-Memray results and captures are diagnostic allocation evidence, not substitute RSS.
-
-Initial observations and extending the suite
---------------------------------------------
-
-During early development, before the fresh-extraction cache correction, local
-verification on macOS/Apple Silicon,
-Python 3.14.6, measured 20 fast
-cases in approximately 6.6 seconds and 11 slow cases in approximately 111 seconds
-(warmups/setup included in suite duration). IBSI medians were approximately 0.81 s
-and 24 s. Earlier six-case fresh-process RSS observations ranged around 300 MiB for resampling,
-264 MiB Riesz-LoG, 241 MiB radiomics, 223 MiB spatial, 361 MiB IBSI I and 1.28 GiB
-IBSI II. These are development observations, **not versioned baselines**; Accelerate
-threading is unverified and dependencies/hardware differ from CI. Recheck on your
-machine. First-time ZIP extraction also changes total suite duration, not operation
-timing.
-
-When adding a benchmark:
-
-1. Inspect the production path, mutation, retained buffers, caches and threading.
+1. Inspect the production path, mutation, retained buffers, caches, and threading.
    Select an operation that contributes material workload cost.
 2. Add a deterministic factory with a stable workload ID and explicit parameters.
    Construct/load inputs and operators before returning the measured callable.
-3. Time only the intended region. Put output checks in the validator. Reuse
-   published references where available, without timing reference loading.
-4. Make repeated calls independent. Use read-only input arrays where possible;
-   for mutating APIs use ``benchmark.pedantic(setup=...)`` to clone inputs outside
-   each timed round. Never merely reset once before a multi-iteration round.
-5. Add the case and its parameters to ``tests/benchmarks/cases.py``. The named
-   tiers then select the same ID in timing and memory. Mark costly cases
-   ``benchmark_slow`` and filesystem cases ``benchmark_io`` as appropriate.
-6. Include the explicit ``benchmark`` fixture in each timing test so native
-   exclusion works. Call ``measure(case.build())`` using the registry case,
-   run the test, and inspect the saved JSON.
-7. Run the case once in isolated RSS mode and check its setup policy and validator.
-   Keep memory instrumentation out of authoritative timing runs.
-
-The current matrix includes selected Laws/Gabor, Simoncelli, and Riesz paths;
-the standard tier includes IBSI I features, and the exhaustive tier adds IBSI II
-phase-I filters and phase-II features.
-Pure NIfTI I/O and joblib batch scaling remain outside this computation-focused
-suite. Batch work mixes filesystem and parallel scheduling costs requiring a
-separate methodology. The published IBSI workflows provide system-level signals
-alongside operation benchmarks.
-
-Useful future work includes a stable dedicated runner, repeated/counterbalanced
-revision order, archived environment constraints, characterized per-workload noise
-budgets, a reviewed common subset for older releases, and larger or sparse ROI
-shapes to exercise spatial algorithm crossover. These are future improvements,
-not claims made by the current implementation.
+3. Time only the intended region. Put output checks in the validator and reuse
+   published references where available, loading them outside timing.
+4. Make repeated calls independent. Use read-only inputs where possible. For
+   mutating APIs, use ``benchmark.pedantic(setup=...)`` to clone inputs before
+   each timed round; resetting once is insufficient for a multi-iteration round.
+5. Add the case and its parameters to ``tests/benchmarks/cases.py`` so timing and
+   memory select the same definition. Mark costly cases ``benchmark_slow`` and
+   filesystem cases ``benchmark_io`` as appropriate.
+6. Include the explicit ``benchmark`` fixture in each timing test so exclusion
+   works. Call ``measure(case.build())``, run the test, and inspect its saved JSON.
+7. Run the case in isolated RSS mode and check its setup policy and validator.
+   Keep memory instrumentation separate from timing runs.

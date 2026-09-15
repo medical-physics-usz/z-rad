@@ -8,6 +8,8 @@ on:
     branches: [master]
   schedule:
     - cron: "17 2 * * 1"
+  # Suite choice changes benchmark reports; this workflow does not build software.
+  # checkov:skip=CKV_GHA_7:Manual input selects a fixed benchmark suite.
   workflow_dispatch:
     inputs:
       suite:
@@ -70,9 +72,11 @@ jobs:
         shell: bash
         run: |
           if [[ -f reports/benchmarks/ci/comparison.txt ]]; then
-            echo '```text' >> "$GITHUB_STEP_SUMMARY"
-            cat reports/benchmarks/ci/comparison.txt >> "$GITHUB_STEP_SUMMARY"
-            echo '```' >> "$GITHUB_STEP_SUMMARY"
+            {
+              echo '```text'
+              cat reports/benchmarks/ci/comparison.txt
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
           fi
       - name: Upload timing and environment artifacts
         if: always()

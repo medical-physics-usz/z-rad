@@ -13,12 +13,12 @@ The named suites balance feedback time, diagnosis and configuration coverage.
 The focused ``ibsi`` suite is available in addition to the two full tiers:
 
 ``standard``
-    Scaling inputs, expensive filter/aggregation paths, and pipeline workloads.
-    This is the local launcher default.
+    Scaling inputs, expensive filter/aggregation paths, and all 20 IBSI I
+    workflows. This is the local launcher default.
 ``exhaustive``
-    Every standard case plus all 71 published IBSI cases exercised by the
-    correctness suite: 20 IBSI I feature/aggregation workflows, all 33 IBSI II
-    phase-I response maps and all 18 IBSI II phase-II feature configurations.
+    Every standard case plus all 33 IBSI II phase-I response maps and all 18
+    IBSI II phase-II feature configurations, completing the 71 published IBSI
+    cases exercised by the correctness suite.
 ``ibsi``
     The 71 published IBSI performance cases only, grouped as ``ibsi1`` (20
     IBSI I cases), ``ibsi2_phase1`` (33 IBSI II phase-I cases), and
@@ -60,7 +60,7 @@ variables **before** importing numerical libraries, then invokes native pytest::
     # Standard benchmark suite (the local default)
     python tests/benchmarks/run.py --suite standard
 
-    # Complete published IBSI configuration matrix plus all standard cases
+    # Standard cases plus the IBSI II phase-I and phase-II workflows
     python tests/benchmarks/run.py --suite exhaustive
 
     # Published IBSI configuration matrix only
@@ -135,10 +135,6 @@ importing the timing fixture.
      - Intensity-mask building, re-segmentation, texture and IVH discretization,
        extractor construction; local-means result-cache reset before each complete
        extraction round. Extractor-internal mask validation/copying remains included
-   * - pipeline
-     - Image/mask resampling to 1.5 mm, LoG, ROI building, re-segmentation,
-       texture/IVH discretization, complete radiomics extraction
-     - Synthetic inputs, pipeline and extractor construction
    * - ibsi1
      - All 20 published IBSI I feature/aggregation workflows, including their
        configured preprocessing and radiomics extraction
@@ -154,12 +150,13 @@ importing the timing fixture.
      - CT/RTSTRUCT loading, pipeline/extractor construction, reference CSV
        loading, and published-tolerance checks
 
-These IBSI timing groups run only in ``ibsi`` or ``exhaustive``; ``standard``
-excludes them. They use the repository's digital phantoms and CT phantom, with
+``standard`` includes ``ibsi1``; ``exhaustive`` adds ``ibsi2_phase1`` and
+``ibsi2_phase2``. The focused ``ibsi`` suite runs all three groups. They use the
+repository's digital phantoms and CT phantom, with
 GTV-1 RTSTRUCT for CT workflows. The 71 cases come from the shared registry;
 input, CSV, and response-map loading is outside timing, and published-reference
 validation happens after measurement. Configuration C and 3.B are also the
-memory CLI's named IBSI defaults, but are not extra standard pytest timing cases.
+memory CLI's named IBSI defaults; the memory runs are separate from pytest timing.
 
 Sizes and scaling
 -----------------
@@ -204,7 +201,7 @@ Rounds, state, threads, and statistics
 --------------------------------------
 
 Most operations run seven measured calls; expensive scaling/radiomics cases
-use five; the synthetic pipeline and IBSI II phase-I filters use three. IBSI
+use five; IBSI II phase-I filters use three. IBSI
 feature workflows use one screening round. Each has one unmeasured warmup and
 one iteration per round. This bounds the costly 3D work. Initial measurements
 found the fast suite took seconds, whereas a single IBSI II call took tens of
@@ -261,6 +258,13 @@ Suite version 5 removes the small and large complete fresh-extraction and spatia
 statistics timing cases. Their medium-size cases and the separate large-size
 memory workloads remain available. Older timing JSON may contain the four removed
 rows; comparison reports treat them as unavailable in the current suite.
+
+Suite version 6 removes the synthetic ``pipeline/log_radiomics/large`` timing case
+and includes all ``ibsi1`` cases in ``standard``. The focused ``ibsi`` suite still
+runs all 71 published cases; ``exhaustive`` adds ``ibsi2_phase1`` and
+``ibsi2_phase2`` to ``standard``. Older timing JSON may lack the newly standard
+IBSI I rows or contain the removed pipeline row; comparison reports treat those
+differences as unavailable workloads.
 
 SimpleITK and OpenCV have explicit thread APIs. OpenCV GCD builds require
 ``setNumThreads(0)`` to disable parallel regions; other backends use 1. The
@@ -495,11 +499,12 @@ When adding a benchmark:
    Keep memory instrumentation out of authoritative timing runs.
 
 The current matrix includes selected Laws/Gabor, Simoncelli, and Riesz paths;
-the exhaustive tier supplies the published IBSI filter/feature configurations.
+the standard tier includes IBSI I features, and the exhaustive tier adds IBSI II
+phase-I filters and phase-II features.
 Pure NIfTI I/O and joblib batch scaling remain outside this computation-focused
 suite. Batch work mixes filesystem and parallel scheduling costs requiring a
-separate methodology. The synthetic pipeline is a system-level signal alongside
-real IBSI workflows.
+separate methodology. The published IBSI workflows provide system-level signals
+alongside operation benchmarks.
 
 Useful future work includes a stable dedicated runner, repeated/counterbalanced
 revision order, archived environment constraints, characterized per-workload noise

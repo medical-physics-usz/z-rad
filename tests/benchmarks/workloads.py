@@ -18,7 +18,6 @@ from zrad.preprocessing import (
     IntensityMaskBuilder,
     IVHIntensityDiscretizer,
     MaskResampler,
-    Pipeline,
     Resegmenter,
     RoiData,
     TextureDiscretizer,
@@ -436,35 +435,6 @@ def radiomics(size, family='all', aggregation=('3D', 'MERG')):
         ),
         rounds=5,
         setup=clear_radiomics_result_caches if family in ('all', 'local_intensity') else None,
-    )
-
-
-def pipeline():
-    image, mask = synthetic_pair(ROI_SHAPES['large'])
-    flt = LoG(padding_type='reflect', sigma_mm=2.0, cutoff=4, dimensionality='3D')
-    steps = Pipeline(
-        [
-            ('image', ImageResampler(resolution=(1.5, 1.5, 1.5))),
-            ('mask', MaskResampler(resolution=(1.5, 1.5, 1.5))),
-            ('filter', flt),
-            ('roi', IntensityMaskBuilder()),
-            ('range', Resegmenter(intensity_range=(-1000, 400))),
-            ('texture', TextureDiscretizer(number_of_bins=32)),
-            ('ivh', IVHIntensityDiscretizer(method='direct')),
-        ]
-    )
-    roi = RoiData(image=image, morphological_mask=mask)
-    extractor = Radiomics(aggr_dim='3D', aggr_method='MERG')
-
-    def operation():
-        return extractor.extract_features(roi_data=steps.apply(roi), families='all')
-
-    return Workload(
-        'pipeline/log_radiomics/large',
-        operation,
-        validate_features,
-        metadata(image, mask, steps=steps.get_params()),
-        rounds=3,
     )
 
 

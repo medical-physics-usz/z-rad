@@ -3,6 +3,7 @@
 SUITE_MARKERS = {
     'quick': 'not benchmark_slow and not benchmark_exhaustive',
     'extended': 'not benchmark_exhaustive',
+    'ibsi': 'benchmark_ibsi',
     'exhaustive': None,
 }
 
@@ -12,4 +13,3 @@ def marker_for_suite(name):
         return SUITE_MARKERS[name]
     except KeyError as error:
         raise ValueError(f'Unknown benchmark suite {name!r}; choose from {tuple(SUITE_MARKERS)}') from error
-

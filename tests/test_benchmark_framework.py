@@ -28,6 +28,7 @@ def test_exhaustive_ibsi_registry_is_complete_and_unique():
 def test_named_suite_markers_keep_exhaustive_cases_opt_in():
     assert marker_for_suite('quick') == 'not benchmark_slow and not benchmark_exhaustive'
     assert marker_for_suite('extended') == 'not benchmark_exhaustive'
+    assert marker_for_suite('ibsi') == 'benchmark_ibsi'
     assert marker_for_suite('exhaustive') is None
     with pytest.raises(ValueError, match='Unknown benchmark suite'):
         marker_for_suite('typo')

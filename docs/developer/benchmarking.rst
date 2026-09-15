@@ -6,10 +6,11 @@ correctness-test duration. Use operation benchmarks to locate a change and the
 IBSI workflows to assess its effect on realistic processing. Production code
 is unchanged; correctness expectations and published tolerances are preserved.
 
-Coverage tiers
---------------
+Coverage tiers and focused suites
+----------------------------------
 
-Three named tiers balance feedback time, diagnosis and configuration coverage:
+The named tiers balance feedback time, diagnosis and configuration coverage. The
+focused ``ibsi`` suite is available in addition to those tiers:
 
 ``quick``
     Focused operation and feature-family signals intended for every pull request.
@@ -20,6 +21,10 @@ Three named tiers balance feedback time, diagnosis and configuration coverage:
     Every extended case plus all 71 published IBSI cases exercised by the
     correctness suite: 20 IBSI I feature/aggregation workflows, all 33 IBSI II
     phase-I response maps and all 18 IBSI II phase-II feature configurations.
+``ibsi``
+    The 71 published IBSI performance cases only, grouped as ``ibsi1`` (20
+    IBSI I cases), ``ibsi2_phase1`` (33 IBSI II phase-I cases), and
+    ``ibsi2_phase2`` (18 IBSI II phase-II cases).
 
 The declarations in ``tests/ibsi_cases.py`` are shared with IBSI correctness
 tests and exhaustive performance construction. Registry contract tests require
@@ -63,10 +68,14 @@ variables **before** importing numerical libraries, then invokes native pytest::
     # Complete published IBSI configuration matrix plus all focused cases
     python tests/benchmarks/run.py --suite exhaustive
 
+    # Published IBSI configuration matrix only
+    python tests/benchmarks/run.py --suite ibsi
+
 The equivalent direct pytest commands are::
 
     python -m pytest tests/benchmarks --benchmark-only -n 0 --no-cov -m 'not benchmark_slow and not benchmark_exhaustive'
     python -m pytest tests/benchmarks --benchmark-only -n 0 --no-cov -m 'not benchmark_exhaustive'
+    python -m pytest tests/benchmarks --benchmark-only -n 0 --no-cov -m 'benchmark_ibsi'
     python -m pytest tests/benchmarks --benchmark-only -n 0 --no-cov
 
 ``--benchmark-only`` overrides the normal native skip. ``-n 0`` overrides

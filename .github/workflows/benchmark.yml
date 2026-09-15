@@ -13,7 +13,7 @@ on:
       suite:
         description: Benchmark coverage tier
         type: choice
-        options: [quick, extended, exhaustive]
+        options: [quick, extended, ibsi, exhaustive]
         default: quick
 
 permissions:

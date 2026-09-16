@@ -111,6 +111,15 @@ jobs:
         run: python tests/benchmarks/run.py --suite exhaustive --collect-only -q
       - name: Measure all 151 exhaustive peak RSS cases in isolated processes
         run: python tests/benchmarks/memory.py --mode rss --suite exhaustive --output reports/benchmarks/rss-exhaustive.json
+      - name: Display grouped memory results
+        if: always()
+        shell: bash
+        run: |
+          if [[ -f reports/benchmarks/rss-exhaustive.json ]]; then
+            python tests/benchmarks/summarize_memory.py reports/benchmarks/rss-exhaustive.json >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo 'No complete RSS report was produced; inspect the memory job log.' >> "$GITHUB_STEP_SUMMARY"
+          fi
       - name: Upload memory artifact
         if: always()
         uses: actions/upload-artifact@v7

@@ -394,7 +394,11 @@ The separate ``benchmark.yml`` workflow uses Ubuntu 24.04 and Python 3.12 on one
 GitHub-hosted runner. PRs and pushes to master run ``standard``; manual dispatch
 selects any suite, and a weekly schedule runs ``exhaustive``. Exhaustive manual
 and scheduled runs also produce an isolated-process RSS artifact for every case,
-with one sample per case.
+with one sample per case. The memory job summary shows all workloads in separate
+grouped tables with peak and setup-peak RSS in MiB. Repeated local reports also
+show median peaks and the observed range, using::
+
+    python tests/benchmarks/summarize_memory.py reports/benchmarks/rss-standard-001.json
 
 On PRs, current is GitHub's tested merge candidate and master is resolved at job
 checkout. On master pushes, the two may be identical, providing an observation

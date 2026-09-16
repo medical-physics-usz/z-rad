@@ -10,6 +10,7 @@ from benchmarks.compare_revisions import write_summary
 from benchmarks.conftest import measure, pytest_configure
 from benchmarks.memory import MEMORY_SUITES, exhaustive_names
 from benchmarks.suites import SUITE_MARKERS, marker_for_suite
+from benchmarks.summarize_memory import render_summary
 from ibsi_cases import ALL_IBSI_PERFORMANCE_CASES, IBSI_I_FEATURE_CASES, IBSI_II_FEATURE_CASES, IBSI_II_FILTER_CASES
 
 pytestmark = pytest.mark.unit
@@ -59,6 +60,66 @@ def test_memory_and_timing_case_inventory_has_named_tier_parity():
         assert {param.values[0].identifier for param in pytest_params(test)} == {
             case.identifier for case in ALL_CASES if case.test == test
         }
+
+
+def memory_sample(identifier, peak_mib, setup_mib):
+    return {
+        'workload_id': identifier,
+        'mode': 'rss',
+        'commit': 'abc123',
+        'platform': 'Linux-test',
+        'python': '3.12.0',
+        'peak_rss_bytes': peak_mib * 1024**2,
+        'setup_peak_rss_bytes': setup_mib * 1024**2,
+    }
+
+
+def test_memory_summary_groups_every_workload_and_single_sample_columns():
+    identifiers = (
+        'image/example',
+        'preprocessing/example',
+        'filtering/example',
+        'radiomics/example',
+        'ibsi/i/example',
+        'ibsi/ii/phase_i/example',
+        'ibsi/ii/phase_ii/example',
+    )
+    payload = {'schema_version': 1, 'measurements': [memory_sample(name, 200, 150) for name in identifiers]}
+    summary = render_summary(payload)
+    assert '7 workloads · 7 measurements · 1 sample per workload' in summary
+    assert 'Peak range' not in summary
+    for title in ('Image', 'Preprocessing', 'Filtering', 'Radiomics', 'IBSI I', 'IBSI II phase I', 'IBSI II phase II'):
+        assert f'### {title} — 1 workload' in summary
+    for identifier in identifiers:
+        assert f'| `{identifier}` | 200.0 | 150.0 |' in summary
+    assert summary.index('### Image') < summary.index('### IBSI II phase II')
+
+
+def test_memory_summary_uses_medians_and_ranges_for_repeated_samples():
+    payload = {
+        'schema_version': 1,
+        'measurements': [
+            memory_sample('image/example', 100, 90),
+            memory_sample('image/example', 400, 300),
+            memory_sample('image/example', 200, 180),
+        ],
+    }
+    summary = render_summary(payload)
+    assert '1 workload · 3 measurements · 3 samples per workload' in summary
+    assert '| `image/example` | 200.0 | 100.0–400.0 | 180.0 |' in summary
+
+
+@pytest.mark.parametrize(
+    'payload',
+    [
+        {'schema_version': 1, 'measurements': []},
+        {'schema_version': 1, 'measurements': [{**memory_sample('image/example', 100, 90), 'mode': 'memray'}]},
+        {'schema_version': 1, 'measurements': [memory_sample('image/example', float('nan'), 90)]},
+    ],
+)
+def test_memory_summary_rejects_incomplete_or_non_rss_data(payload):
+    with pytest.raises(ValueError):
+        render_summary(payload)
 
 
 def timing_config(**overrides):

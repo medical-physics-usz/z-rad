@@ -187,7 +187,10 @@ happens in the parent before measurement. The child prepares inputs, runs any
 setup hook, records the setup peak, executes the operation, and records the final
 peak before validation and report serialization. Linux and macOS values are
 normalized to bytes. This backend supports Linux and macOS; timing is also
-available on Windows.
+available on Windows. RSS runs print grouped workload tables and save a Markdown
+summary next to the JSON (for example, ``rss-standard-001.md``). Existing JSON
+and Markdown output paths are refused rather than overwritten. Memray runs keep
+their separate capture/manifest output and do not produce RSS summaries.
 
 The two RSS fields have distinct meanings:
 
@@ -395,8 +398,9 @@ GitHub-hosted runner. PRs and pushes to master run ``standard``; manual dispatch
 selects any suite, and a weekly schedule runs ``exhaustive``. Exhaustive manual
 and scheduled runs also produce an isolated-process RSS artifact for every case,
 with one sample per case. The memory job summary shows all workloads in separate
-grouped tables with peak and setup-peak RSS in MiB. Repeated local reports also
-show median peaks and the observed range, using::
+grouped tables with peak and setup-peak RSS in MiB, using the automatically
+generated Markdown file. Repeated local reports also show median peaks and the
+observed range. To render an older JSON result manually, use::
 
     python tests/benchmarks/summarize_memory.py reports/benchmarks/rss-standard-001.json
 

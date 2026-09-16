@@ -42,7 +42,7 @@ def _count(number, noun):
     return f'{number} {noun}{"" if number == 1 else "s"}'
 
 
-def render_summary(payload):
+def _summary_data(payload):
     if payload.get('schema_version') != 1 or not payload.get('measurements'):
         raise ValueError('Expected a nonempty schema-version-1 memory report.')
     measurements = payload['measurements']
@@ -59,27 +59,36 @@ def render_summary(payload):
         f'{_count(int(repeats), "sample")} per workload' if repeats != 'varying' else 'varying samples per workload'
     )
 
+    grouped = defaultdict(list)
+    for workload_id, samples in by_workload.items():
+        peaks = [_metric(sample, 'peak_rss_bytes') for sample in samples]
+        setups = [_metric(sample, 'setup_peak_rss_bytes') for sample in samples]
+        grouped[group_name(workload_id)].append((workload_id, median(peaks), min(peaks), max(peaks), median(setups)))
+
+    titles = [title for _, title in GROUPS] + ['Other']
+    return {
+        'count': f'{_count(len(by_workload), "workload")} · {_count(len(measurements), "measurement")} · {sample_count}',
+        'commit': _one_value(measurements, 'commit'),
+        'platform': _one_value(measurements, 'platform'),
+        'python': _one_value(measurements, 'python'),
+        'multi_sample': multi_sample,
+        'groups': [(title, sorted(grouped[title])) for title in titles if grouped[title]],
+    }
+
+
+def render_summary(payload):
+    data = _summary_data(payload)
     lines = [
         '## Peak RSS memory benchmarks',
         '',
-        f'{_count(len(by_workload), "workload")} · {_count(len(measurements), "measurement")} · {sample_count}',
+        data['count'],
         '',
-        f'Commit: `{_one_value(measurements, "commit")}` · '
-        f'Platform: `{_one_value(measurements, "platform")}` · '
-        f'Python: `{_one_value(measurements, "python")}`',
+        f'Commit: `{data["commit"]}` · Platform: `{data["platform"]}` · Python: `{data["python"]}`',
         '',
     ]
-    grouped = defaultdict(list)
-    for workload_id, samples in by_workload.items():
-        grouped[group_name(workload_id)].append((workload_id, samples))
-
-    titles = [title for _, title in GROUPS] + ['Other']
-    for title in titles:
-        workloads = grouped.get(title)
-        if not workloads:
-            continue
+    for title, workloads in data['groups']:
         lines.extend([f'### {title} — {_count(len(workloads), "workload")}', ''])
-        if multi_sample:
+        if data['multi_sample']:
             lines.extend(
                 [
                     '| Workload | Median peak RSS (MiB) | Peak range (MiB) | Median setup peak (MiB) |',
@@ -88,16 +97,11 @@ def render_summary(payload):
             )
         else:
             lines.extend(['| Workload | Peak RSS (MiB) | Setup peak (MiB) |', '|---|---:|---:|'])
-        for workload_id, samples in sorted(workloads):
-            peaks = [_metric(sample, 'peak_rss_bytes') for sample in samples]
-            setups = [_metric(sample, 'setup_peak_rss_bytes') for sample in samples]
-            if multi_sample:
-                lines.append(
-                    f'| `{workload_id}` | {median(peaks):.1f} | '
-                    f'{min(peaks):.1f}–{max(peaks):.1f} | {median(setups):.1f} |'
-                )
+        for workload_id, peak, low, high, setup in workloads:
+            if data['multi_sample']:
+                lines.append(f'| `{workload_id}` | {peak:.1f} | {low:.1f}–{high:.1f} | {setup:.1f} |')
             else:
-                lines.append(f'| `{workload_id}` | {peaks[0]:.1f} | {setups[0]:.1f} |')
+                lines.append(f'| `{workload_id}` | {peak:.1f} | {setup:.1f} |')
         lines.append('')
 
     lines.extend(
@@ -110,6 +114,43 @@ def render_summary(payload):
             '',
         ]
     )
+    return '\n'.join(lines)
+
+
+def _console_table(headers, rows):
+    widths = [max(len(cell) for cell in column) for column in zip(headers, *rows)]
+
+    def format_row(row):
+        return '  '.join(
+            cell.ljust(width) if index == 0 else cell.rjust(width)
+            for index, (cell, width) in enumerate(zip(row, widths))
+        )
+
+    return [format_row(headers), format_row(tuple('-' * width for width in widths)), *(format_row(row) for row in rows)]
+
+
+def render_console_summary(payload):
+    data = _summary_data(payload)
+    lines = [
+        'Peak RSS memory benchmarks',
+        data['count'],
+        f'Commit: {data["commit"]} | Platform: {data["platform"]} | Python: {data["python"]}',
+        '',
+    ]
+    for title, workloads in data['groups']:
+        lines.append(f'{title} ({_count(len(workloads), "workload")})')
+        if data['multi_sample']:
+            headers = ('Workload', 'Median peak (MiB)', 'Peak range (MiB)', 'Median setup (MiB)')
+            rows = [
+                (workload_id, f'{peak:.1f}', f'{low:.1f}–{high:.1f}', f'{setup:.1f}')
+                for workload_id, peak, low, high, setup in workloads
+            ]
+        else:
+            headers = ('Workload', 'Peak (MiB)', 'Setup peak (MiB)')
+            rows = [(workload_id, f'{peak:.1f}', f'{setup:.1f}') for workload_id, peak, _, _, setup in workloads]
+        lines.extend(_console_table(headers, rows))
+        lines.append('')
+    lines.append('Peak includes imports, inputs, and setup; setup peak is not an operation-only allocation baseline.')
     return '\n'.join(lines)
 
 

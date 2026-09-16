@@ -20,6 +20,7 @@ sys.path.insert(0, str(TESTS.parent))
 
 from benchmarks.cases import CASE_BY_ID, suite_cases  # noqa: E402
 from benchmarks.runtime import controlled_environment, environment_metadata, single_threaded  # noqa: E402
+from benchmarks.summarize_memory import render_console_summary, render_summary  # noqa: E402
 
 MEMORY_SUITES = ('standard', 'ibsi', 'exhaustive')
 
@@ -120,6 +121,12 @@ def main():
         return
     if args.output.exists():
         parser.error('Output exists; choose a new path to preserve earlier measurements.')
+    summary_path = args.output.with_suffix('.md') if args.mode == 'rss' else None
+    if summary_path is not None:
+        if summary_path == args.output:
+            parser.error('Choose a JSON output path; the Markdown summary uses the same stem with a .md suffix.')
+        if summary_path.exists():
+            parser.error('Markdown summary exists; choose a new output path to preserve it.')
     available = set(exhaustive_names())
     if args.workloads and args.suite:
         parser.error('Use either --suite or explicit --workload selections.')
@@ -180,8 +187,15 @@ def main():
                 results.append(json.loads(output.read_text()))
                 if args.mode == 'memray':
                     output.unlink()  # capture remains; combined JSON is the manifest
-    args.output.write_text(json.dumps({'schema_version': 1, 'measurements': results}, indent=2) + '\n')
-    print(args.output)
+    payload = {'schema_version': 1, 'measurements': results}
+    args.output.write_text(json.dumps(payload, indent=2) + '\n')
+    if summary_path is not None:
+        summary_path.write_text(render_summary(payload))
+        print(render_console_summary(payload))
+        print(f'RSS JSON: {args.output}')
+        print(f'Markdown summary: {summary_path}')
+    else:
+        print(args.output)
 
 
 if __name__ == '__main__':

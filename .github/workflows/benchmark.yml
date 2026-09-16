@@ -115,16 +115,18 @@ jobs:
         if: always()
         shell: bash
         run: |
-          if [[ -f reports/benchmarks/rss-exhaustive.json ]]; then
-            python tests/benchmarks/summarize_memory.py reports/benchmarks/rss-exhaustive.json >> "$GITHUB_STEP_SUMMARY"
+          if [[ -f reports/benchmarks/rss-exhaustive.md ]]; then
+            cat reports/benchmarks/rss-exhaustive.md >> "$GITHUB_STEP_SUMMARY"
           else
-            echo 'No complete RSS report was produced; inspect the memory job log.' >> "$GITHUB_STEP_SUMMARY"
+            echo 'No complete RSS summary was produced; inspect the memory job log.' >> "$GITHUB_STEP_SUMMARY"
           fi
       - name: Upload memory artifact
         if: always()
         uses: actions/upload-artifact@v7
         with:
           name: performance-memory-${{ github.run_id }}-${{ github.run_attempt }}
-          path: reports/benchmarks/rss-exhaustive.json
+          path: |
+            reports/benchmarks/rss-exhaustive.json
+            reports/benchmarks/rss-exhaustive.md
           retention-days: 30
           if-no-files-found: warn

@@ -1,6 +1,7 @@
 """Safety contracts for performance measurements, without measuring performance."""
 
 import json
+import sys
 from types import SimpleNamespace
 
 import pytest
@@ -9,8 +10,9 @@ from benchmarks.compare_results import exhaustive_ibsi_coverage, median_change, 
 from benchmarks.compare_revisions import write_summary
 from benchmarks.conftest import measure, pytest_configure
 from benchmarks.memory import MEMORY_SUITES, exhaustive_names
+from benchmarks.memory import main as memory_main
 from benchmarks.suites import SUITE_MARKERS, marker_for_suite
-from benchmarks.summarize_memory import render_summary
+from benchmarks.summarize_memory import render_console_summary, render_summary
 from ibsi_cases import ALL_IBSI_PERFORMANCE_CASES, IBSI_I_FEATURE_CASES, IBSI_II_FEATURE_CASES, IBSI_II_FILTER_CASES
 
 pytestmark = pytest.mark.unit
@@ -93,6 +95,10 @@ def test_memory_summary_groups_every_workload_and_single_sample_columns():
     for identifier in identifiers:
         assert f'| `{identifier}` | 200.0 | 150.0 |' in summary
     assert summary.index('### Image') < summary.index('### IBSI II phase II')
+    console = render_console_summary(payload)
+    assert 'Image (1 workload)' in console
+    assert 'Peak (MiB)' in console and 'Peak range' not in console
+    assert 'image/example' in console
 
 
 def test_memory_summary_uses_medians_and_ranges_for_repeated_samples():
@@ -107,6 +113,22 @@ def test_memory_summary_uses_medians_and_ranges_for_repeated_samples():
     summary = render_summary(payload)
     assert '1 workload · 3 measurements · 3 samples per workload' in summary
     assert '| `image/example` | 200.0 | 100.0–400.0 | 180.0 |' in summary
+    console = render_console_summary(payload)
+    assert 'Median peak (MiB)' in console
+    assert '100.0–400.0' in console
+    assert '180.0' in console
+
+
+def test_memory_run_preserves_existing_markdown_summary(tmp_path, monkeypatch, capsys):
+    output = tmp_path / 'rss.json'
+    (tmp_path / 'rss.md').write_text('Earlier summary')
+    monkeypatch.setattr(sys, 'argv', ['memory.py', '--mode', 'rss', '--output', str(output)])
+    with pytest.raises(SystemExit) as error:
+        memory_main()
+    assert error.value.code == 2
+    assert 'Markdown summary exists' in capsys.readouterr().err
+    assert not output.exists()
+    assert (tmp_path / 'rss.md').read_text() == 'Earlier summary'
 
 
 @pytest.mark.parametrize(

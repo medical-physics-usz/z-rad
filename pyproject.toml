@@ -53,7 +53,7 @@ profiling = [
     "memray>=1.19; sys_platform == 'linux' or sys_platform == 'darwin'",
 ]
 lint = [
-    "ruff==0.16.6",
+    "ruff==0.16.8",
 ]
 dev = [
     "sphinx>=8",
@@ -64,7 +64,7 @@ dev = [
     "pytest-xdist",
     "pytest-benchmark>=5.3.0",
     "threadpoolctl>=3.5",
-    "ruff==0.16.6",
+    "ruff==0.16.8",
 ]
 
 [tool.setuptools]

@@ -15,7 +15,7 @@ Documentation Map
 * :doc:`reference/index` for API-oriented documentation.
 * :doc:`developer/index` for development workflow and local docs tooling.
 * :doc:`ibsi/index` for IBSI-oriented validation material and repository assets.
-* :doc:`project/index` for release notes and project background.
+* :doc:`project/index` for project background, resources, and contact information.
 
 .. toctree::
    :maxdepth: 2

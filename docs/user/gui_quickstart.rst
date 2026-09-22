@@ -1,5 +1,9 @@
-GUI Quickstart
+GUI quickstart
 ==============
+
+This walkthrough takes a dataset from preprocessing to a radiomics CSV file.
+Install Z-Rad using :doc:`installation`, then open the packaged application or
+run ``python main.py`` from the repository root in your Python environment.
 
 .. figure:: ../images/zrad_screenshot.png
    :alt: Z-Rad graphical interface
@@ -7,55 +11,87 @@ GUI Quickstart
 
    Z-Rad main window.
 
-Launch The Application
-----------------------
+The application has four tabs: ``Preprocessing``, ``Filtering``, ``Radiomics``,
+and ``Visualization``. Each tab reads files from its selected input directory.
+After a processing step, select its output directory as the input for the next
+step.
 
-Start the GUI from the repository root:
+Prepare the dataset
+-------------------
 
-.. code-block:: bash
+For this example, use CT images with a region-of-interest (ROI) mask named
+``GTV-1``. Organize the NIfTI files with one folder per case:
 
-   python main.py
+.. code-block:: text
 
-On Windows and Apple Silicon macOS, you can also start the packaged release
-asset attached to each release. The macOS release app is unsigned and
-unnotarized, so macOS may show a Gatekeeper warning when opening it.
+   study/
+   └── input/
+       ├── case_01/
+       │   ├── phantom.nii.gz
+       │   └── GTV-1.nii.gz
+       └── case_02/
+           ├── phantom.nii.gz
+           └── GTV-1.nii.gz
 
-The application opens three main tabs:
+Use the same filenames in every case folder. Enter NIfTI names in the GUI
+without ``.nii`` or ``.nii.gz``. For DICOM input and other layouts, see
+:doc:`data_structure`.
 
-* ``Preprocessing``
-* ``Filtering``
-* ``Radiomics``
-* ``Visualization``
+Preprocess the images and masks
+-------------------------------
 
-Typical Workflow
+1. Open ``Preprocessing`` and select ``study/input`` as ``Input Directory``.
+2. Set ``Output Directory`` to ``study/preprocessed``. Leave the folder-range
+   and folder-list fields empty to process every case.
+3. Select CT and NIfTI, enter ``phantom`` as ``NIfTI Image`` and ``GTV-1`` as
+   ``NIfTI Masks``.
+4. Set the resampling resolution, dimension, and interpolation methods required
+   by your analysis protocol. See :doc:`preprocessing` for the controls.
+5. Click ``RUN`` and review the completion message and logs for skipped or
+   failed cases.
+
+For each processed case, the output contains ``image.nii.gz`` and
+``GTV-1.nii.gz``. Open ``study/preprocessed`` in :doc:`visualization` and inspect
+the image and mask alignment before extraction.
+
+Extract features
 ----------------
 
-This is the typical GUI workflow for one study:
+1. Open ``Radiomics``. Select ``study/preprocessed`` as ``Input Directory``
+   and ``study/results`` as ``Output Directory``.
+2. Select CT and NIfTI. Enter ``image`` as ``NIfTI Image`` and ``GTV-1`` as
+   ``NIfTI Masks``. Leave ``NIfTI Filtered Image`` empty for this workflow.
+3. Choose the texture aggregation and discretization settings for your protocol.
+   Configure ``Intensity Range`` and ``Outlier Removal`` if required.
+   See :doc:`radiomics` for an explanation of these choices.
+4. Save the configuration with ``File -> Save Input`` or ``Ctrl+S``, then click
+   ``RUN``.
+5. Open ``study/results/radiomics.csv``. Check the case and mask identifiers and
+   review the logs for any missing results. See :doc:`troubleshooting` if a
+   case or mask was skipped.
 
-1. Load an image and, when required, a region-of-interest mask.
-2. In ``Preprocessing``, select the imaging modality and configure resampling
-   or format conversion parameters.
-3. If you need a transformed image, move to ``Filtering`` and choose the filter
-   family and its parameters.
-4. In ``Radiomics``, configure aggregation, discretization, and any intensity
-   restrictions.
-5. Inspect images and masks in the visualization window when needed.
-6. Save the settings, run the analysis, and review the log output for the
-   applied parameters.
+Keep the saved configuration and logs with the results so you can reproduce
+the run. Save the settings for each processing tab you use.
 
-Input And Output
-----------------
+Add filtering when needed
+-------------------------
 
-Z-Rad supports workflows based on:
+To extract features from a filtered image, run :doc:`filtering` after
+preprocessing. Select ``study/preprocessed`` as input, enter ``image`` as the
+NIfTI image name, and save the filtered output to ``study/filtered``.
 
-* DICOM image series
-* NIfTI images
-* ROI masks aligned to the source image
+Filtering writes a filtered image into each case folder; it does not copy the
+original image or masks. Copy each filtered image into the matching case folder
+under ``study/preprocessed`` so extraction can read all three files together:
 
-The GUI writes logs that document the executed processing steps and parameter
-choices. This is the primary record for troubleshooting and reproducibility.
+.. code-block:: text
 
-For the required input layout, see :doc:`data_structure`.
+   study/preprocessed/case_01/
+   ├── image.nii.gz
+   ├── GTV-1.nii.gz
+   └── <filter-output-name>.nii.gz
 
-For tab-by-tab walkthroughs, continue with :doc:`preprocessing`,
-:doc:`filtering`, :doc:`radiomics`, and :doc:`visualization`.
+In ``Radiomics``, keep ``NIfTI Image`` set to ``image`` and enter the actual
+filtered filename, without the extension, in ``NIfTI Filtered Image``. Use a
+separate results directory to keep this extraction distinct from the
+unfiltered run.

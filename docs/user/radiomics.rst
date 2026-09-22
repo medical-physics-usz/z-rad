@@ -1,13 +1,9 @@
-GUI Radiomics Extraction
+GUI radiomics extraction
 ========================
 
-Overview
---------
-
-The ``Radiomics`` class computes morphological, intensity, histogram, texture,
-and optional IVH features from prepared ``RoiData``. Preprocessing now owns
-intensity-mask construction, re-segmentation, texture discretization, and IVH
-preparation. ``Radiomics`` only consumes those prepared fields.
+Use the Radiomics tab to extract features from images and region-of-interest
+(ROI) masks and save the results to a CSV file. Start with the images and masks
+prepared for your analysis; see :doc:`gui_quickstart` for a complete workflow.
 
 .. figure:: ../images/Rad_tab.png
    :alt: Z-Rad radiomics tab
@@ -15,11 +11,10 @@ preparation. ``Radiomics`` only consumes those prepared fields.
 
    Radiomics extraction tab in the GUI.
 
-Main Controls
+Main controls
 -------------
 
-The radiomics workflow is organized around the following GUI sections. The
-numbering below matches the annotated screenshots used for this workflow.
+The numbers below match the annotated screenshot.
 
 ``(1)`` Upper workflow section
    The upper part of the radiomics tab follows the same layout as the
@@ -33,11 +28,10 @@ numbering below matches the annotated screenshots used for this workflow.
    image and mask selection.
 
 ``(3)`` ``Intensity Range``
-   Restricts the analyzed voxel intensities to a user-defined interval. This is
-   useful when radiomic features should only be computed within a selected
-   signal range. In the GUI backend this range is applied before texture
-   discretization. The lower bound is used as the fixed-bin-size origin when
-   fixed bin size discretization is selected. For practical guidance, see
+   Keep only voxels within the selected intensity interval for intensity
+   and texture analysis. This restriction is applied before discretization
+   and leaves the mask used for morphology unchanged. For fixed bin size
+   discretization, the lower bound becomes the bin origin. See
    :doc:`resegmentation_guidelines`.
 
 ``(4)`` ``Outlier Removal``
@@ -54,37 +48,70 @@ numbering below matches the annotated screenshots used for this workflow.
 
 ``(6)`` ``Discretization``
    Controls how image intensities are discretized before texture feature
-   computation. The GUI prepares ``RoiData.texture_discretized_image`` using
-   either fixed bin size or fixed bin number discretization. Fixed bin size
-   requires an intensity range so the lower bound can be used as a stable bin
-   origin. For practical guidance, see :doc:`discretization_guidelines`.
+   computation. Choose ``Bin Size`` for a fixed intensity width or
+   ``Number of Bins`` to divide each ROI's intensity range into a fixed number
+   of bins. Fixed bin size requires an intensity range to define the bin
+   origin. See :doc:`discretization_guidelines`.
 
 ``(7)`` ``RUN``
    Starts radiomics extraction with the currently selected configuration.
 
-Feature Families
+Choose texture aggregation
+--------------------------
+
+The dimension controls whether texture neighbourhoods stay within slices or
+extend through the volume:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 15 45 40
+
+   * - Dimension
+     - Texture calculation
+     - How slices are combined
+   * - ``2D``
+     - Calculate texture within each slice.
+     - Combine the resulting feature values across slices.
+   * - ``2.5D``
+     - Calculate texture within each slice.
+     - Merge matrices across slices before calculating features.
+   * - ``3D``
+     - Calculate texture across the volume, including between slices.
+     - Use the volume's texture matrices.
+
+For directional features such as GLCM and GLRLM (defined below), ``averaged``
+calculates features for each direction and averages the values; ``merged``
+combines matrices before calculating features. ``2D, slice-merged`` merges
+directions within each slice, while ``2.5D, direction-merged`` merges slices
+for each direction. Other texture families use their own dimension-specific
+aggregation rules.
+
+For 2D extraction, ``Slice Averaging`` offers ``Mean``, ``Weighted Mean``
+(weighted by ROI voxel count), and ``Median``. Keep the dimension, aggregation,
+and slice-averaging settings consistent across cases and record them with the
+results.
+
+Feature families
 ----------------
 
-The implementation includes features from these groups:
+The GUI extracts the supported feature families for the selected image and
+settings:
 
 * morphology
 * local intensity
 * intensity statistics
 * intensity histogram
-* GLCM
-* GLRLM
-* GLSZM
-* GLDZM
-* NGTDM
-* NGLDM
-* optional intensity-volume histogram features
+* grey level co-occurrence matrix (GLCM)
+* grey level run length matrix (GLRLM)
+* grey level size zone matrix (GLSZM)
+* grey level distance zone matrix (GLDZM)
+* neighbourhood grey tone difference matrix (NGTDM)
+* neighbouring grey level dependence matrix (NGLDM)
 
-In the GUI, the standard workflow exposes morphological, local intensity,
-first-order, histogram, GLCM, GLRLM, GLSZM, and GLDZM features.
+Intensity-volume histogram (IVH) features are available through the Python API;
+see :doc:`api_workflows`.
 
-**Note:** Intensity-volume histogram features remain API-only.
-
-Validation Constraints
+Validation constraints
 ----------------------
 
 Z-Rad validates masks before extraction:
@@ -105,8 +132,8 @@ unstable for extremely small masks.
 Outputs
 -------
 
-After running ``(7)``, Z-Rad writes radiomics tables as ``.csv`` files to the
-selected output directory. Each row begins with case and mask metadata, then
+After clicking ``RUN``, open ``radiomics.csv`` in the selected output
+directory. Each row begins with case and mask metadata, then
 continues with the extracted radiomic features.
 
 The output includes metadata such as:
@@ -117,24 +144,13 @@ The output includes metadata such as:
 * voxel count
 * number of bins used for discretization
 
-At the API level, ``Radiomics.extract_features(roi_data=...)`` returns the
-extracted values directly as a dictionary. If ``families`` is omitted, Z-Rad
-extracts all feature families available from the prepared ``RoiData``. Summary
-fields such as bounding-box size, voxel count, and discretized-bin count are
-opt-in via ``include_metadata=True``.
+Extraction from filtered images
+-------------------------------
 
-Practical Notes
----------------
+For NIfTI input, provide both the original image in ``NIfTI Image`` and the
+filtered image in ``NIfTI Filtered Image``, together with the masks. All files
+must be in the corresponding case folder, and names are entered without file
+extensions. See :doc:`gui_quickstart` for the folder layout.
 
-* The upper workflow section ``(1)`` uses the same dataset-selection logic as
-  preprocessing and filtering.
-* The choice of extraction parameters should be kept consistent across all analyzed cases.
-* Intensity-volume histogram features remain available through the API only.
-* API users should prepare ``RoiData.texture_discretized_image`` before
-  requesting histogram or texture families.
-* API users should prepare ``RoiData.ivh_intensity_image`` with
-  ``IVHIntensityDiscretizer`` before requesting IVH features.
-* If you extract features from a filtered NIfTI image, the GUI expects both the
-  original NIfTI image and the filtered NIfTI image to be provided.
-
-For a task-oriented walkthrough, see :doc:`../examples/gui_radiomics`.
+For a configuration example, see :doc:`../examples/gui_radiomics`. For missing
+results or rejected settings, see :doc:`troubleshooting`.

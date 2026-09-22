@@ -1,13 +1,14 @@
-GUI Workflows
+GUI workflows
 =============
 
-These pages describe the main GUI workflows in Z-Rad.
+Follow :doc:`gui_quickstart` for a complete extraction workflow. The tab guides
+explain individual controls and outputs.
 
 .. toctree::
    :maxdepth: 1
 
-   gui_quickstart
-   preprocessing
-   filtering
-   radiomics
-   visualization
+   Quickstart <gui_quickstart>
+   Preprocessing <preprocessing>
+   Filtering <filtering>
+   Radiomics extraction <radiomics>
+   Visualization <visualization>

@@ -1,11 +1,8 @@
-GUI Visualization
+GUI visualization
 =================
 
-Overview
---------
-
-The visualization tab is used to load image studies and inspect the image and
-mask geometry before or after preprocessing, filtering, and radiomics runs.
+Use the Visualization tab to inspect images and mask overlays before
+processing or to check the results of preprocessing and filtering.
 
 .. figure:: ../images/Visual_tab.png
    :alt: Z-Rad visualization tab
@@ -13,11 +10,10 @@ mask geometry before or after preprocessing, filtering, and radiomics runs.
 
    Visualization tab in the GUI.
 
-Main Controls
+Main controls
 -------------
 
-The visualization workflow is organized around the following GUI sections. The
-numbering below matches the annotated screenshots used for this workflow.
+The numbers below match the annotated screenshot.
 
 ``(1)`` Upper workflow section
    The upper part of the visualization tab follows the same dataset-selection
@@ -28,7 +24,7 @@ numbering below matches the annotated screenshots used for this workflow.
 ``(2)`` ``RUN``
    Loads the selected images and opens the dedicated visualization window.
 
-Viewer Window
+Viewer window
 -------------
 
 .. figure:: ../images/Visual_window.png
@@ -37,7 +33,7 @@ Viewer Window
 
    Visualization window for image and mask inspection.
 
-The dedicated viewer is organized into the following sections:
+Use the viewer controls to inspect each case:
 
 ``(2.1)`` Projection panes
    The upper part of the viewer displays three orthogonal projections. These
@@ -45,31 +41,24 @@ The dedicated viewer is organized into the following sections:
    to full-screen for closer inspection.
 
 ``(2.2)`` Windowing controls
-   Use the windowing controls to select a comfortable intensity display range
-   for the loaded image.
+   Adjust the displayed intensity range to see the tissue or image response
+   of interest.
 
 ``(2.3)`` Mask visibility controls
    Masks can be hidden individually or all at once with the
    ``Hide All Masks`` control.
 
 ``(2.4)`` Image information panel
-   This section reports important metadata about the loaded image, including
-   the current folder name, image shape, voxel spacing, the cursor position,
-   and the intensity value at the current voxel.
+   Check the folder name, image shape, voxel spacing, cursor position,
+   and intensity at the current voxel.
 
 ``(2.5)`` Navigation controls
    Use these controls to move through the loaded images and slices.
 
-Practical Notes
----------------
+Check alignment before extraction
+---------------------------------
 
-* The upper workflow section ``(1)`` follows the same folder-selection logic as
-  preprocessing, so you can open a full dataset, a numeric range of folders, or
-  an explicit folder list.
-* This tab is useful for quick inspection before running a batch workflow.
-* The projection panes ``(2.1)`` are useful for confirming that images and
-  masks are spatially aligned before filtering or radiomics extraction.
-* Windowing in ``(2.2)`` can substantially improve visual assessment,
-  especially for modalities or datasets with a wide intensity range.
-* The visualization workflow is particularly useful for spotting obvious
-  data-quality issues before launching preprocessing or feature extraction.
+Scroll through the ROI in all three views and confirm that the mask covers the
+intended region. Check the image spacing and dimensions in the information
+panel if the overlay looks displaced or distorted. See :doc:`troubleshooting`
+for alignment checks.

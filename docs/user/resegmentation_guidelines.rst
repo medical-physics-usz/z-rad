@@ -1,165 +1,101 @@
-Re-segmentation Guidelines
+Re-segmentation guidelines
 ==========================
 
-Overview
---------
+Re-segmentation selects which voxels inside a region of interest (ROI)
+contribute to intensity and texture analysis. Apply it after resampling and
+before discretization. It can exclude voxels outside a selected intensity
+range or remove intensity outliers.
 
-Re-segmentation changes which voxels inside the region of interest are used
-for intensity and texture analysis. It is applied after interpolation.
+Which mask changes?
+-------------------
 
-The goal is to remove voxels that should not contribute to intensity-based
-features. Common examples are:
-
-* air or bone voxels inside a tumour mask on CT
-* low-activity voxels on PET
-* extreme intensity outliers
-* voxels outside a meaningful physical or biological range
-
-Morphological Mask and Intensity Mask
--------------------------------------
-
-Z-Rad follows the IBSI distinction between two masks:
+Z-Rad follows the Image Biomarker Standardisation Initiative (IBSI) distinction
+between two masks:
 
 .. list-table::
    :header-rows: 1
 
    * - Mask
-     - Meaning
-     - Changed by re-segmentation?
+     - Purpose
+     - Effect of re-segmentation
    * - Morphological mask
-     - The original anatomical or geometrical ROI shape.
-     - No
+     - Defines the ROI shape used for morphology.
+     - Unchanged.
    * - Intensity mask
-     - The voxels used for intensity and texture feature calculation.
-     - Yes
+     - Selects voxels for intensity and texture analysis.
+     - Voxels can be removed, leaving holes or disconnected regions.
 
-This distinction is important. Re-segmentation can remove internal voxels. It
-can also split the ROI into disconnected parts. The original ROI shape is still
-kept for morphology. Only the intensity mask is updated.
+Intensity statistics, intensity histogram, intensity-volume histogram (IVH),
+and most texture features use the intensity mask. Grey level distance zone
+matrix (GLDZM) features use both masks: the morphological mask defines distances
+to the ROI boundary. See :doc:`radiomics` for the feature families.
 
-Effect on Feature Families
---------------------------
-
-Most feature families use the intensity mask after re-segmentation. There are
-some important exceptions:
-
-* morphological features use the morphological mask
-* GLDZM features use both the morphological mask and the intensity mask
-* intensity statistics, histogram features, IVH features, and most texture
-  matrices use the intensity mask
-
-This means that the geometry used for morphology can differ from the voxels
-used for intensity and texture features.
-
-Range Re-segmentation
+Range re-segmentation
 ---------------------
 
-Range re-segmentation keeps only voxels inside a selected intensity range.
-Voxels outside the range are removed from the intensity mask.
+Range re-segmentation keeps voxels whose image intensities fall within the
+selected lower and upper bounds, including both endpoints. For example, a
+CT protocol might use ``[-50, 150]`` Hounsfield units (HU), while a PET protocol
+might use a lower standardized uptake value (SUV) threshold such as
+``[3, infinity)``. These are examples, not default settings for every study.
 
-Examples:
+Use a range that is meaningful for the modality and analysis:
 
-* CT: keep ``[-50, 150]`` HU to exclude air and bone, if this range is suitable
-  for the application
-* PET: keep voxels above a SUV threshold, for example ``[3, infinity)``
-* CT or PET: use ranges with physical meaning when the image units are
-  calibrated
+* CT and PET have calibrated units, so choose and report a range appropriate
+  to the tissue and study protocol.
+* Raw MRI intensities depend on acquisition and scanner settings. Use a common
+  range only when the intensity scale has been standardized and the range can
+  be justified.
 
-Range re-segmentation is most useful when the intensity scale has physical
-meaning. This is usually true for HU in CT and SUV in PET.
+In Z-Rad, range selection uses the original image supplied for extraction,
+even when a filtered image supplies the intensities for feature calculation.
+This is one reason filtered-image extraction also requires the original image.
 
-For arbitrary units, such as raw MRI intensities or many filtered images, there
-is no general range that fits every dataset. A range should only be used if the
-intensity scale has been standardized and the range can be justified.
+Outlier removal
+---------------
 
-Intensity Outlier Filtering
----------------------------
+Outlier removal uses the mean and standard deviation of the valid intensity
+values inside the ROI. For example, a setting of ``3`` keeps values within
+``mean - 3 * standard deviation`` and ``mean + 3 * standard deviation``.
+The accepted interval therefore depends on each ROI's intensity distribution.
+For filtered-image extraction, these statistics use the filtered intensities.
 
-Outlier filtering removes extreme values based on the intensity distribution
-inside the ROI. A common rule is ``[mu - 3 sigma, mu + 3 sigma]``.
+When both methods are enabled, Z-Rad applies the range first and calculates
+outlier statistics from the remaining voxels:
 
-Here, ``mu`` is the mean intensity inside the ROI, and ``sigma`` is the
-standard deviation. Voxels outside this interval are removed from the intensity
-mask.
+1. Keep voxels whose original image intensities fall within the selected range,
+   for example ``[-50, 150]`` HU.
+2. Calculate the mean and standard deviation of the retained intensity-mask
+   values.
+3. Remove values outside the selected standard-deviation interval.
 
-When range re-segmentation and outlier filtering are both configured, Z-Rad
-applies the range first, then calculates ``mu`` and ``sigma`` from the
-remaining valid intensity-mask voxels.
+The final intensity mask contains only voxels accepted by both rules. Check
+that enough voxels remain for extraction; see :doc:`radiomics` for mask-size
+requirements.
 
-In the Python pipeline, run re-segmentation before ``TextureDiscretizer`` or
-``IVHIntensityDiscretizer``. Re-segmentation changes the valid intensity
-population and therefore clears any prepared texture or IVH images. When an
-``intensity_range`` is configured, its bounds are stored on ``RoiData`` and
-reused by fixed-bin-size texture and IVH discretization.
+Configure re-segmentation
+-------------------------
 
-This method is data-driven. The accepted range can differ between patients or
-lesions. It is not the same as using a fixed physical range.
+In the GUI's ``Radiomics`` tab, use ``Intensity Range`` and ``Outlier Removal``.
+In Python, apply ``Resegmenter`` after ``IntensityMaskBuilder`` and before
+``TextureDiscretizer`` or ``IVHIntensityDiscretizer``. Re-segmentation clears
+previously prepared texture and IVH images because the intensity population
+has changed. See :doc:`api_workflows` for a complete pipeline.
 
-Combining Methods
------------------
+A configured intensity range is also used by discretization: its lower bound
+anchors fixed-bin-size bins, and its bounds help define the IVH intensity
+range. See :doc:`discretization_guidelines`.
 
-Range re-segmentation and outlier filtering can be combined. In that case, the
-final intensity mask contains only voxels accepted by all selected rules.
-
-Example:
-
-* range re-segmentation keeps ``[-50, 150]`` HU
-* outlier filtering calculates ``mu`` and ``sigma`` from those retained voxels
-  and keeps ``[mu - 3 sigma, mu + 3 sigma]``
-* the final intensity mask keeps only voxels that satisfy both rules
-
-Practical Guidance
-------------------
-
-Use re-segmentation only when it matches the image modality and the analysis
-goal.
-
-For CT:
-
-* range re-segmentation can be useful because HU values have physical meaning
-* choose the range according to the tissue and disease being studied
-* report the exact HU range
-
-For PET:
-
-* range re-segmentation can be useful because SUV values have physical meaning
-* thresholds such as ``[3, infinity)`` may be used when justified by the study
-  protocol
-* report the exact SUV range
-
-For raw MRI:
-
-* global range re-segmentation is usually not meaningful
-* MRI intensities often depend on scanner settings and acquisition parameters
-* use a range only if intensities have been standardized and the range is
-  justified
-
-For filtered images:
-
-* intensities often have transformed or arbitrary units
-* avoid fixed physical ranges unless the filtered scale has a clear meaning
-* outlier filtering may be more suitable, but it should still be reported
-
-What to Report
+What to report
 --------------
 
-Report the re-segmentation settings so the analysis can be reproduced.
+Record these settings with the extracted features:
 
-Include:
-
-* whether re-segmentation was used
-* the method: range, outlier filtering, or both
-* the exact range and units
-* whether the range is closed, such as ``[a, b]``, or half-open, such as
-  ``[a, infinity)``
-* that re-segmentation was applied after interpolation
-* if outlier filtering was combined with range re-segmentation, that outlier
-  statistics were calculated after range re-segmentation
-* whether the morphological mask and intensity mask may differ
-
-Main Point
-----------
-
-Re-segmentation decides which voxels inside the ROI are included in
-intensity-based analysis. It does not redefine the original ROI shape used for
-morphological features.
+* whether you used range re-segmentation, outlier removal, both, or neither
+* the intensity bounds and units, including whether the upper bound was finite
+* the standard-deviation multiplier for outlier removal
+* that re-segmentation followed resampling and, when both methods were used,
+  range selection preceded outlier statistics
+* whether feature intensities came from the original or a filtered image
+* that re-segmentation changed the intensity mask while retaining the
+  morphological mask

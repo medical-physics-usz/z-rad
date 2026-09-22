@@ -1,44 +1,42 @@
-Code Quality
+Code quality
 ============
 
-Ruff
-----
+Run these checks from the repository root in the :doc:`development_environment`.
+Ruff checks Python code locally and in CI; Super-Linter checks other repository
+content in GitHub Actions.
 
-Ruff is the local Python formatting and linting gate used by
-``.github/workflows/python-lint.yml``.
+Check Python formatting and lint
+--------------------------------
 
-Check formatting with:
-
-.. code-block:: bash
-
-   ruff format --check zrad tests main.py generate_executable.py
-
-Run the linter with:
+Run both checks before requesting review:
 
 .. code-block:: bash
 
-   ruff check zrad tests main.py generate_executable.py
+   python -m ruff format --check zrad tests main.py generate_executable.py
+   python -m ruff check zrad tests main.py generate_executable.py
 
-Fix Ruff failures before requesting review. If a change intentionally updates
-Python formatting, run ``ruff format`` on the affected files and then re-run
-the checks above.
+These use the same file selection as ``.github/workflows/python-lint.yml``.
+Rules and the Ruff version are defined in ``pyproject.toml``.
 
-Super-Linter
-------------
+To fix formatting, run ``python -m ruff format`` with the affected file paths.
+Review the diff and rerun both checks. For lint findings, read the diagnostic
+and fix its cause; if you use ``python -m ruff check --fix``, review those edits
+before including them in the change.
 
-Super-Linter runs in GitHub Actions through ``.github/workflows/lint.yml``.
-It validates changed files only. The repository does not currently provide a
-local one-command Super-Linter wrapper.
+Inspect super-linter results
+----------------------------
 
-The currently enabled Super-Linter checks are:
+``.github/workflows/lint.yml`` runs Super-Linter on changed files. There is no
+local wrapper in this repository; inspect its job output on the pull request
+and rerun CI after addressing findings.
 
-* GitHub Actions
-* YAML
-* YAML Prettier formatting
-* Checkov
-* Gitleaks
-* JSCPD duplicate detection
-* merge-conflict markers
+The enabled checks cover:
 
-Inspect the Super-Linter result on the pull request, fix any reported files,
-and wait for the check to pass before requesting review.
+* GitHub Actions workflow syntax and usage
+* YAML validity and Prettier formatting
+* Checkov checks for configuration security issues
+* Gitleaks detection of committed secrets
+* JSCPD detection of duplicated content
+* unresolved merge-conflict markers
+
+See :doc:`ci` for workflow triggers and where to investigate failed jobs.

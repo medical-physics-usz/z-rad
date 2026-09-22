@@ -1,37 +1,41 @@
 Contributing
 ============
 
-Start by setting up a local development environment with the contributor
-toolchain. See :doc:`development_environment` for Python version, virtual
-environment, and dependency installation guidance.
+Use this sequence to take a change from a local checkout to a pull request.
+Run commands from the repository root in your development environment.
 
-Before Opening A Pull Request
------------------------------
+Set up and make the change
+--------------------------
+
+Follow :doc:`development_environment` to install the contributor tools. Keep
+the change focused on one problem so its behavior and tests are easy to review.
+The repository map in :doc:`index` can help you find the relevant code.
+
+Add or update tests when changing preprocessing, filtering, or radiomics logic.
+Preserve IBSI validation coverage when modifying feature calculations; see
+:doc:`ibsi_validation` for reference handling.
+
+Check the change locally
+------------------------
 
 Before opening a pull request:
 
-* run the relevant test set and coverage checks described in :doc:`testing`
-* run the Ruff formatting and lint checks described in :doc:`code_quality`
-* update and build documentation when user-facing behavior, public APIs, or
-  examples change; see :doc:`building_docs`
-* inspect the pull request CI results and fix failures before requesting review;
-  see :doc:`ci`
+* Run relevant tests during development, then the unit suite and any integration
+  tests affected by the change. Review coverage as described in :doc:`testing`.
+* Run the formatting and lint checks in :doc:`code_quality`.
+* Update the documentation for changed behavior, public APIs, and examples,
+  then build it using :doc:`building_docs`. That page explains where each kind
+  of documentation belongs.
+* If the change targets performance, compare measurements using
+  :doc:`benchmarking` and retain the reference and candidate results.
 
-General Expectations
---------------------
+Open the pull request
+---------------------
 
-* keep user-facing behavior and documentation aligned
-* add or update tests when changing preprocessing, filtering, or radiomics logic
-* preserve IBSI validation coverage when modifying feature calculations
+Explain the problem, what changes for users or developers, and how you checked
+it. Mention any relevant limitations or checks that you could not run.
 
-Documentation Expectations
---------------------------
-
-When adding new functionality:
-
-* update the relevant user-guide page
-* extend the API reference if the public surface changes
-* add an example when the change introduces a new workflow
-
-Good documentation changes are usually narrative first and reference second:
-explain when a feature should be used before listing every parameter.
+After opening the pull request, inspect its :doc:`CI results <ci>` and address
+failures before requesting review. Repeat the affected checks after revisions.
+The documentation workflow does not run on pull requests, so build changed
+documentation locally even when the other CI checks pass.

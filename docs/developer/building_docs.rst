@@ -66,3 +66,7 @@ Common causes of docs failures include:
 * Sphinx installed in a different Python environment than the one used to build
 * missing runtime dependencies required by autodoc imports
 * stale references in ``toctree`` blocks
+
+The package version is defined in ``zrad.__version__``. Build metadata and the
+version shown by Sphinx derive from that value. If the documentation shows an
+older version, rebuild it after updating ``zrad.__version__``.

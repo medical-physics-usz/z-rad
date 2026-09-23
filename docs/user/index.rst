@@ -6,12 +6,12 @@ desktop application or :doc:`api_quickstart` to extract features in Python.
 GUI and batch workflows use the case-folder layout in :doc:`data_structure`.
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
 
    installation
    Data structure <data_structure>
    gui_workflows
    api_index
-   resegmentation_guidelines
-   discretization_guidelines
+   concepts
+   results
    troubleshooting

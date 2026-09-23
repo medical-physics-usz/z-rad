@@ -1,12 +1,12 @@
-Image discretization guidelines
-===============================
+Discretization guidelines
+=========================
 
 Discretization groups retained voxel intensities into grey-level bins before
 histogram and texture feature calculation. It reduces the number of intensity
 levels and groups small intensity differences together. Re-segmentation selects
 which voxels are included; discretization assigns their intensities to bins.
 
-Intensity histogram and all six texture families listed in :doc:`radiomics`
+Intensity histogram and all six texture families listed in :doc:`extraction_concepts`
 require discretization. Morphology, local intensity, and intensity statistics
 do not. Intensity-volume histogram (IVH) features use a separate intensity
 preparation step, described below.

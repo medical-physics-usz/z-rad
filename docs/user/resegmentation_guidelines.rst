@@ -28,7 +28,7 @@ between two masks:
 Intensity statistics, intensity histogram, intensity-volume histogram (IVH),
 and most texture features use the intensity mask. Grey level distance zone
 matrix (GLDZM) features use both masks: the morphological mask defines distances
-to the ROI boundary. See :doc:`radiomics` for the feature families.
+to the ROI boundary. See :doc:`extraction_concepts` for the feature families.
 
 Range re-segmentation
 ---------------------
@@ -70,7 +70,7 @@ outlier statistics from the remaining voxels:
 3. Remove values outside the selected standard-deviation interval.
 
 The final intensity mask contains only voxels accepted by both rules. Check
-that enough voxels remain for extraction; see :doc:`radiomics` for mask-size
+that enough voxels remain for extraction; see :doc:`extraction_concepts` for mask-size
 requirements.
 
 Configure re-segmentation

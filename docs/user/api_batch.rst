@@ -108,14 +108,29 @@ Batch radiomics
 Inspect the result
 ------------------
 
-All three workflows return ``BatchResult``. Check the counts and per-case
-errors after each run:
+All three workflows return ``BatchResult``. Counts describe cases, while
+``result.errors`` contains case results with an error message:
 
 .. code-block:: python
 
    print(result.processed_count, result.skipped_count, result.failed_count)
    for case in result.errors:
        print(case.case_name, case.error)
+
+Preprocessing and radiomics also report individual skipped structures. Inspect
+these even when ``failed_count`` is zero:
+
+.. code-block:: python
+
+   # Use with BatchPreprocessor or BatchRadiomicsExtractor results.
+   for case in result.case_results:
+       if case.skipped_structures:
+           print(case.case_name, "Skipped structures:", case.skipped_structures)
+
+A radiomics case is counted as processed if at least one structure produces
+features. Another structure in that case can be skipped without a case-level
+error. Check the requested case/mask pairs against the CSV; see :doc:`results`
+for metadata and feature-name explanations.
 
 Preprocessing saves each image as ``image.nii.gz`` and each mask under its
 structure name. Use those names when configuring the next step. Filtering

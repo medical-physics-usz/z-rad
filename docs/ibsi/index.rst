@@ -1,6 +1,6 @@
-=======================
-IBSI Benchmark Coverage
-=======================
+===============
+IBSI validation
+===============
 
 Z-Rad implements IBSI preprocessing, features, and filters and tests them
 against published reference data. This page explains what is implemented,
@@ -8,7 +8,7 @@ which benchmark configurations are tested, and how to interpret agreement.
 Implementation coverage describes available operations; benchmark validation
 provides numerical evidence for specific configurations.
 
-Implementation Coverage
+Implementation coverage
 -----------------------
 
 Z-Rad supports all IBSI I preprocessing operations and radiomic features,
@@ -22,12 +22,12 @@ and all IBSI II filters. The guides below describe the available settings.
      - Available operations
      - Guide
    * - IBSI I preprocessing
-     - Image and mask interpolation, resegmentation, and intensity discretization.
+     - Image and mask interpolation, re-segmentation, and intensity discretization.
      - :doc:`../user/preprocessing`
    * - IBSI I features
      - Morphology, local intensity, intensity statistics, histograms,
        intensity-volume histograms, and texture.
-     - :doc:`../user/radiomics` and :doc:`../reference/radiomics`
+     - :doc:`../user/extraction_concepts` and :doc:`../reference/radiomics`
    * - IBSI II filters
      - Mean, LoG, Laws, Gabor, separable wavelets, Simoncelli wavelets,
        and Riesz transforms.
@@ -35,12 +35,12 @@ and all IBSI II filters. The guides below describe the available settings.
 
 .. _ibsi-benchmark-coverage:
 
-Benchmark Coverage
+Benchmark coverage
 ------------------
 
 The matrix describes the automated checks available in the repository.
 Results for a particular revision are provided in the execution reports
-linked under `Results and Reproduction`_.
+linked under `Results and reproduction`_.
 
 For IBSI I, **features per mode** counts the feature comparisons within one
 aggregation mode. **Distinct reference tags** counts unique reference-table
@@ -61,7 +61,7 @@ should not be interpreted as counts of independent feature definitions.
      - Features without references are listed below.
    * - IBSI I CT diagnostics A--E
      - All 60 diagnostic rows per configuration at initial, interpolated,
-       and resegmented stages: image and ROI dimensions, voxel spacing,
+       and re-segmented stages: image and ROI dimensions, voxel spacing,
        bounding boxes, voxel counts, and intensities.
      - Reported separately from feature comparisons.
    * - IBSI I CT A and B
@@ -89,7 +89,7 @@ phase-II feature configurations through the shared ``tests/ibsi_cases.py``
 registry. These timing and memory measurements are separate from numerical
 agreement checks. See :doc:`../developer/benchmarking` for the methodology.
 
-Reference Limitations
+Reference limitations
 ---------------------
 
 The following exclusions arise from unavailable reference values or
@@ -131,7 +131,7 @@ establish universal compliance across all inputs and processing options.
 
 .. _ibsi-comparison-rules:
 
-Comparison Rules
+Comparison rules
 ----------------
 
 All scalar reference-table comparisons use the same policy, including IBSI I
@@ -155,7 +155,7 @@ voxel-wise agreement within 1% of the reference map's intensity range.
 IBSI-SUV compares valid cases to two decimal places and requires exceptions
 for intentionally invalid cases. Neither uses scalar reference-table tolerances.
 
-Supplemental Checks
+Supplemental checks
 -------------------
 
 An additional 53 cases check geometry, DICOM loading, and filter behavior
@@ -164,7 +164,7 @@ coverage without adding published consensus comparisons. Reports list them
 separately from benchmarks. See :ref:`ibsi-supplemental-checks` for the case
 breakdown and test methodology.
 
-Results and Reproduction
+Results and reproduction
 ------------------------
 
 CI publishes per-case IBSI execution reports and JUnit results in
@@ -178,7 +178,7 @@ For reproducible studies, retain the Z-Rad version, image and mask geometry,
 and exact preprocessing, filtering, discretization, and aggregation settings
 alongside the extracted feature table.
 
-Reference Tests, Data, and Licensing
+Reference tests, data, and licensing
 ------------------------------------
 
 * `IBSI I tests <https://github.com/medical-physics-usz/z-rad/blob/master/tests/test_ibsi_1.py>`_

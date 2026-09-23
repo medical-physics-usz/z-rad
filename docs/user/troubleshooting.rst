@@ -34,7 +34,10 @@ A case or mask is missing from the output
 
 Missing masks or structures can be skipped while other cases continue. Compare
 the output identifiers with your expected case and mask list. See
-:doc:`data_structure` for complete input requirements.
+:doc:`data_structure` for complete input requirements and :doc:`results` for
+checking output completeness. In batch preprocessing and radiomics, inspect
+``skipped_structures`` as well as ``result.errors``; a case may succeed for
+some masks and skip others.
 
 The image and mask do not align
 -------------------------------
@@ -50,8 +53,9 @@ A mask is empty or too small for extraction
 
 Check the original mask, the resampled mask, and any intensity restrictions.
 Resampling, range re-segmentation, or outlier removal can reduce the number of
-valid voxels. The :doc:`radiomics` guide lists the minimum voxel counts and
-bounding-box dimensions, including the per-slice checks for 2D extraction.
+valid voxels. See :ref:`extraction-mask-requirements` for minimum voxel counts and
+bounding-box dimensions, including per-slice checks for volumetric images
+with 2D texture aggregation.
 
 Confirm that the settings match your protocol before changing them. If no
 valid ROI remains, correct the input mask or exclude that case from extraction.

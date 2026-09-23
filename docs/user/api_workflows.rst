@@ -5,6 +5,19 @@ Start with :doc:`api_quickstart` for a runnable example. This page explains how
 to prepare individual images and regions of interest (ROIs) for extraction.
 For datasets organized into case folders, see :doc:`api_batch`.
 
+Image geometry
+--------------
+
+``Image.from_nifti`` and the DICOM loaders populate voxel data and physical
+geometry. NumPy arrays use ``(z, y, x)`` order; ``Image.spacing``,
+``Image.origin``, and ``Image.shape`` use SimpleITK's ``(x, y, z)`` order.
+``Image.shape`` is therefore not the same ordering as ``Image.array.shape``.
+Supply the geometry fields when constructing an ``Image`` from an array.
+
+Images and masks must share a physical frame and voxel grid for extraction.
+The mask loaders align masks to the supplied reference image; matching array
+shapes alone does not establish alignment. See :doc:`../reference/image`.
+
 Recommended workflow
 --------------------
 
@@ -124,11 +137,13 @@ Choose feature families and metadata
 families available for the prepared ROI. Prepare texture discretization before
 requesting histogram or texture features, and prepare IVH intensities before
 requesting IVH features. IVH extraction is available through the Python API.
-Use ``include_metadata=True`` to include bounding-box size, voxel count, and
+Use ``include_metadata=True`` to include the shortest bounding-box side length, voxel count, and
 discretized-bin count.
 
-See :doc:`resegmentation_guidelines` and :doc:`discretization_guidelines` for
-help choosing settings, and :doc:`../reference/radiomics` for extraction options.
+See :doc:`extraction_concepts`, :doc:`resegmentation_guidelines`, and
+:doc:`discretization_guidelines` for help choosing settings. Use :doc:`results`
+to interpret feature names and metadata, and :doc:`../reference/radiomics`
+for extraction options.
 
 Resampling to an existing image grid
 ------------------------------------
@@ -154,14 +169,6 @@ needed.
        interpolator=sitk.sitkLinear,
    )
    resampled.save_as_nifti("path/to/resampled.nii.gz")
-
-Image geometry
---------------
-
-``Image.from_nifti`` and the DICOM loaders populate voxel data, spacing, origin,
-direction, and shape. Supply these fields when constructing an ``Image`` from
-an array yourself. Images and masks must share the same spatial frame and
-voxel grid for feature extraction. See :doc:`../reference/image`.
 
 For filter examples, continue with :doc:`api_filtering`. The
 :doc:`../reference/preprocessing` reference describes each pipeline step.

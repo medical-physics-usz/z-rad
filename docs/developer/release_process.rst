@@ -39,7 +39,7 @@ Keep the patch component, including ``.0`` for the first release of a month.
 Use ``.dev0`` for the normal in-repository development version. Write the month
 without leading zeroes: ``26.5.0``, not ``26.05.0``.
 
-Publish the github release
+Publish the GitHub release
 --------------------------
 
 Create or select the release tag on the intended commit and prepare the release

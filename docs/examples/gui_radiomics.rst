@@ -4,7 +4,7 @@ Radiomics extraction in GUI
 This example shows a representative radiomics extraction setup for the GUI
 workflow.
 
-Example Configuration
+Example configuration
 ---------------------
 
 .. figure:: ../images/Rad_example.png

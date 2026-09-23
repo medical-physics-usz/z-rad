@@ -8,8 +8,8 @@ Setup and validation run outside the timed region. For memory measurements,
 see :doc:`memory_profiling`; for workload boundaries and adding benchmarks,
 see :doc:`benchmark_methodology`.
 
-Quick start
------------
+Quickstart
+----------
 
 Run these commands from the repository root. Install the test dependencies
 (also included in the ``dev`` extra), then run the standard suite::

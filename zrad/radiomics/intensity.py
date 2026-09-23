@@ -41,7 +41,7 @@ class LocalIntensityFeatures:
     Parameters
     ----------
     spacing : sequence of float
-        Physical voxel spacing used to convert the IBSI neighborhood radius to
+        Physical voxel spacing used to convert the IBSI neighbourhood radius to
         image coordinates.
     """
 
@@ -122,7 +122,7 @@ class LocalIntensityFeatures:
         Parameters
         ----------
         image_array : numpy.ndarray
-            Full prepared intensity image used to evaluate local neighborhoods.
+            Full prepared intensity image used to evaluate local neighbourhoods.
         masked_image_array : numpy.ndarray
             ROI-masked version of ``image_array`` with voxels outside the ROI
             set to ``NaN``.

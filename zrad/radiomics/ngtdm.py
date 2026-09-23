@@ -15,7 +15,7 @@ NGTDM_FEATURE_NAMES = (
 
 
 class NGTDM:
-    """Neighbouring gray tone difference matrix features.
+    """Neighbouring grey tone difference matrix features.
 
     NGTDM features compare each discretized grey level with the average grey
     level in its local neighbourhood. They quantify coarseness, contrast,

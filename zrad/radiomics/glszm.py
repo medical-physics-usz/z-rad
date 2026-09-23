@@ -26,7 +26,7 @@ GLSZM_FEATURE_NAMES = (
 
 
 class GLSZM(ZoneMatrixFeatureBase):
-    """Gray level size zone matrix features.
+    """Grey level size zone matrix features.
 
     GLSZM features describe connected zones of equal discretized grey level and
     their sizes. They quantify small versus large zones and low- versus

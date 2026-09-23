@@ -58,6 +58,9 @@ NIfTI example:
        mask_interpolation_method="NN",
    ).run()
 
+See :doc:`resampling_guidelines` for help choosing resolution, dimension, and
+image and mask interpolation settings for either example.
+
 Batch filtering
 ---------------
 

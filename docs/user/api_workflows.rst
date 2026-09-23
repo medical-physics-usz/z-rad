@@ -25,7 +25,8 @@ The typical Python workflow is:
 
 1. Load the image and mask into ``zrad.image.Image`` objects with aligned
    geometry.
-2. Resample them if needed so the image and mask share the intended voxel grid.
+2. Resample them if needed so the image and mask share the intended voxel grid;
+   see :doc:`resampling_guidelines` for spacing and interpolation choices.
 3. Apply a configured filter if the experiment requires a filtered representation.
 4. Build the intensity mask and apply any re-segmentation, then prepare
    texture and intensity-volume histogram (IVH) images in ``RoiData`` when
@@ -144,6 +145,8 @@ See :doc:`extraction_concepts`, :doc:`resegmentation_guidelines`, and
 :doc:`discretization_guidelines` for help choosing settings. Use :doc:`results`
 to interpret feature names and metadata, and :doc:`../reference/radiomics`
 for extraction options.
+
+.. _resampling-existing-grid:
 
 Resampling to an existing image grid
 ------------------------------------

@@ -127,6 +127,9 @@ workflow.
 Resampling and saved settings
 -----------------------------
 
+See :doc:`resampling_guidelines` for help choosing the target spacing,
+dimension, image and mask interpolation, and mask threshold.
+
 * ``2D`` resampling preserves the original slice spacing in the third axis.
 * CT images are rounded and stored as signed 16-bit integers after resampling.
 * MR and PET images remain floating-point volumes.

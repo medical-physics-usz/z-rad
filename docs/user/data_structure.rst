@@ -32,29 +32,6 @@ To process a dataset with case folders such as ``folder_1``, ``folder_2``, and
 Here, ``data_folder`` is the directory you select as the input dataset. Each
 case folder contains the image data to be processed for one study or patient.
 
-Recommended layout for multiple modalities
-------------------------------------------
-
-If you process multiple imaging modalities or data collections in parallel, use
-a consistent layout for each modality:
-
-.. code-block:: text
-
-   main_path/
-   ├── PET/
-   │   ├── folder_1/
-   │   ├── folder_2/
-   │   ├── ...
-   │   └── folder_n/
-   └── CT/
-       ├── folder_1/
-       ├── folder_2/
-       ├── ...
-       └── folder_n/
-
-In this setup, you would select either ``PET`` or ``CT`` as the GUI input
-directory, depending on the workflow you want to run.
-
 DICOM folder contents
 ---------------------
 
@@ -109,6 +86,29 @@ Example NIfTI case folder:
   A requested mask that is missing from a case is skipped.
 * For extraction from a filtered image, keep the original image, filtered
   image, and masks together as shown in :doc:`gui_quickstart`.
+
+Recommended layout for multiple modalities
+------------------------------------------
+
+If you process multiple imaging modalities or data collections in parallel, use
+a consistent layout for each modality:
+
+.. code-block:: text
+
+   main_path/
+   ├── PET/
+   │   ├── folder_1/
+   │   ├── folder_2/
+   │   ├── ...
+   │   └── folder_n/
+   └── CT/
+       ├── folder_1/
+       ├── folder_2/
+       ├── ...
+       └── folder_n/
+
+In this setup, you would select either ``PET`` or ``CT`` as the GUI input
+directory, depending on the workflow you want to run.
 
 Folder selection in the GUI
 ---------------------------

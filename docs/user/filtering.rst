@@ -37,16 +37,37 @@ Depending on the filter, choose padding (how image boundaries are extended),
 2D or 3D processing, and scale parameters such as the Gaussian width or
 wavelength in millimetres.
 
-The available filter families are:
+.. list-table:: Filter settings
+   :header-rows: 1
+   :widths: 25 75
 
-* Mean
-* Laplacian of Gaussian
-* Riesz-transformed LoG
-* Gabor
-* Laws kernels
-* Wavelets, including Daubechies 2, Daubechies 3, first-order Coiflet, and
-  Haar filters
-* non-separable Simoncelli wavelets
+   * - Filter
+     - Main parameters and units
+   * - Mean
+     - Support is the kernel side length in voxels. Select 2D for a square
+       neighbourhood or 3D for a cube.
+   * - Laplacian of Gaussian (LoG)
+     - Sigma is the Gaussian scale in millimetres; cutoff is the kernel radius
+       in multiples of sigma. Select 2D or 3D processing.
+   * - Gabor
+     - Resolution, sigma, and wavelength are in millimetres. Gamma controls
+       the kernel's aspect ratio. Theta is an angle in radians, or the angular
+       step when rotation invariance is enabled. Orthogonal-plane averaging
+       combines responses from three slice orientations.
+   * - Laws kernels
+     - The response map selects kernels, such as ``L5E5`` in 2D or ``L5E5S5``
+       in 3D. Choose rotation invariance and pooling (average or maximum).
+       Energy maps average absolute responses over a neighbourhood whose
+       radius is the configured distance in voxels.
+   * - Separable wavelets
+     - Choose Daubechies 2 or 3, first-order Coiflet, or Haar; then the
+       low/high-pass response map, decomposition level, and rotation invariance.
+   * - Riesz-transformed LoG
+     - LoG sigma and cutoff, plus a Riesz order and optional structure-tensor
+       scale in millimetres. See the constraints below.
+   * - Simoncelli wavelets
+     - Decomposition level, padding, and optional Riesz order. See below for
+       the supported padding and order conventions.
 
 For separable wavelets, choose the wavelet family, response map (the low-
 and high-pass combination), and decomposition level. Rotation invariance

@@ -1,29 +1,54 @@
-Z-Rad Documentation
+Z-Rad documentation
 ===================
 
-Z-Rad is a radiomics toolkit with both a graphical interface and a Python API.
+Z-Rad is a radiomics toolkit for preprocessing images and masks, applying
+filters, and extracting features through a graphical interface or Python API.
+
+Get started
+-----------
+
+.. grid:: 1 1 3 3
+   :gutter: 2
+
+   .. grid-item-card:: Install Z-Rad
+      :link: user/installation
+      :link-type: doc
+
+      Choose the desktop application or a Python installation.
+
+   .. grid-item-card:: GUI quickstart
+      :link: user/gui_quickstart
+      :link-type: doc
+
+      Process a bundled phantom and save your first feature table.
+
+   .. grid-item-card:: Python quickstart
+      :link: user/api_quickstart
+      :link-type: doc
+
+      Run a short extraction and check the expected result.
+
+Explore the documentation
+-------------------------
+
+* :doc:`user/index`: GUI and Python workflows, settings, and troubleshooting.
+* :doc:`examples/index`: illustrated GUI configurations.
+* :doc:`reference/index`: class signatures and parameter descriptions.
+* :doc:`developer/index`: contributor setup, tests, benchmarks, and releases.
+* :doc:`ibsi/index`: validation coverage, reference limitations, and reports.
+* :doc:`project/index`: project background, resources, and contact information.
 
 .. image:: images/zrad_screenshot.png
-   :alt: Z-Rad graphical interface
-   :width: 700
-
-Documentation Map
------------------
-
-* :doc:`user/index` for installation and workflow-oriented guides.
-* :doc:`examples/index` for end-to-end walkthroughs.
-* :doc:`reference/index` for API-oriented documentation.
-* :doc:`developer/index` for development workflow and local docs tooling.
-* :doc:`ibsi/index` for IBSI-oriented validation material and repository assets.
-* :doc:`project/index` for project background, resources, and contact information.
+   :alt: Z-Rad graphical interface with preprocessing, filtering, radiomics, and visualization tabs
+   :width: 500
 
 .. toctree::
    :maxdepth: 2
-   :caption: Contents
+   :hidden:
 
    user/index
    examples/index
-   reference/index
+   API reference <reference/index>
    developer/index
    ibsi/index
-   project/index
+   About <project/index>

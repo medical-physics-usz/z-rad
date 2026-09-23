@@ -1,5 +1,5 @@
-API quickstart
-==============
+Python quickstart
+=================
 
 Extract your first features with the bundled CT phantom, then adapt the
 workflow to your own images.
@@ -7,22 +7,10 @@ workflow to your own images.
 Run the bundled phantom example
 -------------------------------
 
-This example uses the repository's supplied CT phantom and binary ROI mask,
-so you can verify a result before working with your own images. Clone the
-repository and create a virtual environment:
-
-.. code-block:: bash
-
-   git clone https://github.com/medical-physics-usz/z-rad.git
-   cd z-rad
-   python -m venv .venv
-
-Activate it with ``source .venv/bin/activate`` on macOS/Linux or
-``.venv\Scripts\Activate.ps1`` in Windows PowerShell, then install:
-
-.. code-block:: bash
-
-   python -m pip install -e .
+This example uses the repository's supplied CT phantom and binary ROI mask.
+Follow :ref:`installation-from-source` to obtain the data and install Z-Rad.
+If that checkout and environment are already ready, activate the environment
+and continue here; no second installation is needed.
 
 Run the following from the repository root. It extracts intensity statistics
 without resampling or filtering:

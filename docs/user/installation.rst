@@ -25,7 +25,13 @@ Python environment
 ------------------
 
 Python workflows require Python 3.11 or newer on Windows, macOS, or Linux.
-Create a virtual environment in your working directory:
+Choose one route: install the published package for your own scripts, or follow
+:ref:`installation-from-source` for this documentation's bundled quickstart and
+source GUI. For the source route, clone first and create the environment inside
+the checkout. Reuse an existing environment if you have already set it up.
+
+Create a virtual environment in your working directory (use ``python3`` if
+that is how your system names the supported interpreter):
 
 .. code-block:: bash
 
@@ -53,8 +59,11 @@ environment:
 
    python -m pip install z-rad
 
-See :doc:`api_quickstart` for a first extraction using the repository's bundled
-phantom. That example also requires a repository checkout to access the data.
+Continue with :doc:`api_workflows` to use your own images. For a first run with
+bundled data and a known result, :doc:`api_quickstart` uses a source checkout;
+follow the source route below instead of installing both ways.
+
+.. _installation-from-source:
 
 Run from source
 ---------------
@@ -73,8 +82,8 @@ the repository root:
 
    python -m pip install -e .
 
-The editable installation uses this checkout for both imports and the GUI. To
-start the application, run:
+The editable installation uses this checkout for imports. Continue with
+:doc:`api_quickstart` for Python extraction. To start the GUI, run:
 
 .. code-block:: bash
 

@@ -32,7 +32,7 @@ Explore the documentation
 -------------------------
 
 * :doc:`user/index`: GUI and Python workflows, settings, and troubleshooting.
-* :doc:`examples/index`: illustrated GUI configurations.
+* :doc:`examples/index`: illustrated GUI configurations and Python API examples.
 * :doc:`reference/index`: class signatures and parameter descriptions.
 * :doc:`developer/index`: contributor setup, tests, benchmarks, and releases.
 * :doc:`ibsi/index`: validation coverage, reference limitations, and reports.

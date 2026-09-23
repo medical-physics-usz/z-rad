@@ -12,7 +12,7 @@ Supported input types
 Z-Rad supports:
 
 * DICOM and NIfTI input data
-* CT, MRI, PET, mammography, ultrasound, and RTDOSE imaging modalities
+* CT, MRI, PET, mammography, ultrasound, and RTDOSE modalities
 
 Basic directory layout
 ----------------------

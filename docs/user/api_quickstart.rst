@@ -1,5 +1,5 @@
-Python quickstart
-=================
+Python API quickstart
+=====================
 
 Extract your first features with the bundled CT phantom, then adapt the
 workflow to your own images.

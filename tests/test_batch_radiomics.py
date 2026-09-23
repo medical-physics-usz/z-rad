@@ -23,6 +23,14 @@ def _make_image(array=None):
     )
 
 
+def _make_irregular_roi():
+    values = np.arange(1, 217, dtype=np.float64).reshape(6, 6, 6)
+    mask = np.zeros_like(values)
+    mask[1:5, 1:4, 1:4] = 1
+    mask[4, 3, 3] = 0
+    return _make_image(values), _make_image(mask)
+
+
 def _write_case(input_dir, case_name, image_name='image', masks=None, filtered_name=None):
     case_dir = input_dir / case_name
     case_dir.mkdir(parents=True)
@@ -624,3 +632,86 @@ def test_gui_workflow_writes_moran_and_geary_columns(tmp_path):
     assert len(rows) == 1
     assert np.isfinite(float(rows[0]['morph_moran_i']))
     assert np.isfinite(float(rows[0]['morph_geary_c']))
+    assert np.isfinite(float(rows[0]['ivh_v10']))
+    assert np.isfinite(float(rows[0]['ivh_i90']))
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    'modality, method, number_of_bins, bin_size',
+    [
+        ('CT', 'direct', None, None),
+        ('PET', 'fixed_bin_size', None, 0.1),
+        ('MRI', 'fixed_bin_number', 1000, None),
+        ('MG', 'fixed_bin_number', 1000, None),
+        ('US', 'fixed_bin_number', 1000, None),
+        ('RTDOSE', 'fixed_bin_size', None, 0.1),
+    ],
+)
+def test_batch_ivh_uses_modality_strategy_and_gui_range(
+    monkeypatch, tmp_path, modality, method, number_of_bins, bin_size
+):
+    input_dir = tmp_path / 'input'
+    input_dir.mkdir()
+    extractor = _extractor(
+        input_dir,
+        tmp_path / 'output',
+        modality=modality,
+        intensity_range=(50, 150),
+    )
+    extractor.validate()
+    observed = {}
+    original_apply = batch_radiomics.IVHIntensityDiscretizer.apply
+
+    def capture_ivh_preparation(discretizer, roi_data):
+        observed.update(discretizer.get_params())
+        observed['intensity_range'] = roi_data.intensity_range
+        return original_apply(discretizer, roi_data)
+
+    monkeypatch.setattr(batch_radiomics.IVHIntensityDiscretizer, 'apply', capture_ivh_preparation)
+    image, mask = _make_irregular_roi()
+    features = extractor._extract_structure_features(image, None, mask)
+
+    assert observed == {
+        'method': method,
+        'number_of_bins': number_of_bins,
+        'bin_size': bin_size,
+        'intensity_range': (50.0, 150.0),
+    }
+    retained = image.array[(mask.array > 0) & (image.array >= 50) & (image.array <= 150)]
+    assert features['stat_min'] == retained.min()
+    assert features['stat_max'] == retained.max()
+    assert all(
+        np.isfinite(features[name])
+        for name in (
+            'ivh_v10',
+            'ivh_v90',
+            'ivh_i10',
+            'ivh_i90',
+            'ivh_diff_v10_v90',
+            'ivh_diff_i10_i90',
+        )
+    )
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize('modality', ['PET', 'RTDOSE'])
+def test_batch_ivh_fixed_width_uses_observed_minimum_without_gui_range(monkeypatch, tmp_path, modality):
+    input_dir = tmp_path / 'input'
+    input_dir.mkdir()
+    extractor = _extractor(input_dir, tmp_path / 'output', modality=modality)
+    extractor.validate()
+    observed = {}
+    original_apply = batch_radiomics.IVHIntensityDiscretizer.apply
+
+    def capture_ivh_preparation(discretizer, roi_data):
+        observed['intensity_range'] = roi_data.intensity_range
+        return original_apply(discretizer, roi_data)
+
+    monkeypatch.setattr(batch_radiomics.IVHIntensityDiscretizer, 'apply', capture_ivh_preparation)
+    image, mask = _make_irregular_roi()
+    features = extractor._extract_structure_features(image, None, mask)
+
+    assert observed['intensity_range'] == (44.0, np.inf)
+    assert features['stat_min'] == 44
+    assert np.isfinite(features['ivh_i10'])

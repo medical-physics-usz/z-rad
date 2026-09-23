@@ -1,6 +1,6 @@
 import csv
 import logging
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Callable, Sequence
 
@@ -10,7 +10,7 @@ from joblib import Parallel, delayed
 from ..exceptions import DataStructureError, InvalidInputParametersError
 from ..image import Image
 from ..io import get_all_structure_names, get_dicom_files
-from ..preprocessing import IntensityMaskBuilder, Resegmenter, RoiData, TextureDiscretizer
+from ..preprocessing import IntensityMaskBuilder, IVHIntensityDiscretizer, Resegmenter, RoiData, TextureDiscretizer
 from ..radiomics import Radiomics
 from ._utils import (
     find_nifti_file,
@@ -396,6 +396,19 @@ class BatchRadiomicsExtractor:
             number_of_bins=self.number_of_bins,
             bin_size=self.bin_size,
         ).apply(roi_data)
+        if self.modality == 'CT':
+            ivh_discretizer = IVHIntensityDiscretizer(method='direct')
+        elif self.modality in {'PET', 'RTDOSE'}:
+            ivh_discretizer = IVHIntensityDiscretizer(method='fixed_bin_size', bin_size=0.1)
+            if roi_data.intensity_range is None:
+                # Use the observed lower bound as the IVH anchor when the GUI has no range.
+                valid_intensities = roi_data.intensity_mask.array[np.isfinite(roi_data.intensity_mask.array)]
+                if valid_intensities.size == 0:
+                    raise DataStructureError('No valid intensities remain for IVH extraction.')
+                roi_data = replace(roi_data, intensity_range=(float(valid_intensities.min()), np.inf))
+        else:
+            ivh_discretizer = IVHIntensityDiscretizer(method='fixed_bin_number', number_of_bins=1000)
+        roi_data = ivh_discretizer.apply(roi_data)
         return Radiomics(
             aggr_dim=self.aggregation_dimension,
             aggr_method=self.aggregation_method,

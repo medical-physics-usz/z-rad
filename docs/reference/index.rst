@@ -1,4 +1,4 @@
-API Reference
+API reference
 =============
 
 This section documents the main Python API exposed by Z-Rad. The reference is
@@ -8,8 +8,8 @@ navigation.
 .. toctree::
    :maxdepth: 2
 
+   image
    preprocessing
-   batch
    filtering
    radiomics
-   image
+   batch

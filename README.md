@@ -132,6 +132,6 @@ Implementation coverage describes available operations; benchmark agreement appl
 
 ## Contribute and get in touch
 
-Found a bug or have a feature request? [Open an issue](https://github.com/medical-physics-usz/z-rad/issues). To contribute code or documentation, start with the [contributing guide](https://medical-physics-usz.github.io/z-rad/developer/contributing.html).
+Found a bug or have a feature request? [Open an issue](https://github.com/medical-physics-usz/z-rad/issues). To contribute code or documentation, start with [CONTRIBUTING.md](CONTRIBUTING.md).
 
 For questions or research collaborations, contact [zrad@usz.ch](mailto:zrad@usz.ch).

@@ -1,51 +1,86 @@
-Continuous Integration
+Continuous integration
 ======================
 
-Pull Request Checks
--------------------
+GitHub Actions runs the workflows below. Open a workflow run to inspect a failed
+step's log or download its artifacts. For commands to reproduce checks locally,
+see :doc:`testing`, :doc:`code_quality`, and :doc:`building_docs`.
 
-GitHub Actions runs the main contributor checks on pull requests to
-``master``:
+Workflows and triggers
+----------------------
 
-* tests and coverage on Python 3.11, 3.12, 3.13, and 3.14
-* Ruff formatting and linting on Python 3.11
-* Super-Linter on changed files
+Workflow files are in ``.github/workflows/``. In this table, PR means a pull
+request targeting ``master`` and push means a push to ``master``.
 
-Contributors should reproduce the unit tests, relevant integration tests,
-coverage sequence, and Ruff checks locally before requesting review.
-Super-Linter is normally reviewed in the pull request CI result because the
-repository does not currently provide a local wrapper.
+.. list-table:: Automated workflows
+   :header-rows: 1
+   :widths: 25 25 50
 
-Documentation Build
--------------------
+   * - Workflow file
+     - Trigger
+     - Purpose and result
+   * - ``test.yml``
+     - PR and push
+     - Unit and integration tests on Python 3.11, 3.12, 3.13, and 3.14;
+       coverage and IBSI validation artifacts.
+   * - ``python-lint.yml``
+     - PR and push
+     - Ruff formatting and lint checks on Python 3.11.
+   * - ``lint.yml``
+     - PR and push
+     - Super-Linter checks on changed files.
+   * - ``docs.yml``
+     - Push and manual dispatch
+     - Strict Sphinx build on Python 3.12, followed by GitHub Pages deployment.
+   * - ``benchmark.yml``
+     - PR, push, weekly schedule, and manual dispatch
+     - Timing comparisons; scheduled and exhaustive manual runs also measure RSS.
+   * - ``publish.yml``
+     - GitHub release published
+     - Build and upload Python distributions to PyPI.
+   * - ``release-executables.yml``
+     - GitHub release published
+     - Build and attach desktop application assets.
 
-The documentation workflow builds the Sphinx site on Python 3.12 with warnings
-treated as errors:
+Documentation is not built on pull requests. Run the local Sphinx build for
+documentation changes even when the other PR checks pass. The documentation
+workflow's deploy job follows a successful build, including on manual runs.
 
-.. code-block:: bash
+Inspect test and coverage results
+---------------------------------
 
-   python -m sphinx -b html -W docs docs/_build/html
+The test workflow runs the unit suite, then appends integration-test coverage.
+It uploads ``coverage-report-python-*`` HTML artifacts and
+``ibsi-results-python-*`` validation reports for each Python version. Validation
+reports include failures and skips when integration results are available.
+See :doc:`ibsi_validation` to reproduce and interpret them.
 
-On pushes to ``master``, the workflow uploads the generated site and deploys it
-to GitHub Pages.
+Coverage has no configured minimum percentage. Review coverage for the changed
+code along with the test results; a passing workflow is not a coverage target.
 
-Publishing
-----------
+Inspect performance results
+---------------------------
 
-Publishing to PyPI is maintainer-focused. The publish workflow runs when a
-GitHub release is published. It builds the package and uploads the distribution
-artifacts with Twine.
+Performance jobs run on Ubuntu 24.04 with Python 3.12. PRs and pushes select the
+``standard`` suite. Manual dispatch selects a suite, and the weekly schedule
+selects ``exhaustive``. RSS memory runs occur on the weekly schedule and on
+manual runs selecting ``exhaustive``, with one sample per workload.
 
-Release Executables
--------------------
+The job summaries show timing comparisons or grouped peak/setup-peak RSS tables.
+Artifacts are retained for 30 days:
 
-The release executable workflow runs when a GitHub release is published. It
-builds native PyInstaller artifacts on each target runner and uploads them to
-the release:
+* ``performance-<run-id>-<attempt>`` contains available timing JSON, comparison
+  output, installation/test logs, dependency lists, and revision/status metadata.
+* ``performance-memory-<run-id>-<attempt>`` contains RSS JSON and Markdown reports.
 
-* ``windows-latest`` builds ``z-rad-<release-tag>-windows.exe``.
-* ``macos-latest`` builds the Apple Silicon ``Z-Rad.app`` bundle and uploads
-  ``z-rad-<release-tag>-macos-arm64.zip``.
+Candidate measurement or validation failures fail the timing job. There is no
+configured threshold that fails a run simply because time or memory increased.
+Missing or incompatible references are reported separately; inspect the status
+and logs before interpreting a partial comparison. See :doc:`benchmarking` for
+reference selection and :doc:`memory_profiling` for memory metrics.
 
-The macOS app is currently unsigned and unnotarized. Signing and notarization
-should be added only after Apple Developer credentials are available in CI.
+Release jobs
+------------
+
+Publishing a GitHub release triggers both package publication and executable
+builds. These are separate workflows, so verify both results. See
+:doc:`release_process` for preparation, version conventions, and expected assets.

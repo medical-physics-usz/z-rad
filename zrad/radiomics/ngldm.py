@@ -27,7 +27,7 @@ NGLDM_FEATURE_NAMES = (
 
 
 class NGLDM(TextureFeatureBase):
-    """Neighbouring gray level dependence matrix features.
+    """Neighbouring grey level dependence matrix features.
 
     NGLDM features count neighbouring voxels that depend on the centre voxel's
     discretized grey level. They describe local homogeneity, dependence counts,

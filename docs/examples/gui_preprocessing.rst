@@ -4,7 +4,7 @@ Preprocessing in GUI
 This example shows two common preprocessing setups in the GUI: one for DICOM
 input and one for NIfTI input.
 
-DICOM Example
+DICOM example
 -------------
 
 .. figure:: ../images/prepr_B.png
@@ -20,7 +20,7 @@ This configuration corresponds to:
 * linear interpolation to ``2 x 2`` mm in-plane spacing
 * linear ROI interpolation with a threshold of ``0.5``
 
-NIfTI Example
+NIfTI example
 -------------
 
 .. figure:: ../images/prepr_E.png

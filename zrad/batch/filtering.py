@@ -78,20 +78,65 @@ class BatchFilter:
         Inclusive numeric folder range. Both values must be provided together.
     nifti_image_name : str, optional
         Image file name or stem used for NIfTI input.
-    filter-specific settings : optional
-        Numeric and text settings required by the selected ``filter_type``:
-        ``mean_support``, ``log_sigma``, ``log_cutoff``,
-        ``laws_response_map``, ``laws_pooling``, ``laws_distance``,
-        ``wavelet_response_map``, ``wavelet_type``,
-        ``wavelet_decomposition_level``, ``gabor_res_mm``,
-        ``gabor_sigma_mm``, ``gabor_lambda_mm``, ``gabor_gamma``, and
-        ``gabor_theta``. ``riesz_order`` is required for Riesz-transformed LoG
-        and optional for Simoncelli filtering. ``structure_tensor_sigma_mm``
-        optionally enables local alignment for supported second-order 3D
-        Riesz-transformed LoG responses.
-    filter-specific enable settings : bool or str, optional
-        Enable/disable settings for Laws, Wavelets, and Gabor filters.
-        GUI-style ``"Enable"`` and ``"Disable"`` values are accepted.
+    mean_support : int or str, optional
+        Mean-filter kernel side length in voxels. Required for Mean filtering.
+    log_sigma : float or str, optional
+        Gaussian standard deviation in millimetres. Required for LoG and
+        Riesz-transformed LoG filtering.
+    log_cutoff : float or str, optional
+        LoG kernel truncation radius in multiples of ``log_sigma``.
+    laws_response_map : str, optional
+        Laws kernel combination, such as ``"L5E5"`` in 2D or ``"L5E5S5"`` in 3D.
+    laws_rotation_invariance : bool or str, default=False
+        Combine Laws responses over axis permutations and flips.
+        GUI-style ``"Enable"`` and ``"Disable"`` values are also accepted.
+    laws_pooling : {"avg", "max"}, optional
+        Pooling rule for rotation-invariant Laws responses. Required for
+        Laws batch configuration, including when rotation invariance is disabled.
+    laws_energy_map : bool or str, default=False
+        Return a local mean absolute Laws response. Accepts booleans or
+        GUI-style ``"Enable"`` and ``"Disable"`` values.
+    laws_distance : int or str, optional
+        Energy-map neighbourhood radius in voxels. A positive value is required
+        for Laws batch configuration, including when energy maps are disabled.
+    wavelet_response_map : str, optional
+        Separable-wavelet low/high-pass combination, such as ``"LH"`` in 2D
+        or ``"LLH"`` in 3D.
+    wavelet_type : {"db2", "db3", "coif1", "haar"}, optional
+        Wavelet family for separable filtering.
+    wavelet_decomposition_level : int or str, optional
+        Scale level, starting at 1. Required for both separable wavelets
+        (levels 1 or 2) and Simoncelli filtering (any supported positive level).
+    wavelet_rotation_invariance : bool or str, default=False
+        Average separable-wavelet responses over rotations. Accepts booleans
+        or GUI-style ``"Enable"`` and ``"Disable"`` values.
+    gabor_res_mm : float or str, optional
+        Gabor voxel spacing in millimetres per pixel, used to convert physical
+        scales to kernel coordinates.
+    gabor_sigma_mm : float or str, optional
+        Gabor Gaussian envelope standard deviation in millimetres.
+    gabor_lambda_mm : float or str, optional
+        Gabor sinusoidal wavelength in millimetres.
+    gabor_gamma : float or str, optional
+        Gabor kernel aspect ratio.
+    gabor_theta : float or str, optional
+        Gabor orientation angle in radians, or angular step when rotation
+        invariance is enabled. All five numeric Gabor parameters are required
+        when selecting Gabor filtering.
+    gabor_rotation_invariance : bool or str, default=False
+        Average Gabor responses over orientations. Accepts booleans or
+        GUI-style ``"Enable"`` and ``"Disable"`` values.
+    gabor_orthogonal_planes : bool or str, default=False
+        Average Gabor responses across the three orthogonal slice planes.
+        Accepts booleans or GUI-style ``"Enable"`` and ``"Disable"`` values.
+    riesz_order : sequence of int or str, optional
+        Non-negative Riesz multi-index in physical ``(x, y)`` or ``(x, y, z)``
+        order. Required with positive total order for Riesz-transformed LoG;
+        optional for Simoncelli, where omission or all zeros selects the
+        isotropic response. Comma-separated strings are accepted.
+    structure_tensor_sigma_mm : float or str, optional
+        Positive scale in millimetres for local alignment of pure second-order
+        3D Riesz-transformed LoG responses, such as ``(2, 0, 0)``.
     parallel_backend : {"processes", "threads"}, optional
         Joblib backend preference used when ``number_of_threads`` is greater
         than one. The default is ``"processes"``.

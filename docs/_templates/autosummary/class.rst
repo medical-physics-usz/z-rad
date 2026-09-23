@@ -4,24 +4,26 @@
 
 .. autoclass:: {{ objname }}
 
-{% block methods %}
-{% if methods %}
+{% set public_methods = methods | reject('equalto', '__init__') | list %}
+{% if public_methods %}
 .. rubric:: Methods
 
 .. autosummary::
-{% for item in methods %}
-{% if item != '__init__' %}
+{% for item in public_methods %}
    ~{{ name }}.{{ item }}
-{% endif %}
-{%- endfor %}
-{% endif %}
-{% endblock %}
+{% endfor %}
 
-{% if methods %}
-{% for item in methods %}
-{% if item != '__init__' %}
+{% for item in public_methods %}
 .. automethod:: {{ name }}.{{ item }}
 
+{% endfor %}
 {% endif %}
-{%- endfor %}
+{% set properties = properties_by_class.get(fullname, []) %}
+{% if properties %}
+.. rubric:: Properties
+
+{% for item in properties %}
+.. autoattribute:: {{ name }}.{{ item }}
+
+{% endfor %}
 {% endif %}

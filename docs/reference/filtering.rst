@@ -3,7 +3,7 @@ Filtering
 
 .. currentmodule:: zrad
 
-Filter Classes
+Filter classes
 --------------
 
 .. autosummary::
@@ -18,7 +18,7 @@ Filter Classes
    ~filtering.wavelet.Wavelets3D
    ~filtering.wavelet.Simoncelli
 
-Configuration Factory
+Configuration factory
 ---------------------
 
 .. autosummary::

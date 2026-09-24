@@ -54,8 +54,12 @@ dictionary containing an entry approximately equal to:
 
 Feature prefixes identify families: ``stat_`` denotes intensity statistics,
 ``morph_`` morphology, ``cm_`` co-occurrence-matrix features, and ``ivh_``
-intensity-volume histogram features. GUI and batch CSV files include six
-``ivh_`` columns. Units depend on the feature and input image: the CT mean is
+intensity-volume histogram features. GUI and batch extraction can produce six
+``ivh_`` columns. Batch IVH failures leave those values blank for the affected
+structure; if every structure's IVH fails, the CSV has no ``ivh_`` columns.
+Inspect ``omitted_ivh_structures`` on each radiomics case result for the
+structure and reason, including when the case is counted as processed. Units
+depend on the feature and input image: the CT mean is
 in HU, whereas the mean of a filtered image uses that filter's response units.
 The texture name ``cm_contrast_3D_avg`` means GLCM contrast calculated with
 3D neighbourhoods and averaged across directions. GLCM and GLRLM names end in

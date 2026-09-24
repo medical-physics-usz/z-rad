@@ -110,9 +110,12 @@ Batch radiomics
 
 ``BatchRadiomicsExtractor`` prepares IVH intensities for every ROI using the
 selected ``modality`` for unfiltered images, or 1000 fixed-number bins for
-filtered images, by default and writes six ``ivh_`` columns to
-``radiomics.csv``. To override the default, set ``ivh_method`` to
-``"direct"``, ``"fixed_bin_size"``, or ``"fixed_bin_number"``. The latter two
+filtered images, by default. Successful IVH extraction writes six ``ivh_``
+columns to ``radiomics.csv``. If IVH preparation or extraction fails for a
+structure, its row retains the other features but omits IVH values. If every
+structure has this failure, the CSV has no ``ivh_`` columns. To override the
+default, set ``ivh_method`` to ``"direct"``, ``"fixed_bin_size"``, or
+``"fixed_bin_number"``. The latter two
 also require ``ivh_bin_size`` or ``ivh_number_of_bins``, respectively. For
 example, use ``ivh_method="fixed_bin_size"``, ``ivh_bin_size=0.25``, and
 ``intensity_range=(0, 20)`` for a common IVH bin width and lower origin.
@@ -144,8 +147,17 @@ these even when ``failed_count`` is zero:
 
 A radiomics case is counted as processed if at least one structure produces
 features. Another structure in that case can be skipped without a case-level
-error. Check the requested case/mask pairs against the CSV; see :doc:`results`
-for metadata and feature-name explanations.
+error. IVH omissions are reported separately, including for processed cases:
+
+.. code-block:: python
+
+   for case in result.case_results:
+       for structure, reason in case.omitted_ivh_structures.items():
+           print(case.case_name, structure, reason)
+
+These cases also appear in ``result.errors``. Check the requested case/mask
+pairs against the CSV; see :doc:`results` for metadata and feature-name
+explanations.
 
 Preprocessing saves each image as ``image.nii.gz`` and each mask under its
 structure name. Use those names when configuring the next step. Filtering

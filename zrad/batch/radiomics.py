@@ -42,12 +42,14 @@ class RadiomicsCaseResult:
         Structure names that produced feature rows.
     skipped_structures : list of str
         Structure names that were requested but did not produce feature rows.
+    omitted_ivh_structures : dict of str to str
+        Structure names whose feature rows omit IVH, mapped to the reason.
     feature_count : int
         Number of features extracted across all processed structures for the
         case.
     error : str or None, optional
-        Case-level error message. Per-structure extraction failures are usually
-        recorded in ``skipped_structures`` instead.
+        Case-level error message. IVH omissions also set this field so they
+        appear in ``BatchResult.errors`` even when the case is processed.
     """
 
     case_name: str
@@ -56,6 +58,7 @@ class RadiomicsCaseResult:
     skipped_structures: list[str] = field(default_factory=list)
     feature_count: int = 0
     error: str | None = None
+    omitted_ivh_structures: dict[str, str] = field(default_factory=dict)
 
 
 @dataclass
@@ -259,9 +262,10 @@ class BatchRadiomicsExtractor:
         Notes
         -----
         Missing masks and per-structure extraction failures are recorded as
-        skipped structures. Case-level failures are recorded in the returned
-        result and do not stop the batch. If no feature rows are produced, an
-        empty CSV file is still created.
+        skipped structures. IVH failures retain the other features and are
+        recorded in ``omitted_ivh_structures``. Case-level failures are
+        recorded in the returned result and do not stop the batch. If no
+        feature rows are produced, an empty CSV file is still created.
         """
         self.validate()
         self.output_directory.mkdir(parents=True, exist_ok=True)
@@ -320,7 +324,8 @@ class BatchRadiomicsExtractor:
                     continue
 
                 logger.info("Processing patient: %s with ROI: %s.", case_name, structure_name)
-                features = self._extract_structure_features(image, filtered_image, mask)
+                ivh_errors = []
+                features = self._extract_structure_features(image, filtered_image, mask, ivh_errors=ivh_errors)
             except (DataStructureError, ValueError) as exc:
                 logger.warning("Patient %s with mask %s skipped: %s", case_name, structure_name, exc)
                 result.skipped_structures.append(structure_name)
@@ -331,12 +336,20 @@ class BatchRadiomicsExtractor:
                 continue
 
             result.feature_count += len(features)
+            if ivh_errors:
+                result.omitted_ivh_structures[structure_name] = ivh_errors[0]
+                logger.warning(
+                    "Patient %s with mask %s: IVH features omitted: %s",
+                    case_name, structure_name, ivh_errors[0],
+                )
             features['pat_id'] = case_name
             features['mask_id'] = structure_name
             feature_rows.append(features)
             result.processed_structures.append(structure_name)
 
         if result.processed_structures:
+            if result.omitted_ivh_structures:
+                result.error = "IVH features omitted for structures: " + ", ".join(result.omitted_ivh_structures)
             return result, feature_rows
 
         result.status = 'skipped'
@@ -396,7 +409,9 @@ class BatchRadiomicsExtractor:
             return None
         return Image.from_nifti_mask(mask_path, reference=image)
 
-    def _extract_structure_features(self, image: Image, filtered_image: Image | None, mask: Image) -> dict:
+    def _extract_structure_features(
+        self, image: Image, filtered_image: Image | None, mask: Image, ivh_errors: list[str] | None = None,
+    ) -> dict:
         roi_data = IntensityMaskBuilder().apply(
             RoiData(
                 image=image,
@@ -447,7 +462,10 @@ class BatchRadiomicsExtractor:
             roi_data = ivh_discretizer.apply(roi_data)
             features.update(radiomics.extract_features(roi_data=roi_data, families=['ivh']))
         except (DataStructureError, ValueError) as exc:
-            logger.warning('IVH features omitted: %s', exc)
+            if ivh_errors is None:
+                logger.warning('IVH features omitted: %s', exc)
+            else:
+                ivh_errors.append(str(exc))
         return features
 
     def _validate_discretization(self) -> None:

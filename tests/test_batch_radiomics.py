@@ -930,7 +930,7 @@ def test_batch_custom_ivh_settings_write_features_to_csv(tmp_path):
 
 @pytest.mark.unit
 @pytest.mark.parametrize('modality', ['PET', 'RTDOSE'])
-def test_batch_single_ivh_bin_keeps_other_features_in_csv(tmp_path, modality):
+def test_batch_single_ivh_bin_reports_omission_and_keeps_other_features(tmp_path, modality, caplog):
     input_dir = tmp_path / 'input'
     output_dir = tmp_path / 'output'
     case_dir = input_dir / 'case_a'
@@ -946,6 +946,11 @@ def test_batch_single_ivh_bin_keeps_other_features_in_csv(tmp_path, modality):
     assert result.case_results[0].processed_structures == ['mask']
     assert result.case_results[0].skipped_structures == []
     assert result.case_results[0].feature_count > 100
+    assert set(result.case_results[0].omitted_ivh_structures) == {'mask'}
+    assert result.case_results[0].omitted_ivh_structures['mask']
+    assert result.errors == result.case_results
+    assert 'IVH features omitted for structures: mask' == result.case_results[0].error
+    assert 'Patient case_a with mask mask: IVH features omitted:' in caplog.text
     with (output_dir / 'radiomics.csv').open(newline='') as csv_file:
         rows = list(csv.DictReader(csv_file))
     assert len(rows) == 1
@@ -954,6 +959,43 @@ def test_batch_single_ivh_bin_keeps_other_features_in_csv(tmp_path, modality):
     assert float(rows[0]['stat_max']) > float(rows[0]['stat_min'])
     assert np.isfinite(float(rows[0]['morph_volume']))
     assert not any(name.startswith('ivh_') for name in rows[0])
+
+
+@pytest.mark.unit
+def test_batch_ivh_omission_is_reported_per_structure(monkeypatch, tmp_path):
+    input_dir = tmp_path / 'input'
+    output_dir = tmp_path / 'output'
+    case_dir = input_dir / 'case_a'
+    case_dir.mkdir(parents=True)
+    image, mask = _make_irregular_roi()
+    image.save_as_nifti(case_dir / 'image.nii.gz')
+    for structure in ['bad', 'good']:
+        mask.save_as_nifti(case_dir / f'{structure}.nii.gz')
+    original_apply = batch_radiomics.IVHIntensityDiscretizer.apply
+    calls = 0
+
+    def fail_first_ivh(discretizer, roi_data):
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            raise DataStructureError('one IVH bin')
+        return original_apply(discretizer, roi_data)
+
+    monkeypatch.setattr(batch_radiomics.IVHIntensityDiscretizer, 'apply', fail_first_ivh)
+
+    result = _extractor(input_dir, output_dir, structures=['bad', 'good']).run()
+
+    case = result.case_results[0]
+    assert case.status == 'processed'
+    assert case.processed_structures == ['bad', 'good']
+    assert case.omitted_ivh_structures == {'bad': 'one IVH bin'}
+    assert case.error == 'IVH features omitted for structures: bad'
+    assert result.errors == [case]
+    with (output_dir / 'radiomics.csv').open(newline='') as csv_file:
+        rows = list(csv.DictReader(csv_file))
+    assert len(rows) == 2
+    assert rows[0]['ivh_i10'] == ''
+    assert rows[1]['ivh_i10'] != ''
 
 
 @pytest.mark.unit

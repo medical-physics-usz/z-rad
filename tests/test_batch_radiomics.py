@@ -85,6 +85,15 @@ def test_batch_public_api_exposes_radiomics_classes():
         ),
         ({'aggregation_method': 'BAD'}, "aggregation_method"),
         ({'slice_weighting': True, 'slice_median': True}, "slice_weighting"),
+        ({'ivh_bin_size': 0.25}, "ivh_method"),
+        ({'ivh_method': 'unsupported'}, "ivh_method"),
+        ({'ivh_method': 'direct', 'ivh_bin_size': 0.25}, "direct IVH"),
+        ({'ivh_method': 'fixed_bin_size'}, "ivh_bin_size"),
+        ({'ivh_method': 'fixed_bin_size', 'ivh_bin_size': -1}, "ivh_bin_size"),
+        ({'ivh_method': 'fixed_bin_size', 'ivh_bin_size': 0.25, 'ivh_number_of_bins': 10}, "ivh_number_of_bins"),
+        ({'ivh_method': 'fixed_bin_number'}, "ivh_number_of_bins"),
+        ({'ivh_method': 'fixed_bin_number', 'ivh_number_of_bins': 2.5}, "ivh_number_of_bins"),
+        ({'ivh_method': 'fixed_bin_number', 'ivh_number_of_bins': 10, 'ivh_bin_size': 0.25}, "ivh_bin_size"),
     ],
 )
 def test_batch_radiomics_validates_inputs(tmp_path, kwargs, message):
@@ -136,6 +145,21 @@ def test_batch_radiomics_validate_normalizes_public_attributes(tmp_path):
     assert extractor.number_of_bins == 8
     assert extractor.intensity_range == (0.0, 100.0)
     assert extractor.parallel_backend == 'threads'
+
+
+@pytest.mark.unit
+def test_batch_radiomics_normalizes_custom_ivh_settings(tmp_path):
+    input_dir = tmp_path / 'input'
+    input_dir.mkdir()
+    extractor = _extractor(
+        input_dir, tmp_path / 'output',
+        ivh_method=' FIXED_BIN_NUMBER ', ivh_number_of_bins='128',
+    )
+
+    extractor.validate()
+
+    assert extractor.ivh_method == 'fixed_bin_number'
+    assert extractor.ivh_number_of_bins == 128
 
 
 @pytest.mark.unit
@@ -695,11 +719,81 @@ def test_batch_ivh_uses_modality_strategy_and_gui_range(
 
 
 @pytest.mark.unit
-@pytest.mark.parametrize('modality', ['PET', 'RTDOSE'])
-def test_batch_ivh_fixed_width_uses_observed_minimum_without_gui_range(monkeypatch, tmp_path, modality):
+@pytest.mark.parametrize(
+    'modality, method, number_of_bins, bin_size',
+    [
+        ('CT', 'fixed_bin_size', None, 0.25),
+        ('PET', 'fixed_bin_number', 128, None),
+        ('MRI', 'direct', None, None),
+    ],
+)
+def test_batch_ivh_custom_strategy_overrides_modality(
+    monkeypatch, tmp_path, modality, method, number_of_bins, bin_size
+):
     input_dir = tmp_path / 'input'
     input_dir.mkdir()
-    extractor = _extractor(input_dir, tmp_path / 'output', modality=modality)
+    extractor = _extractor(
+        input_dir, tmp_path / 'output',
+        modality=modality,
+        intensity_range=(50, 150),
+        ivh_method=method,
+        ivh_number_of_bins=number_of_bins,
+        ivh_bin_size=bin_size,
+    )
+    extractor.validate()
+    observed = {}
+    original_apply = batch_radiomics.IVHIntensityDiscretizer.apply
+
+    def capture_ivh_preparation(discretizer, roi_data):
+        observed.update(discretizer.get_params())
+        observed['intensity_range'] = roi_data.intensity_range
+        return original_apply(discretizer, roi_data)
+
+    monkeypatch.setattr(batch_radiomics.IVHIntensityDiscretizer, 'apply', capture_ivh_preparation)
+    image, mask = _make_irregular_roi()
+    features = extractor._extract_structure_features(image, None, mask)
+
+    assert observed == {
+        'method': method,
+        'number_of_bins': number_of_bins,
+        'bin_size': bin_size,
+        'intensity_range': (50.0, 150.0),
+    }
+    assert np.isfinite(features['ivh_i10'])
+
+
+@pytest.mark.unit
+def test_batch_custom_ivh_settings_write_features_to_csv(tmp_path):
+    input_dir = tmp_path / 'input'
+    output_dir = tmp_path / 'output'
+    case_dir = input_dir / 'case_a'
+    case_dir.mkdir(parents=True)
+    image, mask = _make_irregular_roi()
+    image.save_as_nifti(case_dir / 'image.nii.gz')
+    mask.save_as_nifti(case_dir / 'mask.nii.gz')
+    extractor = _extractor(
+        input_dir, output_dir,
+        ivh_method='fixed_bin_number', ivh_number_of_bins=128,
+    )
+
+    result = extractor.run()
+
+    assert result.processed_count == 1
+    with (output_dir / 'radiomics.csv').open(newline='') as csv_file:
+        rows = list(csv.DictReader(csv_file))
+    assert len(rows) == 1
+    assert np.isfinite(float(rows[0]['ivh_i10']))
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    'modality, ivh_options',
+    [('PET', {}), ('RTDOSE', {}), ('CT', {'ivh_method': 'fixed_bin_size', 'ivh_bin_size': 0.25})],
+)
+def test_batch_ivh_fixed_width_uses_observed_minimum_without_gui_range(monkeypatch, tmp_path, modality, ivh_options):
+    input_dir = tmp_path / 'input'
+    input_dir.mkdir()
+    extractor = _extractor(input_dir, tmp_path / 'output', modality=modality, **ivh_options)
     extractor.validate()
     observed = {}
     original_apply = batch_radiomics.IVHIntensityDiscretizer.apply

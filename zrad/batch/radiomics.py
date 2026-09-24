@@ -111,7 +111,13 @@ class BatchRadiomicsExtractor:
         Bin size used with ``"Bin Size"`` discretization.
     intensity_range : sequence of float, optional
         Two-value lower and upper intensity range used for re-segmentation and
-        bin-size discretization.
+        fixed-bin-size texture and IVH discretization.
+    ivh_method : {"direct", "fixed_bin_size", "fixed_bin_number"}, optional
+        IVH preparation strategy. If omitted, the modality selects the strategy.
+    ivh_number_of_bins : int, optional
+        Number of IVH bins required with ``ivh_method="fixed_bin_number"``.
+    ivh_bin_size : float, optional
+        IVH bin width required with ``ivh_method="fixed_bin_size"``.
     outlier_range : float, optional
         Positive outlier range used during re-segmentation.
     output_filename : str, optional
@@ -124,8 +130,7 @@ class BatchRadiomicsExtractor:
     Notes
     -----
     IVH preparation is independent of texture discretization. See
-    :ref:`ivh-discretization` for modality-specific settings, range behavior,
-    and customization through the single-ROI Python API.
+    :ref:`ivh-discretization` for modality-specific defaults and range behavior.
 
     ``validate()`` normalizes public attributes in place. After validation,
     directories are ``Path`` objects, ``input_data_type`` is lower-case,
@@ -153,6 +158,9 @@ class BatchRadiomicsExtractor:
     number_of_bins: int | str | None = None
     bin_size: float | str | None = None
     intensity_range: Sequence[float] | None = None
+    ivh_method: str | None = None
+    ivh_number_of_bins: int | str | None = None
+    ivh_bin_size: float | str | None = None
     outlier_range: float | str | None = None
     output_filename: str = 'radiomics.csv'
     parallel_backend: str = 'processes'
@@ -208,6 +216,7 @@ class BatchRadiomicsExtractor:
 
         self.intensity_range = _normalize_intensity_range(self.intensity_range)
         self._validate_discretization()
+        self._validate_ivh_discretization()
         self.outlier_range = _normalize_positive_float(self.outlier_range, "outlier_range must be positive.")
 
     def plan(self) -> list[str]:
@@ -401,18 +410,24 @@ class BatchRadiomicsExtractor:
             number_of_bins=self.number_of_bins,
             bin_size=self.bin_size,
         ).apply(roi_data)
-        if self.modality == 'CT':
+        if self.ivh_method is not None:
+            ivh_discretizer = IVHIntensityDiscretizer(
+                method=self.ivh_method,
+                number_of_bins=self.ivh_number_of_bins,
+                bin_size=self.ivh_bin_size,
+            )
+        elif self.modality == 'CT':
             ivh_discretizer = IVHIntensityDiscretizer(method='direct')
         elif self.modality in {'PET', 'RTDOSE'}:
             ivh_discretizer = IVHIntensityDiscretizer(method='fixed_bin_size', bin_size=0.1)
-            if roi_data.intensity_range is None:
-                # Use the observed lower bound as the IVH anchor when the GUI has no range.
-                valid_intensities = roi_data.intensity_mask.array[np.isfinite(roi_data.intensity_mask.array)]
-                if valid_intensities.size == 0:
-                    raise DataStructureError('No valid intensities remain for IVH extraction.')
-                roi_data = replace(roi_data, intensity_range=(float(valid_intensities.min()), np.inf))
         else:
             ivh_discretizer = IVHIntensityDiscretizer(method='fixed_bin_number', number_of_bins=1000)
+        if ivh_discretizer.method == 'fixed_bin_size' and roi_data.intensity_range is None:
+            # Use the observed lower bound as the IVH anchor when no range is configured.
+            valid_intensities = roi_data.intensity_mask.array[np.isfinite(roi_data.intensity_mask.array)]
+            if valid_intensities.size == 0:
+                raise DataStructureError('No valid intensities remain for IVH extraction.')
+            roi_data = replace(roi_data, intensity_range=(float(valid_intensities.min()), np.inf))
         roi_data = ivh_discretizer.apply(roi_data)
         return Radiomics(
             aggr_dim=self.aggregation_dimension,
@@ -435,6 +450,33 @@ class BatchRadiomicsExtractor:
             self.number_of_bins = None
         else:
             raise InvalidInputParametersError("discretization_method must be 'Number of Bins' or 'Bin Size'.")
+
+    def _validate_ivh_discretization(self) -> None:
+        if self.ivh_method is None:
+            if self.ivh_number_of_bins is not None or self.ivh_bin_size is not None:
+                raise InvalidInputParametersError("ivh_method is required when IVH bin settings are provided.")
+            return
+
+        self.ivh_method = require_text(self.ivh_method, "ivh_method is required.").lower()
+        if self.ivh_method == 'direct':
+            if self.ivh_number_of_bins is not None or self.ivh_bin_size is not None:
+                raise InvalidInputParametersError("direct IVH does not accept IVH bin settings.")
+        elif self.ivh_method == 'fixed_bin_number':
+            if self.ivh_bin_size is not None:
+                raise InvalidInputParametersError("fixed_bin_number IVH does not accept ivh_bin_size.")
+            self.ivh_number_of_bins = _require_positive_int(
+                self.ivh_number_of_bins, "ivh_number_of_bins must be a positive integer."
+            )
+        elif self.ivh_method == 'fixed_bin_size':
+            if self.ivh_number_of_bins is not None:
+                raise InvalidInputParametersError("fixed_bin_size IVH does not accept ivh_number_of_bins.")
+            self.ivh_bin_size = _require_positive_float(
+                self.ivh_bin_size, "ivh_bin_size must be positive."
+            )
+        else:
+            raise InvalidInputParametersError(
+                "ivh_method must be 'direct', 'fixed_bin_size', or 'fixed_bin_number'."
+            )
 
 
 def _write_radiomics_csv(file_path: Path, features: list[dict]) -> None:
@@ -460,13 +502,13 @@ def _write_radiomics_csv(file_path: Path, features: list[dict]) -> None:
 
 
 def _require_positive_int(value, message: str) -> int:
-    if value is None or str(value).strip() == '':
+    if value is None or isinstance(value, bool) or str(value).strip() == '':
         raise InvalidInputParametersError(message)
     try:
         result = int(value)
     except (TypeError, ValueError):
         raise InvalidInputParametersError(message)
-    if result <= 0:
+    if result <= 0 or (isinstance(value, (float, np.floating)) and value != result):
         raise InvalidInputParametersError(message)
     return result
 

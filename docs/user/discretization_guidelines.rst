@@ -75,18 +75,18 @@ selected level. They need a fine, ordered intensity axis, so choose their
 settings separately from texture discretization. A coarse texture setting
 such as ``32`` bins should not automatically be reused for IVH.
 
-GUI extraction from an unfiltered image and Python batch extraction prepare IVH
-intensities from the selected imaging modality unless the batch API receives
-custom IVH settings. For a filtered image, the GUI uses ``1000`` fixed-number
-bins regardless of modality.
+GUI and Python batch extraction prepare IVH intensities from the selected
+imaging modality for unfiltered images unless the batch API receives custom IVH
+settings. For a filtered image, both use ``1000`` fixed-number bins by default,
+regardless of modality.
 In the single-ROI Python API, prepare them with ``IVHIntensityDiscretizer``
 before requesting IVH features.
 
 Automatic settings and Python customization
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The following defaults apply to unfiltered GUI extraction and to
-``BatchRadiomicsExtractor`` unless its IVH settings are overridden. The listed
+The following defaults apply to unfiltered GUI and batch extraction unless
+``BatchRadiomicsExtractor`` receives custom IVH settings. The listed
 Python arguments reproduce them in the single-ROI API. Batch callers can
 override them with ``ivh_method`` and the corresponding ``ivh_bin_size`` or
 ``ivh_number_of_bins``.
@@ -114,14 +114,16 @@ used by the ordinary intensity-histogram family. It never supplies the IVH
 bin width or count. Use the batch or single-ROI Python API for custom IVH
 settings.
 
-For filtered-image extraction in the GUI, IVH bins span the retained filtered
-intensities in each ROI. A GUI re-segmentation range selects voxels using the
-original image, but its bounds do not define the filtered IVH intensity axis.
+For filtered-image extraction in the GUI or batch API, IVH bins span the
+retained filtered intensities in each ROI. A re-segmentation range selects
+voxels using the original image, but its bounds do not define the filtered IVH
+intensity axis, including when a custom IVH method is selected in the batch API.
 
-For fixed-bin-size IVH, a GUI or batch re-segmentation range supplies the lower
-bin origin and, if finite, the upper IVH bound. If no range is supplied, GUI
-and batch extraction use each ROI's observed minimum as the lower origin. In the
-single-ROI Python API, ``IVHIntensityDiscretizer`` requires a preceding
+For fixed-bin-size IVH on unfiltered images, a GUI or batch re-segmentation range
+supplies the lower bin origin and, if finite, the upper IVH bound. With filtered
+images or no range, GUI and batch extraction use each ROI's observed minimum as
+the lower origin. In the single-ROI Python API,
+``IVHIntensityDiscretizer`` requires a preceding
 re-segmentation range for fixed bin size.
 
 The fixed-bin-size intensity axis uses bin-centre values: with a lower bound

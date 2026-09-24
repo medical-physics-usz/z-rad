@@ -616,6 +616,68 @@ def test_gui_filtered_image_uses_1000_ivh_bins_with_original_image_range(tmp_pat
 
 
 @pytest.mark.unit
+@pytest.mark.parametrize('modality', ['CT', 'PET'])
+def test_batch_filtered_image_ivh_defaults_to_filtered_bins(tmp_path, modality):
+    input_dir = tmp_path / 'input'
+    output_dir = tmp_path / 'output'
+    case_dir = input_dir / 'case_a'
+    case_dir.mkdir(parents=True)
+    image, mask = _make_irregular_roi()
+    filtered_image = _make_image(image.array * 0.25 - 60)
+    image.save_as_nifti(case_dir / 'image.nii.gz')
+    filtered_image.save_as_nifti(case_dir / 'filtered.nii.gz')
+    mask.save_as_nifti(case_dir / 'mask.nii.gz')
+
+    result = _extractor(
+        input_dir, output_dir,
+        modality=modality,
+        nifti_filtered_image_name='filtered',
+        intensity_range=(50, 130),
+    ).run()
+
+    assert result.processed_count == 1
+    with (output_dir / 'radiomics.csv').open(newline='') as csv_file:
+        row, = csv.DictReader(csv_file)
+    retained = filtered_image.array[(mask.array > 0) & (image.array >= 50) & (image.array <= 130)]
+    assert retained.min() == -47.5
+    assert retained.max() == -27.5
+    assert float(row['stat_min']) == retained.min()
+    assert float(row['stat_max']) == retained.max()
+    assert 1 <= float(row['ivh_i10']) <= 1000
+    assert 1 <= float(row['ivh_i90']) <= 1000
+    assert 0 < float(row['ivh_v10']) <= 1
+    assert 0 < float(row['ivh_v90']) <= 1
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    'ivh_options, expected_i10_range',
+    [
+        ({'ivh_method': 'direct'}, (-47.5, -27.5)),
+        ({'ivh_method': 'fixed_bin_size', 'ivh_bin_size': 0.5}, (-47.5, -27.25)),
+    ],
+)
+def test_batch_filtered_image_custom_ivh_uses_filtered_range(tmp_path, ivh_options, expected_i10_range):
+    input_dir = tmp_path / 'input'
+    input_dir.mkdir()
+    extractor = _extractor(
+        input_dir, tmp_path / 'output',
+        nifti_filtered_image_name='filtered',
+        intensity_range=(50, 130),
+        **ivh_options,
+    )
+    extractor.validate()
+    image, mask = _make_irregular_roi()
+    filtered_image = _make_image(image.array * 0.25 - 60)
+
+    features = extractor._extract_structure_features(image, filtered_image, mask)
+
+    assert expected_i10_range[0] <= features['ivh_i10'] <= expected_i10_range[1]
+    assert 0 < features['ivh_v10'] <= 1
+    assert 0 < features['ivh_v90'] <= 1
+
+
+@pytest.mark.unit
 def test_gui_mapping_ignores_stale_all_structures_for_nifti(tmp_path):
     input_dir = tmp_path / 'input'
     output_dir = tmp_path / 'output'

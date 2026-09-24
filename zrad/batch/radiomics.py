@@ -79,7 +79,7 @@ class BatchRadiomicsExtractor:
         Input format. Values are normalized to lower-case during validation.
     modality : {"CT", "MRI", "PET", "MG", "US", "RTDOSE"}
         Image modality used by the image reader and to select automatic IVH
-        preparation, including for NIfTI and filtered-image input.
+        preparation for unfiltered input.
     aggregation_dimension : {"2D", "2.5D", "3D"}
         Spatial aggregation dimensionality for texture features.
     aggregation_method : {"MERG", "AVER", "SLICE_MERG", "DIR_MERG"}
@@ -111,9 +111,11 @@ class BatchRadiomicsExtractor:
         Bin size used with ``"Bin Size"`` discretization.
     intensity_range : sequence of float, optional
         Two-value lower and upper intensity range used for re-segmentation and
-        fixed-bin-size texture and IVH discretization.
+        fixed-bin-size texture discretization. It also sets the IVH bounds for
+        unfiltered images.
     ivh_method : {"direct", "fixed_bin_size", "fixed_bin_number"}, optional
-        IVH preparation strategy. If omitted, the modality selects the strategy.
+        IVH preparation strategy. If omitted, filtered images use 1000
+        fixed-number bins; otherwise the modality selects the strategy.
     ivh_number_of_bins : int, optional
         Number of IVH bins required with ``ivh_method="fixed_bin_number"``.
     ivh_bin_size : float, optional
@@ -424,6 +426,8 @@ class BatchRadiomicsExtractor:
                 number_of_bins=self.ivh_number_of_bins,
                 bin_size=self.ivh_bin_size,
             )
+        elif filtered_image is not None:
+            ivh_discretizer = IVHIntensityDiscretizer(method='fixed_bin_number', number_of_bins=1000)
         elif self.modality == 'CT':
             ivh_discretizer = IVHIntensityDiscretizer(method='direct')
         elif self.modality in {'PET', 'RTDOSE'}:
@@ -431,6 +435,9 @@ class BatchRadiomicsExtractor:
         else:
             ivh_discretizer = IVHIntensityDiscretizer(method='fixed_bin_number', number_of_bins=1000)
         try:
+            if filtered_image is not None:
+                # The original-image range selects voxels, not the filtered IVH axis.
+                roi_data = replace(roi_data, intensity_range=None)
             if ivh_discretizer.method == 'fixed_bin_size' and roi_data.intensity_range is None:
                 # Use the observed lower bound as the IVH anchor when no range is configured.
                 valid_intensities = roi_data.intensity_mask.array[np.isfinite(roi_data.intensity_mask.array)]

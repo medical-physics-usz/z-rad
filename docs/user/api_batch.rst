@@ -109,8 +109,9 @@ Batch radiomics
        print(case.case_name, case.error)
 
 ``BatchRadiomicsExtractor`` prepares IVH intensities for every ROI using the
-selected ``modality`` by default and writes six ``ivh_`` columns to
-``radiomics.csv``. To override the modality default, set ``ivh_method`` to
+selected ``modality`` for unfiltered images, or 1000 fixed-number bins for
+filtered images, by default and writes six ``ivh_`` columns to
+``radiomics.csv``. To override the default, set ``ivh_method`` to
 ``"direct"``, ``"fixed_bin_size"``, or ``"fixed_bin_number"``. The latter two
 also require ``ivh_bin_size`` or ``ivh_number_of_bins``, respectively. For
 example, use ``ivh_method="fixed_bin_size"``, ``ivh_bin_size=0.25``, and

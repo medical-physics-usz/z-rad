@@ -1,16 +1,17 @@
-User Guide
+User guide
 ==========
 
-This section is organized around the main tasks users perform with Z-Rad:
-installing the software, running the GUI, using the Python API, and executing
-preprocessing, filtering, and radiomics workflows.
+Start with :doc:`installation`, then choose :doc:`gui_quickstart` to use the
+desktop application or :doc:`api_quickstart` to extract features in Python.
+GUI and batch workflows use the case-folder layout in :doc:`data_structure`.
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
 
    installation
-   data_structure
+   Data structure <data_structure>
    gui_workflows
-   resegmentation_guidelines
-   discretization_guidelines
-   api_quickstart
+   api_index
+   concepts
+   results
+   troubleshooting

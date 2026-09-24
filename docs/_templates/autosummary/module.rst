@@ -9,7 +9,7 @@ Spatial Filters
 ===============
 {% elif fullname == 'zrad.filtering.wavelet' %}
 Wavelet Filters
-==================
+===============
 {% else %}
 {{ fullname.split('.')[-1] | escape }}
 {{ fullname.split('.')[-1] | escape | underline }}

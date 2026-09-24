@@ -4,7 +4,7 @@ Filtering in GUI
 This example compares several GUI filtering configurations based on the IBSI II
 phantom and shows how the corresponding filter setup looks in Z-Rad.
 
-Filtering Results
+Filtering results
 -----------------
 
 .. figure:: ../images/Filtering_Res.png
@@ -22,7 +22,7 @@ The archive example compares:
 * a ``3D`` Daubechies 3 wavelet filter with first-level ``LLH`` response and
   pseudo-rotational invariance
 
-Mean Filter Example
+Mean filter example
 -------------------
 
 .. figure:: ../images/Filt_mean.png
@@ -31,7 +31,7 @@ Mean Filter Example
 
    Example configuration for a ``3D`` mean filter.
 
-LoG Filter Example
+LoG filter example
 ------------------
 
 .. figure:: ../images/Filt_LoG.png
@@ -40,7 +40,7 @@ LoG Filter Example
 
    Example configuration for a ``3D`` Laplacian-of-Gaussian filter.
 
-Wavelet Filter Example
+Wavelet filter example
 ----------------------
 
 .. figure:: ../images/Filt_wavelet.png
@@ -49,7 +49,7 @@ Wavelet Filter Example
 
    Example configuration for a ``3D`` Daubechies 3 wavelet filter.
 
-Additional Filter Controls
+Additional filter controls
 --------------------------
 
 The filter selector also provides ``Riesz-transformed LoG`` and

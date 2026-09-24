@@ -26,7 +26,7 @@ GLDZM_FEATURE_NAMES = (
 
 
 class GLDZM(ZoneMatrixFeatureBase):
-    """Gray level distance zone matrix features.
+    """Grey level distance zone matrix features.
 
     GLDZM features describe connected grey-level zones together with their
     distance from the ROI border. They summarize how grey-level zones are

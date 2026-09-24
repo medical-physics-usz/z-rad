@@ -1,21 +1,20 @@
-Expected Data Structure
+Expected data structure
 =======================
 
-Z-Rad expects the input directory to contain one subfolder per case. In the
-GUI, this is the directory selected with ``Input Directory``. Each case folder
-is then processed either by explicit folder list, by numeric start and stop
-range, or by scanning all subfolders in the input directory.
+GUI and Python batch workflows expect one subfolder per case inside the input
+directory. In the GUI, select this parent folder with ``Input Directory``.
+The single-image Python API can read files directly and does not require this
+folder layout.
 
-Supported Input Types
+Supported input types
 ---------------------
 
 Z-Rad supports:
 
-* Windows, macOS, and Linux workflows
 * DICOM and NIfTI input data
-* CT, MRI, PET, mammography, ultrasound, and RTDOSE imaging modalities
+* CT, MRI, PET, mammography, ultrasound, and RTDOSE modalities
 
-Basic Directory Layout
+Basic directory layout
 ----------------------
 
 To process a dataset with case folders such as ``folder_1``, ``folder_2``, and
@@ -33,7 +32,62 @@ To process a dataset with case folders such as ``folder_1``, ``folder_2``, and
 Here, ``data_folder`` is the directory you select as the input dataset. Each
 case folder contains the image data to be processed for one study or patient.
 
-Recommended Layout For Multiple Modalities
+DICOM folder contents
+---------------------
+
+For DICOM workflows, each case folder should contain:
+
+* one image series for the selected modality
+* an RTSTRUCT or DICOM SEG file when ROI-based processing is required
+
+Example DICOM case folder:
+
+.. code-block:: text
+
+   data_folder/
+   └── folder_1/
+       ├── image_slice_001.dcm
+       ├── image_slice_002.dcm
+       ├── ...
+       └── structures.dcm
+
+* Z-Rad reads the image series directly from the case folder.
+* If both RTSTRUCT and SEG objects are present, the first detected RTSTRUCT is
+  used; otherwise, the first detected SEG is used.
+* DICOM SEG support is limited to BINARY objects; fractional and label-map
+  segmentations are not supported.
+* Ultrasound input must be a single DICOM file with ``PixelSpacing`` and
+  ``SliceThickness`` metadata.
+* For SEG input, enter the segment's ``SegmentLabel`` as the structure name.
+  The segmentation must reference the source image series.
+
+NIfTI folder contents
+---------------------
+
+For NIfTI workflows, each case folder should contain the image and mask files
+that Z-Rad should process together.
+
+Example NIfTI case folder:
+
+.. code-block:: text
+
+   data_folder/
+   └── folder_1/
+       ├── phantom.nii.gz
+       ├── GTV-1.nii.gz
+       ├── liver.nii.gz
+       └── filtered_image.nii.gz
+
+* The GUI expects image and mask names without file extensions.
+* Z-Rad accepts both ``.nii.gz`` and ``.nii`` files.
+* The image filename entered in the GUI must exist in every case folder that is
+  processed.
+* Use consistent image, mask, and optional filtered-image names across cases.
+  A requested mask that is missing from a case is skipped.
+* For extraction from a filtered image, keep the original image, filtered
+  image, and masks together as shown in :doc:`gui_quickstart`.
+
+Recommended layout for multiple modalities
 ------------------------------------------
 
 If you process multiple imaging modalities or data collections in parallel, use
@@ -56,69 +110,7 @@ a consistent layout for each modality:
 In this setup, you would select either ``PET`` or ``CT`` as the GUI input
 directory, depending on the workflow you want to run.
 
-DICOM Folder Contents
----------------------
-
-For DICOM workflows, each case folder should contain:
-
-* exactly one image series for the selected modality
-* zero or one RTSTRUCT or DICOM SEG file when ROI-based processing is required
-
-In practice, a DICOM case folder is expected to look like this:
-
-.. code-block:: text
-
-   data_folder/
-   └── folder_1/
-       ├── image_slice_001.dcm
-       ├── image_slice_002.dcm
-       ├── ...
-       └── structures.dcm
-
-Notes:
-
-* Z-Rad reads the image series directly from the case folder.
-* If both RTSTRUCT and SEG objects are present, the first detected RTSTRUCT is
-  used; otherwise, the first detected SEG is used.
-* DICOM SEG support is limited to BINARY objects; fractional and label-map
-  segmentations are not supported.
-* Ultrasound input must be a single DICOM file with ``PixelSpacing`` and
-  ``SliceThickness`` metadata.
-* SEG objects use ``SegmentLabel`` as the structure name. Selected segments are
-  aligned to the source image series using referenced SOP Instance UIDs (with
-  per-frame image position as a fallback).
-* For radiomics extraction, ROI-based DICOM workflows assume that an RTSTRUCT
-  or SEG file is available in the case folder.
-
-NIfTI Folder Contents
----------------------
-
-For NIfTI workflows, each case folder should contain the image and mask files
-that Z-Rad should process together.
-
-In practice, a NIfTI case folder is expected to look like this:
-
-.. code-block:: text
-
-   data_folder/
-   └── folder_1/
-       ├── phantom.nii.gz
-       ├── GTV-1.nii.gz
-       ├── liver.nii.gz
-       └── filtered_image.nii.gz
-
-Notes:
-
-* The GUI expects image and mask names without file extensions.
-* Z-Rad accepts both ``.nii.gz`` and ``.nii`` files.
-* The image filename entered in the GUI must exist in every case folder that is
-  processed.
-* The same naming convention should be used across all case folders so the
-  configured image and mask names resolve consistently.
-* Optional filtered images used in radiomics workflows must follow the same
-  naming convention across folders.
-
-Folder Selection In The GUI
+Folder selection in the GUI
 ---------------------------
 
 The GUI can process case folders in three ways:

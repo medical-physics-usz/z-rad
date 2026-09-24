@@ -102,11 +102,17 @@ class Image:
         Parameters
         ----------
         rtstruct_path : str or path-like
-            Path to the DICOM RTSTRUCT file.
+            Path to an RTSTRUCT or BINARY DICOM SEG file.
         structure_name : str
-            Name of the ROI structure to rasterize.
+            RTSTRUCT ROI name or DICOM SEG ``SegmentLabel`` to extract.
         reference : Image
             Reference image that defines the target grid and geometry.
+
+        dicom_dir : str or path-like, optional
+            Directory containing the referenced source DICOM image series.
+            Supply it for SEG input so source-frame references can be resolved
+            and checked, including frames without independent spatial geometry.
+            RTSTRUCT loading does not use this argument.
 
         Returns
         -------

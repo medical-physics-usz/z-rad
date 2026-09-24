@@ -26,7 +26,7 @@ GLRLM_FEATURE_NAMES = (
 
 
 class GLRLM(TextureFeatureBase):
-    """Gray level run length matrix features.
+    """Grey level run length matrix features.
 
     GLRLM features describe contiguous runs of equal discretized grey level
     along predefined directions. They capture coarse versus fine texture and
@@ -305,7 +305,7 @@ class GLRLM(TextureFeatureBase):
         ----------
         discretized_image_array : numpy.ndarray
             Prepared discretized intensity array with ROI voxels represented by
-            integer gray levels and voxels outside the ROI set to ``NaN``.
+            integer grey levels and voxels outside the ROI set to ``NaN``.
 
         Returns
         -------

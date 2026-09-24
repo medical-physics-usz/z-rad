@@ -340,7 +340,9 @@ class BatchRadiomicsExtractor:
                 result.omitted_ivh_structures[structure_name] = ivh_errors[0]
                 logger.warning(
                     "Patient %s with mask %s: IVH features omitted: %s",
-                    case_name, structure_name, ivh_errors[0],
+                    case_name,
+                    structure_name,
+                    ivh_errors[0],
                 )
             features['pat_id'] = case_name
             features['mask_id'] = structure_name
@@ -410,7 +412,11 @@ class BatchRadiomicsExtractor:
         return Image.from_nifti_mask(mask_path, reference=image)
 
     def _extract_structure_features(
-        self, image: Image, filtered_image: Image | None, mask: Image, ivh_errors: list[str] | None = None,
+        self,
+        image: Image,
+        filtered_image: Image | None,
+        mask: Image,
+        ivh_errors: list[str] | None = None,
     ) -> dict:
         roi_data = IntensityMaskBuilder().apply(
             RoiData(

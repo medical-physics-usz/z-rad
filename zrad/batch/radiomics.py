@@ -481,13 +481,9 @@ class BatchRadiomicsExtractor:
         elif self.ivh_method == 'fixed_bin_size':
             if self.ivh_number_of_bins is not None:
                 raise InvalidInputParametersError("fixed_bin_size IVH does not accept ivh_number_of_bins.")
-            self.ivh_bin_size = _require_positive_float(
-                self.ivh_bin_size, "ivh_bin_size must be positive."
-            )
+            self.ivh_bin_size = _require_positive_float(self.ivh_bin_size, "ivh_bin_size must be positive.")
         else:
-            raise InvalidInputParametersError(
-                "ivh_method must be 'direct', 'fixed_bin_size', or 'fixed_bin_number'."
-            )
+            raise InvalidInputParametersError("ivh_method must be 'direct', 'fixed_bin_size', or 'fixed_bin_number'.")
 
 
 def _write_radiomics_csv(file_path: Path, features: list[dict]) -> None:

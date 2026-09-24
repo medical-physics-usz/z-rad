@@ -152,8 +152,10 @@ def test_batch_radiomics_normalizes_custom_ivh_settings(tmp_path):
     input_dir = tmp_path / 'input'
     input_dir.mkdir()
     extractor = _extractor(
-        input_dir, tmp_path / 'output',
-        ivh_method=' FIXED_BIN_NUMBER ', ivh_number_of_bins='128',
+        input_dir,
+        tmp_path / 'output',
+        ivh_method=' FIXED_BIN_NUMBER ',
+        ivh_number_of_bins='128',
     )
 
     extractor.validate()
@@ -606,9 +608,7 @@ def test_gui_filtered_image_uses_1000_ivh_bins_with_original_image_range(tmp_pat
     image, mask = _make_irregular_roi()
     filtered_image = _make_image(image.array * 0.25 - 60)
     features = extractor._extract_structure_features(image, filtered_image, mask)
-    retained = filtered_image.array[
-        (mask.array > 0) & (image.array >= 50) & (image.array <= 150)
-    ]
+    retained = filtered_image.array[(mask.array > 0) & (image.array >= 50) & (image.array <= 150)]
     assert features['stat_min'] == retained.min()
     assert features['stat_max'] == retained.max()
     assert 1 <= features['ivh_i10'] <= 1000
@@ -629,7 +629,8 @@ def test_batch_filtered_image_ivh_defaults_to_filtered_bins(tmp_path, modality):
     mask.save_as_nifti(case_dir / 'mask.nii.gz')
 
     result = _extractor(
-        input_dir, output_dir,
+        input_dir,
+        output_dir,
         modality=modality,
         nifti_filtered_image_name='filtered',
         intensity_range=(50, 130),
@@ -637,7 +638,7 @@ def test_batch_filtered_image_ivh_defaults_to_filtered_bins(tmp_path, modality):
 
     assert result.processed_count == 1
     with (output_dir / 'radiomics.csv').open(newline='') as csv_file:
-        row, = csv.DictReader(csv_file)
+        (row,) = csv.DictReader(csv_file)
     retained = filtered_image.array[(mask.array > 0) & (image.array >= 50) & (image.array <= 130)]
     assert retained.min() == -47.5
     assert retained.max() == -27.5
@@ -661,7 +662,8 @@ def test_batch_filtered_image_custom_ivh_uses_filtered_range(tmp_path, ivh_optio
     input_dir = tmp_path / 'input'
     input_dir.mkdir()
     extractor = _extractor(
-        input_dir, tmp_path / 'output',
+        input_dir,
+        tmp_path / 'output',
         nifti_filtered_image_name='filtered',
         intensity_range=(50, 130),
         **ivh_options,
@@ -830,7 +832,8 @@ def test_batch_ivh_custom_strategy_overrides_modality(
     input_dir = tmp_path / 'input'
     input_dir.mkdir()
     extractor = _extractor(
-        input_dir, tmp_path / 'output',
+        input_dir,
+        tmp_path / 'output',
         modality=modality,
         intensity_range=(50, 150),
         ivh_method=method,
@@ -869,8 +872,10 @@ def test_batch_custom_ivh_settings_write_features_to_csv(tmp_path):
     image.save_as_nifti(case_dir / 'image.nii.gz')
     mask.save_as_nifti(case_dir / 'mask.nii.gz')
     extractor = _extractor(
-        input_dir, output_dir,
-        ivh_method='fixed_bin_number', ivh_number_of_bins=128,
+        input_dir,
+        output_dir,
+        ivh_method='fixed_bin_number',
+        ivh_number_of_bins=128,
     )
 
     result = extractor.run()

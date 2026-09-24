@@ -31,7 +31,9 @@ IS_FROZEN = getattr(sys, 'frozen', False)
 
 def create_batch_radiomics_extractor_from_input_params(input_params, parallel_backend):
     input_data_type = str(input_params["input_data_type"]).strip().lower()
-    has_filtered_image = input_data_type == "nifti" and bool(str(input_params["nifti_filtered_image_name"] or "").strip())
+    has_filtered_image = input_data_type == "nifti" and bool(
+        str(input_params["nifti_filtered_image_name"] or "").strip()
+    )
     use_all_structures = input_data_type == "dicom" and bool(input_params["use_all_structures"])
     structures = input_params["nifti_structures"] if input_data_type == "nifti" else input_params["dicom_structures"]
     if use_all_structures:

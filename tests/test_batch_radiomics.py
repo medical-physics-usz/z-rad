@@ -578,6 +578,41 @@ def test_gui_mapping_creates_nifti_batch_radiomics_extractor():
     assert extractor.slice_weighting is True
     assert extractor.slice_median is False
     assert extractor.parallel_backend == 'threads'
+    assert extractor.ivh_method is None
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize('modality', ['CT', 'PET'])
+def test_gui_filtered_image_uses_1000_ivh_bins_with_original_image_range(tmp_path, modality):
+    input_dir = tmp_path / 'input'
+    input_dir.mkdir()
+    extractor = create_batch_radiomics_extractor_from_input_params(
+        _gui_input_params(
+            input_directory=str(input_dir),
+            output_directory=str(tmp_path / 'output'),
+            input_imaging_modality=modality,
+            nifti_filtered_image_name='filtered',
+            intensity_range=[50.0, 150.0],
+            outlier_range=None,
+            aggregation_method=('3D', 'MERG'),
+            weighting='Mean',
+        ),
+        parallel_backend='threads',
+    )
+    assert extractor.ivh_method == 'fixed_bin_number'
+    assert extractor.ivh_number_of_bins == 1000
+    extractor.validate()
+
+    image, mask = _make_irregular_roi()
+    filtered_image = _make_image(image.array * 0.25 - 60)
+    features = extractor._extract_structure_features(image, filtered_image, mask)
+    retained = filtered_image.array[
+        (mask.array > 0) & (image.array >= 50) & (image.array <= 150)
+    ]
+    assert features['stat_min'] == retained.min()
+    assert features['stat_max'] == retained.max()
+    assert 1 <= features['ivh_i10'] <= 1000
+    assert 1 <= features['ivh_i90'] <= 1000
 
 
 @pytest.mark.unit

@@ -23,6 +23,14 @@ def _make_image(array=None):
     )
 
 
+def _make_irregular_roi():
+    values = np.arange(1, 217, dtype=np.float64).reshape(6, 6, 6)
+    mask = np.zeros_like(values)
+    mask[1:5, 1:4, 1:4] = 1
+    mask[4, 3, 3] = 0
+    return _make_image(values), _make_image(mask)
+
+
 def _write_case(input_dir, case_name, image_name='image', masks=None, filtered_name=None):
     case_dir = input_dir / case_name
     case_dir.mkdir(parents=True)
@@ -60,6 +68,47 @@ def test_batch_public_api_exposes_radiomics_classes():
 
 
 @pytest.mark.unit
+def test_batch_radiomics_preserves_existing_positional_constructor_arguments(tmp_path):
+    input_dir = tmp_path / 'input'
+    input_dir.mkdir()
+    output_dir = tmp_path / 'output'
+
+    extractor = BatchRadiomicsExtractor(
+        input_dir,
+        output_dir,
+        'nifti',
+        'CT',
+        '3D',
+        'MERG',
+        'Number of Bins',
+        1,
+        None,
+        None,
+        None,
+        ['mask'],
+        False,
+        'image',
+        None,
+        False,
+        False,
+        4,
+        None,
+        None,
+        3.0,
+        'custom.csv',
+        'threads',
+    )
+
+    assert extractor.outlier_range == 3.0
+    assert extractor.output_filename == 'custom.csv'
+    assert extractor.parallel_backend == 'threads'
+    assert extractor.ivh_method is None
+    assert extractor.ivh_number_of_bins is None
+    assert extractor.ivh_bin_size is None
+    extractor.validate()
+
+
+@pytest.mark.unit
 @pytest.mark.parametrize(
     "kwargs, message",
     [
@@ -77,6 +126,15 @@ def test_batch_public_api_exposes_radiomics_classes():
         ),
         ({'aggregation_method': 'BAD'}, "aggregation_method"),
         ({'slice_weighting': True, 'slice_median': True}, "slice_weighting"),
+        ({'ivh_bin_size': 0.25}, "ivh_method"),
+        ({'ivh_method': 'unsupported'}, "ivh_method"),
+        ({'ivh_method': 'direct', 'ivh_bin_size': 0.25}, "direct IVH"),
+        ({'ivh_method': 'fixed_bin_size'}, "ivh_bin_size"),
+        ({'ivh_method': 'fixed_bin_size', 'ivh_bin_size': -1}, "ivh_bin_size"),
+        ({'ivh_method': 'fixed_bin_size', 'ivh_bin_size': 0.25, 'ivh_number_of_bins': 10}, "ivh_number_of_bins"),
+        ({'ivh_method': 'fixed_bin_number'}, "ivh_number_of_bins"),
+        ({'ivh_method': 'fixed_bin_number', 'ivh_number_of_bins': 2.5}, "ivh_number_of_bins"),
+        ({'ivh_method': 'fixed_bin_number', 'ivh_number_of_bins': 10, 'ivh_bin_size': 0.25}, "ivh_bin_size"),
     ],
 )
 def test_batch_radiomics_validates_inputs(tmp_path, kwargs, message):
@@ -128,6 +186,23 @@ def test_batch_radiomics_validate_normalizes_public_attributes(tmp_path):
     assert extractor.number_of_bins == 8
     assert extractor.intensity_range == (0.0, 100.0)
     assert extractor.parallel_backend == 'threads'
+
+
+@pytest.mark.unit
+def test_batch_radiomics_normalizes_custom_ivh_settings(tmp_path):
+    input_dir = tmp_path / 'input'
+    input_dir.mkdir()
+    extractor = _extractor(
+        input_dir,
+        tmp_path / 'output',
+        ivh_method=' FIXED_BIN_NUMBER ',
+        ivh_number_of_bins='128',
+    )
+
+    extractor.validate()
+
+    assert extractor.ivh_method == 'fixed_bin_number'
+    assert extractor.ivh_number_of_bins == 128
 
 
 @pytest.mark.unit
@@ -546,6 +621,103 @@ def test_gui_mapping_creates_nifti_batch_radiomics_extractor():
     assert extractor.slice_weighting is True
     assert extractor.slice_median is False
     assert extractor.parallel_backend == 'threads'
+    assert extractor.ivh_method is None
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize('modality', ['CT', 'PET'])
+def test_gui_filtered_image_uses_1000_ivh_bins_with_original_image_range(tmp_path, modality):
+    input_dir = tmp_path / 'input'
+    input_dir.mkdir()
+    extractor = create_batch_radiomics_extractor_from_input_params(
+        _gui_input_params(
+            input_directory=str(input_dir),
+            output_directory=str(tmp_path / 'output'),
+            input_imaging_modality=modality,
+            nifti_filtered_image_name='filtered',
+            intensity_range=[50.0, 150.0],
+            outlier_range=None,
+            aggregation_method=('3D', 'MERG'),
+            weighting='Mean',
+        ),
+        parallel_backend='threads',
+    )
+    assert extractor.ivh_method == 'fixed_bin_number'
+    assert extractor.ivh_number_of_bins == 1000
+    extractor.validate()
+
+    image, mask = _make_irregular_roi()
+    filtered_image = _make_image(image.array * 0.25 - 60)
+    features = extractor._extract_structure_features(image, filtered_image, mask)
+    retained = filtered_image.array[(mask.array > 0) & (image.array >= 50) & (image.array <= 150)]
+    assert features['stat_min'] == retained.min()
+    assert features['stat_max'] == retained.max()
+    assert 1 <= features['ivh_i10'] <= 1000
+    assert 1 <= features['ivh_i90'] <= 1000
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize('modality', ['CT', 'PET'])
+def test_batch_filtered_image_ivh_defaults_to_filtered_bins(tmp_path, modality):
+    input_dir = tmp_path / 'input'
+    output_dir = tmp_path / 'output'
+    case_dir = input_dir / 'case_a'
+    case_dir.mkdir(parents=True)
+    image, mask = _make_irregular_roi()
+    filtered_image = _make_image(image.array * 0.25 - 60)
+    image.save_as_nifti(case_dir / 'image.nii.gz')
+    filtered_image.save_as_nifti(case_dir / 'filtered.nii.gz')
+    mask.save_as_nifti(case_dir / 'mask.nii.gz')
+
+    result = _extractor(
+        input_dir,
+        output_dir,
+        modality=modality,
+        nifti_filtered_image_name='filtered',
+        intensity_range=(50, 130),
+    ).run()
+
+    assert result.processed_count == 1
+    with (output_dir / 'radiomics.csv').open(newline='') as csv_file:
+        (row,) = csv.DictReader(csv_file)
+    retained = filtered_image.array[(mask.array > 0) & (image.array >= 50) & (image.array <= 130)]
+    assert retained.min() == -47.5
+    assert retained.max() == -27.5
+    assert float(row['stat_min']) == retained.min()
+    assert float(row['stat_max']) == retained.max()
+    assert 1 <= float(row['ivh_i10']) <= 1000
+    assert 1 <= float(row['ivh_i90']) <= 1000
+    assert 0 < float(row['ivh_v10']) <= 1
+    assert 0 < float(row['ivh_v90']) <= 1
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    'ivh_options, expected_i10_range',
+    [
+        ({'ivh_method': 'direct'}, (-47.5, -27.5)),
+        ({'ivh_method': 'fixed_bin_size', 'ivh_bin_size': 0.5}, (-47.5, -27.25)),
+    ],
+)
+def test_batch_filtered_image_custom_ivh_uses_filtered_range(tmp_path, ivh_options, expected_i10_range):
+    input_dir = tmp_path / 'input'
+    input_dir.mkdir()
+    extractor = _extractor(
+        input_dir,
+        tmp_path / 'output',
+        nifti_filtered_image_name='filtered',
+        intensity_range=(50, 130),
+        **ivh_options,
+    )
+    extractor.validate()
+    image, mask = _make_irregular_roi()
+    filtered_image = _make_image(image.array * 0.25 - 60)
+
+    features = extractor._extract_structure_features(image, filtered_image, mask)
+
+    assert expected_i10_range[0] <= features['ivh_i10'] <= expected_i10_range[1]
+    assert 0 < features['ivh_v10'] <= 1
+    assert 0 < features['ivh_v90'] <= 1
 
 
 @pytest.mark.unit
@@ -624,3 +796,257 @@ def test_gui_workflow_writes_moran_and_geary_columns(tmp_path):
     assert len(rows) == 1
     assert np.isfinite(float(rows[0]['morph_moran_i']))
     assert np.isfinite(float(rows[0]['morph_geary_c']))
+    assert np.isfinite(float(rows[0]['ivh_v10']))
+    assert np.isfinite(float(rows[0]['ivh_i90']))
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    'modality, method, number_of_bins, bin_size',
+    [
+        ('CT', 'direct', None, None),
+        ('PET', 'fixed_bin_size', None, 0.1),
+        ('MRI', 'fixed_bin_number', 1000, None),
+        ('MG', 'fixed_bin_number', 1000, None),
+        ('US', 'fixed_bin_number', 1000, None),
+        ('RTDOSE', 'fixed_bin_size', None, 0.1),
+    ],
+)
+def test_batch_ivh_uses_modality_strategy_and_gui_range(
+    monkeypatch, tmp_path, modality, method, number_of_bins, bin_size
+):
+    input_dir = tmp_path / 'input'
+    input_dir.mkdir()
+    extractor = _extractor(
+        input_dir,
+        tmp_path / 'output',
+        modality=modality,
+        intensity_range=(50, 150),
+    )
+    extractor.validate()
+    observed = {}
+    original_apply = batch_radiomics.IVHIntensityDiscretizer.apply
+
+    def capture_ivh_preparation(discretizer, roi_data):
+        observed.update(discretizer.get_params())
+        observed['intensity_range'] = roi_data.intensity_range
+        return original_apply(discretizer, roi_data)
+
+    monkeypatch.setattr(batch_radiomics.IVHIntensityDiscretizer, 'apply', capture_ivh_preparation)
+    image, mask = _make_irregular_roi()
+    features = extractor._extract_structure_features(image, None, mask)
+
+    assert observed == {
+        'method': method,
+        'number_of_bins': number_of_bins,
+        'bin_size': bin_size,
+        'intensity_range': (50.0, 150.0),
+    }
+    retained = image.array[(mask.array > 0) & (image.array >= 50) & (image.array <= 150)]
+    assert features['stat_min'] == retained.min()
+    assert features['stat_max'] == retained.max()
+    assert all(
+        np.isfinite(features[name])
+        for name in (
+            'ivh_v10',
+            'ivh_v90',
+            'ivh_i10',
+            'ivh_i90',
+            'ivh_diff_v10_v90',
+            'ivh_diff_i10_i90',
+        )
+    )
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    'modality, method, number_of_bins, bin_size',
+    [
+        ('CT', 'fixed_bin_size', None, 0.25),
+        ('PET', 'fixed_bin_number', 128, None),
+        ('MRI', 'direct', None, None),
+    ],
+)
+def test_batch_ivh_custom_strategy_overrides_modality(
+    monkeypatch, tmp_path, modality, method, number_of_bins, bin_size
+):
+    input_dir = tmp_path / 'input'
+    input_dir.mkdir()
+    extractor = _extractor(
+        input_dir,
+        tmp_path / 'output',
+        modality=modality,
+        intensity_range=(50, 150),
+        ivh_method=method,
+        ivh_number_of_bins=number_of_bins,
+        ivh_bin_size=bin_size,
+    )
+    extractor.validate()
+    observed = {}
+    original_apply = batch_radiomics.IVHIntensityDiscretizer.apply
+
+    def capture_ivh_preparation(discretizer, roi_data):
+        observed.update(discretizer.get_params())
+        observed['intensity_range'] = roi_data.intensity_range
+        return original_apply(discretizer, roi_data)
+
+    monkeypatch.setattr(batch_radiomics.IVHIntensityDiscretizer, 'apply', capture_ivh_preparation)
+    image, mask = _make_irregular_roi()
+    features = extractor._extract_structure_features(image, None, mask)
+
+    assert observed == {
+        'method': method,
+        'number_of_bins': number_of_bins,
+        'bin_size': bin_size,
+        'intensity_range': (50.0, 150.0),
+    }
+    assert np.isfinite(features['ivh_i10'])
+
+
+@pytest.mark.unit
+def test_batch_custom_ivh_settings_write_features_to_csv(tmp_path):
+    input_dir = tmp_path / 'input'
+    output_dir = tmp_path / 'output'
+    case_dir = input_dir / 'case_a'
+    case_dir.mkdir(parents=True)
+    image, mask = _make_irregular_roi()
+    image.save_as_nifti(case_dir / 'image.nii.gz')
+    mask.save_as_nifti(case_dir / 'mask.nii.gz')
+    extractor = _extractor(
+        input_dir,
+        output_dir,
+        ivh_method='fixed_bin_number',
+        ivh_number_of_bins=128,
+    )
+
+    result = extractor.run()
+
+    assert result.processed_count == 1
+    with (output_dir / 'radiomics.csv').open(newline='') as csv_file:
+        rows = list(csv.DictReader(csv_file))
+    assert len(rows) == 1
+    assert np.isfinite(float(rows[0]['ivh_i10']))
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize('modality', ['PET', 'RTDOSE'])
+def test_batch_single_ivh_bin_reports_omission_and_keeps_other_features(tmp_path, modality, caplog):
+    input_dir = tmp_path / 'input'
+    output_dir = tmp_path / 'output'
+    case_dir = input_dir / 'case_a'
+    case_dir.mkdir(parents=True)
+    image, mask = _make_irregular_roi()
+    image.array = np.linspace(1.01, 1.09, image.array.size).reshape(image.array.shape)
+    image.save_as_nifti(case_dir / 'image.nii.gz')
+    mask.save_as_nifti(case_dir / 'mask.nii.gz')
+
+    result = _extractor(input_dir, output_dir, modality=modality).run()
+
+    assert result.processed_count == 1
+    assert result.case_results[0].processed_structures == ['mask']
+    assert result.case_results[0].skipped_structures == []
+    assert result.case_results[0].feature_count > 100
+    assert set(result.case_results[0].omitted_ivh_structures) == {'mask'}
+    assert result.case_results[0].omitted_ivh_structures['mask']
+    assert result.errors == result.case_results
+    assert 'IVH features omitted for structures: mask' == result.case_results[0].error
+    assert 'Patient case_a with mask mask: IVH features omitted:' in caplog.text
+    with (output_dir / 'radiomics.csv').open(newline='') as csv_file:
+        rows = list(csv.DictReader(csv_file))
+    assert len(rows) == 1
+    assert rows[0]['pat_id'] == 'case_a'
+    assert rows[0]['mask_id'] == 'mask'
+    assert float(rows[0]['stat_max']) > float(rows[0]['stat_min'])
+    assert np.isfinite(float(rows[0]['morph_volume']))
+    assert not any(name.startswith('ivh_') for name in rows[0])
+
+
+@pytest.mark.unit
+def test_batch_ivh_omission_is_reported_per_structure(monkeypatch, tmp_path):
+    input_dir = tmp_path / 'input'
+    output_dir = tmp_path / 'output'
+    case_dir = input_dir / 'case_a'
+    case_dir.mkdir(parents=True)
+    image, mask = _make_irregular_roi()
+    image.save_as_nifti(case_dir / 'image.nii.gz')
+    for structure in ['bad', 'good']:
+        mask.save_as_nifti(case_dir / f'{structure}.nii.gz')
+    original_apply = batch_radiomics.IVHIntensityDiscretizer.apply
+    calls = 0
+
+    def fail_first_ivh(discretizer, roi_data):
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            raise DataStructureError('one IVH bin')
+        return original_apply(discretizer, roi_data)
+
+    monkeypatch.setattr(batch_radiomics.IVHIntensityDiscretizer, 'apply', fail_first_ivh)
+
+    result = _extractor(input_dir, output_dir, structures=['bad', 'good']).run()
+
+    case = result.case_results[0]
+    assert case.status == 'processed'
+    assert case.processed_structures == ['bad', 'good']
+    assert case.omitted_ivh_structures == {'bad': 'one IVH bin'}
+    assert case.error == 'IVH features omitted for structures: bad'
+    assert result.errors == [case]
+    with (output_dir / 'radiomics.csv').open(newline='') as csv_file:
+        rows = list(csv.DictReader(csv_file))
+    assert len(rows) == 2
+    assert rows[0]['ivh_i10'] == ''
+    assert rows[1]['ivh_i10'] != ''
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    'modality, ivh_options',
+    [('PET', {}), ('RTDOSE', {}), ('CT', {'ivh_method': 'fixed_bin_size', 'ivh_bin_size': 0.25})],
+)
+def test_batch_ivh_fixed_width_uses_observed_minimum_without_gui_range(monkeypatch, tmp_path, modality, ivh_options):
+    input_dir = tmp_path / 'input'
+    input_dir.mkdir()
+    extractor = _extractor(input_dir, tmp_path / 'output', modality=modality, **ivh_options)
+    extractor.validate()
+    observed = {}
+    original_apply = batch_radiomics.IVHIntensityDiscretizer.apply
+
+    def capture_ivh_preparation(discretizer, roi_data):
+        observed['intensity_range'] = roi_data.intensity_range
+        return original_apply(discretizer, roi_data)
+
+    monkeypatch.setattr(batch_radiomics.IVHIntensityDiscretizer, 'apply', capture_ivh_preparation)
+    image, mask = _make_irregular_roi()
+    features = extractor._extract_structure_features(image, None, mask)
+
+    assert observed['intensity_range'] == (44.0, np.inf)
+    assert features['stat_min'] == 44
+    assert np.isfinite(features['ivh_i10'])
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize('modality', ['CT', 'PET', 'MRI', 'MG', 'US', 'RTDOSE'])
+def test_gui_texture_bin_size_does_not_change_ivh_features(tmp_path, modality):
+    input_dir = tmp_path / 'input'
+    input_dir.mkdir()
+    image, mask = _make_irregular_roi()
+    ivh_results = []
+    texture_bin_counts = []
+
+    for texture_bin_size in (5, 10):
+        extractor = _extractor(
+            input_dir,
+            tmp_path / 'output',
+            modality=modality,
+            discretization_method='Bin Size',
+            number_of_bins=None,
+            bin_size=texture_bin_size,
+            intensity_range=(50, 150),
+        )
+        extractor.validate()
+        features = extractor._extract_structure_features(image, None, mask)
+        ivh_results.append({name: value for name, value in features.items() if name.startswith('ivh_')})
+        texture_bin_counts.append(features['no_bins'])
+
+    assert ivh_results[0] == ivh_results[1]
+    assert texture_bin_counts[0] != texture_bin_counts[1]

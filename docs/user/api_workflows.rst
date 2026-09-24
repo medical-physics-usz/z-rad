@@ -137,7 +137,7 @@ Choose feature families and metadata
 ``families`` to select feature groups, or omit it to extract the default
 families available for the prepared ROI. Prepare texture discretization before
 requesting histogram or texture features, and prepare IVH intensities before
-requesting IVH features. IVH extraction is available through the Python API.
+requesting IVH features.
 Use ``include_metadata=True`` to include the shortest bounding-box side length, voxel count, and
 discretized-bin count.
 

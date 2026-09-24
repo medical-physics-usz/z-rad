@@ -95,6 +95,7 @@ in the single-ROI Python API, use ``families`` or ``features`` to select them:
 * local intensity
 * intensity statistics
 * intensity histogram
+* intensity-volume histogram (IVH)
 * grey level co-occurrence matrix (GLCM)
 * grey level run length matrix (GLRLM)
 * grey level size zone matrix (GLSZM)
@@ -102,8 +103,8 @@ in the single-ROI Python API, use ``families`` or ``features`` to select them:
 * neighbourhood grey tone difference matrix (NGTDM)
 * neighbouring grey level dependence matrix (NGLDM)
 
-Intensity-volume histogram (IVH) features require separate intensity preparation
-and are available through the single-ROI Python API; see :doc:`api_workflows`.
+For the preparation required by each family, see :doc:`api_workflows` and
+:doc:`discretization_guidelines`.
 Morphology requires a 3D ROI. See :doc:`../reference/radiomics` for the full API.
 
 .. _extraction-mask-requirements:
@@ -129,4 +130,3 @@ validation rules even when texture aggregation is slice-wise. Single-slice
 images follow a separate 2D extraction path. Re-segmentation can further reduce
 the voxels available to intensity-based features; an empty intensity ROI cannot
 be used for those calculations. See :doc:`troubleshooting` for rejected masks.
-

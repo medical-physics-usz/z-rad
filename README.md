@@ -83,7 +83,7 @@ Use scalar image volumes with masks on the same physical voxel grid. See the [da
 
 3. Follow the [GUI quickstart](https://medical-physics-usz.github.io/z-rad/user/gui_quickstart.html) to select your input data, configure processing, and run your first analysis.
 
-The macOS app is currently unsigned and unnotarized, so Gatekeeper may show a warning. For Linux, Intel Macs, or the current source version, follow [Run from a repository checkout](https://medical-physics-usz.github.io/z-rad/user/installation.html#run-from-a-repository-checkout) to install and launch the GUI.
+The macOS app is currently unsigned and unnotarized, so Gatekeeper may show a warning. For Linux, Intel Macs, or the current source version, follow [Run from source](https://medical-physics-usz.github.io/z-rad/user/installation.html#run-from-source) to install and launch the GUI.
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/medical-physics-usz/z-rad/master/docs/images/zrad_screenshot.png" width="700" alt="Z-Rad screenshot"/>
@@ -118,7 +118,9 @@ features = Radiomics().extract_features(roi_data=roi, families=["intensity_stati
 print(features["stat_mean"])
 ```
 
-The result is a dictionary of feature names and values. To try a complete example with supplied data and an expected result, follow the [bundled phantom example](https://medical-physics-usz.github.io/z-rad/user/api_quickstart.html#run-the-bundled-phantom-example). Texture and intensity-volume histogram features require additional preparation; see the [full Python workflow](https://medical-physics-usz.github.io/z-rad/user/api_quickstart.html#recommended-workflow) and follow the documentation for your installed release.
+The result is a dictionary of feature names and values. To try a complete example with supplied data and an expected result, follow the [bundled phantom example](https://medical-physics-usz.github.io/z-rad/user/api_quickstart.html#run-the-bundled-phantom-example).
+
+In the Python single-ROI API, texture and intensity-volume histogram (IVH) features require additional preparation; see the [full Python workflow](https://medical-physics-usz.github.io/z-rad/user/api_workflows.html#recommended-workflow). The GUI prepares IVH features automatically using the selected imaging modality and any configured re-segmentation range; see the [GUI radiomics guide](https://medical-physics-usz.github.io/z-rad/user/radiomics.html).
 
 ## IBSI validation
 

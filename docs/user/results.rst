@@ -30,7 +30,8 @@ The CSV starts with the following columns:
    * - ``no_bins``
      - Number of distinct occupied grey levels in the discretized intensity
        image used for histogram or texture calculation. It can be smaller than
-       the requested bin count. The single-ROI API reports zero when the
+       the requested bin count. It does not describe IVH discretization.
+       The single-ROI API reports zero when the
        selected families do not use that discretized image.
 
 The bounding-box and voxel-count fields describe the analysis mask after
@@ -52,10 +53,10 @@ dictionary containing an entry approximately equal to:
    {"stat_mean": -46.88}  # Selected entry, rounded for display; CT intensity in HU.
 
 Feature prefixes identify families: ``stat_`` denotes intensity statistics,
-``morph_`` morphology, and ``cm_`` co-occurrence-matrix features. Units depend
-on the feature and input image: the CT mean is in HU, whereas the mean of a
-filtered image uses that filter's response units.
-
+``morph_`` morphology, ``cm_`` co-occurrence-matrix features, and ``ivh_``
+intensity-volume histogram features. GUI and batch CSV files include six
+``ivh_`` columns. Units depend on the feature and input image: the CT mean is
+in HU, whereas the mean of a filtered image uses that filter's response units.
 The texture name ``cm_contrast_3D_avg`` means GLCM contrast calculated with
 3D neighbourhoods and averaged across directions. GLCM and GLRLM names end in
 a dimension and aggregation suffix:

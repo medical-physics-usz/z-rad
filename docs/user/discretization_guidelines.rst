@@ -65,6 +65,8 @@ run ``Resegmenter(intensity_range=...)`` before
 For the order of processing steps, see :doc:`api_workflows` and
 :doc:`resegmentation_guidelines`.
 
+.. _ivh-discretization:
+
 IVH-specific discretization
 ---------------------------
 
@@ -73,36 +75,58 @@ selected level. They need a fine, ordered intensity axis, so choose their
 settings separately from texture discretization. A coarse texture setting
 such as ``32`` bins should not automatically be reused for IVH.
 
-IVH extraction is available through the Python API. Prepare its intensities
-with ``IVHIntensityDiscretizer`` before requesting IVH features.
+GUI and Python batch extraction prepare IVH intensities automatically from the
+selected imaging modality. In the single-ROI Python API, prepare them with
+``IVHIntensityDiscretizer`` before requesting IVH features.
 
-Choose an IVH strategy
-~~~~~~~~~~~~~~~~~~~~~~
+Automatic settings and Python customization
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. list-table::
+The GUI and ``BatchRadiomicsExtractor`` use the following settings. The Python
+arguments reproduce them in the single-ROI API, where you can also choose a
+method and parameters suited to your image's intensity scale.
+
+.. list-table:: Automatic IVH settings
    :header-rows: 1
-   :widths: 25 35 40
+   :widths: 20 40 40
 
-   * - Intensity type
-     - Strategy
-     - Example arguments
-   * - Discrete calibrated values, such as integer CT HU
-     - Use retained intensities directly with a step of ``1``.
+   * - Selected modality
+     - Automatic preparation
+     - Equivalent single-ROI Python arguments
+   * - CT
+     - Use retained intensities directly with a step of ``1`` (HU for
+       unfiltered CT).
      - ``method="direct"``
-   * - Continuous calibrated values, such as PET SUV
-     - Use a small fixed bin width and a consistent lower origin.
-     - ``method="fixed_bin_size"``,
-       ``bin_size=0.1``
-   * - Arbitrary units, such as raw MRI
-     - Use a fine fixed bin number.
-     - ``method="fixed_bin_number"``,
-       ``number_of_bins=1000``
+   * - PET and RTDOSE
+     - Use fixed-width bins of ``0.1`` (SUV for PET or Gy for physical dose).
+     - ``method="fixed_bin_size"``, ``bin_size=0.1``
+   * - MRI, MG, and US
+     - Divide the retained intensity range into ``1000`` bins.
+     - ``method="fixed_bin_number"``, ``number_of_bins=1000``
 
-Fixed-bin-size IVH preparation also requires a preceding re-segmentation range.
-Its intensity axis uses bin-centre values: with a lower bound of ``0`` SUV and
-a bin width of ``0.1`` SUV, the centres start at ``0.05, 0.15, 0.25, ...`` SUV.
+The GUI's ``Discretization`` control sets the texture bins, which are also
+used by the ordinary intensity-histogram family. It never supplies the IVH
+bin width or count. Custom IVH settings require the single-ROI Python API.
+
+For fixed-bin-size IVH, a GUI re-segmentation range supplies the lower bin
+origin and, if finite, the upper IVH bound. If no range is supplied, GUI and
+batch extraction use each ROI's observed minimum as the lower origin. In the
+single-ROI Python API, ``IVHIntensityDiscretizer`` requires a preceding
+re-segmentation range for fixed bin size.
+
+The fixed-bin-size intensity axis uses bin-centre values: with a lower bound
+of ``0`` SUV and a bin width of ``0.1`` SUV, the centres start at
+``0.05, 0.15, 0.25, ...`` SUV.
 Fixed-bin-number IVH preparation uses the discretized range, such as
 ``[1, 1000]`` for ``1000`` bins.
+
+The GUI's ``0.1`` Gy RTDOSE width is a starting setting, not a universal dose
+resolution. If the endpoint needs another width, use the single-ROI Python API
+and keep the chosen dose range and width consistent across cases. Mammography
+and B-mode ultrasound intensities depend on image processing and acquisition
+settings; keep those settings consistent and assess feature repeatability. A
+calibrated ultrasound map or a filtered image may need a strategy suited to its
+actual intensity units rather than the GUI's modality-based setting.
 
 Interpret the IVH range
 ~~~~~~~~~~~~~~~~~~~~~~~
@@ -113,6 +137,8 @@ Two fractions describe the curve:
   selected level.
 * **Intensity fraction:** the position of that level within the full IVH
   intensity range.
+
+For a single-slice image, the reported fraction is the fraction of ROI pixels.
 
 ``V10`` and ``V90`` are volume fractions at ``10%`` and ``90%`` of the intensity
 range. ``I10`` and ``I90`` are intensities corresponding to ``10%`` and ``90%``
@@ -133,6 +159,7 @@ adjustment:
 The same lesion can therefore have different ``V10`` and ``V90`` values when
 the IVH range changes. Keep the range definition consistent across cases and
 report whether it came from re-segmentation bounds or observed ROI values.
+For RTDOSE, IVH ``V10`` is not the clinical dose-volume-histogram ``V10 Gy``.
 
 What to report
 --------------

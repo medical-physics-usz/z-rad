@@ -78,7 +78,8 @@ class BatchRadiomicsExtractor:
     input_data_type : {"dicom", "nifti"}
         Input format. Values are normalized to lower-case during validation.
     modality : {"CT", "MRI", "PET", "MG", "US", "RTDOSE"}
-        Image modality used by the image reader.
+        Image modality used by the image reader and to select automatic IVH
+        preparation, including for NIfTI and filtered-image input.
     aggregation_dimension : {"2D", "2.5D", "3D"}
         Spatial aggregation dimensionality for texture features.
     aggregation_method : {"MERG", "AVER", "SLICE_MERG", "DIR_MERG"}
@@ -122,6 +123,10 @@ class BatchRadiomicsExtractor:
 
     Notes
     -----
+    IVH preparation is independent of texture discretization. See
+    :ref:`ivh-discretization` for modality-specific settings, range behavior,
+    and customization through the single-ROI Python API.
+
     ``validate()`` normalizes public attributes in place. After validation,
     directories are ``Path`` objects, ``input_data_type`` is lower-case,
     modality and aggregation values are upper-case where applicable, and

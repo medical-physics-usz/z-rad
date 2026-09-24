@@ -88,6 +88,9 @@ Extract features
    ``pat_id`` equal to ``case_01``, ``mask_id`` equal to ``GTV-1``, and
    ``stat_mean`` approximately ``-48.93`` HU. The ``no_bins`` value is ``31``:
    it counts occupied grey levels, which can be fewer than the requested 32.
+   The row also includes ``ivh_`` features. Because CT is selected, the GUI
+   computes them directly from retained HU values at ``1`` HU steps; the
+   ``32``-bin texture setting does not apply to IVH.
    See :doc:`results` for column definitions and :doc:`troubleshooting` if the
    row is missing.
 

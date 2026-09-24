@@ -28,10 +28,9 @@ The numbers below match the annotated screenshot.
    image and mask selection.
 
 ``(3)`` ``Intensity Range``
-   Keep only voxels within the selected intensity interval for intensity
-   and texture analysis. This restriction is applied before discretization
+   Keep only voxels within the selected intensity interval for intensity and texture analysis. This restriction is applied before discretization
    and leaves the mask used for morphology unchanged. For fixed bin size
-   discretization, the lower bound becomes the bin origin. See
+   texture or IVH discretization, the lower bound becomes the bin origin. See
    :doc:`resegmentation_guidelines`.
 
 ``(4)`` ``Outlier Removal``
@@ -52,7 +51,9 @@ The numbers below match the annotated screenshot.
    computation. Choose ``Bin Size`` for a fixed intensity width or
    ``Number of Bins`` to divide each ROI's intensity range into a fixed number
    of bins. Fixed bin size requires an intensity range to define the bin
-   origin. See :doc:`discretization_guidelines`.
+   origin. The ordinary intensity-histogram family shares these prepared
+   grey levels. This control does not set IVH discretization; the GUI chooses
+   that from ``Imaging Modality``. See :ref:`ivh-discretization`.
 
 ``(7)`` ``RUN``
    Starts radiomics extraction with the currently selected configuration.
@@ -64,6 +65,21 @@ The numbers below match the annotated screenshot.
 For aggregation choices, supported feature families, and ROI size requirements,
 see :doc:`extraction_concepts`.
 
+Extraction from filtered images
+-------------------------------
+
+For NIfTI input, provide both the original image in ``NIfTI Image`` and the
+filtered image in ``NIfTI Filtered Image``, together with the masks. All files
+must be in the corresponding case folder, and names are entered without file
+extensions. See :doc:`gui_quickstart` for the folder layout.
+
+IVH uses the filtered intensities, but the GUI still chooses its preparation
+method from ``Imaging Modality``. A transformed response, such as LoG-filtered
+CT, does not retain the original HU scale. Range re-segmentation still selects
+voxels using the original image. If the filtered intensity scale needs a
+different IVH strategy, use the single-ROI Python API; see
+:ref:`ivh-discretization`.
+
 Outputs
 -------
 
@@ -73,14 +89,6 @@ continues with the extracted radiomic features.
 
 See :doc:`results` for column definitions, feature-name suffixes, and checks
 for missing cases or masks.
-
-Extraction from filtered images
--------------------------------
-
-For NIfTI input, provide both the original image in ``NIfTI Image`` and the
-filtered image in ``NIfTI Filtered Image``, together with the masks. All files
-must be in the corresponding case folder, and names are entered without file
-extensions. See :doc:`gui_quickstart` for the folder layout.
 
 For a configuration example, see :doc:`../examples/gui_radiomics`. For missing
 results or rejected settings, see :doc:`troubleshooting`.

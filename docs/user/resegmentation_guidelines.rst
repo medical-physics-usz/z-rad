@@ -83,8 +83,10 @@ previously prepared texture and IVH images because the intensity population
 has changed. See :doc:`api_workflows` for a complete pipeline.
 
 A configured intensity range is also used by discretization: its lower bound
-anchors fixed-bin-size bins, and its bounds help define the IVH intensity
-range. See :doc:`discretization_guidelines`.
+anchors fixed-bin-size texture bins and PET or RTDOSE IVH bins. Its bounds
+also help define the IVH intensity range. If the GUI has no intensity range,
+PET and RTDOSE IVH preparation uses the observed ROI minimum as its bin
+origin. See :ref:`ivh-discretization`.
 
 What to report
 --------------

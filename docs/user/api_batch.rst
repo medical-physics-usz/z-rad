@@ -108,6 +108,13 @@ Batch radiomics
    for case in result.errors:
        print(case.case_name, case.error)
 
+``BatchRadiomicsExtractor`` prepares IVH intensities for every ROI using the
+selected ``modality`` and writes six ``ivh_`` columns to ``radiomics.csv``.
+These settings are independent of texture discretization. Set
+``intensity_range`` when your study has a common re-segmentation interval;
+it also supplies the fixed-bin-size IVH origin for PET and RTDOSE. See
+:ref:`ivh-discretization` for the automatic settings and range behavior.
+
 Inspect the result
 ------------------
 

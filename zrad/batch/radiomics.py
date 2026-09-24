@@ -113,13 +113,6 @@ class BatchRadiomicsExtractor:
         Two-value lower and upper intensity range used for re-segmentation and
         fixed-bin-size texture discretization. It also sets the IVH bounds for
         unfiltered images.
-    ivh_method : {"direct", "fixed_bin_size", "fixed_bin_number"}, optional
-        IVH preparation strategy. If omitted, filtered images use 1000
-        fixed-number bins; otherwise the modality selects the strategy.
-    ivh_number_of_bins : int, optional
-        Number of IVH bins required with ``ivh_method="fixed_bin_number"``.
-    ivh_bin_size : float, optional
-        IVH bin width required with ``ivh_method="fixed_bin_size"``.
     outlier_range : float, optional
         Positive outlier range used during re-segmentation.
     output_filename : str, optional
@@ -128,6 +121,13 @@ class BatchRadiomicsExtractor:
     parallel_backend : {"processes", "threads"}, optional
         Joblib backend preference used when ``number_of_threads`` is greater
         than one. The default is ``"processes"``.
+    ivh_method : {"direct", "fixed_bin_size", "fixed_bin_number"}, optional
+        IVH preparation strategy. If omitted, filtered images use 1000
+        fixed-number bins; otherwise the modality selects the strategy.
+    ivh_number_of_bins : int, optional
+        Number of IVH bins required with ``ivh_method="fixed_bin_number"``.
+    ivh_bin_size : float, optional
+        IVH bin width required with ``ivh_method="fixed_bin_size"``.
 
     Notes
     -----
@@ -160,12 +160,12 @@ class BatchRadiomicsExtractor:
     number_of_bins: int | str | None = None
     bin_size: float | str | None = None
     intensity_range: Sequence[float] | None = None
-    ivh_method: str | None = None
-    ivh_number_of_bins: int | str | None = None
-    ivh_bin_size: float | str | None = None
     outlier_range: float | str | None = None
     output_filename: str = 'radiomics.csv'
     parallel_backend: str = 'processes'
+    ivh_method: str | None = None
+    ivh_number_of_bins: int | str | None = None
+    ivh_bin_size: float | str | None = None
 
     def validate(self) -> None:
         """Validate and normalize radiomics batch configuration.

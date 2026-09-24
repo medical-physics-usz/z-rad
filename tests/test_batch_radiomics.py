@@ -68,6 +68,47 @@ def test_batch_public_api_exposes_radiomics_classes():
 
 
 @pytest.mark.unit
+def test_batch_radiomics_preserves_existing_positional_constructor_arguments(tmp_path):
+    input_dir = tmp_path / 'input'
+    input_dir.mkdir()
+    output_dir = tmp_path / 'output'
+
+    extractor = BatchRadiomicsExtractor(
+        input_dir,
+        output_dir,
+        'nifti',
+        'CT',
+        '3D',
+        'MERG',
+        'Number of Bins',
+        1,
+        None,
+        None,
+        None,
+        ['mask'],
+        False,
+        'image',
+        None,
+        False,
+        False,
+        4,
+        None,
+        None,
+        3.0,
+        'custom.csv',
+        'threads',
+    )
+
+    assert extractor.outlier_range == 3.0
+    assert extractor.output_filename == 'custom.csv'
+    assert extractor.parallel_backend == 'threads'
+    assert extractor.ivh_method is None
+    assert extractor.ivh_number_of_bins is None
+    assert extractor.ivh_bin_size is None
+    extractor.validate()
+
+
+@pytest.mark.unit
 @pytest.mark.parametrize(
     "kwargs, message",
     [

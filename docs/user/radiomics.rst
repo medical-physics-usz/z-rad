@@ -73,12 +73,13 @@ filtered image in ``NIfTI Filtered Image``, together with the masks. All files
 must be in the corresponding case folder, and names are entered without file
 extensions. See :doc:`gui_quickstart` for the folder layout.
 
-IVH uses the filtered intensities, but the GUI still chooses its preparation
-method from ``Imaging Modality``. A transformed response, such as LoG-filtered
-CT, does not retain the original HU scale. Range re-segmentation still selects
-voxels using the original image. If the filtered intensity scale needs a
-different IVH strategy, use the batch or single-ROI Python API; see
-:ref:`ivh-discretization`.
+For a filtered image, the GUI prepares IVH intensities with ``1000`` fixed-number
+bins, regardless of ``Imaging Modality``. The bins span the filtered intensities
+retained in each ROI. If ``Intensity Range`` is enabled, it still selects voxels
+using the original image; its bounds do not set the filtered IVH bin range.
+The GUI's ``Discretization`` control continues to set texture and ordinary
+intensity-histogram bins. For a different IVH strategy, use the batch or
+single-ROI Python API; see :ref:`ivh-discretization`.
 
 Outputs
 -------

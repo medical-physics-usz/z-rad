@@ -4,7 +4,7 @@ import pytest
 import zrad.batch as batch
 import zrad.batch.preprocessing as batch_preprocessing
 from zrad.batch import BatchPreprocessor, BatchResult, PreprocessingCaseResult
-from zrad.batch._utils import find_nifti_file
+from zrad.batch._utils import find_nifti_file, joblib_parallel_kwargs
 from zrad.exceptions import InvalidInputParametersError
 from zrad.gui.prep_tab import create_batch_preprocessor_from_input_params
 from zrad.image import Image
@@ -97,6 +97,20 @@ def test_find_nifti_file_returns_none_for_missing_file(tmp_path):
     case_dir.mkdir()
 
     assert find_nifti_file(case_dir, 'image') is None
+
+
+@pytest.mark.unit
+def test_joblib_parallel_kwargs_require_shared_memory_for_threads():
+    assert joblib_parallel_kwargs(4, 'threads') == {
+        'n_jobs': 4,
+        'prefer': 'threads',
+        'require': 'sharedmem',
+    }
+
+
+@pytest.mark.unit
+def test_joblib_parallel_kwargs_preserve_process_backend():
+    assert joblib_parallel_kwargs(4, 'processes') == {'n_jobs': 4, 'prefer': 'processes'}
 
 
 @pytest.mark.unit

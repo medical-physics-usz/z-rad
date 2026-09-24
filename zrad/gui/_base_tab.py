@@ -110,6 +110,7 @@ def load_mask(input_params, patient_folder, structure_name, image):
                 rtstruct_path=input_params['rtstruct_path'],
                 structure_name=structure_name,
                 reference=image,
+                dicom_dir=os.path.join(input_dir, patient_folder),
             )
         except Exception as e:
             error_msg = f"Error reading DICOM mask: {e}"

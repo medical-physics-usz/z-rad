@@ -12,6 +12,7 @@ from ..io import get_all_structure_names, get_dicom_files
 from ..preprocessing import ImageResampler, MaskResampler
 from ._utils import (
     find_nifti_file,
+    joblib_parallel_kwargs,
     joblib_progress,
     normalize_common_batch_options,
     normalize_names,
@@ -78,7 +79,7 @@ class BatchPreprocessor:
         Directory where preprocessed case folders are written.
     input_data_type : {"dicom", "nifti"}
         Input format. Values are normalized to lower-case during validation.
-    modality : {"CT", "MRI", "PET", "MG", "RTDOSE"}
+    modality : {"CT", "MRI", "PET", "MG", "US", "RTDOSE"}
         Image modality used by the image reader. Values are normalized to
         upper-case during validation.
     number_of_threads : int, optional
@@ -90,7 +91,7 @@ class BatchPreprocessor:
     structures : sequence of str or str, optional
         Structure names to process. For NIfTI input these are mask file names.
     use_all_structures : bool, optional
-        For DICOM input, process all structures found in the RTSTRUCT.
+        For DICOM input, process all structures found in the RTSTRUCT or SEG object.
     nifti_image_name : str, optional
         Image file name or stem used for NIfTI input.
     just_save_as_nifti : bool, optional
@@ -239,7 +240,7 @@ class BatchPreprocessor:
                     progress_callback(1)
         else:
             with joblib_progress(progress_callback):
-                case_results = Parallel(n_jobs=self.number_of_threads, prefer=self.parallel_backend)(
+                case_results = Parallel(**joblib_parallel_kwargs(self.number_of_threads, self.parallel_backend))(
                     delayed(self._process_case)(patient_folder) for patient_folder in patient_folders
                 )
 
@@ -296,7 +297,7 @@ class BatchPreprocessor:
         if self.input_data_type == 'nifti':
             return list(self.structures or []), None
 
-        rtstructs = get_dicom_files(case_dir, modality='RTSTRUCT')
+        rtstructs = get_dicom_files(case_dir, modality='RTSTRUCT') or get_dicom_files(case_dir, modality='SEG')
         rtstruct_path = rtstructs[0]['file_path'] if rtstructs else None
         if self.use_all_structures and rtstruct_path:
             return get_all_structure_names(rtstruct_path), rtstruct_path
@@ -358,7 +359,12 @@ class BatchPreprocessor:
         if self.input_data_type == 'dicom':
             if not rtstruct_path:
                 return None
-            return Image.from_dicom_mask(rtstruct_path=rtstruct_path, structure_name=structure_name, reference=image)
+            return Image.from_dicom_mask(
+                rtstruct_path=rtstruct_path,
+                structure_name=structure_name,
+                reference=image,
+                dicom_dir=case_dir,
+            )
 
         mask_path = find_nifti_file(case_dir, structure_name)
         if mask_path is None:

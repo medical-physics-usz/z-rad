@@ -193,8 +193,7 @@ class ZRad(QMainWindow):
 
 
 def main():
-    if sys.platform.startswith('win'):
-        freeze_support()
+    freeze_support()
 
     # Set high DPI scaling attributes before creating the QApplication instance
     QApplication.setAttribute(Qt.AA_EnableHighDpiScaling)

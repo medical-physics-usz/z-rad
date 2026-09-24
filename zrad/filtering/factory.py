@@ -1,6 +1,18 @@
 from .base import BaseFilter
-from .spatial import Gabor, Laws, LoG, Mean
-from .wavelet import Wavelets2D, Wavelets3D
+from .spatial import Gabor, Laws, LoG, Mean, RieszLoG
+from .wavelet import Simoncelli, Wavelets2D, Wavelets3D
+
+
+def _parse_riesz_order(value):
+    if isinstance(value, str):
+        return tuple(int(order.strip()) for order in value.split(','))
+    return value
+
+
+def _parse_optional_riesz_order(value):
+    if value is None or (isinstance(value, str) and not value.strip()):
+        return None
+    return _parse_riesz_order(value)
 
 
 def create_filter(filtering_method, **kwargs) -> BaseFilter:
@@ -13,11 +25,14 @@ def create_filter(filtering_method, **kwargs) -> BaseFilter:
 
     Parameters
     ----------
-    filtering_method : {"Mean", "Laplacian of Gaussian", "Laws Kernels", "Gabor", "Wavelets"}
+    filtering_method : {"Mean", "Laplacian of Gaussian", "Riesz-transformed LoG", "Laws Kernels", "Gabor", "Wavelets", "Simoncelli"}
         Filter family to instantiate.
     **kwargs
-        Constructor parameters for the selected filter. For wavelets, include
-        ``dimensionality`` to choose between ``Wavelets2D`` and ``Wavelets3D``.
+        Constructor parameters for the selected filter. For separable
+        wavelets, include ``dimensionality`` to choose between ``Wavelets2D``
+        and ``Wavelets3D``. ``Riesz-transformed LoG`` accepts ``riesz_order``
+        and optional ``structure_tensor_sigma_mm``; ``Simoncelli`` accepts an
+        optional ``riesz_order``.
 
     Returns
     -------
@@ -35,6 +50,17 @@ def create_filter(filtering_method, **kwargs) -> BaseFilter:
             sigma_mm=float(params['sigma_mm']),
             cutoff=float(params['cutoff']),
             dimensionality=params['dimensionality'],
+        )
+    if filtering_method == 'Riesz-transformed LoG':
+        return RieszLoG(
+            padding_type=params['padding_type'],
+            sigma_mm=float(params['sigma_mm']),
+            cutoff=float(params['cutoff']),
+            dimensionality=params['dimensionality'],
+            riesz_order=_parse_riesz_order(params['riesz_order']),
+            structure_tensor_sigma_mm=(
+                None if params.get('structure_tensor_sigma_mm') is None else float(params['structure_tensor_sigma_mm'])
+            ),
         )
     if filtering_method == 'Laws Kernels':
         return Laws(
@@ -72,4 +98,11 @@ def create_filter(filtering_method, **kwargs) -> BaseFilter:
         if dim == '3D':
             return Wavelets3D(**common)
         raise ValueError(f"Filter_dimension {params['dimensionality']} is not supported.")
+    if filtering_method == 'Simoncelli':
+        return Simoncelli(
+            padding_type=params['padding_type'],
+            decomposition_level=int(params['decomposition_level']),
+            dimensionality=params.get('dimensionality', '3D'),
+            riesz_order=_parse_optional_riesz_order(params.get('riesz_order')),
+        )
     raise ValueError(f"Filter {filtering_method} is not supported.")

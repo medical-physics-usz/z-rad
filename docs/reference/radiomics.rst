@@ -3,16 +3,16 @@ Radiomics
 
 .. currentmodule:: zrad
 
-Workflow Class
---------------
+Extraction workflow
+-------------------
 
 .. autosummary::
    :toctree: generated
 
    ~radiomics.extractor.Radiomics
 
-Definition Classes
-------------------
+Feature family calculators
+--------------------------
 
 .. autosummary::
    :toctree: generated

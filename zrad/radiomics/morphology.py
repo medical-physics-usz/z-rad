@@ -1,11 +1,33 @@
+import math
+
 import numpy as np
+from scipy.fft import irfftn, next_fast_len, rfftn
 from scipy.spatial import ConvexHull
-from scipy.spatial.distance import pdist, squareform
+from scipy.spatial.distance import cdist, pdist
 from scipy.special import legendre
 from skimage import measure
 
 from ..exceptions import DataStructureError
 from .base import BaseFeatureGroup
+
+# Algorithm-selection constants, independent of any resource-management policy.
+_CORRELATION_TINY_ROI = 256
+_CORRELATION_BLOCK_SIZE = 256
+_CORRELATION_FFT_COST_FACTOR = 2
+
+
+def _correlation_method(n, fft_shape):
+    """Choose exact spatial evaluation from valid count and padded geometry.
+
+    Keep geometry separate from evaluation: the same N and FFT shape can be
+    used by a future general extraction policy without changing either algorithm.
+    """
+    padded_size = math.prod(fft_shape)
+    pairs = n * (n - 1) // 2
+    fft_cost = _CORRELATION_FFT_COST_FACTOR * padded_size * math.log2(max(padded_size, 2))
+    if n > _CORRELATION_TINY_ROI and pairs > fft_cost:
+        return 'fft'
+    return 'blocked'
 
 
 def _pca_eigenvalues(points: np.ndarray) -> np.ndarray:
@@ -212,7 +234,7 @@ class MorphologicalFeatures:
     def _calc_integrated_intensity(image_array, vol_mesh):
         return np.nanmean(image_array) * vol_mesh
 
-    def calculate_features(self, mask_array, image_array):
+    def calculate_features(self, mask_array, image_array, *, include_correlation=True):
         """Calculate morphology features for prepared mask and intensity arrays.
 
         Parameters
@@ -222,6 +244,8 @@ class MorphologicalFeatures:
         image_array : numpy.ndarray
             Prepared intensity image aligned with ``mask_array`` where voxels
             outside the ROI can be represented by ``NaN``.
+        include_correlation : bool, default=True
+            Include the joint Moran's I and Geary's C calculation.
 
         Returns
         -------
@@ -279,15 +303,18 @@ class MorphologicalFeatures:
             area_density_ch,
             integrated_intensity,
         ]
-        return dict(zip(MORPHOLOGY_FEATURE_NAMES, values))
+        features = dict(zip(MORPHOLOGY_FEATURE_NAMES, values))
+        if include_correlation:
+            features.update(MorphologyCorrelationFeatures(self.spacing).calculate_features(mask_array, image_array))
+        return features
 
 
 class MorphologyCorrelationFeatures:
     """Spatial autocorrelation descriptors for a 3D region of interest.
 
     Moran's I and Geary's C summarize how intensity values vary with physical
-    distance between ROI voxels. They are optional morphology-related features
-    and require both a morphology mask and aligned intensity image.
+    distance between ROI voxels. They are morphological features and require both a morphology mask
+    and aligned intensity image.
 
     Parameters
     ----------
@@ -320,80 +347,122 @@ class MorphologyCorrelationFeatures:
         """
         return list(MORPHOLOGY_CORRELATION_FEATURE_NAMES)
 
-    def _valid_intensity_data(self, mask_array, image_array):
-        indices = np.argwhere(mask_array)
-        scaled_indices = indices * self.spacing
-        intensities = image_array[indices[:, 0], indices[:, 1], indices[:, 2]]
-        valid = ~np.isnan(intensities)
-        if np.sum(valid) < 2:
-            return None, None
-        return scaled_indices[valid], intensities[valid]
+    def _blocked_sums(self, coordinates, centered):
+        """Return ordered total weight, Moran numerator and Geary numerator."""
+        points = coordinates * np.asarray(self.spacing, dtype=np.float64)
+        n = len(centered)
+        total_weight = moran_numerator = geary_numerator = 0.0
+        block = _CORRELATION_BLOCK_SIZE
+        for i in range(0, n, block):
+            zi = centered[i : i + block]
+            for j in range(i, n, block):
+                zj = centered[j : j + block]
+                weights = cdist(points[i : i + block], points[j : j + block])
+                if i == j:
+                    np.fill_diagonal(weights, np.inf)
+                np.reciprocal(weights, out=weights)
+                multiplicity = 1 if i == j else 2
+                total_weight += multiplicity * weights.sum()
+                moran_numerator += multiplicity * np.einsum('i,ij,j->', zi, weights, zj)
+                differences = zi[:, None] - zj[None, :]
+                np.square(differences, out=differences)
+                geary_numerator += multiplicity * np.einsum('ij,ij->', weights, differences)
+        return total_weight, moran_numerator, geary_numerator
 
-    def _calc_moran_i(self, mask_array, image_array):
-        scaled_indices, intensities = self._valid_intensity_data(mask_array, image_array)
-        if scaled_indices is None:
-            return np.nan
+    def _fft_sums(self, coordinates, centered, shape, fft_shape):
+        """Joint hybrid convolution/Parseval sums, with full inverse-distance weights.
 
-        n = len(intensities)
-        mu = np.mean(intensities)
-        distances = squareform(pdist(scaled_indices))
-        weights = np.zeros_like(distances)
-        nonzero_mask = distances > 0
-        if np.any(distances[nonzero_mask] == 0):
-            raise DataStructureError("There is a zero distance in Moran I.")
-        weights[nonzero_mask] = 1.0 / distances[nonzero_mask]
-        s0 = np.sum(weights)
-        diff = intensities - mu
-        diff_outer = np.outer(diff, diff)
-        numerator = np.sum(weights * diff_outer)
-        denominator = np.sum(diff**2)
-        if denominator == 0:
-            raise DataStructureError("There determinator is zero in Moran I.")
-        return (n / s0) * (numerator / denominator)
+        Padding to at least 2L-1 preserves all ROI displacements without wraparound.
+        Only the mask convolution is inverted: S0 = sum(m * (k*m)),
+        B = sum(z**2 * (k*m)), A = sum(K * abs(FFT(z))**2) / P.
+        Symmetry gives the ordered Geary numerator G = 2(B-A).
+        """
+        axes = []
+        for length, spacing in zip(fft_shape, self.spacing):
+            offsets = np.arange(length, dtype=np.float64)
+            axes.append((np.minimum(offsets, length - offsets) * spacing) ** 2)
+        kernel = axes[0][:, None, None] + axes[1][None, :, None] + axes[2][None, None, :]
+        kernel[0, 0, 0] = np.inf
+        np.sqrt(kernel, out=kernel)
+        np.reciprocal(kernel, out=kernel)
+        # The wrapped kernel is real and even; retain only its real spectrum.
+        kernel_spectrum = rfftn(kernel, workers=1).real.copy()
+        del kernel
 
-    def _calc_geary_c(self, mask_array, image_array):
-        scaled_indices, intensities = self._valid_intensity_data(mask_array, image_array)
-        if scaled_indices is None:
-            return np.nan
+        indices = tuple(coordinates.T)
+        grid = np.zeros(shape, dtype=np.float64)
+        grid[indices] = 1
+        spectrum = rfftn(grid, s=fft_shape, workers=1)
+        spectrum *= kernel_spectrum
+        degrees = irfftn(spectrum, s=fft_shape, overwrite_x=True, workers=1)[indices]
+        total_weight = degrees.sum()
+        degree_square_sum = np.sum(centered * centered * degrees)
+        del degrees, spectrum
 
-        n = len(intensities)
-        mu = np.mean(intensities)
-        distances = squareform(pdist(scaled_indices))
-        weights = np.zeros_like(distances)
-        nonzero_mask = distances > 0
-        if np.any(distances[nonzero_mask] == 0):
-            raise DataStructureError("There is a zero distance in Geary C.")
-        weights[nonzero_mask] = 1.0 / distances[nonzero_mask]
-        s0 = np.sum(weights)
-        diff_matrix = np.subtract.outer(intensities, intensities)
-        squared_diff = diff_matrix**2
-        numerator = np.sum(weights * squared_diff)
-        denominator = np.sum((intensities - mu) ** 2)
-        if denominator == 0:
-            raise DataStructureError("There determinator is zero in Geary C.")
-        return ((n - 1) / (2 * s0)) * (numerator / denominator)
+        grid[indices] = centered
+        spectrum = rfftn(grid, s=fft_shape, workers=1)
+        # rFFT omits negative frequencies on the last axis. DC and, for an
+        # even transform length, Nyquist occur once; interior frequencies twice.
+        multiplicities = np.full(spectrum.shape[-1], 2.0)
+        multiplicities[0] = 1
+        if fft_shape[-1] % 2 == 0:
+            multiplicities[-1] = 1
+        moran_numerator = 0.0
+        for plane, kernel_plane in zip(spectrum, kernel_spectrum):
+            power = plane.real**2 + plane.imag**2
+            moran_numerator += np.einsum('ij,ij,j->', power, kernel_plane, multiplicities)
+        moran_numerator /= math.prod(fft_shape)
+        return total_weight, moran_numerator, 2 * (degree_square_sum - moran_numerator)
 
     def calculate_features(self, mask_array, image_array):
-        """Calculate morphology correlation features for prepared mask and intensity arrays.
+        """Calculate both features jointly from aligned 3D mask and intensity arrays.
 
-        Parameters
-        ----------
-        mask_array : numpy.ndarray
-            Prepared binary ROI mask array.
-        image_array : numpy.ndarray
-            Prepared intensity image aligned with ``mask_array`` where voxels
-            outside the ROI can be represented by ``NaN``.
-
-        Returns
-        -------
-        dict
-            Mapping of morphology correlation feature names to calculated values.
+        Nonzero mask voxels with non-NaN intensities form the population. Raw
+        intensities are converted to float64; texture discretization is not used.
+        Uses exact hybrid FFT/Parseval or blocked pair sums according to valid
+        voxel count and padded bounding-box geometry. Fewer than two observations,
+        nonfinite intensities, or zero intensity variance yield NaN for both features.
         """
         mask_array = np.asarray(mask_array)
         image_array = np.asarray(image_array)
+        if mask_array.ndim != 3 or image_array.shape != mask_array.shape:
+            raise ValueError('Morphology correlation requires aligned 3D mask and intensity arrays.')
+        spacing = np.asarray(self.spacing, dtype=np.float64)
+        if spacing.shape != (3,) or not np.all(np.isfinite(spacing) & (spacing > 0)):
+            raise ValueError('Morphology correlation requires three positive finite voxel spacings.')
+        coordinates = np.argwhere((mask_array != 0) & ~np.isnan(image_array))
+        values = np.asarray(image_array[tuple(coordinates.T)], dtype=np.float64)
+        n = len(values)
+        if n < 2 or not np.all(np.isfinite(values)):
+            # Infinity was not excluded by the old NaN-only population rule;
+            # it propagated to NaN results. Preserve that behavior explicitly.
+            return dict.fromkeys(MORPHOLOGY_CORRELATION_FEATURE_NAMES, np.nan)
+        # A rounded mean can differ from every value in a constant float array.
+        # Test equality directly; a tolerance would discard real low contrast.
+        if np.all(values == values[0]):
+            return dict.fromkeys(MORPHOLOGY_CORRELATION_FEATURE_NAMES, np.nan)
+        centered = values - np.mean(values)
+        variance_sum = np.sum(centered**2)
+        del values
+        if variance_sum == 0:
+            # Undefined statistics must not discard other valid morphology results.
+            return dict.fromkeys(MORPHOLOGY_CORRELATION_FEATURE_NAMES, np.nan)
+        coordinates -= coordinates.min(axis=0)
+        shape = tuple(int(value) + 1 for value in coordinates.max(axis=0))
+        fft_shape = tuple(next_fast_len(2 * length - 1) for length in shape)
+        method = _correlation_method(n, fft_shape)
+        if method == 'fft':
+            total_weight, moran_numerator, geary_numerator = self._fft_sums(
+                coordinates,
+                centered,
+                shape,
+                fft_shape,
+            )
+        else:
+            total_weight, moran_numerator, geary_numerator = self._blocked_sums(coordinates, centered)
         return {
-            'morph_moran_i': self._calc_moran_i(mask_array, image_array),
-            'morph_geary_c': self._calc_geary_c(mask_array, image_array),
+            'morph_moran_i': (n / total_weight) * (moran_numerator / variance_sum),
+            'morph_geary_c': ((n - 1) / (2 * total_weight)) * (geary_numerator / variance_sum),
         }
 
 
@@ -421,6 +490,8 @@ MORPHOLOGY_FEATURE_NAMES = (
     'morph_vol_dens_conv_hull',
     'morph_area_dens_conv_hull',
     'morph_integ_int',
+    'morph_moran_i',
+    'morph_geary_c',
 )
 
 
@@ -456,29 +527,18 @@ class MorphologyFeatureGroup(BaseFeatureGroup):
             masks.intensity_mask.array,
         )
 
-
-class MorphologyCorrelationFeatureGroup(BaseFeatureGroup):
-    family = 'morphology_correlation'
-    requirements = frozenset({'base_masks'})
-
-    def supports(self, context):
-        return not context.is_slice_2d
-
-    def default_enabled(self, context):
-        return False
-
-    def output_names(self, context):
-        return MORPHOLOGY_CORRELATION_FEATURE_NAMES
-
-    def feature_aliases(self, context):
-        return {name: name for name in self.output_names(context)}
-
-    def calculate(self, context, prepared_data):
+    def calculate_selected(self, context, prepared_data, selected_features):
         masks = prepared_data.require_base_masks()
-        morphology = MorphologyCorrelationFeatures(
-            masks.morphological_mask.spacing[::-1],
-        )
-        return morphology.calculate_features(
+        spacing = masks.morphological_mask.spacing[::-1]
+        correlation_names = set(MORPHOLOGY_CORRELATION_FEATURE_NAMES)
+        selected = set(selected_features)
+        if selected <= correlation_names:
+            return MorphologyCorrelationFeatures(spacing).calculate_features(
+                masks.morphological_mask.array,
+                masks.intensity_mask.array,
+            )
+        return MorphologicalFeatures(spacing).calculate_features(
             masks.morphological_mask.array,
             masks.intensity_mask.array,
+            include_correlation=bool(selected & correlation_names),
         )

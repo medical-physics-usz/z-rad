@@ -3,7 +3,7 @@ Filtering
 
 .. currentmodule:: zrad
 
-Filter Classes
+Filter classes
 --------------
 
 .. autosummary::
@@ -11,12 +11,14 @@ Filter Classes
 
    ~filtering.spatial.Mean
    ~filtering.spatial.LoG
+   ~filtering.spatial.RieszLoG
    ~filtering.spatial.Laws
    ~filtering.spatial.Gabor
    ~filtering.wavelet.Wavelets2D
    ~filtering.wavelet.Wavelets3D
+   ~filtering.wavelet.Simoncelli
 
-Configuration Factory
+Configuration factory
 ---------------------
 
 .. autosummary::

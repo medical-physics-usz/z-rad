@@ -14,6 +14,7 @@ from ..preprocessing import IntensityMaskBuilder, Resegmenter, RoiData, TextureD
 from ..radiomics import Radiomics
 from ._utils import (
     find_nifti_file,
+    joblib_parallel_kwargs,
     joblib_progress,
     normalize_common_batch_options,
     normalize_names,
@@ -76,7 +77,7 @@ class BatchRadiomicsExtractor:
         Directory where the radiomics CSV is written.
     input_data_type : {"dicom", "nifti"}
         Input format. Values are normalized to lower-case during validation.
-    modality : {"CT", "MRI", "PET", "MG", "RTDOSE"}
+    modality : {"CT", "MRI", "PET", "MG", "US", "RTDOSE"}
         Image modality used by the image reader.
     aggregation_dimension : {"2D", "2.5D", "3D"}
         Spatial aggregation dimensionality for texture features.
@@ -94,7 +95,7 @@ class BatchRadiomicsExtractor:
         Structure names to extract. For NIfTI input these are mask file names
         and are required.
     use_all_structures : bool, optional
-        For DICOM input, extract all structures found in the RTSTRUCT.
+        For DICOM input, extract all structures found in the RTSTRUCT or SEG object.
     nifti_image_name : str, optional
         Image file name or stem used for NIfTI input.
     nifti_filtered_image_name : str, optional
@@ -258,7 +259,7 @@ class BatchRadiomicsExtractor:
                     progress_callback(1)
         else:
             with joblib_progress(progress_callback):
-                processed = Parallel(n_jobs=self.number_of_threads, prefer=self.parallel_backend)(
+                processed = Parallel(**joblib_parallel_kwargs(self.number_of_threads, self.parallel_backend))(
                     delayed(self._process_case)(patient_folder) for patient_folder in patient_folders
                 )
 
@@ -349,7 +350,7 @@ class BatchRadiomicsExtractor:
         if self.input_data_type == 'nifti':
             return list(self.structures or []), None
 
-        rtstructs = get_dicom_files(case_dir, modality='RTSTRUCT')
+        rtstructs = get_dicom_files(case_dir, modality='RTSTRUCT') or get_dicom_files(case_dir, modality='SEG')
         rtstruct_path = rtstructs[0]['file_path'] if rtstructs else None
         if self.use_all_structures:
             if not rtstruct_path:
@@ -367,7 +368,12 @@ class BatchRadiomicsExtractor:
         if self.input_data_type == 'dicom':
             if not rtstruct_path:
                 return None
-            return Image.from_dicom_mask(rtstruct_path=rtstruct_path, structure_name=structure_name, reference=image)
+            return Image.from_dicom_mask(
+                rtstruct_path=rtstruct_path,
+                structure_name=structure_name,
+                reference=image,
+                dicom_dir=case_dir,
+            )
 
         mask_path = find_nifti_file(case_dir, structure_name)
         if mask_path is None:

@@ -25,11 +25,10 @@ class Radiomics:
     * ``"ngtdm"``
     * ``"ngldm"``
     * ``"ivh"``
-    * ``"morphology_correlation"``
 
-    ``"morphology_correlation"`` contains Moran's I and Geary's C. It is
-    supported for 3D ROIs but is not extracted by default because it can be
-    computationally expensive.
+    ``"morphology"`` includes Moran's I and Geary's C for 3D ROIs, including
+    default extraction. Both share an exact hybrid FFT or blocked calculation.
+    They can also be selected by their individual feature names.
 
     Parameters
     ----------
@@ -89,13 +88,12 @@ class Radiomics:
             ``"morphology"``, ``"local_intensity"``,
             ``"intensity_statistics"``, ``"intensity_histogram"``,
             ``"glcm"``, ``"glrlm"``, ``"glszm"``, ``"gldzm"``,
-            ``"ngtdm"``, ``"ngldm"``, ``"ivh"``, and
-            ``"morphology_correlation"``.
+            ``"ngtdm"``, ``"ngldm"``, and ``"ivh"``.
 
             If omitted, all default-enabled families supported by the prepared
             ``RoiData`` are extracted. Use ``"all"`` to extract every
-            supported family, including ``"morphology_correlation"``.
-            Repeated family names are ignored.
+            supported family. Morphology includes Moran's I and Geary's C.
+            Repeated family selections are calculated once.
         features : str or sequence of str, optional
             Individual feature names to extract. Names may come from one or
             more feature families. Use either ``families`` or ``features``,
@@ -127,7 +125,7 @@ class Radiomics:
         -----
         Feature availability depends on the prepared ``RoiData``:
 
-        * ``"morphology"`` and ``"morphology_correlation"`` require a 3D ROI.
+        * ``"morphology"`` requires a 3D ROI.
         * ``"intensity_histogram"`` and texture families require
           ``texture_discretized_image``.
         * ``"ivh"`` requires ``ivh_intensity_image`` and IVH discretization
@@ -145,7 +143,11 @@ class Radiomics:
 
         extracted = {}
         for group in groups:
-            extracted.update(group.calculate(context, prepared_data))
+            if selected_features is None:
+                extracted.update(group.calculate(context, prepared_data))
+            else:
+                group_features = [name for name in selected_features if name in group.output_names(context)]
+                extracted.update(group.calculate_selected(context, prepared_data, group_features))
 
         if selected_features is not None:
             extracted = {name: extracted[name] for name in selected_features}

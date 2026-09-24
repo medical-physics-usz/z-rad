@@ -1,5 +1,6 @@
 import logging
 from dataclasses import dataclass
+from numbers import Integral
 from pathlib import Path
 from typing import Callable, Sequence
 
@@ -10,6 +11,7 @@ from ..filtering import create_filter
 from ..image import Image
 from ._utils import (
     find_nifti_file,
+    joblib_parallel_kwargs,
     joblib_progress,
     normalize_common_batch_options,
     normalize_optional_text,
@@ -60,9 +62,9 @@ class BatchFilter:
         Directory where filtered case folders are written.
     input_data_type : {"dicom", "nifti"}
         Input format. Values are normalized to lower-case during validation.
-    modality : {"CT", "MRI", "PET", "MG", "RTDOSE"}
+    modality : {"CT", "MRI", "PET", "MG", "US", "RTDOSE"}
         Image modality used by the image reader.
-    filter_type : {"Mean", "Laplacian of Gaussian", "Laws Kernels", "Gabor", "Wavelets"}
+    filter_type : {"Mean", "Laplacian of Gaussian", "Riesz-transformed LoG", "Laws Kernels", "Gabor", "Wavelets", "Simoncelli"}
         Filter family to apply.
     filter_dimension : {"2D", "3D"}
         Apply the filter slice-wise in 2D or volumetrically in 3D.
@@ -76,17 +78,65 @@ class BatchFilter:
         Inclusive numeric folder range. Both values must be provided together.
     nifti_image_name : str, optional
         Image file name or stem used for NIfTI input.
-    filter-specific settings : optional
-        Numeric and text settings required by the selected ``filter_type``:
-        ``mean_support``, ``log_sigma``, ``log_cutoff``,
-        ``laws_response_map``, ``laws_pooling``, ``laws_distance``,
-        ``wavelet_response_map``, ``wavelet_type``,
-        ``wavelet_decomposition_level``, ``gabor_res_mm``,
-        ``gabor_sigma_mm``, ``gabor_lambda_mm``, ``gabor_gamma``, and
-        ``gabor_theta``.
-    filter-specific enable settings : bool or str, optional
-        Enable/disable settings for Laws, Wavelets, and Gabor filters.
-        GUI-style ``"Enable"`` and ``"Disable"`` values are accepted.
+    mean_support : int or str, optional
+        Mean-filter kernel side length in voxels. Required for Mean filtering.
+    log_sigma : float or str, optional
+        Gaussian standard deviation in millimetres. Required for LoG and
+        Riesz-transformed LoG filtering.
+    log_cutoff : float or str, optional
+        LoG kernel truncation radius in multiples of ``log_sigma``.
+    laws_response_map : str, optional
+        Laws kernel combination, such as ``"L5E5"`` in 2D or ``"L5E5S5"`` in 3D.
+    laws_rotation_invariance : bool or str, default=False
+        Combine Laws responses over axis permutations and flips.
+        GUI-style ``"Enable"`` and ``"Disable"`` values are also accepted.
+    laws_pooling : {"avg", "max"}, optional
+        Pooling rule for rotation-invariant Laws responses. Required for
+        Laws batch configuration, including when rotation invariance is disabled.
+    laws_energy_map : bool or str, default=False
+        Return a local mean absolute Laws response. Accepts booleans or
+        GUI-style ``"Enable"`` and ``"Disable"`` values.
+    laws_distance : int or str, optional
+        Energy-map neighbourhood radius in voxels. A positive value is required
+        for Laws batch configuration, including when energy maps are disabled.
+    wavelet_response_map : str, optional
+        Separable-wavelet low/high-pass combination, such as ``"LH"`` in 2D
+        or ``"LLH"`` in 3D.
+    wavelet_type : {"db2", "db3", "coif1", "haar"}, optional
+        Wavelet family for separable filtering.
+    wavelet_decomposition_level : int or str, optional
+        Scale level, starting at 1. Required for both separable wavelets
+        (levels 1 or 2) and Simoncelli filtering (any supported positive level).
+    wavelet_rotation_invariance : bool or str, default=False
+        Average separable-wavelet responses over rotations. Accepts booleans
+        or GUI-style ``"Enable"`` and ``"Disable"`` values.
+    gabor_res_mm : float or str, optional
+        Gabor voxel spacing in millimetres per pixel, used to convert physical
+        scales to kernel coordinates.
+    gabor_sigma_mm : float or str, optional
+        Gabor Gaussian envelope standard deviation in millimetres.
+    gabor_lambda_mm : float or str, optional
+        Gabor sinusoidal wavelength in millimetres.
+    gabor_gamma : float or str, optional
+        Gabor kernel aspect ratio.
+    gabor_theta : float or str, optional
+        Gabor orientation angle in radians, or angular step when rotation
+        invariance is enabled. All five numeric Gabor parameters are required
+        when selecting Gabor filtering.
+    gabor_rotation_invariance : bool or str, default=False
+        Average Gabor responses over orientations. Accepts booleans or
+        GUI-style ``"Enable"`` and ``"Disable"`` values.
+    gabor_orthogonal_planes : bool or str, default=False
+        Average Gabor responses across the three orthogonal slice planes.
+        Accepts booleans or GUI-style ``"Enable"`` and ``"Disable"`` values.
+    riesz_order : sequence of int or str, optional
+        Non-negative Riesz multi-index in physical ``(x, y)`` or ``(x, y, z)``
+        order. Required with positive total order for Riesz-transformed LoG;
+        optional for Simoncelli, where omission or all zeros selects the
+        isotropic response. Comma-separated strings are accepted.
+    structure_tensor_sigma_mm : float or str, optional
+        Positive scale in millimetres for local alignment of pure second-order
+        3D Riesz-transformed LoG responses, such as ``(2, 0, 0)``.
     parallel_backend : {"processes", "threads"}, optional
         Joblib backend preference used when ``number_of_threads`` is greater
         than one. The default is ``"processes"``.
@@ -130,6 +180,8 @@ class BatchFilter:
     gabor_theta: float | str | None = None
     gabor_rotation_invariance: bool | str = False
     gabor_orthogonal_planes: bool | str = False
+    riesz_order: Sequence[int] | str | None = None
+    structure_tensor_sigma_mm: float | str | None = None
     parallel_backend: str = 'processes'
 
     def validate(self) -> None:
@@ -209,7 +261,7 @@ class BatchFilter:
                     progress_callback(1)
         else:
             with joblib_progress(progress_callback):
-                case_results = Parallel(n_jobs=self.number_of_threads, prefer=self.parallel_backend)(
+                case_results = Parallel(**joblib_parallel_kwargs(self.number_of_threads, self.parallel_backend))(
                     delayed(self._process_case)(patient_folder) for patient_folder in patient_folders
                 )
 
@@ -245,6 +297,11 @@ class BatchFilter:
             "{filter_gabor_rotinv}_"
             "{filter_gabor_ortho}_"
             "{filter_padding_type}",
+            'Riesz-transformed LoG': "RieszLoG_{filter_dimension}_{filter_log_sigma}sigma_"
+            "{filter_log_cutoff}cutoff_Riesz{filter_riesz_order}"
+            "{filter_structure_tensor_suffix}_{filter_padding_type}",
+            'Simoncelli': "Simoncelli_{filter_dimension}_{filter_wavelet_decomp_lvl}_"
+            "Riesz{filter_riesz_order}_{filter_padding_type}",
         }
 
         if self.filter_type == 'Wavelets':
@@ -316,6 +373,16 @@ class BatchFilter:
                 cutoff=self.log_cutoff,
                 dimensionality=self.filter_dimension,
             )
+        if self.filter_type == 'Riesz-transformed LoG':
+            return create_filter(
+                filtering_method=self.filter_type,
+                padding_type=self.padding_type,
+                sigma_mm=self.log_sigma,
+                cutoff=self.log_cutoff,
+                dimensionality=self.filter_dimension,
+                riesz_order=self.riesz_order,
+                structure_tensor_sigma_mm=self.structure_tensor_sigma_mm,
+            )
         if self.filter_type == 'Laws Kernels':
             return create_filter(
                 filtering_method='Laws Kernels',
@@ -349,6 +416,14 @@ class BatchFilter:
                 decomposition_level=self.wavelet_decomposition_level,
                 rotation_invariance=_as_bool(self.wavelet_rotation_invariance),
             )
+        if self.filter_type == 'Simoncelli':
+            return create_filter(
+                filtering_method=self.filter_type,
+                padding_type=self.padding_type,
+                decomposition_level=self.wavelet_decomposition_level,
+                dimensionality=self.filter_dimension,
+                riesz_order=self.riesz_order,
+            )
         raise InvalidInputParametersError(f"Filter_type {self.filter_type} not supported.")
 
     def _validate_filter_parameters(self) -> None:
@@ -357,6 +432,27 @@ class BatchFilter:
         elif self.filter_type == 'Laplacian of Gaussian':
             self.log_sigma = _require_float(self.log_sigma, "log_sigma is required.")
             self.log_cutoff = _require_float(self.log_cutoff, "log_cutoff is required.")
+        elif self.filter_type == 'Riesz-transformed LoG':
+            self.log_sigma = _require_float(self.log_sigma, "log_sigma is required.")
+            self.log_cutoff = _require_float(self.log_cutoff, "log_cutoff is required.")
+            self.riesz_order = _require_riesz_order(self.riesz_order, self.filter_dimension)
+            if self.structure_tensor_sigma_mm is not None and str(self.structure_tensor_sigma_mm).strip():
+                self.structure_tensor_sigma_mm = _require_float(
+                    self.structure_tensor_sigma_mm, "structure_tensor_sigma_mm must be a number."
+                )
+                if self.structure_tensor_sigma_mm <= 0:
+                    raise InvalidInputParametersError('structure_tensor_sigma_mm must be a positive number.')
+                if self.filter_dimension != '3D' or sum(self.riesz_order) != 2:
+                    raise InvalidInputParametersError(
+                        'Structure-tensor alignment is supported for second-order 3D Riesz transforms only.'
+                    )
+                if 2 not in self.riesz_order:
+                    raise InvalidInputParametersError(
+                        'Structure-tensor alignment supports pure second-order Riesz indices only; '
+                        'mixed-order indices have sign-ambiguous eigenvector steering.'
+                    )
+            else:
+                self.structure_tensor_sigma_mm = None
         elif self.filter_type == 'Laws Kernels':
             self.laws_response_map = require_text(self.laws_response_map, "laws_response_map is required.")
             self.laws_pooling = require_text(self.laws_pooling, "laws_pooling is required.")
@@ -379,6 +475,13 @@ class BatchFilter:
                 "wavelet_decomposition_level is required.",
             )
             self.wavelet_rotation_invariance = _normalize_enable_disable(self.wavelet_rotation_invariance)
+        elif self.filter_type == 'Simoncelli':
+            if self.padding_type not in ('nearest', 'wrap', 'periodic'):
+                raise InvalidInputParametersError("Simoncelli padding_type must be 'nearest', 'wrap', or 'periodic'.")
+            self.wavelet_decomposition_level = _require_positive_int(
+                self.wavelet_decomposition_level, "wavelet_decomposition_level is required."
+            )
+            self.riesz_order = _optional_riesz_order(self.riesz_order, self.filter_dimension)
         else:
             raise InvalidInputParametersError(f"Filter_type {self.filter_type} not supported.")
 
@@ -406,6 +509,10 @@ class BatchFilter:
             'filter_gabor_theta': self.gabor_theta,
             'filter_gabor_rotinv': _enable_disable_text(self.gabor_rotation_invariance),
             'filter_gabor_ortho': _enable_disable_text(self.gabor_orthogonal_planes),
+            'filter_riesz_order': 'none' if self.riesz_order is None else '-'.join(map(str, self.riesz_order)),
+            'filter_structure_tensor_suffix': (
+                '' if self.structure_tensor_sigma_mm is None else f'_Tensor{self.structure_tensor_sigma_mm}sigma'
+            ),
         }
 
 
@@ -428,6 +535,31 @@ def _require_float(value, message: str) -> float:
         return float(value)
     except (TypeError, ValueError):
         raise InvalidInputParametersError(message)
+
+
+def _optional_riesz_order(value, dimensionality: str):
+    if value is None or str(value).strip() == '':
+        return None
+    return _require_riesz_order(value, dimensionality, allow_zero=True)
+
+
+def _require_riesz_order(value, dimensionality: str, *, allow_zero: bool = False) -> tuple[int, ...]:
+    message = f"riesz_order must contain {dimensionality[0]} comma-separated non-negative integers."
+    try:
+        if isinstance(value, str):
+            values = [item.strip() for item in value.split(',')]
+        else:
+            values = tuple(value)
+            if any(not isinstance(item, Integral) or isinstance(item, bool) for item in values):
+                raise InvalidInputParametersError(message)
+        result = tuple(int(item) for item in values)
+    except (TypeError, ValueError):
+        raise InvalidInputParametersError(message)
+    if len(result) != int(dimensionality[0]) or any(item < 0 for item in result):
+        raise InvalidInputParametersError(message)
+    if not allow_zero and sum(result) == 0:
+        raise InvalidInputParametersError("riesz_order must have a positive total order.")
+    return result
 
 
 def _normalize_enable_disable(value) -> str:

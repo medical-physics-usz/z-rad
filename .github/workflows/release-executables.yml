@@ -1,0 +1,67 @@
+---
+name: Build release executables
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  build-executable:
+    name: Build ${{ matrix.name }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Windows executable
+            platform: windows
+            runner: windows-latest
+            asset_suffix: windows.exe
+          - name: macOS Apple Silicon app
+            platform: macos-arm64
+            runner: macos-latest
+            asset_suffix: macos-arm64.zip
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e . pyinstaller
+          python -m pip check
+
+      - name: Build executable
+        run: python generate_executable.py
+
+      - name: Prepare Windows release asset
+        if: matrix.platform == 'windows'
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "dist/z-rad.exe")) {
+            throw "Expected executable dist/z-rad.exe was not created."
+          }
+          Copy-Item "dist/z-rad.exe" "dist/z-rad-${{ github.event.release.tag_name }}-${{ matrix.asset_suffix }}"
+
+      - name: Prepare macOS release asset
+        if: matrix.platform == 'macos-arm64'
+        shell: bash
+        run: |
+          test -x "dist/Z-Rad.app/Contents/MacOS/Z-Rad"
+          grep -q "ch.usz.medphys.zrad" "dist/Z-Rad.app/Contents/Info.plist"
+          ditto -c -k --keepParent "dist/Z-Rad.app" "dist/z-rad-${{ github.event.release.tag_name }}-${{ matrix.asset_suffix }}"
+          test -s "dist/z-rad-${{ github.event.release.tag_name }}-${{ matrix.asset_suffix }}"
+
+      - name: Attach release asset
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${{ github.event.release.tag_name }}" "dist/z-rad-${{ github.event.release.tag_name }}-${{ matrix.asset_suffix }}" --clobber

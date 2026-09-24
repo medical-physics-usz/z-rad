@@ -35,7 +35,7 @@ GLCM_FEATURE_NAMES = (
 
 
 class GLCM:
-    """Gray level co-occurrence matrix features.
+    """Grey level co-occurrence matrix features.
 
     GLCM features summarize how often pairs of discretized grey levels occur at
     fixed neighbour offsets. The class supports IBSI-style 2D, 2.5D, and 3D
@@ -91,7 +91,7 @@ class GLCM:
         ----------
         discretized_image_array : numpy.ndarray
             Prepared discretized intensity array with ROI voxels represented by
-            integer gray levels and voxels outside the ROI set to ``NaN``.
+            integer grey levels and voxels outside the ROI set to ``NaN``.
 
         Returns
         -------

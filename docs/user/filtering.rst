@@ -1,49 +1,9 @@
-GUI Filtering
+GUI filtering
 =============
 
-Overview
---------
-
-The filtering layer applies optional image transforms before radiomics feature
-extraction. In Python code, instantiate concrete filter classes directly. The
-``create_filter(...)`` helper is kept for GUI and configuration-driven
-workflows where the filter family is selected by name.
-
-Python API
-----------
-
-Concrete filters expose a small, consistent API:
-
-* configure the filter in the constructor
-* call ``apply(image)`` to return a filtered ``Image``
-* call ``apply(roi_data)`` inside a preprocessing ``Pipeline`` to set
-  ``roi_data.filtered_image``
-
-.. code-block:: python
-
-   from zrad.filtering import Mean
-
-   image_filter = Mean(
-       padding_type="reflect",
-       support=3,
-       dimensionality="3D",
-   )
-
-   filtered_image = image_filter.apply(image)
-
-For dynamic workflows, use ``create_filter(...)`` when the filter type and
-parameters come from a GUI form or saved configuration:
-
-.. code-block:: python
-
-   from zrad.filtering import create_filter
-
-   image_filter = create_filter(
-       filtering_method="Mean",
-       padding_type="reflect",
-       support=3,
-       dimensionality="3D",
-   )
+Use the Filtering tab to apply an image transform before feature extraction.
+Filtering is optional and operates on images; masks are not required.
+For Python examples, see :doc:`api_filtering`.
 
 .. figure:: ../images/Filt_tab.png
    :alt: Z-Rad filtering tab
@@ -51,11 +11,10 @@ parameters come from a GUI form or saved configuration:
 
    Filtering tab in the GUI.
 
-Main Controls
+Main controls
 -------------
 
-The filtering workflow is organized around the following GUI sections. The
-numbering below matches the annotated screenshots used for this workflow.
+The numbers below match the annotated screenshot.
 
 ``(1)`` Upper workflow section
    The upper part of the filtering tab mirrors the preprocessing tab. You use
@@ -64,69 +23,94 @@ numbering below matches the annotated screenshots used for this workflow.
    mask selection is required because filtering is applied to images only.
 
 ``(2)`` ``Filter Type``
-   Select the image transform to apply. The GUI currently supports:
-
-   * Mean
-   * Laplacian of Gaussian
-   * Gabor
-   * Laws kernels
-   * Wavelets
-
-   Once a filter is selected, Z-Rad displays the corresponding
-   filter-specific parameters.
+   Select a filter to show its settings. The available families are described
+   below.
 
 ``(3)`` ``RUN``
    Starts the filtering process. The filtered images are written to the
    selected output directory.
 
-Filter Parameters
+Filter parameters
 -----------------
 
-After a filter is selected in ``(2)``, the parameter fields shown in the GUI
-depend on the chosen filter family.
+Depending on the filter, choose padding (how image boundaries are extended),
+2D or 3D processing, and scale parameters such as the Gaussian width or
+wavelength in millimetres.
 
-Most filters use some combination of:
+.. list-table:: Filter settings
+   :header-rows: 1
+   :widths: 25 75
 
-* ``padding_type``: ``constant``, ``nearest``, ``wrap``, or ``reflect``
-* ``dimensionality``: ``2D`` or ``3D``
-* physical scale parameters such as ``sigma_mm`` or ``lambda_mm``
+   * - Filter
+     - Main parameters and units
+   * - Mean
+     - Support is the kernel side length in voxels. Select 2D for a square
+       neighbourhood or 3D for a cube.
+   * - Laplacian of Gaussian (LoG)
+     - Sigma is the Gaussian scale in millimetres; cutoff is the kernel radius
+       in multiples of sigma. Select 2D or 3D processing.
+   * - Gabor
+     - Resolution, sigma, and wavelength are in millimetres. Gamma controls
+       the kernel's aspect ratio. Theta is an angle in radians, or the angular
+       step when rotation invariance is enabled. Orthogonal-plane averaging
+       combines responses from three slice orientations.
+   * - Laws kernels
+     - The response map selects kernels, such as ``L5E5`` in 2D or ``L5E5S5``
+       in 3D. Choose rotation invariance and pooling (average or maximum).
+       Energy maps average absolute responses over a neighbourhood whose
+       radius is the configured distance in voxels.
+   * - Separable wavelets
+     - Choose Daubechies 2 or 3, first-order Coiflet, or Haar; then the
+       low/high-pass response map, decomposition level, and rotation invariance.
+   * - Riesz-transformed LoG
+     - LoG sigma and cutoff, plus a Riesz order and optional structure-tensor
+       scale in millimetres. See the constraints below.
+   * - Simoncelli wavelets
+     - Decomposition level, padding, and optional Riesz order. See below for
+       the supported padding and order conventions.
 
-The available filter families are:
+For separable wavelets, choose the wavelet family, response map (the low-
+and high-pass combination), and decomposition level. Rotation invariance
+is optional.
 
-* Mean
-* Laplacian of Gaussian
-* Gabor
-* Laws kernels
-* Wavelets, including Daubechies 2, Daubechies 3, first-order Coiflet, and
-  Haar filters
+Riesz-transformed LoG additionally requires a non-negative Riesz order
+multi-index with two entries for 2D filtering or three entries for 3D
+filtering. The entries follow physical ``(x, y)`` or ``(x, y, z)`` axis order,
+and their sum must be positive. The optional structure-tensor scale
+locally aligns a pure second-order 3D response, such as ``(2, 0, 0)``.
 
-Wavelet filtering additionally requires:
-
-* ``wavelet_type``
-* ``response_map``
-* ``decomposition_level``
-* optional rotation invariance
+Simoncelli filtering requires a positive decomposition level and supports
+``nearest`` or periodic (``wrap``) padding. Its optional Riesz order has
+the same dimensionality and axis-order rules as the Riesz-transformed LoG
+index. If the index is omitted or contains only zeros, the filter returns the
+isotropic Simoncelli band-pass response.
 
 The implementation follows IBSI II definitions, so physical scales, response
 maps, decomposition levels, and rotation-invariance settings should be chosen
 consistently with the downstream analysis protocol.
 
-Practical Notes
----------------
+Outputs
+-------
 
-* The upper section ``(1)`` uses the same dataset-selection logic as
-  preprocessing, including support for numeric folder ranges and explicit
-  folder lists.
-* Filtering is optional. You can extract radiomics features directly from a
-  resampled image if your analysis does not require a transformed image.
-* The filter parameters shown after selecting ``(2)`` depend entirely on the
-  chosen filter family.
+Each case folder in the output directory contains a filtered NIfTI image whose
+filename records the filter settings. Filtering does not copy the original
+image or masks. Follow :doc:`gui_quickstart` to place these files together for
+radiomics extraction.
+
+Working with filter settings
+----------------------------
+
 * Laplacian-of-Gaussian filtering derives the working resolution from the input
   image spacing.
+* Riesz-transformed LoG uses the same physical LoG scale and applies the Riesz
+  transform to that response.
+* The Simoncelli GUI offers decomposition levels 1 through 3. The Python API
+  accepts any positive integer level, subject to the available image-frequency
+  support.
 * Input configurations can be saved from the GUI and loaded again for repeated
   experiments, which is useful when comparing several filter settings.
 * If you are comparing multiple filter families, keep the preprocessing and
   radiomics settings fixed so that the impact of the filtering step remains
   interpretable.
 
-For a task-oriented walkthrough, see :doc:`../examples/gui_filtering`.
+For configuration examples, see :doc:`../examples/gui_filtering`.

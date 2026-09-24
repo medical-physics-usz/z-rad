@@ -96,24 +96,30 @@ class Image:
         return cls._from_sitk_image(dicom.read_dicom_image(dicom_dir, modality))
 
     @classmethod
-    def from_dicom_mask(cls, rtstruct_path, structure_name, reference):
-        """Create a DICOM RTSTRUCT mask aligned to a reference image.
+    def from_dicom_mask(cls, rtstruct_path, structure_name, reference, dicom_dir=None):
+        """Create a DICOM RTSTRUCT or SEG mask aligned to a reference image.
 
         Parameters
         ----------
         rtstruct_path : str or path-like
-            Path to the DICOM RTSTRUCT file.
+            Path to an RTSTRUCT or BINARY DICOM SEG file.
         structure_name : str
-            Name of the ROI structure to rasterize.
+            RTSTRUCT ROI name or DICOM SEG ``SegmentLabel`` to extract.
         reference : Image
             Reference image that defines the target grid and geometry.
+
+        dicom_dir : str or path-like, optional
+            Directory containing the referenced source DICOM image series.
+            Supply it for SEG input so source-frame references can be resolved
+            and checked, including frames without independent spatial geometry.
+            RTSTRUCT loading does not use this argument.
 
         Returns
         -------
         mask : Image
             Binary mask image aligned to the reference geometry.
         """
-        return dicom.read_dicom_mask(rtstruct_path, structure_name, reference.sitk_image)
+        return dicom.read_dicom_mask(rtstruct_path, structure_name, reference.sitk_image, dicom_dir=dicom_dir)
 
     @classmethod
     def _from_sitk_image(cls, image):
@@ -143,6 +149,50 @@ class Image:
             direction=copy.deepcopy(self.direction),
             shape=copy.deepcopy(self.shape),
         )
+
+    def resample_to_target(self, target, interpolator=sitk.sitkLinear):
+        """Resample this image onto the physical grid of another image.
+
+        Values outside this image's physical extent are filled with its minimum
+        intensity. The returned image has the target's origin, spacing,
+        direction, and shape; neither input image is modified.
+
+        Parameters
+        ----------
+        target : Image
+            Image whose physical grid defines the resampling output.
+        interpolator : int, optional
+            SimpleITK interpolator enum, such as ``sitk.sitkLinear`` or
+            ``sitk.sitkNearestNeighbor``. The default is linear interpolation.
+
+        Returns
+        -------
+        image : Image
+            A new image containing this image resampled onto ``target``.
+        """
+        if not isinstance(target, Image):
+            raise TypeError(f"Expected target to be Image, got {type(target)}.")
+
+        moving_image = sitk.GetImageFromArray(self.array)
+        moving_image.SetOrigin(self.origin)
+        moving_image.SetSpacing(self.spacing)
+        moving_image.SetDirection(self.direction)
+
+        target_image = sitk.GetImageFromArray(target.array)
+        target_image.SetOrigin(target.origin)
+        target_image.SetSpacing(target.spacing)
+        target_image.SetDirection(target.direction)
+
+        resampler = sitk.ResampleImageFilter()
+        resampler.SetReferenceImage(target_image)
+        resampler.SetInterpolator(interpolator)
+        output_pixel_type = moving_image.GetPixelID()
+        if interpolator != sitk.sitkNearestNeighbor:
+            output_pixel_type = sitk.sitkFloat64
+        resampler.SetOutputPixelType(output_pixel_type)
+        resampler.SetDefaultPixelValue(float(np.nanmin(self.array)))
+
+        return self._from_sitk_image(resampler.Execute(moving_image))
 
     def save_as_nifti(self, output_path):
         """Write the image to a NIfTI file.

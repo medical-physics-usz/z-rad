@@ -1,68 +1,92 @@
-Building The Docs
-=================
+Building and editing the docs
+=============================
 
-Requirements
-------------
-
-Install the documentation toolchain into the same Python environment you use to
-run the project:
+Run commands from the repository root in your activated Python environment.
+The ``dev`` extra already includes the documentation tools. For a docs-only
+setup, install:
 
 .. code-block:: bash
 
-   python3 -m pip install -e ".[docs]"
+   python -m pip install -e ".[docs]"
 
-For a full local development environment with docs, tests, and lint tooling,
-install the development extra instead:
-
-.. code-block:: bash
-
-   python3 -m pip install -e ".[dev]"
-
-Build Commands
---------------
+Build and preview
+-----------------
 
 Build the HTML site with warnings treated as errors:
 
 .. code-block:: bash
 
-   python3 -m sphinx -b html -W docs docs/_build/html
+   python -m sphinx -b html -W docs docs/_build/html
 
-For iterative local builds, either of these commands can also be used from the
-repository root:
+Open ``docs/_build/html/index.html`` in a browser. Check the changed pages,
+code examples, tables, cross-references, and sidebar navigation. The build
+checks Sphinx references and syntax but does not execute documented examples.
 
-.. code-block:: bash
-
-   python3 -m sphinx -M html docs docs/_build
-
-or:
+For a local HTTP preview, run:
 
 .. code-block:: bash
 
-   make -C docs html
+   python -m http.server 8000 --bind 127.0.0.1 --directory docs/_build/html
 
-Output
-------
+Open ``http://127.0.0.1:8000`` and stop the server with ``Ctrl+C`` when finished.
+If you prefer Make, ``make -C docs html SPHINXOPTS="-W"`` builds the same output.
 
-The generated documentation is written to ``docs/_build/html``.
+Rebuild from scratch
+--------------------
 
-When To Update Docs
--------------------
+After changing navigation or moving pages, clean the generated output and
+rebuild every page so sidebars do not mix old and new structures:
 
-Update documentation together with code changes when:
+.. code-block:: bash
 
-* user-facing workflows or behavior change; update the relevant user-guide page
-* public classes, functions, or arguments change; update the API reference
-* a new contributor-visible workflow is introduced; add or update an example
-* a new common user-facing failure mode is found; add troubleshooting guidance
+   python -m sphinx -M clean docs docs/_build
+   python -m sphinx -b html -E -a -W docs docs/_build/html
 
-Good documentation changes are usually narrative first and reference second:
-explain when a feature should be used before listing every parameter.
+The clean step removes generated build files. ``-E`` discards Sphinx's saved
+environment and ``-a`` writes every page. Refresh the browser after rebuilding;
+use a hard refresh if it still displays older content.
 
-Fixing Build Problems
----------------------
+Choose where to edit
+--------------------
 
-Common causes of docs failures include:
+* ``docs/user/`` explains how to use the GUI and Python API.
+* ``docs/examples/`` contains worked configurations and examples.
+* ``docs/developer/`` describes contributor and maintainer tasks.
+* ``docs/ibsi/`` explains validation coverage and reference limitations.
+* ``docs/reference/`` organizes the API reference with ``autosummary`` entries.
+  API descriptions and parameter details come from docstrings in ``zrad/``.
 
-* Sphinx installed in a different Python environment than the one used to build
-* missing runtime dependencies required by autodoc imports
-* stale references in ``toctree`` blocks
+Update the user guide when behavior changes, docstrings and reference entries
+when public APIs change, and examples when a new workflow needs illustration.
+Add troubleshooting guidance for common user-facing failures. Explain when to
+use a feature before listing its parameters.
+
+Add a new narrative page as an ``.rst`` file and include its name, without the
+extension, in the relevant parent page's ``toctree``. For example, the GUI
+pages are listed in ``docs/user/gui_workflows.rst``. Use ``:doc:`` for links to
+pages and explicit labels with ``:ref:`` for sections that other pages need to
+reference. Preserve existing labels when moving content.
+
+For a new public class, add its ``autosummary`` entry to the appropriate
+reference page and document the class in its source docstring. Sphinx generates
+reference stubs under ``docs/reference/generated/``; edit the source entries and
+docstrings rather than generated stubs or HTML in ``docs/_build/``.
+
+Fix build problems
+------------------
+
+* **Sphinx or an extension is missing:** activate the intended environment and
+  install ``.[docs]`` there. Use ``python -m sphinx`` to use that interpreter.
+* **An autodoc import fails:** install Z-Rad and its dependencies in the same
+  environment, then inspect the import exception in the build output.
+* **A page or section cannot be found:** check its ``toctree`` entry, link, and
+  label. Update links after renaming pages or moving sections.
+* **Sidebars or deleted pages remain visible:** perform the clean rebuild above
+  and confirm the browser is showing this build's output.
+* **The displayed version is unexpected:** check ``zrad.__version__`` in
+  ``zrad/__init__.py`` and rebuild. Sphinx and package metadata both read this
+  value; change it only when intentionally updating the project version.
+
+The documentation workflow runs on pushes to ``master`` and manual dispatch,
+not on pull requests. Build documentation changes locally before review;
+see :doc:`ci` for deployment details.

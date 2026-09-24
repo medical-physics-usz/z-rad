@@ -1,5 +1,6 @@
-from pathlib import Path
+import inspect
 import sys
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
@@ -32,6 +33,25 @@ autodoc_member_order = 'bysource'
 autoclass_content = 'both'
 autosummary_generate = True
 
+
+def _autosummary_properties():
+    # Render properties separately; ordinary attributes are already described
+    # in class docstrings and must not acquire duplicate reference targets.
+    from zrad import batch, filtering, image, preprocessing, radiomics
+
+    properties = {}
+    for module in (batch, filtering, image, preprocessing, radiomics):
+        for cls in vars(module).values():
+            if inspect.isclass(cls) and cls.__module__.startswith("zrad."):
+                properties[f"{cls.__module__}.{cls.__qualname__}"] = [
+                    name
+                    for name, member in inspect.getmembers(cls)
+                    if isinstance(member, property) and not name.startswith("_")
+                ]
+    return properties
+
+
+autosummary_context = {"properties_by_class": _autosummary_properties()}
 
 
 # -- Options for HTML output -------------------------------------------------

@@ -54,12 +54,8 @@ dictionary containing an entry approximately equal to:
 
 Feature prefixes identify families: ``stat_`` denotes intensity statistics,
 ``morph_`` morphology, ``cm_`` co-occurrence-matrix features, and ``ivh_``
-intensity-volume histogram features. GUI and batch extraction can produce six
-``ivh_`` columns. Batch IVH failures leave those values blank for the affected
-structure; if every structure's IVH fails, the CSV has no ``ivh_`` columns.
-Inspect ``omitted_ivh_structures`` on each radiomics case result for the
-structure and reason, including when the case is counted as processed. Units
-depend on the feature and input image: the CT mean is
+intensity-volume histogram features. Units depend on the feature and input
+image: the CT mean is
 in HU, whereas the mean of a filtered image uses that filter's response units.
 The texture name ``cm_contrast_3D_avg`` means GLCM contrast calculated with
 3D neighbourhoods and averaged across directions. GLCM and GLRLM names end in
@@ -85,6 +81,12 @@ Compare the actual ``(pat_id, mask_id)`` pairs with the cases and structures you
 requested. A missing or rejected mask produces no feature row. Other masks in
 the same case can still succeed. If every extraction is skipped, batch
 extraction still creates an empty CSV file.
+
+If batch IVH preparation or extraction fails, the affected structure retains
+its other features but has blank IVH values. If IVH fails for every structure,
+the CSV has no ``ivh_`` columns. Inspect ``omitted_ivh_structures`` on each
+radiomics case result for the reasons, including for processed cases; see
+:doc:`api_batch`.
 
 A non-finite feature value, such as ``NaN``, is different from a missing row:
 extraction returned that feature, but a numeric value may be undefined for the

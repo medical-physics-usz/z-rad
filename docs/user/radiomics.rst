@@ -53,7 +53,8 @@ The numbers below match the annotated screenshot.
    of bins. Fixed bin size requires an intensity range to define the bin
    origin. The ordinary intensity-histogram family shares these prepared
    grey levels. This control does not set IVH discretization; the GUI chooses
-   that from ``Imaging Modality``. See :ref:`ivh-discretization`.
+   that from the modality and whether the image is filtered. See
+   :ref:`ivh-discretization`.
 
 ``(7)`` ``RUN``
    Starts radiomics extraction with the currently selected configuration.
@@ -73,13 +74,9 @@ filtered image in ``NIfTI Filtered Image``, together with the masks. All files
 must be in the corresponding case folder, and names are entered without file
 extensions. See :doc:`gui_quickstart` for the folder layout.
 
-For a filtered image, the GUI prepares IVH intensities with ``1000`` fixed-number
-bins, regardless of ``Imaging Modality``. The bins span the filtered intensities
-retained in each ROI. If ``Intensity Range`` is enabled, it still selects voxels
-using the original image; its bounds do not set the filtered IVH bin range.
-The GUI's ``Discretization`` control continues to set texture and ordinary
-intensity-histogram bins. For a different IVH strategy, use the batch or
-single-ROI Python API; see :ref:`ivh-discretization`.
+``Intensity Range`` selects voxels using the original image; feature
+intensities come from the filtered image. See :doc:`resegmentation_guidelines`
+and :doc:`discretization_guidelines` for range and bin settings.
 
 Outputs
 -------

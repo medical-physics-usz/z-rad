@@ -715,3 +715,31 @@ def test_batch_ivh_fixed_width_uses_observed_minimum_without_gui_range(monkeypat
     assert observed['intensity_range'] == (44.0, np.inf)
     assert features['stat_min'] == 44
     assert np.isfinite(features['ivh_i10'])
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize('modality', ['CT', 'PET', 'MRI', 'MG', 'US', 'RTDOSE'])
+def test_gui_texture_bin_size_does_not_change_ivh_features(tmp_path, modality):
+    input_dir = tmp_path / 'input'
+    input_dir.mkdir()
+    image, mask = _make_irregular_roi()
+    ivh_results = []
+    texture_bin_counts = []
+
+    for texture_bin_size in (5, 10):
+        extractor = _extractor(
+            input_dir,
+            tmp_path / 'output',
+            modality=modality,
+            discretization_method='Bin Size',
+            number_of_bins=None,
+            bin_size=texture_bin_size,
+            intensity_range=(50, 150),
+        )
+        extractor.validate()
+        features = extractor._extract_structure_features(image, None, mask)
+        ivh_results.append({name: value for name, value in features.items() if name.startswith('ivh_')})
+        texture_bin_counts.append(features['no_bins'])
+
+    assert ivh_results[0] == ivh_results[1]
+    assert texture_bin_counts[0] != texture_bin_counts[1]

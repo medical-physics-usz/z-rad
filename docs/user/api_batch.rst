@@ -109,11 +109,15 @@ Batch radiomics
        print(case.case_name, case.error)
 
 ``BatchRadiomicsExtractor`` prepares IVH intensities for every ROI using the
-selected ``modality`` and writes six ``ivh_`` columns to ``radiomics.csv``.
-These settings are independent of texture discretization. Set
-``intensity_range`` when your study has a common re-segmentation interval;
-it also supplies the fixed-bin-size IVH origin for PET and RTDOSE. See
-:ref:`ivh-discretization` for the automatic settings and range behavior.
+selected ``modality`` by default and writes six ``ivh_`` columns to
+``radiomics.csv``. To override the modality default, set ``ivh_method`` to
+``"direct"``, ``"fixed_bin_size"``, or ``"fixed_bin_number"``. The latter two
+also require ``ivh_bin_size`` or ``ivh_number_of_bins``, respectively. For
+example, use ``ivh_method="fixed_bin_size"``, ``ivh_bin_size=0.25``, and
+``intensity_range=(0, 20)`` for a common IVH bin width and lower origin.
+
+IVH settings are independent of texture discretization. See
+:ref:`ivh-discretization` for the defaults and range behavior.
 
 Inspect the result
 ------------------

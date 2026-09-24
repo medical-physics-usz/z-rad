@@ -103,7 +103,7 @@ in the single-ROI Python API, use ``families`` or ``features`` to select them:
 * neighbourhood grey tone difference matrix (NGTDM)
 * neighbouring grey level dependence matrix (NGLDM)
 
-GUI and batch extraction prepare IVH intensities using the selected modality.
+GUI and batch extraction prepare IVH intensities using the selected modality by default.
 The single-ROI Python API requires explicit IVH preparation; see
 :doc:`api_workflows` and :doc:`discretization_guidelines`.
 Morphology requires a 3D ROI. See :doc:`../reference/radiomics` for the full API.

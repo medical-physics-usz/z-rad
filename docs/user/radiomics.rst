@@ -77,7 +77,7 @@ IVH uses the filtered intensities, but the GUI still chooses its preparation
 method from ``Imaging Modality``. A transformed response, such as LoG-filtered
 CT, does not retain the original HU scale. Range re-segmentation still selects
 voxels using the original image. If the filtered intensity scale needs a
-different IVH strategy, use the single-ROI Python API; see
+different IVH strategy, use the batch or single-ROI Python API; see
 :ref:`ivh-discretization`.
 
 Outputs

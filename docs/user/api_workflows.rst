@@ -138,7 +138,8 @@ Choose feature families and metadata
 families available for the prepared ROI. Prepare texture discretization before
 requesting histogram or texture features, and prepare IVH intensities before
 requesting IVH features. GUI and batch extraction perform IVH preparation
-automatically according to the selected modality.
+automatically according to the selected modality by default; the batch API
+also accepts custom IVH settings.
 Use ``include_metadata=True`` to include the shortest bounding-box side length, voxel count, and
 discretized-bin count.
 

@@ -821,6 +821,34 @@ def test_batch_custom_ivh_settings_write_features_to_csv(tmp_path):
 
 
 @pytest.mark.unit
+@pytest.mark.parametrize('modality', ['PET', 'RTDOSE'])
+def test_batch_single_ivh_bin_keeps_other_features_in_csv(tmp_path, modality):
+    input_dir = tmp_path / 'input'
+    output_dir = tmp_path / 'output'
+    case_dir = input_dir / 'case_a'
+    case_dir.mkdir(parents=True)
+    image, mask = _make_irregular_roi()
+    image.array = np.linspace(1.01, 1.09, image.array.size).reshape(image.array.shape)
+    image.save_as_nifti(case_dir / 'image.nii.gz')
+    mask.save_as_nifti(case_dir / 'mask.nii.gz')
+
+    result = _extractor(input_dir, output_dir, modality=modality).run()
+
+    assert result.processed_count == 1
+    assert result.case_results[0].processed_structures == ['mask']
+    assert result.case_results[0].skipped_structures == []
+    assert result.case_results[0].feature_count > 100
+    with (output_dir / 'radiomics.csv').open(newline='') as csv_file:
+        rows = list(csv.DictReader(csv_file))
+    assert len(rows) == 1
+    assert rows[0]['pat_id'] == 'case_a'
+    assert rows[0]['mask_id'] == 'mask'
+    assert float(rows[0]['stat_max']) > float(rows[0]['stat_min'])
+    assert np.isfinite(float(rows[0]['morph_volume']))
+    assert not any(name.startswith('ivh_') for name in rows[0])
+
+
+@pytest.mark.unit
 @pytest.mark.parametrize(
     'modality, ivh_options',
     [('PET', {}), ('RTDOSE', {}), ('CT', {'ivh_method': 'fixed_bin_size', 'ivh_bin_size': 0.25})],

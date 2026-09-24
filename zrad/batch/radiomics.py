@@ -410,6 +410,14 @@ class BatchRadiomicsExtractor:
             number_of_bins=self.number_of_bins,
             bin_size=self.bin_size,
         ).apply(roi_data)
+        radiomics = Radiomics(
+            aggr_dim=self.aggregation_dimension,
+            aggr_method=self.aggregation_method,
+            slice_weighting=self.slice_weighting,
+            slice_median=self.slice_median,
+        )
+        features = radiomics.extract_features(roi_data=roi_data, include_metadata=True)
+
         if self.ivh_method is not None:
             ivh_discretizer = IVHIntensityDiscretizer(
                 method=self.ivh_method,
@@ -422,22 +430,18 @@ class BatchRadiomicsExtractor:
             ivh_discretizer = IVHIntensityDiscretizer(method='fixed_bin_size', bin_size=0.1)
         else:
             ivh_discretizer = IVHIntensityDiscretizer(method='fixed_bin_number', number_of_bins=1000)
-        if ivh_discretizer.method == 'fixed_bin_size' and roi_data.intensity_range is None:
-            # Use the observed lower bound as the IVH anchor when no range is configured.
-            valid_intensities = roi_data.intensity_mask.array[np.isfinite(roi_data.intensity_mask.array)]
-            if valid_intensities.size == 0:
-                raise DataStructureError('No valid intensities remain for IVH extraction.')
-            roi_data = replace(roi_data, intensity_range=(float(valid_intensities.min()), np.inf))
-        roi_data = ivh_discretizer.apply(roi_data)
-        return Radiomics(
-            aggr_dim=self.aggregation_dimension,
-            aggr_method=self.aggregation_method,
-            slice_weighting=self.slice_weighting,
-            slice_median=self.slice_median,
-        ).extract_features(
-            roi_data=roi_data,
-            include_metadata=True,
-        )
+        try:
+            if ivh_discretizer.method == 'fixed_bin_size' and roi_data.intensity_range is None:
+                # Use the observed lower bound as the IVH anchor when no range is configured.
+                valid_intensities = roi_data.intensity_mask.array[np.isfinite(roi_data.intensity_mask.array)]
+                if valid_intensities.size == 0:
+                    raise DataStructureError('No valid intensities remain for IVH extraction.')
+                roi_data = replace(roi_data, intensity_range=(float(valid_intensities.min()), np.inf))
+            roi_data = ivh_discretizer.apply(roi_data)
+            features.update(radiomics.extract_features(roi_data=roi_data, families=['ivh']))
+        except (DataStructureError, ValueError) as exc:
+            logger.warning('IVH features omitted: %s', exc)
+        return features
 
     def _validate_discretization(self) -> None:
         if self.discretization_method == 'Number of Bins':

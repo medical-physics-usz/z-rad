@@ -1,6 +1,6 @@
 import csv
 import logging
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Callable, Sequence
 
@@ -10,7 +10,7 @@ from joblib import Parallel, delayed
 from ..exceptions import DataStructureError, InvalidInputParametersError
 from ..image import Image
 from ..io import get_all_structure_names, get_dicom_files
-from ..preprocessing import IntensityMaskBuilder, Resegmenter, RoiData, TextureDiscretizer
+from ..preprocessing import IntensityMaskBuilder, IVHIntensityDiscretizer, Resegmenter, RoiData, TextureDiscretizer
 from ..radiomics import Radiomics
 from ._utils import (
     find_nifti_file,
@@ -42,12 +42,14 @@ class RadiomicsCaseResult:
         Structure names that produced feature rows.
     skipped_structures : list of str
         Structure names that were requested but did not produce feature rows.
+    omitted_ivh_structures : dict of str to str
+        Structure names whose feature rows omit IVH, mapped to the reason.
     feature_count : int
         Number of features extracted across all processed structures for the
         case.
     error : str or None, optional
-        Case-level error message. Per-structure extraction failures are usually
-        recorded in ``skipped_structures`` instead.
+        Case-level error message. IVH omissions also set this field so they
+        appear in ``BatchResult.errors`` even when the case is processed.
     """
 
     case_name: str
@@ -56,6 +58,7 @@ class RadiomicsCaseResult:
     skipped_structures: list[str] = field(default_factory=list)
     feature_count: int = 0
     error: str | None = None
+    omitted_ivh_structures: dict[str, str] = field(default_factory=dict)
 
 
 @dataclass
@@ -78,7 +81,8 @@ class BatchRadiomicsExtractor:
     input_data_type : {"dicom", "nifti"}
         Input format. Values are normalized to lower-case during validation.
     modality : {"CT", "MRI", "PET", "MG", "US", "RTDOSE"}
-        Image modality used by the image reader.
+        Image modality used by the image reader and to select automatic IVH
+        preparation for unfiltered input.
     aggregation_dimension : {"2D", "2.5D", "3D"}
         Spatial aggregation dimensionality for texture features.
     aggregation_method : {"MERG", "AVER", "SLICE_MERG", "DIR_MERG"}
@@ -110,7 +114,8 @@ class BatchRadiomicsExtractor:
         Bin size used with ``"Bin Size"`` discretization.
     intensity_range : sequence of float, optional
         Two-value lower and upper intensity range used for re-segmentation and
-        bin-size discretization.
+        fixed-bin-size texture discretization. It also sets the IVH bounds for
+        unfiltered images.
     outlier_range : float, optional
         Positive outlier range used during re-segmentation.
     output_filename : str, optional
@@ -119,9 +124,19 @@ class BatchRadiomicsExtractor:
     parallel_backend : {"processes", "threads"}, optional
         Joblib backend preference used when ``number_of_threads`` is greater
         than one. The default is ``"processes"``.
+    ivh_method : {"direct", "fixed_bin_size", "fixed_bin_number"}, optional
+        IVH preparation strategy. If omitted, filtered images use 1000
+        fixed-number bins; otherwise the modality selects the strategy.
+    ivh_number_of_bins : int, optional
+        Number of IVH bins required with ``ivh_method="fixed_bin_number"``.
+    ivh_bin_size : float, optional
+        IVH bin width required with ``ivh_method="fixed_bin_size"``.
 
     Notes
     -----
+    IVH preparation is independent of texture discretization. See
+    :ref:`ivh-discretization` for modality-specific defaults and range behavior.
+
     ``validate()`` normalizes public attributes in place. After validation,
     directories are ``Path`` objects, ``input_data_type`` is lower-case,
     modality and aggregation values are upper-case where applicable, and
@@ -151,6 +166,9 @@ class BatchRadiomicsExtractor:
     outlier_range: float | str | None = None
     output_filename: str = 'radiomics.csv'
     parallel_backend: str = 'processes'
+    ivh_method: str | None = None
+    ivh_number_of_bins: int | str | None = None
+    ivh_bin_size: float | str | None = None
 
     def validate(self) -> None:
         """Validate and normalize radiomics batch configuration.
@@ -203,6 +221,7 @@ class BatchRadiomicsExtractor:
 
         self.intensity_range = _normalize_intensity_range(self.intensity_range)
         self._validate_discretization()
+        self._validate_ivh_discretization()
         self.outlier_range = _normalize_positive_float(self.outlier_range, "outlier_range must be positive.")
 
     def plan(self) -> list[str]:
@@ -243,9 +262,10 @@ class BatchRadiomicsExtractor:
         Notes
         -----
         Missing masks and per-structure extraction failures are recorded as
-        skipped structures. Case-level failures are recorded in the returned
-        result and do not stop the batch. If no feature rows are produced, an
-        empty CSV file is still created.
+        skipped structures. IVH failures retain the other features and are
+        recorded in ``omitted_ivh_structures``. Case-level failures are
+        recorded in the returned result and do not stop the batch. If no
+        feature rows are produced, an empty CSV file is still created.
         """
         self.validate()
         self.output_directory.mkdir(parents=True, exist_ok=True)
@@ -304,7 +324,8 @@ class BatchRadiomicsExtractor:
                     continue
 
                 logger.info("Processing patient: %s with ROI: %s.", case_name, structure_name)
-                features = self._extract_structure_features(image, filtered_image, mask)
+                ivh_errors = []
+                features = self._extract_structure_features(image, filtered_image, mask, ivh_errors=ivh_errors)
             except (DataStructureError, ValueError) as exc:
                 logger.warning("Patient %s with mask %s skipped: %s", case_name, structure_name, exc)
                 result.skipped_structures.append(structure_name)
@@ -315,12 +336,22 @@ class BatchRadiomicsExtractor:
                 continue
 
             result.feature_count += len(features)
+            if ivh_errors:
+                result.omitted_ivh_structures[structure_name] = ivh_errors[0]
+                logger.warning(
+                    "Patient %s with mask %s: IVH features omitted: %s",
+                    case_name,
+                    structure_name,
+                    ivh_errors[0],
+                )
             features['pat_id'] = case_name
             features['mask_id'] = structure_name
             feature_rows.append(features)
             result.processed_structures.append(structure_name)
 
         if result.processed_structures:
+            if result.omitted_ivh_structures:
+                result.error = "IVH features omitted for structures: " + ", ".join(result.omitted_ivh_structures)
             return result, feature_rows
 
         result.status = 'skipped'
@@ -380,7 +411,13 @@ class BatchRadiomicsExtractor:
             return None
         return Image.from_nifti_mask(mask_path, reference=image)
 
-    def _extract_structure_features(self, image: Image, filtered_image: Image | None, mask: Image) -> dict:
+    def _extract_structure_features(
+        self,
+        image: Image,
+        filtered_image: Image | None,
+        mask: Image,
+        ivh_errors: list[str] | None = None,
+    ) -> dict:
         roi_data = IntensityMaskBuilder().apply(
             RoiData(
                 image=image,
@@ -396,15 +433,46 @@ class BatchRadiomicsExtractor:
             number_of_bins=self.number_of_bins,
             bin_size=self.bin_size,
         ).apply(roi_data)
-        return Radiomics(
+        radiomics = Radiomics(
             aggr_dim=self.aggregation_dimension,
             aggr_method=self.aggregation_method,
             slice_weighting=self.slice_weighting,
             slice_median=self.slice_median,
-        ).extract_features(
-            roi_data=roi_data,
-            include_metadata=True,
         )
+        features = radiomics.extract_features(roi_data=roi_data, include_metadata=True)
+
+        if self.ivh_method is not None:
+            ivh_discretizer = IVHIntensityDiscretizer(
+                method=self.ivh_method,
+                number_of_bins=self.ivh_number_of_bins,
+                bin_size=self.ivh_bin_size,
+            )
+        elif filtered_image is not None:
+            ivh_discretizer = IVHIntensityDiscretizer(method='fixed_bin_number', number_of_bins=1000)
+        elif self.modality == 'CT':
+            ivh_discretizer = IVHIntensityDiscretizer(method='direct')
+        elif self.modality in {'PET', 'RTDOSE'}:
+            ivh_discretizer = IVHIntensityDiscretizer(method='fixed_bin_size', bin_size=0.1)
+        else:
+            ivh_discretizer = IVHIntensityDiscretizer(method='fixed_bin_number', number_of_bins=1000)
+        try:
+            if filtered_image is not None:
+                # The original-image range selects voxels, not the filtered IVH axis.
+                roi_data = replace(roi_data, intensity_range=None)
+            if ivh_discretizer.method == 'fixed_bin_size' and roi_data.intensity_range is None:
+                # Use the observed lower bound as the IVH anchor when no range is configured.
+                valid_intensities = roi_data.intensity_mask.array[np.isfinite(roi_data.intensity_mask.array)]
+                if valid_intensities.size == 0:
+                    raise DataStructureError('No valid intensities remain for IVH extraction.')
+                roi_data = replace(roi_data, intensity_range=(float(valid_intensities.min()), np.inf))
+            roi_data = ivh_discretizer.apply(roi_data)
+            features.update(radiomics.extract_features(roi_data=roi_data, families=['ivh']))
+        except (DataStructureError, ValueError) as exc:
+            if ivh_errors is None:
+                logger.warning('IVH features omitted: %s', exc)
+            else:
+                ivh_errors.append(str(exc))
+        return features
 
     def _validate_discretization(self) -> None:
         if self.discretization_method == 'Number of Bins':
@@ -417,6 +485,29 @@ class BatchRadiomicsExtractor:
             self.number_of_bins = None
         else:
             raise InvalidInputParametersError("discretization_method must be 'Number of Bins' or 'Bin Size'.")
+
+    def _validate_ivh_discretization(self) -> None:
+        if self.ivh_method is None:
+            if self.ivh_number_of_bins is not None or self.ivh_bin_size is not None:
+                raise InvalidInputParametersError("ivh_method is required when IVH bin settings are provided.")
+            return
+
+        self.ivh_method = require_text(self.ivh_method, "ivh_method is required.").lower()
+        if self.ivh_method == 'direct':
+            if self.ivh_number_of_bins is not None or self.ivh_bin_size is not None:
+                raise InvalidInputParametersError("direct IVH does not accept IVH bin settings.")
+        elif self.ivh_method == 'fixed_bin_number':
+            if self.ivh_bin_size is not None:
+                raise InvalidInputParametersError("fixed_bin_number IVH does not accept ivh_bin_size.")
+            self.ivh_number_of_bins = _require_positive_int(
+                self.ivh_number_of_bins, "ivh_number_of_bins must be a positive integer."
+            )
+        elif self.ivh_method == 'fixed_bin_size':
+            if self.ivh_number_of_bins is not None:
+                raise InvalidInputParametersError("fixed_bin_size IVH does not accept ivh_number_of_bins.")
+            self.ivh_bin_size = _require_positive_float(self.ivh_bin_size, "ivh_bin_size must be positive.")
+        else:
+            raise InvalidInputParametersError("ivh_method must be 'direct', 'fixed_bin_size', or 'fixed_bin_number'.")
 
 
 def _write_radiomics_csv(file_path: Path, features: list[dict]) -> None:
@@ -442,13 +533,13 @@ def _write_radiomics_csv(file_path: Path, features: list[dict]) -> None:
 
 
 def _require_positive_int(value, message: str) -> int:
-    if value is None or str(value).strip() == '':
+    if value is None or isinstance(value, bool) or str(value).strip() == '':
         raise InvalidInputParametersError(message)
     try:
         result = int(value)
     except (TypeError, ValueError):
         raise InvalidInputParametersError(message)
-    if result <= 0:
+    if result <= 0 or (isinstance(value, (float, np.floating)) and value != result):
         raise InvalidInputParametersError(message)
     return result
 

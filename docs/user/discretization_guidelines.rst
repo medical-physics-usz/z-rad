@@ -65,74 +65,59 @@ run ``Resegmenter(intensity_range=...)`` before
 For the order of processing steps, see :doc:`api_workflows` and
 :doc:`resegmentation_guidelines`.
 
+.. _ivh-discretization:
+
 IVH-specific discretization
 ---------------------------
 
 IVH features describe the fraction of ROI voxels with intensity at least a
-selected level. They need a fine, ordered intensity axis, so choose their
-settings separately from texture discretization. A coarse texture setting
-such as ``32`` bins should not automatically be reused for IVH.
+selected level. Their intensity preparation is independent of the texture and
+histogram bins set by the GUI's ``Discretization`` control.
 
-IVH extraction is available through the Python API. Prepare its intensities
-with ``IVHIntensityDiscretizer`` before requesting IVH features.
+GUI and batch extraction use the defaults below for unfiltered images and
+``1000`` fixed-number bins for filtered images, regardless of modality.
+In the single-ROI API, use ``IVHIntensityDiscretizer`` with the listed arguments.
+Batch callers can override the defaults with ``ivh_method`` and, where needed,
+``ivh_bin_size`` or ``ivh_number_of_bins``.
 
-Choose an IVH strategy
-~~~~~~~~~~~~~~~~~~~~~~
-
-.. list-table::
+.. list-table:: Automatic IVH settings
    :header-rows: 1
-   :widths: 25 35 40
+   :widths: 20 40 40
 
-   * - Intensity type
-     - Strategy
-     - Example arguments
-   * - Discrete calibrated values, such as integer CT HU
-     - Use retained intensities directly with a step of ``1``.
+   * - Selected modality
+     - Automatic preparation
+     - Equivalent single-ROI Python arguments
+   * - CT
+     - Use retained intensities directly with a step of ``1`` (HU for
+       unfiltered CT).
      - ``method="direct"``
-   * - Continuous calibrated values, such as PET SUV
-     - Use a small fixed bin width and a consistent lower origin.
-     - ``method="fixed_bin_size"``,
-       ``bin_size=0.1``
-   * - Arbitrary units, such as raw MRI
-     - Use a fine fixed bin number.
-     - ``method="fixed_bin_number"``,
-       ``number_of_bins=1000``
+   * - PET and RTDOSE
+     - Use fixed-width bins of ``0.1`` (SUV for PET or Gy for physical dose).
+     - ``method="fixed_bin_size"``, ``bin_size=0.1``
+   * - MRI, MG, and US
+     - Divide the retained intensity range into ``1000`` bins.
+     - ``method="fixed_bin_number"``, ``number_of_bins=1000``
 
-Fixed-bin-size IVH preparation also requires a preceding re-segmentation range.
-Its intensity axis uses bin-centre values: with a lower bound of ``0`` SUV and
-a bin width of ``0.1`` SUV, the centres start at ``0.05, 0.15, 0.25, ...`` SUV.
-Fixed-bin-number IVH preparation uses the discretized range, such as
-``[1, 1000]`` for ``1000`` bins.
+Range and interpretation
+~~~~~~~~~~~~~~~~~~~~~~~~
 
-Interpret the IVH range
-~~~~~~~~~~~~~~~~~~~~~~~
+For unfiltered images, re-segmentation bounds help define the direct or
+fixed-bin-size IVH range. For fixed bin size, the lower bound anchors the bins;
+GUI and batch extraction use the observed ROI minimum when no range is set.
+The single-ROI API requires a preceding re-segmentation range for fixed bin size.
+Fixed-width bins are represented by their centres. Fixed-bin-number preparation
+uses the discretized range, such as ``[1, 1000]`` for ``1000`` bins.
 
-Two fractions describe the curve:
-
-* **Volume fraction:** the fraction of ROI voxels with intensity at least the
-  selected level.
-* **Intensity fraction:** the position of that level within the full IVH
-  intensity range.
+For filtered images, GUI and batch extraction use the retained filtered
+intensities to define the IVH range, including with custom batch settings.
+Re-segmentation still selects voxels using the original image, but its bounds
+do not define the filtered IVH axis.
 
 ``V10`` and ``V90`` are volume fractions at ``10%`` and ``90%`` of the intensity
-range. ``I10`` and ``I90`` are intensities corresponding to ``10%`` and ``90%``
-volume fractions. Differences such as ``V10 - V90`` and ``I10 - I90`` summarize
-the separation between these points.
-
-The re-segmentation range helps define the IVH range; it is not a separate
-IVH-only voxel-selection step. For example, direct CT preparation with a range
-of ``[-500, 400]`` HU uses those bounds and an interval of ``1`` HU.
-
-``V10`` means the volume fraction above the level at ``10%`` of the IVH range,
-not above an intensity value of ``10``. For illustration, before any bin-centre
-adjustment:
-
-* a range of ``[0, 20]`` SUV places the ``10%`` level at ``2`` SUV
-* a range of ``[2, 12]`` SUV places it at ``3`` SUV
-
-The same lesion can therefore have different ``V10`` and ``V90`` values when
-the IVH range changes. Keep the range definition consistent across cases and
-report whether it came from re-segmentation bounds or observed ROI values.
+range; ``I10`` and ``I90`` are intensities corresponding to ``10%`` and ``90%``
+volume fractions. Keep the range definition consistent across cases, since it
+affects these features. In particular, RTDOSE ``V10`` refers to a relative
+intensity threshold, not the clinical dose-volume-histogram ``V10 Gy``.
 
 What to report
 --------------

@@ -82,9 +82,8 @@ In Python, apply ``Resegmenter`` after ``IntensityMaskBuilder`` and before
 previously prepared texture and IVH images because the intensity population
 has changed. See :doc:`api_workflows` for a complete pipeline.
 
-A configured intensity range is also used by discretization: its lower bound
-anchors fixed-bin-size bins, and its bounds help define the IVH intensity
-range. See :doc:`discretization_guidelines`.
+A configured intensity range also affects bin origins and intensity ranges
+used during discretization; see :doc:`discretization_guidelines`.
 
 What to report
 --------------

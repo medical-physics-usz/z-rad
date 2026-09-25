@@ -30,7 +30,8 @@ The CSV starts with the following columns:
    * - ``no_bins``
      - Number of distinct occupied grey levels in the discretized intensity
        image used for histogram or texture calculation. It can be smaller than
-       the requested bin count. The single-ROI API reports zero when the
+       the requested bin count. It does not describe IVH discretization.
+       The single-ROI API reports zero when the
        selected families do not use that discretized image.
 
 The bounding-box and voxel-count fields describe the analysis mask after
@@ -52,10 +53,10 @@ dictionary containing an entry approximately equal to:
    {"stat_mean": -46.88}  # Selected entry, rounded for display; CT intensity in HU.
 
 Feature prefixes identify families: ``stat_`` denotes intensity statistics,
-``morph_`` morphology, and ``cm_`` co-occurrence-matrix features. Units depend
-on the feature and input image: the CT mean is in HU, whereas the mean of a
-filtered image uses that filter's response units.
-
+``morph_`` morphology, ``cm_`` co-occurrence-matrix features, and ``ivh_``
+intensity-volume histogram features. Units depend on the feature and input
+image: the CT mean is
+in HU, whereas the mean of a filtered image uses that filter's response units.
 The texture name ``cm_contrast_3D_avg`` means GLCM contrast calculated with
 3D neighbourhoods and averaged across directions. GLCM and GLRLM names end in
 a dimension and aggregation suffix:
@@ -80,6 +81,12 @@ Compare the actual ``(pat_id, mask_id)`` pairs with the cases and structures you
 requested. A missing or rejected mask produces no feature row. Other masks in
 the same case can still succeed. If every extraction is skipped, batch
 extraction still creates an empty CSV file.
+
+If batch IVH preparation or extraction fails, the affected structure retains
+its other features but has blank IVH values. If IVH fails for every structure,
+the CSV has no ``ivh_`` columns. Inspect ``omitted_ivh_structures`` on each
+radiomics case result for the reasons, including for processed cases; see
+:doc:`api_batch`.
 
 A non-finite feature value, such as ``NaN``, is different from a missing row:
 extraction returned that feature, but a numeric value may be undefined for the

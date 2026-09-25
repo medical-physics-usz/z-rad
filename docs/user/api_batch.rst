@@ -108,6 +108,9 @@ Batch radiomics
    for case in result.errors:
        print(case.case_name, case.error)
 
+IVH preparation is automatic and independent of texture discretization.
+See :ref:`ivh-discretization` for defaults, Python overrides, and range behavior.
+
 Inspect the result
 ------------------
 
@@ -132,8 +135,17 @@ these even when ``failed_count`` is zero:
 
 A radiomics case is counted as processed if at least one structure produces
 features. Another structure in that case can be skipped without a case-level
-error. Check the requested case/mask pairs against the CSV; see :doc:`results`
-for metadata and feature-name explanations.
+error. IVH omissions are reported separately, including for processed cases:
+
+.. code-block:: python
+
+   for case in result.case_results:
+       for structure, reason in case.omitted_ivh_structures.items():
+           print(case.case_name, structure, reason)
+
+These cases also appear in ``result.errors``. Check the requested case/mask
+pairs against the CSV; see :doc:`results` for metadata and feature-name
+explanations.
 
 Preprocessing saves each image as ``image.nii.gz`` and each mask under its
 structure name. Use those names when configuring the next step. Filtering

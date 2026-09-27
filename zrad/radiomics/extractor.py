@@ -1,7 +1,11 @@
+import numpy as np
+
 from ..preprocessing import RoiData
 from .extraction_context import ExtractionContext
 from .extraction_preparation import build_extraction_metadata, prepare_extraction_data
 from .feature_registry import resolve_groups
+from .texture_extraction import ExtractionResult, build_texture_family, calculate_texture_family
+from .texture_matrices import TEXTURE_FAMILIES
 
 
 class Radiomics:
@@ -73,6 +77,8 @@ class Radiomics:
         families=None,
         features=None,
         include_metadata=False,
+        *,
+        texture_options=None,
     ):
         """Run radiomics feature extraction.
 
@@ -105,6 +111,11 @@ class Radiomics:
             Metadata currently includes the minimum bounding-box side length,
             voxel count, and number of discretized texture bins.
 
+        texture_options : dict, optional
+            Per-family matrix options, e.g. {"glcm": {"directions": [(0, 0, 1)]}}.
+            Offsets use Image.array order (z, y, x). Asymmetric GLCM feature
+            extraction is not supported.
+
         Returns
         -------
         features : dict
@@ -133,6 +144,59 @@ class Radiomics:
         * ``"local_intensity"`` and ``"intensity_statistics"`` use the
           non-discretized intensity mask.
         """
+        return self._extract(roi_data, families, features, include_metadata, texture_options, False)
+
+    def calculate_texture_matrices(self, roi_data, families=None, *, texture_options=None):
+        """Build unmerged texture matrices from the effective extraction ROI.
+
+        Defaults to all six texture families. Applies the same ROI validation
+        and prepared discretization as extract_features, without evaluating any
+        features. Returns a family-to-TextureMatrixCollection mapping. Unlike
+        feature extraction, GLCM symmetric=False is supported here. For tiny
+        arrays without extraction geometry checks, use a family calculator's
+        calculate_matrices method instead.
+        """
+        context = self._build_context(roi_data)
+        if families is None or (isinstance(families, str) and families == 'all'):
+            families = TEXTURE_FAMILIES
+        groups, _ = resolve_groups(context, families=families)
+        if any(group.family not in TEXTURE_FAMILIES for group in groups):
+            raise ValueError('calculate_texture_matrices accepts texture families only.')
+        options = dict(texture_options or {})
+        if set(options) - {group.family for group in groups}:
+            raise ValueError('Texture options must refer to selected families.')
+        prepared = prepare_extraction_data(context, groups)
+        return {
+            group.family: build_texture_family(group, context, prepared, options=options.get(group.family))[1]
+            for group in groups
+        }
+
+    def extract_with_details(
+        self,
+        roi_data=None,
+        families=None,
+        features=None,
+        include_metadata=False,
+        *,
+        retain_matrices="all",
+        texture_options=None,
+    ):
+        """Extract features and retain the exact texture calculation trace.
+
+        Returns an ExtractionResult with features, per-family texture traces,
+        effective discretized_image and morphological_mask arrays, and indices
+        of slices removed by ROI validation. Traces contain raw matrices, exact
+        formula inputs, per-matrix features, merge provenance and reduction
+        weights. ``retain_matrices`` currently supports only ``"all"``; ordinary
+        ``extract_features`` does not retain matrices after returning.
+
+        Family/feature selection and texture_options match extract_features.
+        """
+        if retain_matrices != 'all':
+            raise ValueError('retain_matrices currently supports only "all".')
+        return self._extract(roi_data, families, features, include_metadata, texture_options, True)
+
+    def _extract(self, roi_data, families, features, include_metadata, texture_options, retain):
         context = self._build_context(roi_data)
         groups, selected_features = resolve_groups(context, families=families, features=features)
         prepared_data = prepare_extraction_data(
@@ -141,9 +205,26 @@ class Radiomics:
             include_metadata=include_metadata,
         )
 
+        texture_options = dict(texture_options or {})
+        selected_families = {group.family for group in groups}
+        invalid_options = set(texture_options) - (selected_families & set(TEXTURE_FAMILIES))
+        if invalid_options:
+            raise ValueError(f'Texture options refer to unselected or unsupported families: {sorted(invalid_options)}.')
         extracted = {}
+        traces = {}
         for group in groups:
-            if selected_features is None:
+            if group.family in TEXTURE_FAMILIES:
+                values, trace = calculate_texture_family(
+                    group,
+                    context,
+                    prepared_data,
+                    retain=retain,
+                    options=texture_options.get(group.family),
+                )
+                extracted.update(values)
+                if retain:
+                    traces[group.family] = trace
+            elif selected_features is None:
                 extracted.update(group.calculate(context, prepared_data))
             else:
                 group_features = [name for name in selected_features if name in group.output_names(context)]
@@ -154,6 +235,18 @@ class Radiomics:
         if include_metadata:
             extracted.update(build_extraction_metadata(prepared_data))
 
+        if retain:
+            masks = prepared_data.analysis_masks
+            morphology = None if masks is None else masks.morphological_mask.array
+            discretized = prepared_data.discretized_intensity_image
+            excluded = ()
+            if morphology is not None:
+                before = np.any(roi_data.morphological_mask.array > 0, axis=(1, 2))
+                after = np.any(morphology > 0, axis=(1, 2))
+                excluded = tuple(int(i) for i in np.flatnonzero(before & ~after))
+            return ExtractionResult(
+                extracted, traces, None if discretized is None else discretized.array, morphology, excluded
+            )
         return extracted
 
     def _build_context(self, roi_data):

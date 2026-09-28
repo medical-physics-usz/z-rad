@@ -1,9 +1,7 @@
-import numpy as np
-
-from ..exceptions import DataStructureError
 from .base import BaseFeatureGroup
 from .texture_aggregation import format_texture_feature_names
 from .texture_base import TEXTURE_ATTRIBUTE_NAMES, ZoneMatrixFeatureBase
+from .texture_matrices import TextureMatrixMixin
 
 GLSZM_FEATURE_NAMES = (
     'szm_sze',
@@ -25,7 +23,7 @@ GLSZM_FEATURE_NAMES = (
 )
 
 
-class GLSZM(ZoneMatrixFeatureBase):
+class GLSZM(TextureMatrixMixin, ZoneMatrixFeatureBase):
     """Grey level size zone matrix features.
 
     GLSZM features describe connected zones of equal discretized grey level and
@@ -41,6 +39,8 @@ class GLSZM(ZoneMatrixFeatureBase):
     slice_median : bool, default=False
         Aggregate 2D slice-wise values by median instead of mean.
     """
+
+    matrix_family = 'glszm'
 
     def __init__(self, aggr_dim, slice_weight=False, slice_median=False):
         super().__init__(slice_weight=slice_weight, slice_median=slice_median)
@@ -74,33 +74,14 @@ class GLSZM(ZoneMatrixFeatureBase):
     def _map_feature_names(values):
         return dict(zip(GLSZM_FEATURE_NAMES, [values[name] for name in TEXTURE_ATTRIBUTE_NAMES]))
 
-    def _calc_2d_features(self, matrices, roi_voxel_counts, total_roi_voxels):
-        feature_dicts = []
-        weights = []
-        for slice_index, matrix in enumerate(matrices):
-            if self.slice_weight:
-                if total_roi_voxels == 0:
-                    raise DataStructureError(' Denominator is zero in calc_2d_glszm_features.')
-                weights.append(roi_voxel_counts[slice_index] / total_roi_voxels)
-            else:
-                weights.append(1.0)
-            feature_dicts.append(self._matrix_feature_values(matrix, roi_voxel_counts[slice_index]))
-        return self._aggregate_feature_dicts(feature_dicts, None if self.slice_median else weights)
-
-    def _calc_2_5d_features(self, matrices, roi_voxel_counts):
-        matrix = np.sum(matrices, axis=0)
-        return self._matrix_feature_values(matrix, np.sum(roi_voxel_counts))
-
-    def _calc_3d_features(self, matrix, total_roi_voxels):
-        return self._matrix_feature_values(matrix, total_roi_voxels)
-
     def calculate_features(self, discretized_image_array):
         """Calculate GLSZM features for prepared discretized intensities.
 
         Parameters
         ----------
         discretized_image_array : numpy.ndarray
-            Prepared discretized intensity array with voxels outside the ROI set
+            Legacy (x, y, z) array. Use calculate_matrices for NumPy (z, y, x)
+            or 2D (row, column) inputs. Prepared discretized intensity array with voxels outside the ROI set
             to ``NaN``.
 
         Returns
@@ -108,20 +89,7 @@ class GLSZM(ZoneMatrixFeatureBase):
         dict
             Mapping of GLSZM feature names to calculated values.
         """
-        discretized_image_array = np.asarray(discretized_image_array)
-        lvl = int(np.nanmax(discretized_image_array) + 1)
-
-        if self.aggr_dim == '3D':
-            glszm_matrix, total_roi_voxels = self._calc_glsz_3d_matrix(discretized_image_array, lvl)
-            return self._map_feature_names(self._calc_3d_features(glszm_matrix, total_roi_voxels))
-
-        glszm_matrices, roi_voxel_counts = self._calc_glsz_2d_matrices(discretized_image_array, lvl)
-        total_roi_voxels = np.sum(roi_voxel_counts)
-        if self.aggr_dim == '2.5D':
-            values = self._calc_2_5d_features(glszm_matrices, roi_voxel_counts)
-        else:
-            values = self._calc_2d_features(glszm_matrices, roi_voxel_counts, total_roi_voxels)
-        return self._map_feature_names(values)
+        return self._legacy_features(discretized_image_array)
 
 
 class GLSZMFeatureGroup(BaseFeatureGroup):
@@ -141,13 +109,6 @@ class GLSZMFeatureGroup(BaseFeatureGroup):
         return aliases
 
     def calculate(self, context, prepared_data):
-        glszm = GLSZM(
-            aggr_dim=context.aggr_dim,
-            slice_weight=context.slice_weighting,
-            slice_median=context.slice_median,
-        )
-        feature_values = glszm.calculate_features(prepared_data.require_discretized_intensity_image().array.T)
-        return {
-            output_name: feature_values[base_name]
-            for output_name, base_name in zip(self.output_names(context), GLSZM_FEATURE_NAMES)
-        }
+        from .texture_extraction import calculate_texture_family
+
+        return calculate_texture_family(self, context, prepared_data)[0]

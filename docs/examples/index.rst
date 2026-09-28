@@ -70,6 +70,12 @@ before reusing or redistributing the data.
 
       Prepare an intensity mask and extract statistics and GLCM features.
 
+   .. grid-item-card:: Inspect texture matrices
+      :link: api_texture_matrices
+      :link-type: doc
+
+      Build matrices from NumPy arrays and Images and inspect extraction inputs.
+
    .. grid-item-card:: Compare original and filtered radiomics
       :link: api_filtered_radiomics
       :link-type: doc
@@ -93,5 +99,6 @@ before reusing or redistributing the data.
    api_preprocess_dicom
    api_compare_filters
    api_extract_radiomics
+   api_texture_matrices
    api_filtered_radiomics
    api_batch_cases

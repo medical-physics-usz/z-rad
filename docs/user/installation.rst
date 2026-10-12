@@ -24,7 +24,7 @@ Continue with :doc:`gui_quickstart` once the application opens.
 Python environment
 ------------------
 
-Python workflows require Python 3.11 or newer on Windows, macOS, or Linux.
+Python workflows support Python 3.12–3.15 on Windows, macOS, or Linux.
 Choose one route: install the published package for your own scripts, or follow
 :ref:`installation-from-source` for this documentation's bundled quickstart and
 source GUI. For the source route, clone first and create the environment inside

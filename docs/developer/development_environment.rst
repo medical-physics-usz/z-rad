@@ -1,7 +1,7 @@
 Development environment
 =======================
 
-Z-Rad requires Python 3.11 or newer. See :doc:`ci` for the versions tested in
+Z-Rad supports Python 3.12–3.15. See :doc:`ci` for the versions tested in
 GitHub Actions. Use a separate environment for each checkout so imports and
 commands use the code you intend to change.
 

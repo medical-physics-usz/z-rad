@@ -20,11 +20,11 @@ request targeting ``master`` and push means a push to ``master``.
      - Purpose and result
    * - ``test.yml``
      - PR and push
-     - Unit and integration tests on Python 3.11, 3.12, 3.13, and 3.14;
+     - Unit and integration tests on Python 3.12, 3.13, 3.14, and 3.15;
        coverage and IBSI validation artifacts.
    * - ``python-lint.yml``
      - PR and push
-     - Ruff formatting and lint checks on Python 3.11.
+     - Ruff formatting and lint checks on Python 3.12.
    * - ``lint.yml``
      - PR and push
      - Super-Linter checks on changed files.

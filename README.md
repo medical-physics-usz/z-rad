@@ -98,7 +98,7 @@ The macOS app is currently unsigned and unnotarized, so Gatekeeper may show a wa
 
 ### Python quickstart
 
-**Requires Python 3.11 or newer.** Install the published package:
+**Supports Python 3.12–3.15.** Install the published package:
 
 ```sh
 python -m pip install z-rad

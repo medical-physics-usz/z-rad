@@ -3,7 +3,7 @@ import numpy as np
 from ..exceptions import DataStructureError
 from .base import BaseFeatureGroup
 from .texture_aggregation import format_cm_rlm_feature_names
-from .texture_base import crop_to_valid_bbox
+from .texture_matrices import TextureMatrixMixin
 
 GLCM_FEATURE_NAMES = (
     'cm_joint_max',
@@ -34,7 +34,7 @@ GLCM_FEATURE_NAMES = (
 )
 
 
-class GLCM:
+class GLCM(TextureMatrixMixin):
     """Grey level co-occurrence matrix features.
 
     GLCM features summarize how often pairs of discretized grey levels occur at
@@ -52,6 +52,8 @@ class GLCM:
     slice_median : bool, default=False
         Aggregate slice-wise values by median instead of mean.
     """
+
+    matrix_family = 'glcm'
 
     def __init__(self, aggr_dim, aggr_method, slice_weight=False, slice_median=False):
         self.aggr_dim = aggr_dim
@@ -90,7 +92,8 @@ class GLCM:
         Parameters
         ----------
         discretized_image_array : numpy.ndarray
-            Prepared discretized intensity array with ROI voxels represented by
+            Legacy (x, y, z) array. Use calculate_matrices for NumPy (z, y, x)
+            or 2D (row, column) inputs. Prepared discretized intensity array with ROI voxels represented by
             integer grey levels and voxels outside the ROI set to ``NaN``.
 
         Returns
@@ -98,122 +101,7 @@ class GLCM:
         dict
             Mapping of GLCM feature names to calculated values.
         """
-        discretized_image_array = np.asarray(discretized_image_array)
-        lvl = int(np.nanmax(discretized_image_array) + 1)
-        tot_no_of_roi_voxels = int(np.sum(~np.isnan(discretized_image_array)))
-
-        if self.aggr_dim == '3D':
-            glcm_3d_matrices = self._calc_3d_matrices(discretized_image_array, lvl)
-            if self.aggr_method == 'AVER':
-                return self._calc_3d_averaged_glcm_features(glcm_3d_matrices)
-            if self.aggr_method == 'MERG':
-                return self._calc_3d_merged_glcm_features(glcm_3d_matrices)
-        else:
-            glcm_2d_matrices, slice_no_of_roi_voxels = self._calc_2d_matrices(discretized_image_array, lvl)
-            if self.aggr_method == 'DIR_MERG':
-                return self._calc_2_5d_direction_merged_glcm_features(glcm_2d_matrices)
-            if self.aggr_method == 'MERG':
-                return self._calc_2_5d_merged_glcm_features(glcm_2d_matrices)
-            if self.aggr_method == 'AVER':
-                return self._calc_2d_averaged_glcm_features(
-                    glcm_2d_matrices,
-                    slice_no_of_roi_voxels,
-                    tot_no_of_roi_voxels,
-                )
-            if self.aggr_method == 'SLICE_MERG':
-                return self._calc_2d_slice_merged_glcm_features(
-                    glcm_2d_matrices,
-                    slice_no_of_roi_voxels,
-                    tot_no_of_roi_voxels,
-                )
-        raise DataStructureError(
-            f'Unsupported GLCM aggregation: aggr_dim={self.aggr_dim}, aggr_method={self.aggr_method}.'
-        )
-
-    @staticmethod
-    def _calc_2d_matrices(image, lvl):
-        def calc_2d_glcm_slice(image_slice, direction):
-            dx, dy, *_ = direction
-            rows, cols = image_slice.shape
-            glcm_slice = np.zeros((lvl, lvl), dtype=int)
-            nan_mask = np.isnan(image_slice)
-
-            valid_i = np.arange(rows - dx) if dx >= 0 else np.arange(-dx, rows)
-            valid_j = np.arange(cols - dy) if dy >= 0 else np.arange(-dy, cols)
-            i_grid, j_grid = np.meshgrid(valid_i, valid_j, indexing='ij')
-
-            row_pixels = image_slice[i_grid, j_grid]
-            col_pixels = image_slice[i_grid + dx, j_grid + dy]
-            valid_pairs = ~nan_mask[i_grid, j_grid] & ~nan_mask[i_grid + dx, j_grid + dy]
-            np.add.at(
-                glcm_slice,
-                (row_pixels[valid_pairs].astype(int), col_pixels[valid_pairs].astype(int)),
-                1,
-            )
-            return glcm_slice
-
-        glcm_2d_matrices = []
-        slice_no_of_roi_voxels = []
-        for z_index in range(image.shape[2]):
-            if np.all(np.isnan(image[:, :, z_index])):
-                continue
-            slice_no_of_roi_voxels.append(int(np.sum(~np.isnan(image[:, :, z_index]))))
-            z_slice_matrices = []
-            for direction_2d in ([1, 0, 0], [1, 1, 0], [0, 1, 0], [-1, 1, 0]):
-                glcm = calc_2d_glcm_slice(image[:, :, z_index], direction_2d)
-                z_slice_matrices.append(glcm + glcm.T)
-            glcm_2d_matrices.append(z_slice_matrices)
-
-        return np.array(glcm_2d_matrices), np.array(slice_no_of_roi_voxels, dtype=float)
-
-    @staticmethod
-    def _calc_3d_matrices(image, lvl):
-        image = crop_to_valid_bbox(image)
-        glcm_3d_matrices = []
-        for direction_3d in (
-            [0, 0, 1],
-            [0, 1, 0],
-            [1, 0, 0],
-            [0, 1, 1],
-            [0, 1, -1],
-            [1, 0, 1],
-            [1, 0, -1],
-            [1, 1, 0],
-            [1, -1, 0],
-            [1, 1, 1],
-            [1, 1, -1],
-            [1, -1, 1],
-            [1, -1, -1],
-        ):
-            co_matrix = np.zeros((lvl, lvl), dtype=np.float64)
-            depth, height, width = image.shape
-            min_i = max(0, -direction_3d[2])
-            min_y = max(0, -direction_3d[1])
-            min_x = max(0, -direction_3d[0])
-            max_i = min(depth, depth - direction_3d[2])
-            max_y = min(height, height - direction_3d[1])
-            max_x = min(width, width - direction_3d[0])
-
-            arr1 = image[min_i:max_i, min_y:max_y, min_x:max_x]
-            arr2 = image[
-                min_i + direction_3d[2] : max_i + direction_3d[2],
-                min_y + direction_3d[1] : max_y + direction_3d[1],
-                min_x + direction_3d[0] : max_x + direction_3d[0],
-            ]
-            not_nan_mask = np.logical_and(~np.isnan(arr1), ~np.isnan(arr2))
-            y_cm_values = arr1[not_nan_mask].astype(int)
-            x_cm_values = arr2[not_nan_mask].astype(int)
-
-            if y_cm_values.size:
-                flat_indices = y_cm_values * lvl + x_cm_values
-                reverse_flat_indices = x_cm_values * lvl + y_cm_values
-                co_matrix += np.bincount(
-                    np.concatenate((flat_indices, reverse_flat_indices)),
-                    minlength=lvl * lvl,
-                ).reshape(lvl, lvl)
-            glcm_3d_matrices.append(co_matrix)
-
-        return np.array(glcm_3d_matrices)
+        return self._legacy_features(discretized_image_array)
 
     @staticmethod
     def _calc_p_minus(matrix):
@@ -426,95 +314,6 @@ class GLCM:
             'cm_info_corr2': cls._calc_information_correlation_2(matrix),
         }
 
-    def _aggregate_feature_dicts(self, feature_dicts, weights=None):
-        if not feature_dicts:
-            raise DataStructureError('No GLCM matrices available for aggregation.')
-        if self.slice_median:
-            if weights is not None:
-                raise DataStructureError('Weighted median is not supported for GLCM aggregation.')
-            return {
-                feature_name: float(np.median([values[feature_name] for values in feature_dicts]))
-                for feature_name in GLCM_FEATURE_NAMES
-            }
-        return {
-            feature_name: float(np.average([values[feature_name] for values in feature_dicts], weights=weights))
-            for feature_name in GLCM_FEATURE_NAMES
-        }
-
-    def _calc_2d_averaged_glcm_features(self, glcm_2d_matrices, slice_no_of_roi_voxels, tot_no_of_roi_voxels):
-        feature_dicts = []
-        weights = []
-        for slice_index in range(glcm_2d_matrices.shape[0]):
-            for direction_index in range(glcm_2d_matrices.shape[1]):
-                glcm_slice = self._normalize_matrix(
-                    glcm_2d_matrices[slice_index][direction_index],
-                    'calc_2d_averaged_glcm_features',
-                )
-                feature_dicts.append(self._feature_values(glcm_slice))
-                if self.slice_weight:
-                    if tot_no_of_roi_voxels == 0:
-                        raise DataStructureError('tot_no_of_roi_voxels in calc_2d_averaged_glcm_features is zero.')
-                    weights.append(slice_no_of_roi_voxels[slice_index] / tot_no_of_roi_voxels)
-                else:
-                    weights.append(1.0)
-        return self._aggregate_feature_dicts(
-            feature_dicts,
-            None if self.slice_median and not self.slice_weight else weights,
-        )
-
-    def _calc_2d_slice_merged_glcm_features(self, glcm_2d_matrices, slice_no_of_roi_voxels, tot_no_of_roi_voxels):
-        averaged_glcm = np.sum(glcm_2d_matrices, axis=1)
-        feature_dicts = []
-        weights = []
-        for slice_index in range(averaged_glcm.shape[0]):
-            glcm_slice = self._normalize_matrix(
-                averaged_glcm[slice_index],
-                'calc_2d_slice_merged_glcm_features',
-            )
-            feature_dicts.append(self._feature_values(glcm_slice))
-            if self.slice_weight:
-                if tot_no_of_roi_voxels == 0:
-                    raise DataStructureError('tot_no_of_roi_voxels in calc_2d_slice_merged_glcm_features is zero.')
-                weights.append(slice_no_of_roi_voxels[slice_index] / tot_no_of_roi_voxels)
-            else:
-                weights.append(1.0)
-        return self._aggregate_feature_dicts(
-            feature_dicts,
-            None if self.slice_median and not self.slice_weight else weights,
-        )
-
-    def _calc_2_5d_merged_glcm_features(self, glcm_2d_matrices):
-        glcm = self._normalize_matrix(
-            np.sum(np.sum(glcm_2d_matrices, axis=1), axis=0),
-            'calc_2_5d_merged_glcm_features',
-        )
-        return self._feature_values(glcm)
-
-    def _calc_2_5d_direction_merged_glcm_features(self, glcm_2d_matrices):
-        averaged_glcm = np.sum(glcm_2d_matrices, axis=0)
-        feature_dicts = []
-        for direction_index in range(averaged_glcm.shape[0]):
-            direction_matrix = self._normalize_matrix(
-                averaged_glcm[direction_index],
-                'calc_2_5d_direction_merged_glcm_features',
-            )
-            feature_dicts.append(self._feature_values(direction_matrix))
-        return self._aggregate_feature_dicts(feature_dicts)
-
-    def _calc_3d_averaged_glcm_features(self, glcm_3d_matrices):
-        feature_dicts = [
-            self._feature_values(self._normalize_matrix(matrix, 'calc_3d_averaged_glcm_features'))
-            for matrix in glcm_3d_matrices
-        ]
-        return self._aggregate_feature_dicts(feature_dicts)
-
-    def _calc_3d_merged_glcm_features(self, glcm_3d_matrices):
-        matrix = self._normalize_matrix(
-            np.sum(glcm_3d_matrices, axis=0),
-            'calc_3d_merged_glcm_features',
-        )
-        return self._feature_values(matrix)
-
 
 class GLCMFeatureGroup(BaseFeatureGroup):
     family = 'glcm'
@@ -533,14 +332,6 @@ class GLCMFeatureGroup(BaseFeatureGroup):
         return aliases
 
     def calculate(self, context, prepared_data):
-        glcm = GLCM(
-            aggr_dim=context.aggr_dim,
-            aggr_method=context.aggr_method,
-            slice_weight=context.slice_weighting,
-            slice_median=context.slice_median,
-        )
-        feature_values = glcm.calculate_features(prepared_data.require_discretized_intensity_image().array.T)
-        return {
-            output_name: feature_values[base_name]
-            for output_name, base_name in zip(self.output_names(context), GLCM_FEATURE_NAMES)
-        }
+        from .texture_extraction import calculate_texture_family
+
+        return calculate_texture_family(self, context, prepared_data)[0]

@@ -4,6 +4,7 @@ from scipy.ndimage import convolve
 from ..exceptions import DataStructureError
 from .base import BaseFeatureGroup
 from .texture_aggregation import format_texture_feature_names
+from .texture_matrices import TextureMatrixMixin
 
 NGTDM_FEATURE_NAMES = (
     'ngt_coarseness',
@@ -14,7 +15,7 @@ NGTDM_FEATURE_NAMES = (
 )
 
 
-class NGTDM:
+class NGTDM(TextureMatrixMixin):
     """Neighbouring grey tone difference matrix features.
 
     NGTDM features compare each discretized grey level with the average grey
@@ -30,6 +31,8 @@ class NGTDM:
     slice_median : bool, default=False
         Aggregate 2D slice-wise values by median instead of mean.
     """
+
+    matrix_family = 'ngtdm'
 
     def __init__(self, aggr_dim, slice_weight=False, slice_median=False):
         self.aggr_dim = aggr_dim
@@ -197,46 +200,14 @@ class NGTDM:
             'ngt_strength': cls._calc_strength(matrix),
         }
 
-    def _aggregate_feature_dicts(self, feature_dicts, weights=None):
-        if not feature_dicts:
-            raise DataStructureError('No NGTDM matrices available for aggregation.')
-        if self.slice_median:
-            if self.slice_weight and weights is not None:
-                raise DataStructureError('Weighted median is not supported for NGTDM aggregation.')
-            return {name: float(np.median([values[name] for values in feature_dicts])) for name in NGTDM_FEATURE_NAMES}
-        return {
-            name: float(np.average([values[name] for values in feature_dicts], weights=weights))
-            for name in NGTDM_FEATURE_NAMES
-        }
-
-    def _calc_2d_features(self, matrices, slice_voxel_counts, total_roi_voxels):
-        feature_dicts = []
-        weights = []
-        for slice_index, matrix in enumerate(matrices):
-            if self.slice_weight:
-                if total_roi_voxels == 0:
-                    raise DataStructureError(' Denominator is zero in calc_2d_ngtdm_features.')
-                weights.append(slice_voxel_counts[slice_index] / total_roi_voxels)
-            else:
-                weights.append(1.0)
-            feature_dicts.append(self._matrix_feature_values(matrix))
-        return self._aggregate_feature_dicts(feature_dicts, None if self.slice_median else weights)
-
-    @classmethod
-    def _calc_2_5d_features(cls, matrices):
-        return cls._matrix_feature_values(np.sum(matrices, axis=0))
-
-    @classmethod
-    def _calc_3d_features(cls, matrix):
-        return cls._matrix_feature_values(matrix)
-
     def calculate_features(self, discretized_image_array):
         """Calculate NGTDM features for a prepared discretized intensity array.
 
         Parameters
         ----------
         discretized_image_array : numpy.ndarray
-            Prepared discretized intensity array with voxels outside the ROI set
+            Legacy (x, y, z) array. Use calculate_matrices for NumPy (z, y, x)
+            or 2D (row, column) inputs. Prepared discretized intensity array with voxels outside the ROI set
             to ``NaN``.
 
         Returns
@@ -244,17 +215,7 @@ class NGTDM:
         dict
             Mapping of NGTDM feature names to calculated values.
         """
-        discretized_image_array = np.asarray(discretized_image_array)
-        lvl = int(np.nanmax(discretized_image_array) + 1)
-        total_roi_voxels = int(np.sum(~np.isnan(discretized_image_array)))
-
-        if self.aggr_dim == '3D':
-            return self._calc_3d_features(self._calc_3d_matrix(discretized_image_array, lvl))
-
-        matrices, slice_voxel_counts = self._calc_2d_matrices(discretized_image_array, lvl)
-        if self.aggr_dim == '2.5D':
-            return self._calc_2_5d_features(matrices)
-        return self._calc_2d_features(matrices, slice_voxel_counts, total_roi_voxels)
+        return self._legacy_features(discretized_image_array)
 
 
 class NGTDMFeatureGroup(BaseFeatureGroup):
@@ -274,13 +235,6 @@ class NGTDMFeatureGroup(BaseFeatureGroup):
         return aliases
 
     def calculate(self, context, prepared_data):
-        ngtdm = NGTDM(
-            aggr_dim=context.aggr_dim,
-            slice_weight=context.slice_weighting,
-            slice_median=context.slice_median,
-        )
-        feature_values = ngtdm.calculate_features(prepared_data.require_discretized_intensity_image().array.T)
-        return {
-            output_name: feature_values[base_name]
-            for output_name, base_name in zip(self.output_names(context), NGTDM_FEATURE_NAMES)
-        }
+        from .texture_extraction import calculate_texture_family
+
+        return calculate_texture_family(self, context, prepared_data)[0]

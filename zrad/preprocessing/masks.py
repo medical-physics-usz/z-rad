@@ -1,6 +1,6 @@
 import numpy as np
 
-from ..exceptions import DataStructureError
+from ..exceptions import DataStructureError, MaskSizeError
 
 
 class RoiMaskValidator:
@@ -16,7 +16,8 @@ class RoiMaskValidator:
         Feature aggregation mode that determines the geometric validity checks.
         ``"3D"`` validates the full ROI volume. Other non-``None`` values are
         treated as slice-wise modes and remove invalid slices. If ``None``, the
-        mask is copied without geometric validation.
+        mask is copied without geometric validation, which allows intensity
+        features to be calculated for ROIs of any non-zero size.
 
     """
 
@@ -70,9 +71,9 @@ class RoiMaskValidator:
             bbox_shape = (zmax - zmin, ymax - ymin, xmax - xmin)
             no_valid_voxels = len(valid_coords[0])
             if min(bbox_shape) < min_box_size:
-                raise DataStructureError(f"3D bounding box dimension < {min_box_size}.")
+                raise MaskSizeError(f"3D bounding box dimension < {min_box_size}.")
             if no_valid_voxels < min_voxel_number_3d:
-                raise DataStructureError(f"Valid voxel count < {min_voxel_number_3d}.")
+                raise MaskSizeError(f"Valid voxel count < {min_voxel_number_3d}.")
         else:
             for z_idx in range(masked_array.shape[0]):
                 slice_arr = masked_array[z_idx, :, :]
@@ -93,7 +94,7 @@ class RoiMaskValidator:
                     slice_arr[:, :] = 0
 
             if not np.any(masked_array):
-                raise DataStructureError(
+                raise MaskSizeError(
                     "Not a single slice meets the minimum 2D/2.5D requirements. "
                     "Consider finer resampling or check the data."
                 )

@@ -41,17 +41,25 @@ class PreparedExtractionData:
     """Prepared intermediate data shared across feature groups."""
 
     base_masks: RoiData | None = None
+    intensity_masks: RoiData | None = None
     analysis_masks: RoiData | None = None
     discretized_intensity_image: Image | None = None
+    intensity_histogram_image: Image | None = None
     ivh_intensity_image: Image | None = None
     ivh_min_intensity: float | None = None
     ivh_max_intensity: float | None = None
     ivh_discretization_step: float = 1
+    metadata_masks: RoiData | None = None
 
     def require_base_masks(self) -> RoiData:
         if self.base_masks is None:
             raise RuntimeError('Base masks were not prepared for this extraction.')
         return self.base_masks
+
+    def require_intensity_masks(self) -> RoiData:
+        if self.intensity_masks is None:
+            raise RuntimeError('Intensity masks were not prepared for this extraction.')
+        return self.intensity_masks
 
     def require_analysis_masks(self) -> RoiData:
         if self.analysis_masks is None:
@@ -62,6 +70,16 @@ class PreparedExtractionData:
         if self.discretized_intensity_image is None:
             raise RuntimeError('Discretized intensity image was not prepared for this extraction.')
         return self.discretized_intensity_image
+
+    def require_intensity_histogram_image(self) -> Image:
+        if self.intensity_histogram_image is None:
+            raise RuntimeError('Intensity histogram image was not prepared for this extraction.')
+        return self.intensity_histogram_image
+
+    def require_metadata_masks(self) -> RoiData:
+        if self.metadata_masks is None:
+            raise RuntimeError('Metadata masks were not prepared for this extraction.')
+        return self.metadata_masks
 
     def require_ivh_intensity_image(self) -> Image:
         if self.ivh_intensity_image is None:

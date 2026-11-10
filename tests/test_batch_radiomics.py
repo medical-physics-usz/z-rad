@@ -6,7 +6,7 @@ import pytest
 import zrad.batch as batch
 import zrad.batch.radiomics as batch_radiomics
 from zrad.batch import BatchRadiomicsExtractor, BatchResult, RadiomicsCaseResult
-from zrad.exceptions import DataStructureError, InvalidInputParametersError
+from zrad.exceptions import DataStructureError, DataStructureWarning, InvalidInputParametersError
 from zrad.gui.rad_tab import create_batch_radiomics_extractor_from_input_params
 from zrad.image import Image
 
@@ -360,6 +360,29 @@ def test_empty_nifti_mask_is_recorded_as_skipped_structure(tmp_path):
     assert case_result.status == 'skipped'
     assert case_result.skipped_structures == ['mask']
     assert case_result.error == "No structures were successfully processed for radiomics extraction."
+
+
+@pytest.mark.unit
+def test_small_nifti_mask_keeps_intensity_features_and_omits_shape_and_texture(tmp_path):
+    input_dir = tmp_path / 'input'
+    output_dir = tmp_path / 'output'
+    case_dir = _write_case(input_dir, 'case_a')
+    mask_array = np.zeros((3, 3, 3), dtype=np.float64)
+    mask_array.flat[0] = 1
+    _make_image(mask_array).save_as_nifti(case_dir / 'mask.nii.gz')
+
+    with pytest.warns(DataStructureWarning, match='omitted default feature families'):
+        result = _extractor(input_dir, output_dir).run()
+
+    case_result = result.case_results[0]
+    assert case_result.processed_structures == ['mask']
+    assert case_result.skipped_structures == []
+    with (output_dir / 'radiomics.csv').open(newline='') as csv_file:
+        row = next(csv.DictReader(csv_file))
+    assert row['stat_mean']
+    assert row['ih_mean']
+    assert not any(name.startswith('morph_') for name in row)
+    assert not any(name.startswith(('cm_', 'rlm_', 'szm_', 'dzm_', 'ngt_', 'ngl_')) for name in row)
 
 
 @pytest.mark.unit

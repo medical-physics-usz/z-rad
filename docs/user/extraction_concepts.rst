@@ -122,11 +122,14 @@ feature families. Texture analysis uses the selected aggregation dimension:
   independently. A slice is discarded if it contains fewer than ``9`` valid
   voxels or if its nonzero bounding box is smaller than ``3`` voxels in either
   in-plane dimension.
-* If no slice satisfies these ``2D`` or ``2.5D`` requirements, radiomics
-  extraction is aborted for that mask.
+* If no slice satisfies these ``2D`` or ``2.5D`` requirements, the affected
+  texture families are unavailable for that mask.
 
 Morphology and other families that use a volumetric ROI retain their 3D
 validation rules even when texture aggregation is slice-wise. Single-slice
-images follow a separate 2D extraction path. Re-segmentation can further reduce
-the voxels available to intensity-based features; an empty intensity ROI cannot
-be used for those calculations. See :doc:`troubleshooting` for rejected masks.
+images follow a separate 2D extraction path. Default extraction omits shape or
+texture families whose size requirements are not met and still calculates the
+available intensity families. Explicitly requesting an unavailable shape or
+texture family raises an error. Re-segmentation can further reduce the voxels
+available to intensity-based features; an empty intensity ROI cannot be used
+for those calculations. See :doc:`troubleshooting` for rejected masks.

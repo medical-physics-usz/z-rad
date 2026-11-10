@@ -36,6 +36,9 @@ The CSV starts with the following columns:
 
 The bounding-box and voxel-count fields describe the analysis mask after
 validation, including any slices removed for 2D or 2.5D texture analysis.
+If default extraction omits all size-incompatible shape and texture families,
+these fields instead describe the unrestricted morphological mask used for the
+remaining intensity families.
 See :ref:`extraction-mask-requirements` for those checks.
 
 In Python, pass ``include_metadata=True`` to ``Radiomics.extract_features``

@@ -1,6 +1,7 @@
 import numpy as np
 import pytest
 
+from zrad.exceptions import DataStructureError, DataStructureWarning
 from zrad.image import Image
 from zrad.preprocessing import (
     IntensityMaskBuilder,
@@ -90,6 +91,141 @@ def test_radiomics_feature_subset_returns_only_requested_keys():
     assert list(features) == ['stat_mean', 'stat_max']
     assert features['stat_mean'] == pytest.approx(np.mean(image.array))
     assert features['stat_max'] == pytest.approx(np.max(image.array))
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    'family, prepare, voxel_count',
+    [
+        ('local_intensity', lambda roi: roi, 2),
+        ('intensity_statistics', lambda roi: roi, 2),
+        ('intensity_histogram', lambda roi: TextureDiscretizer(number_of_bins=4).apply(roi), 2),
+        ('ivh', lambda roi: IVHIntensityDiscretizer(method='direct').apply(roi), 11),
+    ],
+)
+def test_intensity_families_accept_lesions_below_geometric_size_limits(family, prepare, voxel_count):
+    image = _make_image(np.arange(1, 28, dtype=np.float64).reshape(3, 3, 3))
+    mask_array = np.zeros((3, 3, 3), dtype=np.float64)
+    mask_array.flat[:voxel_count] = 1
+    roi_data = prepare(_roi_data(image, _make_image(mask_array)))
+
+    features = Radiomics().extract_features(roi_data=roi_data, families=[family])
+
+    assert features
+
+
+@pytest.mark.unit
+def test_intensity_metadata_accepts_single_voxel_lesion():
+    image = _make_image(np.arange(1, 28, dtype=np.float64).reshape(3, 3, 3))
+    mask_array = np.zeros((3, 3, 3), dtype=np.float64)
+    mask_array[1, 1, 1] = 1
+
+    features = Radiomics().extract_features(
+        roi_data=_roi_data(image, _make_image(mask_array)),
+        families=['intensity_statistics'],
+        include_metadata=True,
+    )
+
+    assert features['bounding_box_min'] == 1
+    assert features['no_voxels'] == 1
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize('family', ['morphology', 'glcm'])
+def test_shape_and_texture_families_keep_minimum_size_requirements(family):
+    image = _make_image(np.arange(1, 28, dtype=np.float64).reshape(3, 3, 3))
+    mask_array = np.zeros((3, 3, 3), dtype=np.float64)
+    mask_array[1, 1, 1] = 1
+    roi_data = TextureDiscretizer(number_of_bins=4).apply(_roi_data(image, _make_image(mask_array)))
+
+    with pytest.raises(DataStructureError, match='bounding box dimension'):
+        Radiomics().extract_features(roi_data=roi_data, families=[family])
+
+
+@pytest.mark.unit
+def test_default_extraction_keeps_intensity_features_for_small_lesion():
+    image = _make_image(np.arange(1, 28, dtype=np.float64).reshape(3, 3, 3))
+    mask_array = np.zeros((3, 3, 3), dtype=np.float64)
+    mask_array.flat[:2] = 1
+    roi_data = TextureDiscretizer(number_of_bins=4).apply(_roi_data(image, _make_image(mask_array)))
+
+    with pytest.warns(DataStructureWarning, match='omitted default feature families'):
+        features = Radiomics().extract_features(roi_data=roi_data)
+
+    assert 'stat_mean' in features
+    assert 'ih_mean' in features
+    assert not any(name.startswith('morph_') for name in features)
+    assert not any(name.startswith(('cm_', 'rlm_', 'szm_', 'dzm_', 'ngt_', 'ngl_')) for name in features)
+
+
+@pytest.mark.unit
+def test_default_extraction_keeps_valid_2d_texture_when_3d_morphology_is_too_small():
+    image = _make_image(np.arange(1, 28, dtype=np.float64).reshape(3, 3, 3))
+    mask_array = np.zeros((3, 3, 3), dtype=np.float64)
+    mask_array[1, :, :] = 1
+    roi_data = TextureDiscretizer(number_of_bins=4).apply(_roi_data(image, _make_image(mask_array)))
+
+    with pytest.warns(DataStructureWarning, match='morphology'):
+        features = Radiomics(aggr_dim='2D').extract_features(roi_data=roi_data)
+
+    assert 'stat_mean' in features
+    assert 'cm_joint_max_2D_avg' in features
+    assert not any(name.startswith('morph_') for name in features)
+
+
+@pytest.mark.unit
+def test_intensity_extraction_rejects_empty_roi():
+    image = _make_image(np.arange(1, 28, dtype=np.float64).reshape(3, 3, 3))
+    mask = _make_image(np.zeros((3, 3, 3), dtype=np.float64))
+
+    with pytest.raises(DataStructureError, match='No valid voxels'):
+        Radiomics().extract_features(
+            roi_data=_roi_data(image, mask),
+            families=['intensity_statistics'],
+        )
+
+
+@pytest.mark.unit
+def test_default_extraction_omits_undefined_single_level_ivh_but_keeps_other_intensity_features():
+    image = _make_image(np.ones((3, 3, 3), dtype=np.float64))
+    mask_array = np.zeros((3, 3, 3), dtype=np.float64)
+    mask_array[1, 1, 1] = 1
+    roi_data = _roi_data(image, _make_image(mask_array))
+    roi_data = TextureDiscretizer(number_of_bins=4).apply(roi_data)
+    roi_data = IVHIntensityDiscretizer(method='direct').apply(roi_data)
+
+    with pytest.warns(DataStructureWarning) as warnings_record:
+        features = Radiomics().extract_features(roi_data=roi_data)
+
+    warning_messages = [str(warning.message) for warning in warnings_record]
+    assert any('omitted default feature families' in message for message in warning_messages)
+    assert any('Omitted default IVH feature family' in message for message in warning_messages)
+    assert 'stat_mean' in features
+    assert 'ih_mean' in features
+    assert not any(name.startswith('ivh_') for name in features)
+
+    with pytest.raises(DataStructureError, match='Intensity range must be positive'):
+        Radiomics().extract_features(roi_data=roi_data, families=['ivh'])
+
+
+@pytest.mark.unit
+def test_default_extraction_omits_sparse_ivh_but_keeps_other_intensity_features():
+    image = _make_image(np.arange(1, 28, dtype=np.float64).reshape(3, 3, 3))
+    mask_array = np.zeros((3, 3, 3), dtype=np.float64)
+    mask_array.flat[:2] = 1
+    roi_data = _roi_data(image, _make_image(mask_array))
+    roi_data = TextureDiscretizer(number_of_bins=4).apply(roi_data)
+    roi_data = IVHIntensityDiscretizer(method='direct').apply(roi_data)
+
+    with pytest.warns(DataStructureWarning, match='Omitted default IVH'):
+        features = Radiomics().extract_features(roi_data=roi_data)
+
+    assert 'stat_mean' in features
+    assert 'ih_mean' in features
+    assert not any(name.startswith('ivh_') for name in features)
+
+    with pytest.raises(DataStructureError, match='does not reach volume fraction'):
+        Radiomics().extract_features(roi_data=roi_data, families=['ivh'])
 
 
 @pytest.mark.unit
@@ -259,6 +395,16 @@ def test_histogram_gradient_keeps_empty_bins():
     values, gradient = IntensityHistogramFeatures._histogram_gradient(np.array([1.0, 1.0, 3.0, 3.0, 3.0]))
     np.testing.assert_array_equal(values, [1, 2, 3])
     np.testing.assert_array_equal(gradient, [-2, 0.5, 3])
+
+
+@pytest.mark.unit
+def test_histogram_gradient_is_zero_for_single_occupied_bin():
+    from zrad.radiomics.intensity import IntensityHistogramFeatures
+
+    values, gradient = IntensityHistogramFeatures._histogram_gradient(np.array([1.0]))
+
+    np.testing.assert_array_equal(values, [1])
+    np.testing.assert_array_equal(gradient, [0.0])
 
 
 @pytest.mark.unit

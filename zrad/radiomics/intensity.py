@@ -226,8 +226,8 @@ class _IntensityFeatureCalculator:
         full_counts = np.zeros(len(full_values), dtype=float)
         full_counts[values.astype(int) - 1] = counts
         values, counts = full_values, full_counts
-        if len(counts) <= 1:
-            raise DataStructureError("Not enough bins to calculate gradient.")
+        if len(counts) == 1:
+            return values, np.zeros(1, dtype=float)
         gradient = np.gradient(counts)
         return values, gradient
 
@@ -420,28 +420,35 @@ class IntensityVolumeHistogramFeatures:
 
     def _fractions(self, array):
         valid_values = array.ravel()[~np.isnan(array.ravel())]
+        if len(valid_values) == 0:
+            raise DataStructureError("No valid values in fractions.")
+        intensity_diff = self.max_intensity - self.min_intensity
+        if intensity_diff <= 0:
+            raise DataStructureError("Intensity range must be positive.")
         intensities = np.arange(self.min_intensity, self.max_intensity + self.discr, self.discr)
+        if len(intensities) == 0:
+            raise DataStructureError("No intensity thresholds available for IVH calculation.")
         fractional_volumes = np.zeros(len(intensities))
         intensity_fractions = np.zeros(len(intensities))
         for idx, intensity_value in enumerate(intensities):
             len_valid_vals = len(valid_values)
-            if len_valid_vals == 0:
-                raise DataStructureError("No valid values in fractions.")
             fractional_volumes[idx] = 1 - np.sum(valid_values < intensity_value) / len_valid_vals
-            intensity_diff = self.max_intensity - self.min_intensity
-            if intensity_diff == 0:
-                raise DataStructureError("Intensity range is zero.")
             intensity_fractions[idx] = (intensity_value - self.min_intensity) / intensity_diff
         return intensities, fractional_volumes, intensity_fractions
 
     @staticmethod
     def _calc_volume_at_intensity_fraction(fractional_volumes, intensity_fractions, x):
         valid_indices = np.where(intensity_fractions > x / 100)
+        if valid_indices[0].size == 0:
+            raise DataStructureError(f"IVH does not reach intensity fraction {x}%.")
         return np.max(fractional_volumes[valid_indices])
 
     @staticmethod
     def _calc_intensity_at_volume_fraction(intensities, fractional_volumes, x):
-        return np.min(intensities[fractional_volumes <= x / 100])
+        valid_intensities = intensities[fractional_volumes <= x / 100]
+        if valid_intensities.size == 0:
+            raise DataStructureError(f"IVH does not reach volume fraction {x}%.")
+        return np.min(valid_intensities)
 
     def calculate_features(self, ivh_image_array):
         """Calculate IVH features for a prepared IVH intensity array.
@@ -542,7 +549,7 @@ IVH_FEATURE_NAMES = (
 
 class LocalIntensityFeatureGroup(BaseFeatureGroup):
     family = 'local_intensity'
-    requirements = frozenset({'base_masks'})
+    requirements = frozenset({'intensity_masks'})
 
     def supports(self, context):
         return True
@@ -554,7 +561,7 @@ class LocalIntensityFeatureGroup(BaseFeatureGroup):
         return {name: name for name in self.output_names(context)}
 
     def calculate(self, context, prepared_data):
-        masks = prepared_data.require_base_masks()
+        masks = prepared_data.require_intensity_masks()
         local = LocalIntensityFeatures(
             context.feature_image.spacing[::-1],
         )
@@ -566,7 +573,7 @@ class LocalIntensityFeatureGroup(BaseFeatureGroup):
 
 class IntensityStatisticsFeatureGroup(BaseFeatureGroup):
     family = 'intensity_statistics'
-    requirements = frozenset({'base_masks'})
+    requirements = frozenset({'intensity_masks'})
 
     def supports(self, context):
         return True
@@ -578,14 +585,14 @@ class IntensityStatisticsFeatureGroup(BaseFeatureGroup):
         return {name: name for name in self.output_names(context)}
 
     def calculate(self, context, prepared_data):
-        intensity = prepared_data.require_base_masks().intensity_mask.array
+        intensity = prepared_data.require_intensity_masks().intensity_mask.array
         stats = IntensityStatisticsFeatures()
         return stats.calculate_features(intensity)
 
 
 class IntensityHistogramFeatureGroup(BaseFeatureGroup):
     family = 'intensity_histogram'
-    requirements = frozenset({'analysis_masks', 'discretized_intensity_image'})
+    requirements = frozenset({'intensity_masks', 'intensity_histogram_image'})
 
     def supports(self, context):
         return context.roi_data.texture_discretized_image is not None
@@ -597,14 +604,14 @@ class IntensityHistogramFeatureGroup(BaseFeatureGroup):
         return {name: name for name in self.output_names(context)}
 
     def calculate(self, context, prepared_data):
-        intensity = prepared_data.require_discretized_intensity_image().array
+        intensity = prepared_data.require_intensity_histogram_image().array
         stats = IntensityHistogramFeatures()
         return stats.calculate_features(intensity)
 
 
 class IVHFeatureGroup(BaseFeatureGroup):
     family = 'ivh'
-    requirements = frozenset({'analysis_masks', 'ivh_intensity_image'})
+    requirements = frozenset({'intensity_masks', 'ivh_intensity_image'})
 
     def supports(self, context):
         return (

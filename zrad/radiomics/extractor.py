@@ -1,4 +1,9 @@
-from ..preprocessing import RoiData
+import warnings
+
+import numpy as np
+
+from ..exceptions import DataStructureError, DataStructureWarning, MaskSizeError
+from ..preprocessing import RoiData, RoiMaskValidator
 from .extraction_context import ExtractionContext
 from .extraction_preparation import build_extraction_metadata, prepare_extraction_data
 from .feature_registry import resolve_groups
@@ -91,9 +96,12 @@ class Radiomics:
             ``"ngtdm"``, ``"ngldm"``, and ``"ivh"``.
 
             If omitted, all default-enabled families supported by the prepared
-            ``RoiData`` are extracted. Use ``"all"`` to extract every
-            supported family. Morphology includes Moran's I and Geary's C.
-            Repeated family selections are calculated once.
+            ``RoiData`` are extracted. Size-incompatible morphology or texture
+            families, and an undefined IVH family, are omitted with a warning
+            so available intensity features can still be returned. Use
+            ``"all"`` to explicitly request every supported family.
+            Morphology includes Moran's I and Geary's C. Repeated family
+            selections are calculated once.
         features : str or sequence of str, optional
             Individual feature names to extract. Names may come from one or
             more feature families. Use either ``families`` or ``features``,
@@ -134,7 +142,10 @@ class Radiomics:
           non-discretized intensity mask.
         """
         context = self._build_context(roi_data)
+        is_default_selection = families is None and features is None
         groups, selected_features = resolve_groups(context, families=families, features=features)
+        if is_default_selection:
+            groups = self._filter_default_groups_by_mask_size(context, groups)
         prepared_data = prepare_extraction_data(
             context=context,
             groups=groups,
@@ -143,11 +154,20 @@ class Radiomics:
 
         extracted = {}
         for group in groups:
-            if selected_features is None:
-                extracted.update(group.calculate(context, prepared_data))
-            else:
-                group_features = [name for name in selected_features if name in group.output_names(context)]
-                extracted.update(group.calculate_selected(context, prepared_data, group_features))
+            try:
+                if selected_features is None:
+                    extracted.update(group.calculate(context, prepared_data))
+                else:
+                    group_features = [name for name in selected_features if name in group.output_names(context)]
+                    extracted.update(group.calculate_selected(context, prepared_data, group_features))
+            except DataStructureError as exc:
+                if not is_default_selection or group.family != 'ivh':
+                    raise
+                warnings.warn(
+                    f"Omitted default IVH feature family: {exc}",
+                    DataStructureWarning,
+                    stacklevel=2,
+                )
 
         if selected_features is not None:
             extracted = {name: extracted[name] for name in selected_features}
@@ -155,6 +175,41 @@ class Radiomics:
             extracted.update(build_extraction_metadata(prepared_data))
 
         return extracted
+
+    @staticmethod
+    def _filter_default_groups_by_mask_size(context, groups):
+        """Omit size-incompatible shape/texture groups from default extraction."""
+        group_dimensions = {}
+        dimensions = set()
+        for group in groups:
+            required_dimensions = set()
+            if 'base_masks' in group.requirements and not context.is_slice_2d:
+                required_dimensions.add('3D')
+            if {'analysis_masks', 'discretized_intensity_image'} & group.requirements and not context.is_slice_2d:
+                required_dimensions.add(context.aggr_dim)
+            group_dimensions[group.family] = required_dimensions
+            dimensions.update(required_dimensions)
+
+        invalid_dimensions = {}
+        for dimension in dimensions:
+            try:
+                RoiMaskValidator(dimension).apply(context.mask)
+            except MaskSizeError as exc:
+                invalid_dimensions[dimension] = exc
+
+        if not invalid_dimensions:
+            return groups
+
+        retained_groups = [
+            group for group in groups if not (group_dimensions[group.family] & invalid_dimensions.keys())
+        ]
+        omitted_families = [group.family for group in groups if group not in retained_groups]
+        warnings.warn(
+            f"ROI size requirements were not met; omitted default feature families: {', '.join(omitted_families)}.",
+            DataStructureWarning,
+            stacklevel=3,
+        )
+        return retained_groups
 
     def _build_context(self, roi_data):
         self._validate_roi_data(roi_data)
@@ -179,3 +234,9 @@ class Radiomics:
         missing = [name for name, value in required_fields.items() if value is None]
         if missing:
             raise ValueError(f"roi_data is missing required field(s): {', '.join(missing)}.")
+        mask_array = roi_data.morphological_mask.array
+        if mask_array is None or not np.any(mask_array > 0):
+            raise DataStructureError("No valid voxels in ROI mask.")
+        intensity_array = roi_data.intensity_mask.array
+        if intensity_array is None or not np.any(np.isfinite(intensity_array)):
+            raise DataStructureError("No valid voxels in intensity mask.")

@@ -59,6 +59,8 @@ with 2D texture aggregation.
 
 Confirm that the settings match your protocol before changing them. If no
 valid ROI remains, correct the input mask or exclude that case from extraction.
+For a nonempty ROI below the shape or texture thresholds, default extraction
+still returns intensity features and omits the size-incompatible families.
 
 Discretization or aggregation settings are rejected
 ---------------------------------------------------

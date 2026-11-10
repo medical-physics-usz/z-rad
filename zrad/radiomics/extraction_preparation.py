@@ -3,15 +3,13 @@ import numpy as np
 from ..preprocessing import RoiData, RoiMaskValidator
 from .extraction_context import PreparedExtractionData
 
-METADATA_REQUIREMENTS = frozenset({'analysis_masks'})
-
 
 def collect_requirements(groups, *, include_metadata=False):
     required = set()
     for group in groups:
         required.update(group.requirements)
     if include_metadata:
-        required.update(METADATA_REQUIREMENTS)
+        required.add('metadata')
     return required
 
 
@@ -22,8 +20,13 @@ def prepare_extraction_data(context, groups, *, include_metadata=False):
     if 'base_masks' in required:
         base_masks = prepare_mask_set(context, validation_dim=None if context.is_slice_2d else '3D')
 
+    intensity_masks = None
+    needs_intensity_masks = bool({'intensity_masks', 'intensity_histogram_image', 'ivh_intensity_image'} & required)
+    if needs_intensity_masks:
+        intensity_masks = context.roi_data
+
     analysis_masks = None
-    needs_analysis_masks = bool({'analysis_masks', 'discretized_intensity_image', 'ivh_intensity_image'} & required)
+    needs_analysis_masks = bool({'analysis_masks', 'discretized_intensity_image'} & required)
     if needs_analysis_masks:
         if context.is_slice_2d or context.aggr_dim == '3D':
             analysis_masks = base_masks or prepare_mask_set(
@@ -37,22 +40,33 @@ def prepare_extraction_data(context, groups, *, include_metadata=False):
     if 'discretized_intensity_image' in required:
         discretized_intensity_image = analysis_masks.texture_discretized_image
 
+    intensity_histogram_image = None
+    if 'intensity_histogram_image' in required:
+        intensity_histogram_image = intensity_masks.texture_discretized_image
+
     ivh_intensity_image = None
     ivh_min_intensity = None
     ivh_max_intensity = None
     ivh_discretization_step = 1
     if 'ivh_intensity_image' in required:
-        ivh_intensity_image = analysis_masks.ivh_intensity_image
-        ivh_min_intensity, ivh_max_intensity, ivh_discretization_step = _derive_ivh_parameters(analysis_masks)
+        ivh_intensity_image = intensity_masks.ivh_intensity_image
+        ivh_min_intensity, ivh_max_intensity, ivh_discretization_step = _derive_ivh_parameters(intensity_masks)
+
+    metadata_masks = None
+    if 'metadata' in required:
+        metadata_masks = analysis_masks or base_masks or intensity_masks
 
     return PreparedExtractionData(
         base_masks=base_masks,
+        intensity_masks=intensity_masks,
         analysis_masks=analysis_masks,
         discretized_intensity_image=discretized_intensity_image,
+        intensity_histogram_image=intensity_histogram_image,
         ivh_intensity_image=ivh_intensity_image,
         ivh_min_intensity=ivh_min_intensity,
         ivh_max_intensity=ivh_max_intensity,
         ivh_discretization_step=ivh_discretization_step,
+        metadata_masks=metadata_masks,
     )
 
 
@@ -118,8 +132,8 @@ def _derive_ivh_parameters(roi_data):
 
 
 def build_extraction_metadata(prepared_data):
-    morph_mask = prepared_data.require_analysis_masks().morphological_mask.array
-    intensity_image = prepared_data.discretized_intensity_image
+    morph_mask = prepared_data.require_metadata_masks().morphological_mask.array
+    intensity_image = prepared_data.discretized_intensity_image or prepared_data.intensity_histogram_image
     bounding_box_min, no_voxels = calc_bounding_box_and_voxels(morph_mask)
     no_bins = 0 if intensity_image is None else calc_number_of_bins(intensity_image.array)
     return {

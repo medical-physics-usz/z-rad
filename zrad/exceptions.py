@@ -11,3 +11,7 @@ class DataStructureWarning(UserWarning):
 
 class DataStructureError(Exception):
     """Custom exception to indicate invalid input data structure."""
+
+
+class MaskSizeError(DataStructureError):
+    """Raised when an ROI does not meet feature-family size requirements."""
